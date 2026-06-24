@@ -1,0 +1,2 @@
+-- Arquivo de seed propositalmente vazio.
+-- Nao versionamos usuarios, senhas ou dados ficticios neste projeto.

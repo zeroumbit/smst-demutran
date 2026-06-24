@@ -1,0 +1,221 @@
+import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { toast } from '@/hooks/use-toast';
+import { supabase } from '@/lib/supabase';
+import type { AdminProfile, PapelUsuario } from '@/types/admin';
+
+interface AuthContextType {
+  user: AdminProfile | null;
+  login: (email: string, password: string) => Promise<boolean>;
+  logout: () => Promise<void>;
+  isAuthenticated: boolean;
+  isLoading: boolean;
+  profile: AdminProfile | null;
+  papel: PapelUsuario | null;
+  setorId: string | null;
+  isAdmin: boolean;
+  isSuperAdmin: boolean;
+  canAccessAdmin: boolean;
+  hasPapel: (...papeis: PapelUsuario[]) => boolean;
+  canManageSector: (targetSetorId?: string | null) => boolean;
+  refreshProfile: () => Promise<void>;
+}
+
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+async function fetchUserProfile(): Promise<AdminProfile | null> {
+  try {
+    const { data, error } = await supabase.rpc('get_user_profile');
+
+    if (error) {
+      console.error('Erro ao carregar perfil administrativo:', error.message);
+      return null;
+    }
+
+    if (!data) {
+      return null;
+    }
+
+    const profile = data as AdminProfile;
+
+    const { data: userData } = await supabase.auth.getUser();
+    if (userData?.user?.app_metadata?.modulos) {
+      profile.modulos = userData.user.app_metadata.modulos;
+    }
+
+    return profile;
+  } catch (error) {
+    console.error('Erro inesperado ao carregar perfil administrativo:', error);
+    return null;
+  }
+}
+
+export const AuthProvider = ({ children }: { children: ReactNode }) => {
+  const [user, setUser] = useState<AdminProfile | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const navigate = useNavigate();
+
+  const refreshProfile = async () => {
+    const profile = await fetchUserProfile();
+    setUser(profile);
+  };
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const processSession = async (hasSession: boolean) => {
+      if (!isMounted) {
+        return;
+      }
+
+      if (hasSession) {
+        const profile = await fetchUserProfile();
+        if (isMounted) {
+          setUser(profile);
+        }
+      } else if (isMounted) {
+        setUser(null);
+      }
+
+      if (isMounted) {
+        setIsLoading(false);
+      }
+    };
+
+    const checkInitialSession = async () => {
+      setIsLoading(true);
+      const { data: { session } } = await supabase.auth.getSession();
+      await processSession(!!session?.user);
+    };
+
+    void checkInitialSession();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      // Evita bloquear o ciclo interno do Supabase Auth com awaits no callback.
+      window.setTimeout(() => {
+        void processSession(!!session?.user);
+      }, 0);
+    });
+
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  const login = async (email: string, password: string): Promise<boolean> => {
+    const { error, data } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (error) {
+      console.error('Login error:', error.message);
+      toast({
+        title: 'Erro ao fazer login',
+        description: 'E-mail ou senha incorretos.',
+        variant: 'destructive',
+      });
+      return false;
+    }
+
+    if (!data?.user) {
+      return false;
+    }
+
+    const profile = await fetchUserProfile();
+
+    if (!profile?.papel && !profile?.legacy_admin) {
+      await supabase.auth.signOut();
+      setUser(null);
+      toast({
+        title: 'Acesso não autorizado',
+        description: 'Seu usuário autenticado ainda não possui perfil administrativo ativo.',
+        variant: 'destructive',
+      });
+      return false;
+    }
+
+    setUser(profile);
+    toast({
+      title: 'Login realizado!',
+      description: 'Bem-vindo ao painel administrativo.',
+    });
+
+    return true;
+  };
+
+  const logout = async () => {
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      console.error('Logout error:', error.message);
+    }
+
+    setUser(null);
+    navigate('/admin/login');
+    toast({
+      title: 'Logout realizado',
+      description: 'Você saiu do sistema.',
+    });
+  };
+
+  const papel = user?.papel ?? null;
+  const isSuperAdmin = papel === 'super_admin' || !!user?.legacy_admin;
+  const isAdmin = isSuperAdmin || papel === 'gestor' || papel === 'admin_setor';
+  const canAccessAdmin = !!user && (isAdmin || papel === 'tecnico');
+
+  const hasPapel = (...papeis: PapelUsuario[]) => {
+    if (!user?.papel) {
+      return false;
+    }
+
+    if (isSuperAdmin && papeis.includes('super_admin')) {
+      return true;
+    }
+
+    return papeis.includes(user.papel);
+  };
+
+  const canManageSector = (targetSetorId?: string | null) => {
+    if (isSuperAdmin) {
+      return true;
+    }
+
+    if (!user?.setor_id || !targetSetorId) {
+      return false;
+    }
+
+    return user.setor_id === targetSetorId && (user.papel === 'gestor' || user.papel === 'admin_setor');
+  };
+
+  return (
+    <AuthContext.Provider
+      value={{
+        user,
+        login,
+        logout,
+        isAuthenticated: !!user,
+        isLoading,
+        profile: user,
+        papel,
+        setorId: user?.setor_id ?? null,
+        isAdmin,
+        isSuperAdmin,
+        canAccessAdmin,
+        hasPapel,
+        canManageSector,
+        refreshProfile,
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
+};
+
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within AuthProvider');
+  }
+  return context;
+};

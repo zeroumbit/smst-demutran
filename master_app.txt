@@ -1,0 +1,196 @@
+import React, { Suspense } from "react";
+import { Toaster } from "@/components/ui/toaster";
+import { Toaster as Sonner } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { AuthProvider } from "@/contexts/AuthContext";
+import { ProtectedRoute } from "@/components/admin/ProtectedRoute";
+
+// Lazy load public pages
+const Index = React.lazy(() => import("./pages/Index"));
+const Secretaria = React.lazy(() => import("./pages/Secretaria"));
+const Demutran = React.lazy(() => import("./pages/Demutran"));
+const GuardaMunicipal = React.lazy(() => import("./pages/GuardaMunicipal"));
+const JovemGuarda = React.lazy(() => import("./pages/JovemGuarda"));
+const GuardaCidada = React.lazy(() => import("./pages/GuardaCidada"));
+const Rope = React.lazy(() => import("./pages/Rope"));
+const Gmam = React.lazy(() => import("./pages/Gmam"));
+const Gsu = React.lazy(() => import("./pages/Gsu"));
+const Noticias = React.lazy(() => import("./pages/Noticias"));
+const NoticiaDetalhe = React.lazy(() => import("./pages/NoticiaDetalhe"));
+const Contato = React.lazy(() => import("./pages/Contato"));
+const DefesaCivil = React.lazy(() => import("./pages/DefesaCivil"));
+const NotFound = React.lazy(() => import("./pages/NotFound"));
+
+// Lazy load admin pages
+const Login = React.lazy(() => import("./pages/admin/Login"));
+const Dashboard = React.lazy(() => import("./pages/admin/Dashboard"));
+const AdminNoticias = React.lazy(() => import("./pages/admin/Noticias"));
+const AdminEventos = React.lazy(() => import("./pages/admin/Eventos"));
+const AdminGaleria = React.lazy(() => import("./pages/admin/Galeria"));
+const AdminEquipe = React.lazy(() => import("./pages/admin/Equipe"));
+const AdminContatos = React.lazy(() => import("./pages/admin/Contatos"));
+const AdminBanners = React.lazy(() => import("./pages/admin/Banners"));
+const AdminDocumentos = React.lazy(() => import("./pages/admin/Documentos"));
+
+const queryClient = new QueryClient();
+
+const SuspenseWrapper = ({ children }: { children: React.ReactNode }) => (
+  <Suspense fallback={<div className="flex items-center justify-center min-h-screen">Carregando...</div>}>
+    {children}
+  </Suspense>
+);
+
+const App = () => (
+  <QueryClientProvider client={queryClient}>
+    <TooltipProvider>
+      <Toaster />
+      <Sonner />
+      <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+        <AuthProvider>
+          <Routes>
+            {/* Public Routes */}
+            <Route path="/" element={
+              <SuspenseWrapper>
+                <Index />
+              </SuspenseWrapper>
+            } />
+            <Route path="/secretaria" element={
+              <SuspenseWrapper>
+                <Secretaria />
+              </SuspenseWrapper>
+            } />
+            <Route path="/demutran" element={
+              <SuspenseWrapper>
+                <Demutran />
+              </SuspenseWrapper>
+            } />
+            <Route path="/guarda-municipal" element={
+              <SuspenseWrapper>
+                <GuardaMunicipal />
+              </SuspenseWrapper>
+            } />
+            <Route path="/jovem-guarda" element={
+              <SuspenseWrapper>
+                <JovemGuarda />
+              </SuspenseWrapper>
+            } />
+            <Route path="/guarda-cidada" element={
+              <SuspenseWrapper>
+                <GuardaCidada />
+              </SuspenseWrapper>
+            } />
+            <Route path="/rope" element={
+              <SuspenseWrapper>
+                <Rope />
+              </SuspenseWrapper>
+            } />
+            <Route path="/gmam" element={
+              <SuspenseWrapper>
+                <Gmam />
+              </SuspenseWrapper>
+            } />
+            <Route path="/gsu" element={
+              <SuspenseWrapper>
+                <Gsu />
+              </SuspenseWrapper>
+            } />
+            <Route path="/noticias" element={
+              <SuspenseWrapper>
+                <Noticias />
+              </SuspenseWrapper>
+            } />
+            <Route path="/noticias/:id" element={
+              <SuspenseWrapper>
+                <NoticiaDetalhe />
+              </SuspenseWrapper>
+            } />
+            <Route path="/contato" element={
+              <SuspenseWrapper>
+                <Contato />
+              </SuspenseWrapper>
+            } />
+            <Route path="/defesa-civil" element={
+              <SuspenseWrapper>
+                <DefesaCivil />
+              </SuspenseWrapper>
+            } />
+
+            {/* Admin Routes */}
+            <Route path="/admin/login" element={
+              <SuspenseWrapper>
+                <Login />
+              </SuspenseWrapper>
+            } />
+            <Route path="/admin/dashboard" element={
+              <SuspenseWrapper>
+                <ProtectedRoute>
+                  <Dashboard />
+                </ProtectedRoute>
+              </SuspenseWrapper>
+            } />
+            <Route path="/admin/noticias" element={
+              <SuspenseWrapper>
+                <ProtectedRoute>
+                  <AdminNoticias />
+                </ProtectedRoute>
+              </SuspenseWrapper>
+            } />
+            <Route path="/admin/eventos" element={
+              <SuspenseWrapper>
+                <ProtectedRoute>
+                  <AdminEventos />
+                </ProtectedRoute>
+              </SuspenseWrapper>
+            } />
+            <Route path="/admin/galeria" element={
+              <SuspenseWrapper>
+                <ProtectedRoute>
+                  <AdminGaleria />
+                </ProtectedRoute>
+              </SuspenseWrapper>
+            } />
+            <Route path="/admin/documentos" element={
+              <SuspenseWrapper>
+                <ProtectedRoute>
+                  <AdminDocumentos />
+                </ProtectedRoute>
+              </SuspenseWrapper>
+            } />
+            <Route path="/admin/banners" element={
+              <SuspenseWrapper>
+                <ProtectedRoute>
+                  <AdminBanners />
+                </ProtectedRoute>
+              </SuspenseWrapper>
+            } />
+            <Route path="/admin/equipe" element={
+              <SuspenseWrapper>
+                <ProtectedRoute>
+                  <AdminEquipe />
+                </ProtectedRoute>
+              </SuspenseWrapper>
+            } />
+            <Route path="/admin/contatos" element={
+              <SuspenseWrapper>
+                <ProtectedRoute>
+                  <AdminContatos />
+                </ProtectedRoute>
+              </SuspenseWrapper>
+            } />
+
+            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+            <Route path="*" element={
+              <SuspenseWrapper>
+                <NotFound />
+              </SuspenseWrapper>
+            } />
+          </Routes>
+        </AuthProvider>
+      </BrowserRouter>
+    </TooltipProvider>
+  </QueryClientProvider>
+);
+
+export default App;
