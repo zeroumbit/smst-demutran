@@ -6,7 +6,7 @@ SET lock_timeout = 0;
 SET idle_in_transaction_session_timeout = 0;
 SET client_encoding = 'UTF8';
 SET standard_conforming_strings = on;
-SELECT pg_catalog.set_config('search_path', '', false);
+SELECT pg_catalog.set_config('search_path', 'public', false);
 SET check_function_bodies = false;
 SET xmloption = content;
 SET client_min_messages = warning;
@@ -825,58 +825,65 @@ ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TAB
 RESET ALL;
 
 
--- Tabela de páginas para validação de galeria
-CREATE TABLE IF NOT EXISTS paginas (
+-- ===== End of 20251126174435_full_schema.sql =====
+
+-- Criação da tabela banners para gerenciamento de banners no sistema
+
+CREATE TABLE IF NOT EXISTS banners (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    nome TEXT NOT NULL UNIQUE,
-    titulo TEXT NOT NULL,
+    pagina_destino TEXT NOT NULL,
+    nome TEXT NOT NULL,
+    tipo TEXT NOT NULL,
+    url TEXT NOT NULL,
     descricao TEXT,
     ativo BOOLEAN DEFAULT true,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Índice para a tabela paginas
-CREATE INDEX IF NOT EXISTS idx_paginas_nome ON paginas(nome);
-
--- Função de validação de páginas
-CREATE OR REPLACE FUNCTION validate_pagina_exibicao()
+-- Criação do trigger para atualizar o campo updated_at
+CREATE OR REPLACE FUNCTION atualizar_updated_at()
 RETURNS TRIGGER AS $$
 BEGIN
-  -- Verifica se a pagina_exibicao é NULL (fotos antigas) ou está na tabela paginas
-  IF NEW.pagina_exibicao IS NOT NULL AND NEW.pagina_exibicao != 'todas' THEN
-    IF NOT EXISTS (SELECT 1 FROM paginas WHERE nome = NEW.pagina_exibicao AND ativo = true) THEN
-      RAISE EXCEPTION 'Página de exibição não existe: %', NEW.pagina_exibicao;
-    END IF;
-  END IF;
+  NEW.updated_at = now();
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$$ language 'plpgsql';
 
--- Adiciona trigger à tabela galeria_fotos
-DROP TRIGGER IF EXISTS trigger_validate_pagina_exibicao ON galeria_fotos;
-CREATE TRIGGER trigger_validate_pagina_exibicao
-  BEFORE INSERT OR UPDATE ON galeria_fotos
-  FOR EACH ROW
-  EXECUTE FUNCTION validate_pagina_exibicao();
+DROP TRIGGER IF EXISTS trigger_atualizar_banners_updated_at ON banners;
+CREATE TRIGGER trigger_atualizar_banners_updated_at 
+    BEFORE UPDATE ON banners 
+    FOR EACH ROW 
+    EXECUTE FUNCTION atualizar_updated_at();
 
--- Atualiza a tabela galeria_fotos
+-- Políticas de segurança
 DO $$
 BEGIN
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
-                 WHERE table_name = 'galeria_fotos' 
-                 AND column_name = 'pagina_exibicao') THEN
-    ALTER TABLE galeria_fotos ADD COLUMN pagina_exibicao TEXT;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Admin full access banners' AND tablename = 'banners') THEN
+    CREATE POLICY "Admin full access banners" ON banners 
+    FOR ALL 
+    USING (auth.role() = 'authenticated') 
+    WITH CHECK (auth.role() = 'authenticated');
   END IF;
-END
+END;
 $$;
 
--- Atualiza a política de segurança da galeria_fotos
-DROP POLICY IF EXISTS "Admins can manage galeria_fotos" ON galeria_fotos;
-CREATE POLICY "Admins can manage galeria_fotos" ON galeria_fotos 
-TO authenticated USING (public.is_admin()) 
-WITH CHECK (public.is_admin());
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Public read active banners' AND tablename = 'banners') THEN
+    CREATE POLICY "Public read active banners" ON banners 
+    FOR SELECT 
+    USING (ativo = true);
+  END IF;
+END;
+$$;
 
--- Remove o valor padrão 'todas' e atualiza registros existentes
-UPDATE galeria_fotos SET pagina_exibicao = NULL WHERE pagina_exibicao = 'todas';
-    
+-- ===== End of 20251124180000_create_banners_table.sql =====
+
+-- Adiciona campos para página de destino e foto na tabela de equipe
+ALTER TABLE public.equipe 
+ADD COLUMN IF NOT EXISTS pagina_destino TEXT,
+ADD COLUMN IF NOT EXISTS foto TEXT;
+
+-- ===== End of 20251021180000_add_member_fields.sql =====
+
