@@ -67,8 +67,14 @@ export interface VeiculoRecolhido {
   placa: string;
   chassi: string | null;
   descricao_veiculo: string;
+  ano: string | null;
+  cor: string | null;
+  modelo: string | null;
+  municipio: string | null;
   proprietario_nome: string;
   proprietario_cpf_cnpj: string | null;
+  infrator_nome: string | null;
+  bairro_apreensao: string | null;
   data_recolhimento: string;
   data_liberacao: string | null;
   motivo: string;
@@ -104,6 +110,8 @@ export interface DemutranConcessionario {
   setor_id: string;
   categoria: 'mototaxi' | 'taxi' | 'carro_horario' | 'fretista';
   origem_planilha: string | null;
+  taxi_grupo: string | null;
+  estacionamento: string | null;
   ponto_referencia: string | null;
   numero_vaga: string | null;
   titular_nome: string | null;

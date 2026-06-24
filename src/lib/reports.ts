@@ -123,28 +123,31 @@ export const openPdfPrintReport = (title: string, sections: ReportSheet[]) => {
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>${escapeHtml(title)}</title>
         <style>
-          html, body { background: #ffffff; }
-          body { font-family: Arial, sans-serif; color: #0f172a; margin: 24px; }
-          .report-header { display: flex; align-items: center; gap: 16px; border-bottom: 2px solid #cbd5e1; padding-bottom: 16px; margin-bottom: 20px; }
-          .report-header img { width: 72px; height: 72px; object-fit: contain; }
+          @page { margin: 0; size: A4 portrait; }
+          html, body { background: #ffffff; margin: 0; padding: 0; }
+          body { font-family: Arial, sans-serif; color: #0f172a; padding: 95px 20px 20px; }
+          .report-header { display: flex; align-items: center; gap: 16px; border-bottom: 2px solid #cbd5e1; padding: 12px 20px; background: #ffffff; }
+          .report-header img { width: 60px; height: 60px; object-fit: contain; }
           .report-header-text { display: flex; flex-direction: column; gap: 4px; }
-          .report-title { font-size: 28px; font-weight: 800; letter-spacing: -0.04em; color: #0f172a; }
-          .report-subtitle { font-size: 14px; font-weight: 600; color: #475569; }
-          h1 { margin-bottom: 8px; }
-          .report-header h1 { margin: 0; font-size: 28px; }
-          h2 { margin: 24px 0 10px; font-size: 18px; }
-          p.meta { color: #475569; margin: 0 0 16px; }
-          table { width: 100%; border-collapse: collapse; margin-bottom: 12px; font-size: 12px; }
-          th, td { border: 1px solid #cbd5e1; padding: 8px; text-align: left; vertical-align: top; }
+          .report-title { font-size: 24px; font-weight: 800; letter-spacing: -0.04em; color: #0f172a; }
+          .report-subtitle { font-size: 13px; font-weight: 600; color: #475569; }
+          h1 { margin: 0 0 6px; font-size: 22px; }
+          h2 { margin: 20px 0 8px; font-size: 16px; }
+          p.meta { color: #475569; margin: 0 0 14px; font-size: 13px; }
+          table { width: 100%; border-collapse: collapse; margin-bottom: 10px; font-size: 11px; }
+          th, td { border: 1px solid #cbd5e1; padding: 6px; text-align: left; vertical-align: top; }
           th { background: #e2e8f0; }
           tr:nth-child(even) td { background: #f8fafc; }
           section { break-inside: avoid; }
-          @media print { body { margin: 12px; } }
+          @media print {
+            body { padding: 95px 12px 12px; }
+            .report-header { position: fixed; top: 0; left: 0; right: 0; z-index: 1000; }
+          }
         </style>
       </head>
       <body>
         <div class="report-header">
-          <img src="${escapeHtml(logoUrl)}" alt="Logo do Demutran" />
+          <img src="${escapeHtml(logoUrl)}" alt="Logo do Demutran" onerror="this.style.display='none'" />
           <div class="report-header-text">
             <span class="report-title">DEMUTRAN</span>
             <span class="report-subtitle">Departamento Municipal de Trânsito</span>
@@ -157,22 +160,89 @@ export const openPdfPrintReport = (title: string, sections: ReportSheet[]) => {
     </html>
   `;
 
-  const reportBlob = new Blob([html], { type: 'text/html;charset=utf-8' });
-  const reportUrl = URL.createObjectURL(reportBlob);
-  const reportWindow = window.open(reportUrl, '_blank', 'width=1200,height=900');
+  const iframe = document.createElement('iframe');
+  iframe.style.position = 'fixed';
+  iframe.style.top = '-9999px';
+  iframe.style.left = '-9999px';
+  iframe.style.width = '800px';
+  iframe.style.height = '600px';
+  iframe.style.border = 'none';
+  document.body.appendChild(iframe);
 
-  if (!reportWindow) {
-    URL.revokeObjectURL(reportUrl);
-    throw new Error('Nao foi possivel abrir a janela de impressao do relatorio.');
-  }
+  iframe.contentDocument!.open();
+  iframe.contentDocument!.write(html);
+  iframe.contentDocument!.close();
 
-  const triggerPrint = () => {
+  iframe.onload = () => {
     window.setTimeout(() => {
-      reportWindow.focus();
-      reportWindow.print();
-      window.setTimeout(() => URL.revokeObjectURL(reportUrl), 60000);
-    }, 500);
+      iframe.contentWindow!.print();
+      window.setTimeout(() => {
+        document.body.removeChild(iframe);
+      }, 1000);
+    }, 2000);
   };
 
-  reportWindow.addEventListener('load', triggerPrint, { once: true });
+  iframe.contentDocument!.readyState === 'complete' && iframe.onload!(new Event('load'));
+};
+
+export const printHtml = (title: string, contentHtml: string) => {
+  const html = `
+    <!DOCTYPE html>
+    <html lang="pt-BR">
+      <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>${escapeHtml(title)}</title>
+        <style>
+          @page { margin: 0; size: A4 portrait; }
+          html, body { background: #ffffff; margin: 0; padding: 0; font-family: Arial, sans-serif; color: #0f172a; }
+          body { padding: 20px; }
+          .print-header { display: flex; align-items: center; gap: 16px; border-bottom: 2px solid #cbd5e1; padding-bottom: 12px; margin-bottom: 20px; }
+          .print-header img { width: 60px; height: 60px; object-fit: contain; }
+          .print-header-text { display: flex; flex-direction: column; gap: 4px; }
+          .print-title { font-size: 24px; font-weight: 800; letter-spacing: -0.04em; color: #0f172a; }
+          .print-subtitle { font-size: 13px; font-weight: 600; color: #475569; }
+          p.meta { color: #475569; margin: 0 0 14px; font-size: 13px; }
+          @media print {
+            body { padding: 12px; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="print-header">
+          <img src="${escapeHtml(`${window.location.origin}/images/demutran.png`)}" alt="Logo do Demutran" onerror="this.style.display='none'" />
+          <div class="print-header-text">
+            <span class="print-title">DEMUTRAN</span>
+            <span class="print-subtitle">Departamento Municipal de Trânsito</span>
+          </div>
+        </div>
+        <p class="meta">${escapeHtml(title)}</p>
+        ${contentHtml}
+      </body>
+    </html>
+  `;
+
+  const iframe = document.createElement('iframe');
+  iframe.style.position = 'fixed';
+  iframe.style.top = '-9999px';
+  iframe.style.left = '-9999px';
+  iframe.style.width = '800px';
+  iframe.style.height = '600px';
+  iframe.style.border = 'none';
+  document.body.appendChild(iframe);
+
+  iframe.contentDocument!.open();
+  iframe.contentDocument!.write(html);
+  iframe.contentDocument!.close();
+
+  iframe.onload = () => {
+    window.setTimeout(() => {
+      iframe.contentWindow!.print();
+      window.setTimeout(() => {
+        document.body.removeChild(iframe);
+      }, 1000);
+    }, 2000);
+  };
+
+  iframe.contentDocument!.readyState === 'complete' && iframe.onload!(new Event('load'));
 };

@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/admin/ProtectedRoute";
+import { ConsentBar } from "@/components/shared/ConsentBar";
 
 // Lazy load public pages
 const Index = React.lazy(() => import("./pages/Index"));
@@ -355,6 +356,7 @@ const App = () => (
               </SuspenseWrapper>
             } />
           </Routes>
+          <ConsentBar />
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>

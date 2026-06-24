@@ -222,8 +222,8 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
 
       if (hasModulosRestricted) {
         const modulo = moduloItemMap[item.label];
-        if (modulo && !userModulos!.includes(modulo)) {
-          return null;
+        if (modulo) {
+          return userModulos!.includes(modulo) ? item : null;
         }
       }
 
@@ -290,7 +290,9 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
           if (!item.allowedPapeis?.length) return item;
           if (hasModulosRestricted) {
             const modulo = moduloItemMap[item.label];
-            if (modulo && !userModulos!.includes(modulo)) return null;
+            if (modulo) {
+              return userModulos!.includes(modulo) ? item : null;
+            }
           }
           if (isSuperAdmin && item.allowedPapeis.includes('super_admin')) return item;
           return hasPapel(...item.allowedPapeis) ? item : null;

@@ -1,7 +1,8 @@
 import { FormEvent, useState } from 'react';
-import { Search, CarFront, ShieldAlert, MapPin, Calendar, Clock, DollarSign, FileText, X } from 'lucide-react';
+import { Search, CarFront, ShieldAlert, MapPin, Calendar, Clock, DollarSign, FileText, X, Copy, Check } from 'lucide-react';
 import Hero from '@/components/shared/Hero';
 import { DemutranPortalLayout } from '@/components/demutran/DemutranPortalLayout';
+import { TermsGate } from '@/components/shared/TermsGate';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -39,6 +40,7 @@ const PublicConsultaVeiculo = () => {
   const [resultado, setResultado] = useState<ConsultaResultado | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [resultadoModalOpen, setResultadoModalOpen] = useState(false);
+  const [protocoloCopiado, setProtocoloCopiado] = useState(false);
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
@@ -75,6 +77,24 @@ const PublicConsultaVeiculo = () => {
     setLoading(false);
   };
 
+  const copiarProtocolo = async () => {
+    if (!resultado?.protocolo) return;
+    try {
+      await navigator.clipboard.writeText(resultado.protocolo);
+      setProtocoloCopiado(true);
+      setTimeout(() => setProtocoloCopiado(false), 2000);
+    } catch {
+      const el = document.createElement('textarea');
+      el.value = resultado.protocolo;
+      document.body.appendChild(el);
+      el.select();
+      document.execCommand('copy');
+      document.body.removeChild(el);
+      setProtocoloCopiado(true);
+      setTimeout(() => setProtocoloCopiado(false), 2000);
+    }
+  };
+
   return (
     <DemutranPortalLayout>
       <Hero
@@ -87,47 +107,49 @@ const PublicConsultaVeiculo = () => {
       <section className="py-10 md:py-16 bg-background">
         <div className="mx-auto max-w-7xl px-4 sm:px-6">
           <div className="mx-auto max-w-4xl space-y-6 md:space-y-8">
-            <Card className="border-primary/10 shadow-lg">
-              <CardHeader className="px-4 py-5 md:px-6 md:py-6">
-                <CardTitle className="flex items-center gap-2 text-lg md:text-2xl">
-                  <Search className="h-5 w-5 md:h-6 md:w-6 text-primary" />
-                  Consultar situacao
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="px-4 pb-5 md:px-6 md:pb-6">
-                <form onSubmit={handleSubmit} className="flex flex-col gap-4 md:grid md:grid-cols-[1fr_1fr_auto]">
-                  <div className="space-y-1.5">
-                    <Label htmlFor="protocolo" className="text-sm font-semibold">Protocolo</Label>
-                    <Input
-                      id="protocolo"
-                      className="h-12 md:h-10 text-base"
-                      value={protocolo}
-                      onChange={(event) => setProtocolo(event.target.value)}
-                      placeholder="Ex.: APR-20260622000000-ABC123"
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="cpf" className="text-sm font-semibold">CPF/CNPJ</Label>
-                    <Input
-                      id="cpf"
-                      className="h-12 md:h-10 text-base"
-                      placeholder="000.000.000-00"
-                      maxLength={18}
-                      value={cpfCnpj}
-                      onChange={(event) => setCpfCnpj(maskCpf(event.target.value))}
-                    />
-                  </div>
-                  <div className="flex items-end">
-                    <Button type="submit" className="h-12 w-full text-base font-semibold md:h-10 md:w-auto" disabled={loading}>
-                      {loading ? 'Consultando...' : 'Consultar'}
-                    </Button>
-                  </div>
-                </form>
-                <p className="mt-3 text-sm text-muted-foreground">
-                  O protocolo esta impresso no auto de apreensao entregue no momento da remocao do veiculo.
-                </p>
-              </CardContent>
-            </Card>
+            <TermsGate title="Aceite os termos para consultar" description="Para consultar a situacao de um veiculo, voce precisa aceitar nossos Termos de Uso e Politica de Privacidade.">
+              <Card className="border-primary/10 shadow-lg">
+                <CardHeader className="px-4 py-5 md:px-6 md:py-6">
+                  <CardTitle className="flex items-center gap-2 text-lg md:text-2xl">
+                    <Search className="h-5 w-5 md:h-6 md:w-6 text-primary" />
+                    Consultar situacao
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="px-4 pb-5 md:px-6 md:pb-6">
+                  <form onSubmit={handleSubmit} className="flex flex-col gap-4 md:grid md:grid-cols-[1fr_1fr_auto]">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="protocolo" className="text-sm font-semibold">Protocolo</Label>
+                      <Input
+                        id="protocolo"
+                        className="h-12 md:h-10 text-base"
+                        value={protocolo}
+                        onChange={(event) => setProtocolo(event.target.value)}
+                        placeholder="Ex.: APR-20260622000000-ABC123"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="cpf" className="text-sm font-semibold">CPF/CNPJ</Label>
+                      <Input
+                        id="cpf"
+                        className="h-12 md:h-10 text-base"
+                        placeholder="000.000.000-00"
+                        maxLength={18}
+                        value={cpfCnpj}
+                        onChange={(event) => setCpfCnpj(maskCpf(event.target.value))}
+                      />
+                    </div>
+                    <div className="flex items-end">
+                      <Button type="submit" className="h-12 w-full text-base font-semibold md:h-10 md:w-auto" disabled={loading}>
+                        {loading ? 'Consultando...' : 'Consultar'}
+                      </Button>
+                    </div>
+                  </form>
+                  <p className="mt-3 text-sm text-muted-foreground">
+                    O protocolo esta impresso no auto de apreensao entregue no momento da remocao do veiculo.
+                  </p>
+                </CardContent>
+              </Card>
+            </TermsGate>
 
             {error && (
               <Card className="border-amber-200 bg-amber-50/40">
@@ -159,7 +181,17 @@ const PublicConsultaVeiculo = () => {
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4">
               <div>
                 <p className="text-xs text-muted-foreground">Protocolo</p>
-                <p className="text-sm font-mono font-semibold text-primary">{resultado.protocolo}</p>
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-mono font-semibold text-primary">{resultado.protocolo}</p>
+                  <button
+                    type="button"
+                    onClick={copiarProtocolo}
+                    className="inline-flex items-center justify-center rounded-md border border-border bg-background p-1.5 text-primary shadow-sm hover:bg-accent hover:text-accent-foreground transition-colors"
+                    title="Copiar protocolo"
+                  >
+                    {protocoloCopiado ? <Check className="h-4 w-4 text-emerald-600" /> : <Copy className="h-4 w-4" />}
+                  </button>
+                </div>
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Placa</p>

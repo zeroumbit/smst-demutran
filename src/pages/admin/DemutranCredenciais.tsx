@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Accessibility, BarChart3, CheckCircle, Clock, Eye, FileSpreadsheet, FileText, IdCard, Search, SlidersHorizontal, ThumbsDown, ThumbsUp, Users, X } from 'lucide-react';
+import { Accessibility, BarChart3, CheckCircle, Clock, Eye, FileSpreadsheet, FileText, IdCard, Search, SlidersHorizontal, ThumbsDown, ThumbsUp, Users, X, Loader2 } from 'lucide-react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { DataTable } from '@/components/admin/DataTable';
 import { Badge } from '@/components/ui/badge';
@@ -21,6 +21,8 @@ import { supabase } from '@/lib/supabase';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import type { DemutranCredencialSolicitacao, DemutranSolicitacaoStatus } from '@/types/admin';
+import { SecureLink } from '@/components/admin/SecureLink';
+import { getSignedUrl } from '@/lib/demutranUploads';
 
 const statusOptions: DemutranSolicitacaoStatus[] = ['pendente', 'em_analise', 'aprovado', 'rejeitado', 'concluido'];
 
@@ -184,9 +186,9 @@ const DemutranCredenciais = () => {
       header: 'Arquivos',
       accessor: (item: DemutranCredencialSolicitacao) => (
         <div className="flex gap-2">
-          {item.documento_identidade_url && <a className="truncate text-xs text-primary underline" href={item.documento_identidade_url} target="_blank" rel="noreferrer">Identidade</a>}
-          {item.comprovante_residencia_url && <a className="truncate text-xs text-primary underline" href={item.comprovante_residencia_url} target="_blank" rel="noreferrer">Residencia</a>}
-          {item.laudo_medico_url && <a className="truncate text-xs text-primary underline" href={item.laudo_medico_url} target="_blank" rel="noreferrer">Laudo</a>}
+          {item.documento_identidade_url && <SecureLink url={item.documento_identidade_url} label="Identidade" />}
+          {item.comprovante_residencia_url && <SecureLink url={item.comprovante_residencia_url} label="Residencia" />}
+          {item.laudo_medico_url && <SecureLink url={item.laudo_medico_url} label="Laudo" />}
         </div>
       ),
       className: 'min-w-[220px]',
@@ -469,7 +471,7 @@ const DemutranCredenciais = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div className="space-y-1.5">
                   <Label className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Status</Label>
                   <select
@@ -500,17 +502,18 @@ const DemutranCredenciais = () => {
                     ))}
                   </select>
                 </div>
-                <div className="col-span-2 space-y-1.5 lg:col-span-1">
-                  <Label className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Busca</Label>
-                  <div className="relative">
-                    <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                    <Input
-                      className="h-12 rounded-[18px] border-slate-200 bg-slate-50 pl-11 text-[15px] font-medium"
-                      value={searchTerm}
-                      onChange={(event) => setSearchTerm(event.target.value)}
-                      placeholder="Protocolo, nome ou CPF..."
-                    />
-                  </div>
+              </div>
+
+              <div className="mt-3 space-y-1.5">
+                <Label className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Busca</Label>
+                <div className="relative">
+                  <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <Input
+                    className="h-12 w-full rounded-[18px] border-slate-200 bg-slate-50 pl-11 text-[15px] font-medium"
+                    value={searchTerm}
+                    onChange={(event) => setSearchTerm(event.target.value)}
+                    placeholder="Protocolo, nome ou CPF..."
+                  />
                 </div>
               </div>
             </div>
@@ -683,21 +686,61 @@ function SummaryCard({
 }
 
 function DocPreview({ url, label }: { url: string | null; label: string }) {
+  const [resolvedUrl, setResolvedUrl] = useState<string | null>(null);
   const [errored, setErrored] = useState(false);
-  if (!url) return null;
+  const [loading, setLoading] = useState(true);
 
-  const isImage = /\.(jpg|jpeg|png|gif|webp|avif|bmp)(\?.*)?$/i.test(url);
+  useEffect(() => {
+    if (!url) {
+      setLoading(false);
+      return;
+    }
+    
+    let active = true;
+    async function fetchUrl() {
+      try {
+        const signed = await getSignedUrl(url);
+        if (active) {
+          setResolvedUrl(signed);
+          setLoading(false);
+        }
+      } catch (err) {
+        console.error(err);
+        if (active) {
+          setResolvedUrl(url); // fallback
+          setLoading(false);
+        }
+      }
+    }
+
+    fetchUrl();
+    return () => {
+      active = false;
+    };
+  }, [url]);
+
+  if (!url) return null;
+  if (loading) {
+    return (
+      <div className="flex h-36 w-full items-center justify-center rounded-xl border border-border bg-muted/30 p-4">
+        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  const finalUrl = resolvedUrl || url;
+  const isImage = /\.(jpg|jpeg|png|gif|webp|avif|bmp)(\?.*)?$/i.test(finalUrl);
 
   return (
     <a
-      href={url}
+      href={finalUrl}
       target="_blank"
       rel="noreferrer"
       className="group relative flex flex-col items-center justify-center gap-2 rounded-xl border border-border bg-muted/30 p-4 transition-all hover:border-primary/40 hover:shadow-md"
     >
       {isImage && !errored ? (
         <img
-          src={url}
+          src={finalUrl}
           alt={label}
           className="h-24 w-full rounded-lg object-cover ring-1 ring-black/5"
           onError={() => setErrored(true)}

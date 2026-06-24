@@ -2,6 +2,7 @@ import { FormEvent, useState } from 'react';
 import { FileSearch, FileWarning, Gavel, Info, ShieldCheck } from 'lucide-react';
 import Hero from '@/components/shared/Hero';
 import { DemutranPortalLayout } from '@/components/demutran/DemutranPortalLayout';
+import { TermsGate } from '@/components/shared/TermsGate';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -249,15 +250,16 @@ const PublicRecursoDemutran = () => {
                 </div>
               </div>
 
-            <Card className="border-primary/10 shadow-lg">
-              <CardHeader className="px-4 py-5 md:px-6 md:py-6">
-                <CardTitle className="flex items-center gap-2 text-lg md:text-2xl">
-                  <FileWarning className="h-5 w-5 md:h-6 md:w-6 text-primary" />
-                  Novo recurso
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="px-4 pb-5 md:px-6 md:pb-6">
-                <form onSubmit={handleSubmit} className="space-y-5 md:space-y-4">
+            <TermsGate title="Aceite os termos para protocolar" description="Para protocolar um recurso, voce precisa aceitar nossos Termos de Uso e Politica de Privacidade.">
+              <Card className="border-primary/10 shadow-lg">
+                <CardHeader className="px-4 py-5 md:px-6 md:py-6">
+                  <CardTitle className="flex items-center gap-2 text-lg md:text-2xl">
+                    <FileWarning className="h-5 w-5 md:h-6 md:w-6 text-primary" />
+                    Novo recurso
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="px-4 pb-5 md:px-6 md:pb-6">
+                  <form onSubmit={handleSubmit} className="space-y-5 md:space-y-4">
                   <div className="grid gap-4 md:grid-cols-2">
                     <div className="space-y-1.5">
                       <Label className="text-sm font-semibold">Tipo de recurso *</Label>
@@ -322,6 +324,7 @@ const PublicRecursoDemutran = () => {
                 </form>
               </CardContent>
             </Card>
+            </TermsGate>
 
             {protocol && (
               <Card className="border-emerald-200 bg-emerald-50/40">

@@ -1,5 +1,5 @@
 import { ChangeEvent, useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, Bell, Eye, FileSpreadsheet, IdCard, Loader2, Plus, Search, SlidersHorizontal, Upload, X } from 'lucide-react';
+import { AlertTriangle, Bell, Eye, FileSpreadsheet, IdCard, Loader2, Plus, Printer, Search, SlidersHorizontal, Upload, X } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { DataTable } from '@/components/admin/DataTable';
@@ -15,8 +15,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { useConfirmDialog } from '@/components/ui/use-confirm-dialog';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
-import { buildReportFileName, exportReportCsv, formatReportDate, openPdfPrintReport } from '@/lib/reports';
-import { getConcessionarioFinancialCopy, getConcessionarioFinancialStatus } from '@/lib/demutranConcessionarioFinanceiro';
+import { buildReportFileName, exportReportCsv, formatReportDate, openPdfPrintReport, printHtml } from '@/lib/reports';
+import { type ConcessionarioFinanceiroStatus, getConcessionarioFinancialCopy, getConcessionarioFinancialStatus } from '@/lib/demutranConcessionarioFinanceiro';
 import { supabase } from '@/lib/supabase';
 import { cn } from '@/lib/utils';
 import type { DemutranConcessionario, Setor } from '@/types/admin';
@@ -26,6 +26,8 @@ type CategoriaConcessionario = DemutranConcessionario['categoria'];
 type FormData = {
   categoria: CategoriaConcessionario;
   origem_planilha: string;
+  taxi_grupo: string;
+  estacionamento: string;
   ponto_referencia: string;
   numero_vaga: string;
   titular_nome: string;
@@ -92,6 +94,8 @@ const arrecadacaoReference = {
 const initialForm: FormData = {
   categoria: 'mototaxi',
   origem_planilha: '',
+  taxi_grupo: '',
+  estacionamento: '',
   ponto_referencia: '',
   numero_vaga: '',
   titular_nome: '',
@@ -167,12 +171,21 @@ const getCategoriaFromSheet = (sheetName: string): CategoriaConcessionario | nul
 
 const isNumericLike = (value: string) => /^\d+$/.test(value.replace(/\D/g, ''));
 
+const getTaxiGroupFromSheet = (sheetName: string) => {
+  const normalized = sheetName.toLowerCase();
+  if (normalized.includes('astac')) return 'ASTAC';
+  if (normalized.includes('cootac') || normalized.includes('cotac')) return 'COOTAC';
+  if (normalized.includes('distrito')) return 'DISTRITO';
+  return null;
+};
+
 const mapSheetRows = (sheetName: string, rows: unknown[][]): ParsedImportRow[] => {
   const categoria = getCategoriaFromSheet(sheetName);
   if (!categoria) return [];
 
   const mapped: ParsedImportRow[] = [];
   let districtTitle = '';
+  const taxiGroup = categoria === 'taxi' ? getTaxiGroupFromSheet(sheetName) : null;
 
   for (const row of rows) {
     const cells = row.map(readString);
@@ -198,6 +211,8 @@ const mapSheetRows = (sheetName: string, rows: unknown[][]): ParsedImportRow[] =
     const base: ParsedImportRow = {
       categoria,
       origem_planilha: sheetName,
+      taxi_grupo: taxiGroup,
+      estacionamento: categoria === 'taxi' && districtTitle ? districtTitle : null,
       ponto_referencia: districtTitle || null,
       numero_vaga: firstCell || null,
       titular_nome: null,
@@ -321,7 +336,9 @@ const DemutranConcessionarios = () => {
   const [notifyForm, setNotifyForm] = useState({ titulo: '', mensagem: '', tipo: 'geral' });
   const [sendingNotification, setSendingNotification] = useState(false);
   const [selectedCategoria, setSelectedCategoria] = useState<'todas' | CategoriaConcessionario>('todas');
-  const [selectedStatus, setSelectedStatus] = useState<'todos' | 'ativos' | 'inativos' | 'em_debito'>('todos');
+  const [selectedStatus, setSelectedStatus] = useState<'todos' | 'ativo' | 'inativo'>('todos');
+  const [selectedFinancialStatus, setSelectedFinancialStatus] = useState<'todas' | ConcessionarioFinanceiroStatus>('todas');
+  const [selectedYear, setSelectedYear] = useState<number | null>(null);
   const [selectedPeriodoArrecadacao, setSelectedPeriodoArrecadacao] =
     useState<keyof typeof arrecadacaoReference>('2025_periodo');
   const [filtrosAbertos, setFiltrosAbertos] = useState(false);
@@ -391,23 +408,32 @@ const DemutranConcessionarios = () => {
     }
   }, [effectiveSetorId, isSuperAdmin]);
 
+  const availableYears = useMemo(() => {
+    const years = new Set<number>();
+    items.forEach((item) => {
+      if (item.exercicio) {
+        const m = String(item.exercicio).match(/\b(20\d{2})\b/);
+        if (m) years.add(Number(m[1]));
+      }
+    });
+    return Array.from(years).sort((a, b) => b - a);
+  }, [items]);
+
   const filteredItems = useMemo(() => {
     return items.filter((item) => {
-      if (selectedCategoria !== 'todas' && item.categoria !== selectedCategoria) {
-        return false;
-      }
-      if (selectedStatus === 'ativos' && !item.ativo) {
-        return false;
-      }
-      if (selectedStatus === 'inativos' && item.ativo) {
-        return false;
-      }
-      if (selectedStatus === 'em_debito' && getConcessionarioFinancialStatus(item) !== 'em_debito') {
-        return false;
+      if (selectedCategoria !== 'todas' && item.categoria !== selectedCategoria) return false;
+      if (selectedStatus === 'ativo' && !item.ativo) return false;
+      if (selectedStatus === 'inativo' && item.ativo) return false;
+      if (selectedFinancialStatus !== 'todas' && getConcessionarioFinancialStatus(item) !== selectedFinancialStatus) return false;
+      if (selectedYear !== null) {
+        const m = String(item.exercicio).match(/\b(20\d{2})\b/);
+        if (!m || Number(m[1]) !== selectedYear) return false;
       }
       return (
       [
         categoriaLabels[item.categoria],
+        item.taxi_grupo,
+        item.estacionamento,
         item.titular_nome,
         item.numero_vaga,
         item.placa,
@@ -422,7 +448,7 @@ const DemutranConcessionarios = () => {
         .includes(searchTerm.toLowerCase())
       );
     });
-  }, [items, searchTerm, selectedCategoria, selectedStatus]);
+  }, [items, searchTerm, selectedCategoria, selectedStatus, selectedFinancialStatus, selectedYear]);
 
   const filteredReferenceCards = useMemo(() => {
     const selected = arrecadacaoReference[selectedPeriodoArrecadacao];
@@ -473,22 +499,16 @@ const DemutranConcessionarios = () => {
   const baseConcessionarioRows = (rows: DemutranConcessionario[]) =>
     rows.map((item) => ({
       Categoria: categoriaLabels[item.categoria],
+      Grupo_taxi: item.taxi_grupo || '-',
+      Estacionamento: item.estacionamento || '-',
       Nome: item.titular_nome || '-',
       Vaga: item.numero_vaga || '-',
       Placa: item.placa || '-',
       CPF: item.cpf || '-',
       Veiculo: item.veiculo || '-',
-      Rota: item.rota || '-',
-      Origem_planilha: item.origem_planilha || '-',
-      Ponto_referencia: item.ponto_referencia || '-',
-      Email: item.email_notificacao || '-',
-      Telefone: item.telefone_notificacao || '-',
-      Aceita_notificacoes: item.aceita_notificacoes ? 'Sim' : 'Nao',
-      Status: item.ativo ? 'Ativo' : 'Inativo',
       Situacao_financeira: getConcessionarioFinancialCopy(item).label,
       Ultimo_alvara: formatReportDate(item.ultimo_alvara),
       Inicio_atividade: formatReportDate(item.inicio_atividade),
-      Tem_acesso: accessMap[item.id] ? 'Sim' : 'Nao',
     }));
 
   const handleGenerateReport = () => {
@@ -541,6 +561,8 @@ const DemutranConcessionarios = () => {
   const toPayload = () => ({
     categoria: formData.categoria,
     origem_planilha: formData.origem_planilha.trim() || null,
+    taxi_grupo: formData.taxi_grupo.trim() || null,
+    estacionamento: formData.estacionamento.trim() || null,
     ponto_referencia: formData.ponto_referencia.trim() || null,
     numero_vaga: formData.numero_vaga.trim() || null,
     titular_nome: formData.titular_nome.trim() || null,
@@ -634,6 +656,8 @@ const DemutranConcessionarios = () => {
     setFormData({
       categoria: item.categoria,
       origem_planilha: item.origem_planilha || '',
+      taxi_grupo: item.taxi_grupo || '',
+      estacionamento: item.estacionamento || '',
       ponto_referencia: item.ponto_referencia || '',
       numero_vaga: item.numero_vaga || '',
       titular_nome: item.titular_nome || '',
@@ -794,7 +818,10 @@ const DemutranConcessionarios = () => {
   const columns = [
     {
       header: 'Categoria',
-      accessor: (item: DemutranConcessionario) => categoriaLabels[item.categoria],
+      accessor: (item: DemutranConcessionario) =>
+        item.categoria === 'taxi' && item.taxi_grupo
+          ? `${categoriaLabels[item.categoria]} • ${item.taxi_grupo}`
+          : categoriaLabels[item.categoria],
     },
     {
       header: 'Concessionario',
@@ -853,8 +880,10 @@ const DemutranConcessionarios = () => {
     let count = 0;
     if (selectedCategoria !== 'todas') count++;
     if (selectedStatus !== 'todos') count++;
+    if (selectedFinancialStatus !== 'todas') count++;
+    if (selectedYear !== null) count++;
     return count;
-  }, [selectedCategoria, selectedStatus]);
+  }, [selectedCategoria, selectedStatus, selectedFinancialStatus, selectedYear]);
 
   function renderMobileConcessionarioCard(item: DemutranConcessionario) {
     const financial = getConcessionarioFinancialCopy(item);
@@ -889,12 +918,16 @@ const DemutranConcessionarios = () => {
             <p className="mt-0.5 font-semibold text-slate-800">{item.numero_vaga || '-'}</p>
           </div>
           <div className="rounded-xl bg-slate-50 px-3 py-2">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">Grupo taxi</p>
+            <p className="mt-0.5 font-semibold text-slate-800">{item.taxi_grupo || '-'}</p>
+          </div>
+          <div className="rounded-xl bg-slate-50 px-3 py-2">
             <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">CPF</p>
             <p className="mt-0.5 font-semibold text-slate-800">{item.cpf || '-'}</p>
           </div>
           <div className="col-span-2 rounded-xl bg-slate-50 px-3 py-2">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">Rota / Origem</p>
-            <p className="mt-0.5 font-semibold text-slate-800">{item.rota || '-'} &middot; {item.origem_planilha || '-'}</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">Estacionamento / Origem</p>
+            <p className="mt-0.5 font-semibold text-slate-800">{item.estacionamento || item.rota || '-'} &middot; {item.origem_planilha || '-'}</p>
           </div>
           <div className="col-span-2 rounded-xl bg-slate-50 px-3 py-2">
             <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">Financeiro</p>
@@ -1126,7 +1159,7 @@ const DemutranConcessionarios = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
                 <div className="space-y-1.5">
                   <Label className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Categoria</Label>
                   <select
@@ -1142,30 +1175,61 @@ const DemutranConcessionarios = () => {
                     ))}
                   </select>
                 </div>
+
                 <div className="space-y-1.5">
                   <Label className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Status</Label>
                   <select
                     className="flex h-12 w-full appearance-none rounded-[18px] border border-slate-200 bg-slate-50 bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2394a3b8%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22m6%209%206%206%206-6%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[length:20px] bg-[center_right_12px] px-4 pr-11 text-[15px] font-medium text-slate-900"
                     value={selectedStatus}
-                    onChange={(event) => setSelectedStatus(event.target.value as 'todos' | 'ativos' | 'inativos' | 'em_debito')}
+                    onChange={(event) => setSelectedStatus(event.target.value as 'todos' | 'ativo' | 'inativo')}
                   >
-                    <option value="todos">Todos os status</option>
-                    <option value="ativos">Somente ativos</option>
-                    <option value="inativos">Somente inativos</option>
-                    <option value="em_debito">Somente em debito</option>
+                    <option value="todos">Todos</option>
+                    <option value="ativo">Ativo</option>
+                    <option value="inativo">Inativo</option>
                   </select>
                 </div>
-                <div className="col-span-2 space-y-1.5 lg:col-span-1">
-                  <Label className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Busca</Label>
-                  <div className="relative">
-                    <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                    <Input
-                      className="h-12 rounded-[18px] border-slate-200 bg-slate-50 pl-11 text-[15px] font-medium"
-                      value={searchTerm}
-                      onChange={(event) => setSearchTerm(event.target.value)}
-                      placeholder="Nome, vaga, placa, CPF, rota..."
-                    />
-                  </div>
+
+                <div className="space-y-1.5">
+                  <Label className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Situacao financeira</Label>
+                  <select
+                    className="flex h-12 w-full appearance-none rounded-[18px] border border-slate-200 bg-slate-50 bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2394a3b8%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22m6%209%206%206%206-6%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[length:20px] bg-[center_right_12px] px-4 pr-11 text-[15px] font-medium text-slate-900"
+                    value={selectedFinancialStatus}
+                    onChange={(event) => setSelectedFinancialStatus(event.target.value as 'todas' | ConcessionarioFinanceiroStatus)}
+                  >
+                    <option value="todas">Todas</option>
+                    <option value="pago">Taxas pagas</option>
+                    <option value="prazo_aberto">Prazo em aberto</option>
+                    <option value="em_debito">Em debito</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Ano (exercicio)</Label>
+                  <select
+                    className="flex h-12 w-full appearance-none rounded-[18px] border border-slate-200 bg-slate-50 bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2394a3b8%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22m6%209%206%206%206-6%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[length:20px] bg-[center_right_12px] px-4 pr-11 text-[15px] font-medium text-slate-900"
+                    value={selectedYear ?? ''}
+                    onChange={(event) => setSelectedYear(event.target.value ? Number(event.target.value) : null)}
+                  >
+                    <option value="">Todos os anos</option>
+                    {availableYears.map((year) => (
+                      <option key={year} value={year}>
+                        {year}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="mt-3 space-y-1.5">
+                <Label className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Busca</Label>
+                <div className="relative">
+                  <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <Input
+                    className="h-12 w-full rounded-[18px] border-slate-200 bg-slate-50 pl-11 text-[15px] font-medium"
+                    value={searchTerm}
+                    onChange={(event) => setSearchTerm(event.target.value)}
+                    placeholder="Nome, vaga, placa, CPF, rota..."
+                  />
                 </div>
               </div>
             </div>
@@ -1187,7 +1251,7 @@ const DemutranConcessionarios = () => {
               {filteredItems.map((item) => renderMobileConcessionarioCard(item))}
               {filteredItems.length === 0 && (
                 <div className="rounded-[26px] border border-dashed border-slate-200 p-8 text-center text-[15px] text-slate-400">
-                  Nenhum concessionario cadastrado
+                  Nenhum concessionario encontrado com os filtros aplicados
                 </div>
               )}
             </div>
@@ -1199,7 +1263,7 @@ const DemutranConcessionarios = () => {
                 onEdit={handleEdit}
                 onDelete={handleDelete}
                 onToggleAtivo={handleToggleAtivo}
-                emptyMessage="Nenhum concessionario cadastrado"
+                emptyMessage="Nenhum concessionario encontrado com os filtros aplicados"
               />
             </div>
           </>
@@ -1277,128 +1341,148 @@ const DemutranConcessionarios = () => {
           onConfirm={handleSubmit}
           confirmLabel={saving ? 'Salvando...' : editingItem ? 'Salvar alteracoes' : 'Cadastrar'}
         >
-          <div className="space-y-4 py-2">
-            <Tabs defaultValue="dados" className="space-y-4">
-              <TabsList className="h-auto gap-2 bg-transparent p-0">
-                <TabsTrigger value="dados" className="rounded-xl border border-border data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Condutor principal</TabsTrigger>
-                <TabsTrigger value="habilitacao" className="rounded-xl border border-border data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Condutor auxiliar</TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="dados" className="space-y-4">
+          <div className="space-y-6 py-2">
+            <div className="space-y-3">
+              <h3 className="text-sm font-bold uppercase tracking-[0.12em] text-slate-500">Dados da concessao</h3>
               <div className="grid gap-3 sm:grid-cols-2">
-                  <Field label="Categoria *">
-                    <select
-                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                      value={formData.categoria}
-                      onChange={(event) => setFormData((current) => ({ ...current, categoria: event.target.value as CategoriaConcessionario }))}
-                    >
-                      {categoriaOptions.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
-                  </Field>
-                  <Field label="Origem da planilha">
-                    <Input value={formData.origem_planilha} onChange={(event) => setFormData((current) => ({ ...current, origem_planilha: event.target.value }))} />
-                  </Field>
-                  <Field label="Numero da vaga / bata">
-                    <Input value={formData.numero_vaga} onChange={(event) => setFormData((current) => ({ ...current, numero_vaga: event.target.value }))} />
-                  </Field>
-                  <Field label="Ponto / distrito / referencia">
-                    <Input value={formData.ponto_referencia} onChange={(event) => setFormData((current) => ({ ...current, ponto_referencia: event.target.value }))} />
-                  </Field>
-                </div>
-
-                <Field label="Nome do concessionario *">
-                  <Input value={formData.titular_nome} onChange={(event) => setFormData((current) => ({ ...current, titular_nome: event.target.value }))} />
+                <Field label="Categoria *">
+                  <select
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    value={formData.categoria}
+                    onChange={(event) => setFormData((current) => ({ ...current, categoria: event.target.value as CategoriaConcessionario }))}
+                  >
+                    {categoriaOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
                 </Field>
-
-                <Field label="Endereco">
-                  <Input value={formData.endereco} onChange={(event) => setFormData((current) => ({ ...current, endereco: event.target.value }))} />
+                <Field label="Numero da vaga / bata">
+                  <Input value={formData.numero_vaga} onChange={(event) => setFormData((current) => ({ ...current, numero_vaga: event.target.value }))} />
                 </Field>
-
+              </div>
               <div className="grid gap-3 sm:grid-cols-2">
-                  <Field label="Veiculo">
-                    <Input value={formData.veiculo} onChange={(event) => setFormData((current) => ({ ...current, veiculo: event.target.value }))} />
-                  </Field>
-                  <Field label="Placa">
-                    <Input value={formData.placa} onChange={(event) => setFormData((current) => ({ ...current, placa: normalizePlate(event.target.value) }))} />
-                  </Field>
-                  <Field label="Fabricacao">
-                    <Input value={formData.fabricacao} onChange={(event) => setFormData((current) => ({ ...current, fabricacao: event.target.value }))} />
-                  </Field>
-                  <Field label="Ultimo alvara">
-                    <Input type="date" value={formData.ultimo_alvara} onChange={(event) => setFormData((current) => ({ ...current, ultimo_alvara: event.target.value }))} />
-                  </Field>
-                  <Field label="Exercicio">
-                    <Input value={formData.exercicio} onChange={(event) => setFormData((current) => ({ ...current, exercicio: event.target.value }))} />
-                  </Field>
-                  <Field label="CPF">
-                    <Input value={formData.cpf} onChange={(event) => setFormData((current) => ({ ...current, cpf: normalizeCpf(event.target.value) }))} />
-                  </Field>
-                  <Field label="Email para notificacoes">
-                    <Input value={formData.email_notificacao} onChange={(event) => setFormData((current) => ({ ...current, email_notificacao: event.target.value }))} />
-                  </Field>
-                  <Field label="Telefone para notificacoes">
-                    <Input value={formData.telefone_notificacao} onChange={(event) => setFormData((current) => ({ ...current, telefone_notificacao: event.target.value }))} />
-                  </Field>
-                  <Field label="Inicio da atividade">
-                    <Input type="date" value={formData.inicio_atividade} onChange={(event) => setFormData((current) => ({ ...current, inicio_atividade: event.target.value }))} />
-                  </Field>
-                  <Field label="Rota">
-                    <Input value={formData.rota} onChange={(event) => setFormData((current) => ({ ...current, rota: event.target.value }))} />
-                  </Field>
-                </div>
-
-                <Field label="Observacoes">
-                  <Textarea rows={3} value={formData.observacoes} onChange={(event) => setFormData((current) => ({ ...current, observacoes: event.target.value }))} />
+                <Field label="Grupo do taxi">
+                  <Input
+                    value={formData.taxi_grupo}
+                    onChange={(event) => setFormData((current) => ({ ...current, taxi_grupo: event.target.value }))}
+                    placeholder="ASTAC, COOTAC ou DISTRITO"
+                  />
                 </Field>
-              </TabsContent>
+                <Field label="Estacionamento">
+                  <Input
+                    value={formData.estacionamento}
+                    onChange={(event) => setFormData((current) => ({ ...current, estacionamento: event.target.value }))}
+                  />
+                </Field>
+              </div>
+              <Field label="Ponto / distrito / referencia">
+                <Input value={formData.ponto_referencia} onChange={(event) => setFormData((current) => ({ ...current, ponto_referencia: event.target.value }))} />
+              </Field>
+              <Field label="Nome do concessionario *">
+                <Input value={formData.titular_nome} onChange={(event) => setFormData((current) => ({ ...current, titular_nome: event.target.value }))} />
+              </Field>
+              <div className="grid gap-3 sm:grid-cols-3">
+                <Field label="CPF">
+                  <Input value={formData.cpf} onChange={(event) => setFormData((current) => ({ ...current, cpf: normalizeCpf(event.target.value) }))} />
+                </Field>
+                <Field label="Email para notificacoes">
+                  <Input value={formData.email_notificacao} onChange={(event) => setFormData((current) => ({ ...current, email_notificacao: event.target.value }))} />
+                </Field>
+                <Field label="Telefone para notificacoes">
+                  <Input value={formData.telefone_notificacao} onChange={(event) => setFormData((current) => ({ ...current, telefone_notificacao: event.target.value }))} />
+                </Field>
+              </div>
+            </div>
 
-              <TabsContent value="habilitacao" className="space-y-4">
-                <div className={`rounded-2xl border px-4 py-3 text-sm ${editingItem && accessMap[editingItem.id] ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : 'border-amber-200 bg-amber-50 text-amber-800'}`}>
-                  {editingItem
-                    ? accessMap[editingItem.id]
-                      ? 'Este concessionario ja possui acesso ativo. Preencha a senha abaixo apenas se quiser redefinir.'
-                      : 'Este concessionario ainda nao possui acesso. Defina uma senha para liberar o login publico por CPF + senha.'
-                    : 'Defina agora a senha individual para liberar o primeiro acesso publico do concessionario.'}
-                </div>
+            <div className="space-y-3">
+              <h3 className="text-sm font-bold uppercase tracking-[0.12em] text-slate-500">Dados do veiculo</h3>
               <div className="grid gap-3 sm:grid-cols-2">
-                  <Field label="Numero da CNH">
-                    <Input value={formData.cnh_numero} onChange={(event) => setFormData((current) => ({ ...current, cnh_numero: event.target.value }))} />
-                  </Field>
-                  <Field label="Validade da CNH">
-                    <Input type="date" value={formData.validade_cnh} onChange={(event) => setFormData((current) => ({ ...current, validade_cnh: event.target.value }))} />
-                  </Field>
-                  <Field label="Atividade remunerada">
-                    <Input value={formData.atividade_remunerada} onChange={(event) => setFormData((current) => ({ ...current, atividade_remunerada: event.target.value }))} />
-                  </Field>
-                  <Field label="Categoria CNH">
-                    <Input value={formData.categoria_cnh} onChange={(event) => setFormData((current) => ({ ...current, categoria_cnh: event.target.value }))} />
-                  </Field>
-                  <Field label="Curso">
-                    <Input value={formData.curso} onChange={(event) => setFormData((current) => ({ ...current, curso: event.target.value }))} />
-                  </Field>
-                  <Field label="Motorista auxiliar">
-                    <Input value={formData.motorista_auxiliar} onChange={(event) => setFormData((current) => ({ ...current, motorista_auxiliar: event.target.value }))} />
-                  </Field>
-                  <Field label="CNH auxiliar / registro">
-                    <Input value={formData.cnh_auxiliar} onChange={(event) => setFormData((current) => ({ ...current, cnh_auxiliar: event.target.value }))} />
-                  </Field>
-                  <Field label="Validade CNH auxiliar">
-                    <Input type="date" value={formData.validade_cnh_auxiliar} onChange={(event) => setFormData((current) => ({ ...current, validade_cnh_auxiliar: event.target.value }))} />
-                  </Field>
-                </div>
-              </TabsContent>
-            </Tabs>
+                <Field label="Veiculo">
+                  <Input value={formData.veiculo} onChange={(event) => setFormData((current) => ({ ...current, veiculo: event.target.value }))} />
+                </Field>
+                <Field label="Placa">
+                  <Input value={formData.placa} onChange={(event) => setFormData((current) => ({ ...current, placa: normalizePlate(event.target.value) }))} />
+                </Field>
+                <Field label="Fabricacao">
+                  <Input value={formData.fabricacao} onChange={(event) => setFormData((current) => ({ ...current, fabricacao: event.target.value }))} />
+                </Field>
+                <Field label="Ultimo alvara">
+                  <Input type="date" value={formData.ultimo_alvara} onChange={(event) => setFormData((current) => ({ ...current, ultimo_alvara: event.target.value }))} />
+                </Field>
+              </div>
+              <Field label="Exercicio">
+                <Input value={formData.exercicio} onChange={(event) => setFormData((current) => ({ ...current, exercicio: event.target.value }))} />
+              </Field>
+              <Field label="Rota">
+                <Input value={formData.rota} onChange={(event) => setFormData((current) => ({ ...current, rota: event.target.value }))} />
+              </Field>
+            </div>
 
-            <div className={`space-y-4 rounded-2xl border px-4 py-4 ${editingItem && accessMap[editingItem.id] ? 'border-emerald-200 bg-emerald-50/70' : 'border-amber-200 bg-amber-50/80'}`}>
-              <div>
-                <h3 className="text-sm font-bold text-foreground">Senha de acesso do concessionario</h3>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  O DEMUTRAN define aqui a senha que o concessionario vai usar para entrar no portal publico com CPF + senha.
-                </p>
+            <div className="space-y-3">
+              <h3 className="text-sm font-bold uppercase tracking-[0.12em] text-slate-500">Dados pessoais</h3>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Field label="Numero da CNH">
+                  <Input value={formData.cnh_numero} onChange={(event) => setFormData((current) => ({ ...current, cnh_numero: event.target.value }))} />
+                </Field>
+                <Field label="Validade da CNH">
+                  <Input type="date" value={formData.validade_cnh} onChange={(event) => setFormData((current) => ({ ...current, validade_cnh: event.target.value }))} />
+                </Field>
+                <Field label="Atividade remunerada">
+                  <Input value={formData.atividade_remunerada} onChange={(event) => setFormData((current) => ({ ...current, atividade_remunerada: event.target.value }))} />
+                </Field>
+                <Field label="Categoria CNH">
+                  <Input value={formData.categoria_cnh} onChange={(event) => setFormData((current) => ({ ...current, categoria_cnh: event.target.value }))} />
+                </Field>
+                <Field label="Curso">
+                  <Input value={formData.curso} onChange={(event) => setFormData((current) => ({ ...current, curso: event.target.value }))} />
+                </Field>
+                <Field label="Inicio da atividade">
+                  <Input type="date" value={formData.inicio_atividade} onChange={(event) => setFormData((current) => ({ ...current, inicio_atividade: event.target.value }))} />
+                </Field>
+                <Field label="Motorista auxiliar">
+                  <Input value={formData.motorista_auxiliar} onChange={(event) => setFormData((current) => ({ ...current, motorista_auxiliar: event.target.value }))} />
+                </Field>
+                <Field label="CNH auxiliar / registro">
+                  <Input value={formData.cnh_auxiliar} onChange={(event) => setFormData((current) => ({ ...current, cnh_auxiliar: event.target.value }))} />
+                </Field>
+                <Field label="Validade CNH auxiliar">
+                  <Input type="date" value={formData.validade_cnh_auxiliar} onChange={(event) => setFormData((current) => ({ ...current, validade_cnh_auxiliar: event.target.value }))} />
+                </Field>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <h3 className="text-sm font-bold uppercase tracking-[0.12em] text-slate-500">Endereco</h3>
+              <Field label="Endereco">
+                <Input value={formData.endereco} onChange={(event) => setFormData((current) => ({ ...current, endereco: event.target.value }))} />
+              </Field>
+            </div>
+
+            <div className="space-y-3">
+              <h3 className="text-sm font-bold uppercase tracking-[0.12em] text-slate-500">Dados de notificacao</h3>
+              <div className="flex items-center gap-3 rounded-md border border-border px-3 py-2">
+                <Switch checked={formData.aceita_notificacoes} onCheckedChange={(checked) => setFormData((current) => ({ ...current, aceita_notificacoes: checked }))} />
+                <span className="text-sm text-muted-foreground">{formData.aceita_notificacoes ? 'Recebe notificacoes pelo portal' : 'Notificacoes desativadas para o concessionario'}</span>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <h3 className="text-sm font-bold uppercase tracking-[0.12em] text-slate-500">Observacoes</h3>
+              <Field label="Observacoes">
+                <Textarea rows={3} value={formData.observacoes} onChange={(event) => setFormData((current) => ({ ...current, observacoes: event.target.value }))} />
+              </Field>
+            </div>
+
+            <div className="space-y-3">
+              <h3 className="text-sm font-bold uppercase tracking-[0.12em] text-slate-500">Dados de acesso</h3>
+              <div className={`rounded-2xl border px-4 py-3 text-sm ${editingItem && accessMap[editingItem.id] ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : 'border-amber-200 bg-amber-50 text-amber-800'}`}>
+                {editingItem
+                  ? accessMap[editingItem.id]
+                    ? 'Este concessionario ja possui acesso ativo. Preencha a senha abaixo apenas se quiser redefinir.'
+                    : 'Este concessionario ainda nao possui acesso. Defina uma senha para liberar o login publico por CPF + senha.'
+                  : 'Defina agora a senha individual para liberar o primeiro acesso publico do concessionario.'}
               </div>
               <div className="grid gap-4 md:grid-cols-2">
                 <Field label={editingItem ? 'Senha de acesso' : 'Senha de acesso *'}>
@@ -1422,13 +1506,16 @@ const DemutranConcessionarios = () => {
               </p>
             </div>
 
-            <div className="flex items-center gap-3 rounded-md border border-border px-3 py-2">
-              <Switch checked={formData.ativo} onCheckedChange={(checked) => setFormData((current) => ({ ...current, ativo: checked }))} />
-              <span className="text-sm text-muted-foreground">{formData.ativo ? 'Cadastro ativo' : 'Cadastro inativo'}</span>
-            </div>
-            <div className="flex items-center gap-3 rounded-md border border-border px-3 py-2">
-              <Switch checked={formData.aceita_notificacoes} onCheckedChange={(checked) => setFormData((current) => ({ ...current, aceita_notificacoes: checked }))} />
-              <span className="text-sm text-muted-foreground">{formData.aceita_notificacoes ? 'Recebe notificacoes pelo portal' : 'Notificacoes desativadas para o concessionario'}</span>
+            <div className="space-y-3">
+              <div className="flex items-center gap-3 rounded-md border border-border px-3 py-2">
+                <Switch checked={formData.ativo} onCheckedChange={(checked) => setFormData((current) => ({ ...current, ativo: checked }))} />
+                <span className="text-sm text-muted-foreground">{formData.ativo ? 'Cadastro ativo' : 'Cadastro inativo'}</span>
+              </div>
+              {formData.origem_planilha && (
+                <p className="text-xs text-muted-foreground">
+                  Origem da planilha: {formData.origem_planilha}
+                </p>
+              )}
             </div>
           </div>
         </ResponsiveDialog>
@@ -1536,8 +1623,10 @@ function ConcessionarioDetails({ item, onNotify }: { item: DemutranConcessionari
   const financial = getConcessionarioFinancialCopy(item);
   const entries = [
     ['Categoria', categoriaLabels[item.categoria]],
+    ['Grupo do taxi', item.taxi_grupo || '-'],
     ['Situacao financeira', financial.label],
     ['Origem da planilha', item.origem_planilha || '-'],
+    ['Estacionamento', item.estacionamento || '-'],
     ['Numero da vaga / bata', item.numero_vaga || '-'],
     ['Nome', item.titular_nome || '-'],
     ['Endereco', item.endereco || '-'],
@@ -1564,6 +1653,24 @@ function ConcessionarioDetails({ item, onNotify }: { item: DemutranConcessionari
     ['Importado de planilha', item.importado_planilha ? 'Sim' : 'Nao'],
     ['Status', item.ativo ? 'Ativo' : 'Inativo'],
   ];
+
+  const handlePrint = () => {
+    const rows = entries.map(([label, value]) =>
+      `<tr><td style="border:1px solid #cbd5e1;padding:6px;">${label}</td><td style="border:1px solid #cbd5e1;padding:6px;">${value}</td></tr>`
+    ).join('');
+    const obs = item.observacoes
+      ? `<h3 style="font-size:14px;margin:16px 0 8px;">Observacoes</h3><p style="margin:0;font-size:12px;">${item.observacoes}</p>`
+      : '';
+    const html = `
+      <h3 style="font-size:18px;margin:0 0 4px;">${item.titular_nome || '-'}</h3>
+      <p style="color:#475569;margin:0 0 12px;">${item.veiculo || 'Sem veiculo'} ${item.placa ? '• ' + item.placa : ''}</p>
+      <table style="width:100%;border-collapse:collapse;margin-bottom:12px;font-size:12px;">
+        <tr><th style="border:1px solid #cbd5e1;padding:6px;background:#e2e8f0;text-align:left;">Campo</th><th style="border:1px solid #cbd5e1;padding:6px;background:#e2e8f0;text-align:left;">Valor</th></tr>
+        ${rows}
+      </table>
+      ${obs}`;
+    printHtml('Concessionario - ' + (item.titular_nome || item.placa || ''), html);
+  };
 
   return (
     <div className="space-y-5 py-2">
@@ -1593,7 +1700,11 @@ function ConcessionarioDetails({ item, onNotify }: { item: DemutranConcessionari
             {item.ativo ? 'Ativo' : 'Inativo'}
           </Badge>
         </div>
-        <div className="mt-4">
+        <div className="mt-4 flex flex-wrap gap-2">
+          <Button type="button" variant="outline" size="sm" className="gap-2" onClick={handlePrint}>
+            <Printer className="h-4 w-4" />
+            Imprimir
+          </Button>
           <Button type="button" variant="outline" size="sm" className="gap-2" onClick={onNotify}>
             <Bell className="h-4 w-4" />
             Enviar notificacao

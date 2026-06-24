@@ -1,8 +1,17 @@
 import { ChangeEvent, useEffect, useMemo, useState } from 'react';
 import * as XLSX from 'xlsx';
-import { Car, CheckCircle2, CircleDollarSign, Eye, FileSpreadsheet, Plus, Search, SlidersHorizontal, Warehouse, X } from 'lucide-react';
+import { Car, CheckCircle2, CircleDollarSign, Copy, Eye, FileSpreadsheet, Plus, Printer, Search, SlidersHorizontal, Warehouse, X } from 'lucide-react';
+import { useConfirmDialog } from '@/components/ui/use-confirm-dialog';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { DataTable } from '@/components/admin/DataTable';
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -17,7 +26,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { toast } from '@/hooks/use-toast';
-import { buildReportFileName, exportReportCsv, formatReportCurrency, formatReportDateTime, openPdfPrintReport } from '@/lib/reports';
+import { buildReportFileName, exportReportCsv, formatReportCurrency, formatReportDateTime, openPdfPrintReport, printHtml } from '@/lib/reports';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { maskCpf } from '@/lib/masks';
@@ -34,8 +43,14 @@ const emptyApreensaoForm = {
   placa: '',
   chassi: '',
   descricao_veiculo: '',
+  ano: '',
+  cor: '',
+  modelo: '',
+  municipio: '',
   proprietario_nome: '',
   proprietario_cpf_cnpj: '',
+  infrator_nome: '',
+  bairro_apreensao: '',
   data_recolhimento: '',
   motivo: '',
   situacao: 'Apreendido',
@@ -166,6 +181,7 @@ const getVehicleKind = (item: VeiculoRecolhido) =>
 
 const DemutranLiberacao = () => {
   const { isSuperAdmin, setorId, profile } = useAuth();
+  const { confirm, confirmDialog } = useConfirmDialog();
   const [setores, setSetores] = useState<Setor[]>([]);
   const [veiculos, setVeiculos] = useState<VeiculoRecolhido[]>([]);
   const [selectedSetorId, setSelectedSetorId] = useState<string>('');
@@ -202,6 +218,65 @@ const DemutranLiberacao = () => {
   const [apreensaoForm, setApreensaoForm] = useState(emptyApreensaoForm);
   const [liberacaoForm, setLiberacaoForm] = useState(emptyLiberacaoForm);
   const [taxaForm, setTaxaForm] = useState(emptyTaxaForm);
+  const [protocoloCopiado, setProtocoloCopiado] = useState(false);
+  const [isConfirmacaoLiberacaoOpen, setIsConfirmacaoLiberacaoOpen] = useState(false);
+  const [confirmacaoStep, setConfirmacaoStep] = useState<1 | 2>(1);
+
+  const copiarTexto = async (texto: string) => {
+    try {
+      await navigator.clipboard.writeText(texto);
+    } catch {
+      const el = document.createElement('textarea');
+      el.value = texto;
+      document.body.appendChild(el);
+      el.select();
+      document.execCommand('copy');
+      document.body.removeChild(el);
+    }
+    setProtocoloCopiado(true);
+    setTimeout(() => setProtocoloCopiado(false), 2000);
+  };
+
+  const handlePrintVehicle = (item: typeof detalhesItem) => {
+    if (!item) return;
+    const html = `
+      <div style="margin-bottom:16px;">
+        <p style="font-size:20px;font-weight:800;margin:0;">${item.placa}</p>
+        <p style="color:#475569;margin:4px 0 0;">${item.descricao_veiculo || ''}</p>
+      </div>
+      <table style="width:100%;border-collapse:collapse;margin-bottom:12px;font-size:12px;">
+        <tr><th style="border:1px solid #cbd5e1;padding:6px;background:#e2e8f0;text-align:left;">Campo</th><th style="border:1px solid #cbd5e1;padding:6px;background:#e2e8f0;text-align:left;">Valor</th></tr>
+        <tr><td style="border:1px solid #cbd5e1;padding:6px;">Protocolo</td><td style="border:1px solid #cbd5e1;padding:6px;">${item.protocolo || 'Nao informado'}</td></tr>
+        <tr><td style="border:1px solid #cbd5e1;padding:6px;">Status</td><td style="border:1px solid #cbd5e1;padding:6px;">${item.status}</td></tr>
+        <tr><td style="border:1px solid #cbd5e1;padding:6px;">Tipo</td><td style="border:1px solid #cbd5e1;padding:6px;">${getVehicleKind(item)}</td></tr>
+        <tr><td style="border:1px solid #cbd5e1;padding:6px;">Patio</td><td style="border:1px solid #cbd5e1;padding:6px;">${getCustodyLabel(item.local_custodia)}</td></tr>
+        <tr><td style="border:1px solid #cbd5e1;padding:6px;">Entrada</td><td style="border:1px solid #cbd5e1;padding:6px;">${formatDateTime(item.data_recolhimento)}</td></tr>
+        <tr><td style="border:1px solid #cbd5e1;padding:6px;">Situacao</td><td style="border:1px solid #cbd5e1;padding:6px;">${item.situacao || 'Nao informada'}</td></tr>
+        <tr><td style="border:1px solid #cbd5e1;padding:6px;">Ano</td><td style="border:1px solid #cbd5e1;padding:6px;">${item.ano || 'Nao informado'}</td></tr>
+        <tr><td style="border:1px solid #cbd5e1;padding:6px;">Cor</td><td style="border:1px solid #cbd5e1;padding:6px;">${item.cor || 'Nao informado'}</td></tr>
+        <tr><td style="border:1px solid #cbd5e1;padding:6px;">Modelo</td><td style="border:1px solid #cbd5e1;padding:6px;">${item.modelo || 'Nao informado'}</td></tr>
+        <tr><td style="border:1px solid #cbd5e1;padding:6px;">Municipio</td><td style="border:1px solid #cbd5e1;padding:6px;">${item.municipio || 'Nao informado'}</td></tr>
+        <tr><td style="border:1px solid #cbd5e1;padding:6px;">Taxa diaria</td><td style="border:1px solid #cbd5e1;padding:6px;">${formatCurrency(getTaxaDiariaValue(item))}</td></tr>
+        <tr><td style="border:1px solid #cbd5e1;padding:6px;">Dias de estadia</td><td style="border:1px solid #cbd5e1;padding:6px;">${getDiasEstadia(item)} dia(s)</td></tr>
+        <tr><td style="border:1px solid #cbd5e1;padding:6px;font-weight:700;">Total acumulado</td><td style="border:1px solid #cbd5e1;padding:6px;font-weight:700;">${formatCurrency(getValorEstadia(item))}</td></tr>
+      </table>
+      <h3 style="font-size:14px;margin:16px 0 8px;">Dados do proprietario</h3>
+      <table style="width:100%;border-collapse:collapse;margin-bottom:12px;font-size:12px;">
+        <tr><th style="border:1px solid #cbd5e1;padding:6px;background:#e2e8f0;text-align:left;">Campo</th><th style="border:1px solid #cbd5e1;padding:6px;background:#e2e8f0;text-align:left;">Valor</th></tr>
+        <tr><td style="border:1px solid #cbd5e1;padding:6px;">Nome</td><td style="border:1px solid #cbd5e1;padding:6px;">${item.proprietario_nome || 'Nao informado'}</td></tr>
+        <tr><td style="border:1px solid #cbd5e1;padding:6px;">CPF/CNPJ</td><td style="border:1px solid #cbd5e1;padding:6px;">${item.proprietario_cpf_cnpj || 'Nao informado'}</td></tr>
+        <tr><td style="border:1px solid #cbd5e1;padding:6px;">Infrator</td><td style="border:1px solid #cbd5e1;padding:6px;">${item.infrator_nome || 'Nao informado'}</td></tr>
+      </table>
+      <h3 style="font-size:14px;margin:16px 0 8px;">Dados do veiculo</h3>
+      <table style="width:100%;border-collapse:collapse;margin-bottom:12px;font-size:12px;">
+        <tr><th style="border:1px solid #cbd5e1;padding:6px;background:#e2e8f0;text-align:left;">Campo</th><th style="border:1px solid #cbd5e1;padding:6px;background:#e2e8f0;text-align:left;">Valor</th></tr>
+        <tr><td style="border:1px solid #cbd5e1;padding:6px;">Chassi</td><td style="border:1px solid #cbd5e1;padding:6px;">${item.chassi || 'Nao informado'}</td></tr>
+        <tr><td style="border:1px solid #cbd5e1;padding:6px;">Motivo</td><td style="border:1px solid #cbd5e1;padding:6px;">${item.motivo || 'Nao informado'}</td></tr>
+        <tr><td style="border:1px solid #cbd5e1;padding:6px;">Bairro / distrito da apreensao</td><td style="border:1px solid #cbd5e1;padding:6px;">${item.bairro_apreensao || 'Nao informado'}</td></tr>
+        <tr><td style="border:1px solid #cbd5e1;padding:6px;">Descricao</td><td style="border:1px solid #cbd5e1;padding:6px;">${item.descricao_veiculo || 'Nao informada'}</td></tr>
+      </table>`;
+    printHtml('Veiculo recolhido - ' + item.placa, html);
+  };
 
   const effectiveSetorId = isSuperAdmin ? selectedSetorId : (setorId || '');
 
@@ -467,8 +542,14 @@ const DemutranLiberacao = () => {
       placa: normalizePlate(apreensaoForm.placa),
       chassi: apreensaoForm.chassi.trim() || null,
       descricao_veiculo: apreensaoForm.descricao_veiculo.trim(),
+      ano: apreensaoForm.ano.trim() || null,
+      cor: apreensaoForm.cor.trim() || null,
+      modelo: apreensaoForm.modelo.trim() || null,
+      municipio: apreensaoForm.municipio.trim() || null,
       proprietario_nome: apreensaoForm.proprietario_nome.trim() || 'Nao informado',
       proprietario_cpf_cnpj: apreensaoForm.proprietario_cpf_cnpj.trim() || null,
+      infrator_nome: apreensaoForm.infrator_nome.trim() || null,
+      bairro_apreensao: apreensaoForm.bairro_apreensao.trim() || null,
       data_recolhimento: new Date(apreensaoForm.data_recolhimento).toISOString(),
       motivo: apreensaoForm.motivo.trim(),
       status: 'recolhido',
@@ -481,12 +562,36 @@ const DemutranLiberacao = () => {
       updated_at: new Date().toISOString(),
     };
 
+    const placaNormalizada = normalizePlate(apreensaoForm.placa);
+
+    const { data: veiculoExistente } = await supabase
+      .from('veiculos_recolhidos')
+      .select('id, placa, status')
+      .eq('placa', placaNormalizada)
+      .eq('status', 'recolhido')
+      .maybeSingle();
+
+    if (veiculoExistente) {
+      toast({
+        title: 'Veiculo ja esta no patio',
+        description: `A placa ${placaNormalizada} ja possui uma apreensao ativa. Libere o veiculo antes de registrar uma nova entrada.`,
+        variant: 'destructive',
+      });
+      return;
+    }
+
     const { data: insertData, error } = await supabase.rpc('recolher_veiculo', {
       _placa: apreensaoForm.placa,
       _proprietario_nome: apreensaoForm.proprietario_nome.trim() || 'Nao informado',
       _proprietario_cpf_cnpj: apreensaoForm.proprietario_cpf_cnpj.trim() || null,
       _chassi: apreensaoForm.chassi.trim() || null,
       _descricao_veiculo: apreensaoForm.descricao_veiculo.trim(),
+      _ano: apreensaoForm.ano.trim() || null,
+      _cor: apreensaoForm.cor.trim() || null,
+      _modelo: apreensaoForm.modelo.trim() || null,
+      _municipio: apreensaoForm.municipio.trim() || null,
+      _infrator_nome: apreensaoForm.infrator_nome.trim() || null,
+      _bairro_apreensao: apreensaoForm.bairro_apreensao.trim() || null,
       _data_recolhimento: new Date(apreensaoForm.data_recolhimento).toISOString(),
       _motivo: apreensaoForm.motivo.trim(),
       _situacao: apreensaoForm.situacao.trim(),
@@ -520,6 +625,13 @@ const DemutranLiberacao = () => {
       return;
     }
 
+    setConfirmacaoStep(1);
+    setIsConfirmacaoLiberacaoOpen(true);
+  };
+
+  const handleConfirmarLiberacao = async () => {
+    if (!liberacaoItem) return;
+
     const { error } = await supabase.rpc('liberar_veiculo_recolhido', {
       _veiculo_id: liberacaoItem.id,
       _data_liberacao: new Date(liberacaoForm.data_liberacao).toISOString(),
@@ -534,6 +646,8 @@ const DemutranLiberacao = () => {
     }
 
     toast({ title: 'Veiculo liberado', description: 'O registro foi movido para a aba de liberacoes.' });
+    setIsConfirmacaoLiberacaoOpen(false);
+    setConfirmacaoStep(1);
     closeLiberacaoDialog();
     loadVeiculos();
   };
@@ -551,6 +665,12 @@ const DemutranLiberacao = () => {
         toast({ title: 'Setor nao selecionado', description: 'Selecione o setor do DEMUTRAN.', variant: 'destructive' });
         return;
       }
+
+      const confirmed = await confirm({
+        title: 'Aplicar taxa em massa',
+        description: `Deseja aplicar a taxa de R$ ${taxa.toFixed(2)}/dia para todos os veiculos do patio? Esta acao nao pode ser desfeita.`,
+      });
+      if (!confirmed) return;
 
       const { data, error } = await supabase.rpc('atualizar_taxa_diaria_veiculos_recolhidos_setor', {
         _setor_id: effectiveSetorId,
@@ -780,6 +900,12 @@ const DemutranLiberacao = () => {
         return;
       }
 
+      const confirmed = await confirm({
+        title: 'Cadastro em massa',
+        description: `Deseja importar ${payload.length} veiculo(s) para o patio? Esta acao nao pode ser desfeita.`,
+      });
+      if (!confirmed) return;
+
       const { error } = await supabase.from('veiculos_recolhidos').insert(payload);
       if (error) {
         throw error;
@@ -949,7 +1075,17 @@ const DemutranLiberacao = () => {
 
         <div className="rounded-[22px] bg-slate-50 px-4 py-3">
           <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Protocolo</p>
-          <p className="mt-1 text-[14px] font-mono font-semibold tracking-[-0.02em] text-primary">{item.protocolo}</p>
+          <div className="mt-1 flex items-center gap-2">
+            <p className="text-[14px] font-mono font-semibold tracking-[-0.02em] text-primary">{item.protocolo}</p>
+            <button
+              type="button"
+              onClick={() => copiarTexto(item.protocolo)}
+              className="inline-flex items-center justify-center rounded-md border border-border bg-white p-1 text-primary shadow-sm hover:bg-accent hover:text-accent-foreground transition-colors"
+              title="Copiar protocolo"
+            >
+              {protocoloCopiado ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" /> : <Copy className="h-3.5 w-3.5" />}
+            </button>
+          </div>
         </div>
         <div className="rounded-[22px] bg-slate-50 px-4 py-3">
           <div className="flex items-center justify-between">
@@ -1443,14 +1579,45 @@ const DemutranLiberacao = () => {
               <Input id="descricao_veiculo" value={apreensaoForm.descricao_veiculo} onChange={(e) => setApreensaoForm({ ...apreensaoForm, descricao_veiculo: e.target.value })} />
             </div>
 
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="space-y-2">
+                <Label htmlFor="ano">Ano</Label>
+                <Input id="ano" value={apreensaoForm.ano} onChange={(e) => setApreensaoForm({ ...apreensaoForm, ano: e.target.value })} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="cor">Cor</Label>
+                <Input id="cor" value={apreensaoForm.cor} onChange={(e) => setApreensaoForm({ ...apreensaoForm, cor: e.target.value })} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="modelo">Modelo</Label>
+                <Input id="modelo" value={apreensaoForm.modelo} onChange={(e) => setApreensaoForm({ ...apreensaoForm, modelo: e.target.value })} />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="municipio">Municipio</Label>
+              <Input id="municipio" value={apreensaoForm.municipio} onChange={(e) => setApreensaoForm({ ...apreensaoForm, municipio: e.target.value })} />
+            </div>
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-2">
-                <Label htmlFor="proprietario_nome">Proprietario</Label>
+                <Label htmlFor="proprietario_nome">Nome do proprietario</Label>
                 <Input id="proprietario_nome" value={apreensaoForm.proprietario_nome} onChange={(e) => setApreensaoForm({ ...apreensaoForm, proprietario_nome: e.target.value })} />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="proprietario_cpf_cnpj">CPF/CNPJ</Label>
+                <Label htmlFor="proprietario_cpf_cnpj">CPF/CNPJ do proprietario</Label>
                 <Input id="proprietario_cpf_cnpj" value={apreensaoForm.proprietario_cpf_cnpj} onChange={(e) => setApreensaoForm({ ...apreensaoForm, proprietario_cpf_cnpj: e.target.value })} />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label htmlFor="infrator_nome">Nome do infrator</Label>
+                <Input id="infrator_nome" value={apreensaoForm.infrator_nome} onChange={(e) => setApreensaoForm({ ...apreensaoForm, infrator_nome: e.target.value })} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="bairro_apreensao">Bairro / distrito da apreensao</Label>
+                <Input id="bairro_apreensao" value={apreensaoForm.bairro_apreensao} onChange={(e) => setApreensaoForm({ ...apreensaoForm, bairro_apreensao: e.target.value })} />
               </div>
             </div>
 
@@ -1488,6 +1655,16 @@ const DemutranLiberacao = () => {
         >
           {detalhesItem && (
             <div className="space-y-4 py-2 text-sm">
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => handlePrintVehicle(detalhesItem)}
+                  className="inline-flex items-center gap-2 rounded-xl border border-border bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 transition-colors"
+                >
+                  <Printer className="h-4 w-4" />
+                  Imprimir
+                </button>
+              </div>
               <div className="overflow-hidden rounded-[28px] border border-amber-200 bg-white shadow-[0_24px_60px_-32px_rgba(15,23,42,0.35)]">
                 <div className="bg-gradient-to-r from-amber-400 via-amber-300 to-amber-100 px-5 py-3">
                   <p className="text-[11px] font-black uppercase tracking-[0.28em] text-slate-900">DEMUTRAN</p>
@@ -1514,12 +1691,31 @@ const DemutranLiberacao = () => {
                   </div>
 
                   <div className="grid gap-3 sm:grid-cols-2">
-                    <NativeInfoTile label="Protocolo" value={detalhesItem.protocolo || 'Nao informado'} />
+                    <NativeInfoTile
+                      label="Protocolo"
+                      value={detalhesItem.protocolo || 'Nao informado'}
+                      action={
+                        detalhesItem.protocolo ? (
+                          <button
+                            type="button"
+                            onClick={() => copiarTexto(detalhesItem.protocolo!)}
+                            className="inline-flex items-center justify-center rounded-md border border-border bg-white p-1 text-primary shadow-sm hover:bg-accent hover:text-accent-foreground transition-colors"
+                            title="Copiar protocolo"
+                          >
+                            {protocoloCopiado ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" /> : <Copy className="h-3.5 w-3.5" />}
+                          </button>
+                        ) : null
+                      }
+                    />
                     <NativeInfoTile label="Patio" value={getCustodyLabel(detalhesItem.local_custodia)} />
                     <NativeInfoTile label="Entrada" value={formatDateTime(detalhesItem.data_recolhimento)} />
                     <NativeInfoTile label="Situacao" value={detalhesItem.situacao || 'Nao informada'} />
                     <NativeInfoTile label="Taxa diaria" value={formatCurrency(getTaxaDiariaValue(detalhesItem))} emphasis />
                     <NativeInfoTile label="Dias de estadia" value={`${getDiasEstadia(detalhesItem)} dia(s)`} emphasis />
+                    <NativeInfoTile label="Ano" value={detalhesItem.ano || 'Nao informado'} />
+                    <NativeInfoTile label="Cor" value={detalhesItem.cor || 'Nao informado'} />
+                    <NativeInfoTile label="Modelo" value={detalhesItem.modelo || 'Nao informado'} />
+                    <NativeInfoTile label="Municipio" value={detalhesItem.municipio || 'Nao informado'} />
                   </div>
 
                   <div className="rounded-[22px] border border-emerald-100 bg-emerald-50/70 p-4">
@@ -1529,7 +1725,7 @@ const DemutranLiberacao = () => {
                     </p>
                   </div>
 
-                  <div className="grid gap-4 lg:grid-cols-2">
+                  <div className="flex flex-col gap-4">
                     <DetailSection
                       title="Dados do proprietario"
                       rows={[
@@ -1553,6 +1749,7 @@ const DemutranLiberacao = () => {
                             </Button>
                           ),
                         },
+                        { label: 'Infrator', value: detalhesItem.infrator_nome || 'Nao informado' },
                       ]}
                     />
 
@@ -1561,6 +1758,7 @@ const DemutranLiberacao = () => {
                       rows={[
                         { label: 'Chassi', value: detalhesItem.chassi || 'Nao informado' },
                         { label: 'Motivo', value: detalhesItem.motivo || 'Nao informado' },
+                        { label: 'Bairro / distrito', value: detalhesItem.bairro_apreensao || 'Nao informado' },
                         { label: 'Descricao', value: detalhesItem.descricao_veiculo || 'Nao informada' },
                       ]}
                     />
@@ -1656,6 +1854,74 @@ const DemutranLiberacao = () => {
           </div>
         </ResponsiveDialog>
 
+        <AlertDialog open={isConfirmacaoLiberacaoOpen} onOpenChange={(v) => { if (!v) { setIsConfirmacaoLiberacaoOpen(false); setConfirmacaoStep(1); }}}>
+          <AlertDialogContent>
+            {confirmacaoStep === 1 ? (
+              <>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Deseja mesmo liberar esse veiculo?</AlertDialogTitle>
+                  <AlertDialogDescription>Confira os dados antes de liberar.</AlertDialogDescription>
+                </AlertDialogHeader>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between border-b pb-1">
+                    <span className="font-medium">Placa:</span>
+                    <span>{liberacaoItem?.placa}</span>
+                  </div>
+                  <div className="flex justify-between border-b pb-1">
+                    <span className="font-medium">Veiculo:</span>
+                    <span>{liberacaoItem?.descricao_veiculo}</span>
+                  </div>
+                  <div className="flex justify-between border-b pb-1">
+                    <span className="font-medium">Proprietario:</span>
+                    <span>{liberacaoItem?.proprietario_nome}</span>
+                  </div>
+                  <div className="flex justify-between border-b pb-1">
+                    <span className="font-medium">CPF/CNPJ:</span>
+                    <span>{liberacaoItem?.proprietario_cpf_cnpj || '-'}</span>
+                  </div>
+                  <div className="flex justify-between border-b pb-1">
+                    <span className="font-medium">Data recolhimento:</span>
+                    <span>{liberacaoItem?.data_recolhimento ? new Date(liberacaoItem.data_recolhimento).toLocaleDateString('pt-BR') : '-'}</span>
+                  </div>
+                  <div className="flex justify-between border-b pb-1">
+                    <span className="font-medium">Data liberacao:</span>
+                    <span>{liberacaoForm.data_liberacao ? new Date(liberacaoForm.data_liberacao + ':00').toLocaleString('pt-BR') : '-'}</span>
+                  </div>
+                  <div className="flex justify-between border-b pb-1">
+                    <span className="font-medium">Situacao:</span>
+                    <span>{liberacaoForm.situacao || 'Liberado'}</span>
+                  </div>
+                  <div className="flex justify-between border-b pb-1">
+                    <span className="font-medium">Protocolo:</span>
+                    <span>{liberacaoItem?.protocolo}</span>
+                  </div>
+                  {liberacaoForm.observacao && (
+                    <div className="flex justify-between border-b pb-1">
+                      <span className="font-medium">Observacao:</span>
+                      <span className="text-right max-w-[200px] truncate">{liberacaoForm.observacao}</span>
+                    </div>
+                  )}
+                </div>
+                <AlertDialogFooter>
+                  <Button variant="outline" onClick={() => { setIsConfirmacaoLiberacaoOpen(false); setConfirmacaoStep(1); }}>Voltar</Button>
+                  <Button variant="default" onClick={() => setConfirmacaoStep(2)}>Continuar</Button>
+                </AlertDialogFooter>
+              </>
+            ) : (
+              <>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Confirmacao final</AlertDialogTitle>
+                  <AlertDialogDescription>Esta acao nao pode ser desfeita. Tem certeza absoluta que deseja prosseguir?</AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <Button variant="outline" onClick={() => setConfirmacaoStep(1)}>Voltar</Button>
+                  <Button variant="default" onClick={handleConfirmarLiberacao}>Sim, liberar veiculo</Button>
+                </AlertDialogFooter>
+              </>
+            )}
+          </AlertDialogContent>
+        </AlertDialog>
+
         <ResponsiveDialog
           open={isCpfDialogOpen}
           onOpenChange={setIsCpfDialogOpen}
@@ -1693,6 +1959,7 @@ const DemutranLiberacao = () => {
           </div>
         </ResponsiveDialog>
       </div>
+      {confirmDialog}
     </AdminLayout>
   );
 };
@@ -1728,14 +1995,19 @@ function NativeInfoTile({
   label,
   value,
   emphasis = false,
+  action,
 }: {
   label: string;
   value: string;
   emphasis?: boolean;
+  action?: React.ReactNode;
 }) {
   return (
     <div className={`rounded-[20px] px-3 py-3 ${emphasis ? 'bg-emerald-50 text-emerald-900' : 'bg-slate-50 text-slate-900'}`}>
-      <p className={`text-[10px] font-semibold uppercase tracking-[0.16em] ${emphasis ? 'text-emerald-600' : 'text-slate-500'}`}>{label}</p>
+      <div className="flex items-center justify-between gap-2">
+        <p className={`text-[10px] font-semibold uppercase tracking-[0.16em] ${emphasis ? 'text-emerald-600' : 'text-slate-500'}`}>{label}</p>
+        {action && <div className="shrink-0">{action}</div>}
+      </div>
       <p className="mt-1 text-[15px] font-bold tracking-[-0.02em]">{value}</p>
     </div>
   );

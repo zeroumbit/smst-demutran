@@ -425,7 +425,7 @@ const DemutranVeiculosMunicipais = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div className="space-y-1.5">
                   <Label className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Secretaria</Label>
                   <select
@@ -453,17 +453,18 @@ const DemutranVeiculosMunicipais = () => {
                     <option value="inativos">Somente inativos</option>
                   </select>
                 </div>
-                <div className="col-span-2 space-y-1.5 lg:col-span-1">
-                  <Label className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Busca</Label>
-                  <div className="relative">
-                    <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                    <Input
-                      className="h-12 rounded-[18px] border-slate-200 bg-slate-50 pl-11 text-[15px] font-medium"
-                      value={searchTerm}
-                      onChange={(event) => setSearchTerm(event.target.value)}
-                      placeholder="Placa, chassi ou secretaria..."
-                    />
-                  </div>
+              </div>
+
+              <div className="mt-3 space-y-1.5">
+                <Label className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Busca</Label>
+                <div className="relative">
+                  <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <Input
+                    className="h-12 w-full rounded-[18px] border-slate-200 bg-slate-50 pl-11 text-[15px] font-medium"
+                    value={searchTerm}
+                    onChange={(event) => setSearchTerm(event.target.value)}
+                    placeholder="Placa, chassi ou secretaria..."
+                  />
                 </div>
               </div>
             </div>

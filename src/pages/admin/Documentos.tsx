@@ -111,13 +111,17 @@ const DocumentoForm: FC<DocumentoFormProps> = ({
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="arquivo">Arquivo *</Label>
+        <Label>Arquivo *</Label>
         <Input ref={fileInputRef} id="arquivo" type="file" className="hidden" accept=".pdf,.doc,.docx" onChange={handleFileChange} />
-        <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()}>
+        <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()} className="w-full">
           <Upload className="mr-2 h-4 w-4" />
-          Escolher documento
+          {documentFile ? 'Trocar documento' : 'Escolher documento'}
         </Button>
-        {documentFile && <p className="text-sm text-muted-foreground">{documentFile.name}</p>}
+        {documentFile && (
+          <div className="rounded-lg border border-border bg-muted/50 px-3 py-2">
+            <p className="text-sm font-medium text-foreground truncate">{documentFile.name}</p>
+          </div>
+        )}
       </div>
 
       {isDemutranSector ? (
@@ -186,7 +190,9 @@ const Documentos = () => {
     let query = supabase.from('documentos').select('*').order('created_at', { ascending: false });
 
     if (effectiveSetorId === 'global') {
-      query = isSuperAdmin ? query.is('setor_id', null) : query.eq('setor_id', setorId);
+      if (!isSuperAdmin) {
+        query = query.eq('setor_id', setorId);
+      }
     } else {
       query = query.eq('setor_id', effectiveSetorId);
     }
@@ -537,7 +543,7 @@ const Documentos = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div className="space-y-1.5">
                   <Label className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Status</Label>
                   <select
@@ -565,17 +571,18 @@ const Documentos = () => {
                     ))}
                   </select>
                 </div>
-                <div className="col-span-2 space-y-1.5 lg:col-span-1">
-                  <Label className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Busca</Label>
-                  <div className="relative">
-                    <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                    <Input
-                      className="h-12 rounded-[18px] border-slate-200 bg-slate-50 pl-11 text-[15px] font-medium"
-                      value={searchTerm}
-                      onChange={(event) => setSearchTerm(event.target.value)}
-                      placeholder="Nome, descricao..."
-                    />
-                  </div>
+              </div>
+
+              <div className="mt-3 space-y-1.5">
+                <Label className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Busca</Label>
+                <div className="relative">
+                  <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <Input
+                    className="h-12 w-full rounded-[18px] border-slate-200 bg-slate-50 pl-11 text-[15px] font-medium"
+                    value={searchTerm}
+                    onChange={(event) => setSearchTerm(event.target.value)}
+                    placeholder="Nome, descricao..."
+                  />
                 </div>
               </div>
             </div>

@@ -1,7 +1,8 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react';
-import { Bell, CreditCard, IdCard, KeyRound, LogOut, Save } from 'lucide-react';
+import { Bell, CreditCard, Eye, EyeOff, IdCard, KeyRound, LogOut, Printer, Save } from 'lucide-react';
 import Hero from '@/components/shared/Hero';
 import { DemutranPortalLayout } from '@/components/demutran/DemutranPortalLayout';
+import { TermsGate } from '@/components/shared/TermsGate';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -10,6 +11,7 @@ import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
 import { getConcessionarioFinancialCopy } from '@/lib/demutranConcessionarioFinanceiro';
+import { printHtml } from '@/lib/reports';
 import { supabase } from '@/lib/supabase';
 import { maskCpf, maskPhone } from '@/lib/masks';
 import type { DemutranConcessionario, DemutranConcessionarioNotificacao } from '@/types/admin';
@@ -50,6 +52,7 @@ const PublicConcessionarioDemutran = () => {
   const [perfil, setPerfil] = useState<DemutranConcessionario | null>(null);
   const [notificacoes, setNotificacoes] = useState<DemutranConcessionarioNotificacao[]>([]);
   const [loginForm, setLoginForm] = useState({ cpf: '', senha: '' });
+  const [showSenha, setShowSenha] = useState(false);
   const [editForm, setEditForm] = useState<PerfilEditavel>(initialEdit);
 
   const syncEditForm = (data: DemutranConcessionario) => {
@@ -167,6 +170,37 @@ const PublicConcessionarioDemutran = () => {
     setEditForm(initialEdit);
   };
 
+  const handlePrint = () => {
+    if (!perfil) return;
+    const infoRows = [
+      ['Categoria', categoriaLabels[perfil.categoria]],
+      ['Grupo do taxi', perfil.taxi_grupo || '-'],
+      ['Estacionamento', perfil.estacionamento || '-'],
+      ['Numero da vaga / bata', perfil.numero_vaga || '-'],
+      ['Nome', perfil.titular_nome || '-'],
+      ['CPF', perfil.cpf || '-'],
+      ['Placa', perfil.placa || '-'],
+      ['Veiculo', perfil.veiculo || '-'],
+      ['Ultimo alvara', perfil.ultimo_alvara || '-'],
+      ['Exercicio', perfil.exercicio || '-'],
+      ['Rota', perfil.rota || '-'],
+      ['Ponto / distrito', perfil.ponto_referencia || '-'],
+      ['CNH', perfil.cnh_numero || '-'],
+      ['Validade CNH', perfil.validade_cnh || '-'],
+    ];
+    const rows = infoRows.map(([label, value]) =>
+      `<tr><td style="border:1px solid #cbd5e1;padding:6px;">${label}</td><td style="border:1px solid #cbd5e1;padding:6px;">${value}</td></tr>`
+    ).join('');
+    const html = `
+      <h3 style="font-size:18px;margin:0 0 4px;">${perfil.titular_nome || '-'}</h3>
+      <p style="color:#475569;margin:0 0 12px;">${perfil.veiculo || ''} ${perfil.placa ? '• ' + perfil.placa : ''}</p>
+      <table style="width:100%;border-collapse:collapse;margin-bottom:12px;font-size:12px;">
+        <tr><th style="border:1px solid #cbd5e1;padding:6px;background:#e2e8f0;text-align:left;">Campo</th><th style="border:1px solid #cbd5e1;padding:6px;background:#e2e8f0;text-align:left;">Valor</th></tr>
+        ${rows}
+      </table>`;
+    printHtml('Meu cadastro - ' + (perfil.titular_nome || perfil.placa || ''), html);
+  };
+
   const unreadCount = useMemo(() => notificacoes.filter((item) => !item.lida_em).length, [notificacoes]);
   const financialStatus = useMemo(
     () => (perfil ? getConcessionarioFinancialCopy(perfil) : null),
@@ -194,29 +228,46 @@ const PublicConcessionarioDemutran = () => {
         <div className="mx-auto max-w-7xl px-4 sm:px-6">
           {!perfil ? (
             <div className="mx-auto max-w-xl">
-              <Card className="border-primary/10 shadow-lg">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-xl">
-                    <KeyRound className="h-5 w-5 text-primary" />
-                    Entrar
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <form onSubmit={handleLogin} className="space-y-4">
-                    <div className="space-y-2">
-                      <Label>CPF</Label>
-                      <Input value={loginForm.cpf} maxLength={14} onChange={(event) => setLoginForm((current) => ({ ...current, cpf: maskCpf(event.target.value) }))} placeholder="000.000.000-00" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Senha</Label>
-                      <Input type="password" value={loginForm.senha} onChange={(event) => setLoginForm((current) => ({ ...current, senha: event.target.value }))} />
-                    </div>
-                    <Button type="submit" className="w-full" disabled={loading}>
-                      {loading ? 'Entrando...' : 'Acessar meus dados'}
-                    </Button>
-                  </form>
-                </CardContent>
-              </Card>
+              <TermsGate title="Aceite os termos para acessar" description="Para acessar os dados do concessionario, voce precisa aceitar nossos Termos de Uso e Politica de Privacidade.">
+                <Card className="border-primary/10 shadow-lg">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-xl">
+                      <KeyRound className="h-5 w-5 text-primary" />
+                      Entrar
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <form onSubmit={handleLogin} className="space-y-4">
+                      <div className="space-y-2">
+                        <Label>CPF</Label>
+                        <Input value={loginForm.cpf} maxLength={14} onChange={(event) => setLoginForm((current) => ({ ...current, cpf: maskCpf(event.target.value) }))} placeholder="000.000.000-00" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Senha</Label>
+                        <div className="relative">
+                          <Input
+                            type={showSenha ? 'text' : 'password'}
+                            value={loginForm.senha}
+                            onChange={(event) => setLoginForm((current) => ({ ...current, senha: event.target.value }))}
+                            className="pr-10"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowSenha((prev) => !prev)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                            tabIndex={-1}
+                          >
+                            {showSenha ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                          </button>
+                        </div>
+                      </div>
+                      <Button type="submit" className="w-full" disabled={loading}>
+                        {loading ? 'Entrando...' : 'Acessar meus dados'}
+                      </Button>
+                    </form>
+                  </CardContent>
+                </Card>
+              </TermsGate>
             </div>
           ) : (
             <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
@@ -255,13 +306,21 @@ const PublicConcessionarioDemutran = () => {
                         Alterações feitas pelo DEMUTRAN aparecem automaticamente aqui.
                       </p>
                     </div>
-                    <Button type="button" variant="outline" size="sm" className="gap-2" onClick={handleLogout}>
-                      <LogOut className="h-4 w-4" />
-                      Sair
-                    </Button>
+                    <div className="flex shrink-0 gap-2">
+                      <Button type="button" variant="outline" size="sm" className="gap-2" onClick={handlePrint}>
+                        <Printer className="h-4 w-4" />
+                        Imprimir
+                      </Button>
+                      <Button type="button" variant="outline" size="sm" className="gap-2" onClick={handleLogout}>
+                        <LogOut className="h-4 w-4" />
+                        Sair
+                      </Button>
+                    </div>
                   </CardHeader>
                   <CardContent className="grid gap-4 md:grid-cols-2">
                     <Info label="Categoria" value={categoriaLabels[perfil.categoria]} />
+                    <Info label="Grupo do taxi" value={perfil.taxi_grupo || '-'} />
+                    <Info label="Estacionamento" value={perfil.estacionamento || '-'} />
                     <Info label="Numero da vaga / bata" value={perfil.numero_vaga || '-'} />
                     <Info label="Nome" value={perfil.titular_nome || '-'} />
                     <Info label="CPF" value={perfil.cpf || '-'} />

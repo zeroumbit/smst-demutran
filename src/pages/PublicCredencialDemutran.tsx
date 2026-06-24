@@ -2,6 +2,7 @@ import { FormEvent, useRef, useState } from 'react';
 import { Accessibility, FileSearch, FileText, ShieldCheck, Upload } from 'lucide-react';
 import Hero from '@/components/shared/Hero';
 import { DemutranPortalLayout } from '@/components/demutran/DemutranPortalLayout';
+import { TermsGate } from '@/components/shared/TermsGate';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -88,6 +89,8 @@ const PublicCredencialDemutran = () => {
   const [loading, setLoading] = useState(false);
   const [protocol, setProtocol] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [aceitaTermos, setAceitaTermos] = useState(false);
+  const [aceitaPrivacidade, setAceitaPrivacidade] = useState(false);
   const [consultaForm, setConsultaForm] = useState({ protocolo: '', cpf: '' });
   const [consultaLoading, setConsultaLoading] = useState(false);
   const [consultaError, setConsultaError] = useState<string | null>(null);
@@ -158,6 +161,10 @@ const PublicCredencialDemutran = () => {
       setErrorMessage('Anexe o comprovante de residencia.');
     } else if (formData.tipo === 'pcd' && !laudoMedico) {
       setErrorMessage('Anexe o laudo/atestado medico.');
+    } else if (!aceitaTermos) {
+      setErrorMessage('Voce precisa aceitar os Termos de Uso para continuar.');
+    } else if (!aceitaPrivacidade) {
+      setErrorMessage('Voce precisa aceitar a Politica de Privacidade para continuar.');
     }
 
     if (Object.keys(errors).length > 0) {
@@ -330,15 +337,16 @@ const PublicCredencialDemutran = () => {
                 </div>
               </div>
 
-              <Card className="border-primary/10 shadow-lg">
-                <CardHeader className="px-4 py-5 md:px-6 md:py-6">
-                  <CardTitle className="flex items-center gap-2 text-lg md:text-2xl">
-                    <Accessibility className="h-5 w-5 md:h-6 md:w-6 text-primary" />
-                    Nova solicitação
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="px-4 pb-5 md:px-6 md:pb-6">
-                  <form onSubmit={handleSubmit} className="space-y-5 md:space-y-4">
+              <TermsGate title="Aceite os termos para solicitar" description="Para solicitar uma credencial, voce precisa aceitar nossos Termos de Uso e Politica de Privacidade.">
+                <Card className="border-primary/10 shadow-lg">
+                  <CardHeader className="px-4 py-5 md:px-6 md:py-6">
+                    <CardTitle className="flex items-center gap-2 text-lg md:text-2xl">
+                      <Accessibility className="h-5 w-5 md:h-6 md:w-6 text-primary" />
+                      Nova solicitação
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="px-4 pb-5 md:px-6 md:pb-6">
+                    <form onSubmit={handleSubmit} className="space-y-5 md:space-y-4">
                     <div className="grid gap-4 md:grid-cols-3">
                       <div className="space-y-1.5">
                         <Label className="text-sm font-semibold">Tipo *</Label>
@@ -474,7 +482,7 @@ const PublicCredencialDemutran = () => {
                       <Textarea id="observacao" className="text-base" rows={3} maxLength={1000} placeholder="Informacoes adicionais (opcional)" value={formData.observacao} onChange={(event) => updateField('observacao', event.target.value)} />
                     </div>
 
-                    <div className="grid gap-4 md:grid-cols-4">
+                    <div className="grid gap-4 md:grid-cols-2">
                       <div className="space-y-1.5">
                         <Label htmlFor="documentoIdentidade" className="text-sm font-semibold">RG/CPF *</Label>
                         <UploadZone
@@ -496,7 +504,7 @@ const PublicCredencialDemutran = () => {
                         />
                       </div>
                       {formData.tipo === 'pcd' && (
-                        <div className="space-y-1.5">
+                        <div className="space-y-1.5 md:col-span-2">
                           <Label htmlFor="laudoMedico" className="text-sm font-semibold">Laudo/atestado médico *</Label>
                           <UploadZone
                             id="laudoMedico"
@@ -509,6 +517,44 @@ const PublicCredencialDemutran = () => {
                       )}
                     </div>
 
+                    <div className="space-y-3 rounded-xl border border-border bg-muted/30 p-4">
+                      <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                        Termos e privacidade
+                      </p>
+                      <label className="flex cursor-pointer items-start gap-3">
+                        <input
+                          type="checkbox"
+                          checked={aceitaTermos}
+                          onChange={(e) => setAceitaTermos(e.target.checked)}
+                          className="mt-0.5 h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                        />
+                        <div>
+                          <p className="text-sm font-medium text-foreground">
+                            Li e aceito os{" "}
+                            <a href="/termos-de-uso" target="_blank" rel="noopener noreferrer" className="font-semibold text-primary underline underline-offset-2 hover:text-primary/80">
+                              Termos de Uso
+                            </a>
+                          </p>
+                        </div>
+                      </label>
+                      <label className="flex cursor-pointer items-start gap-3">
+                        <input
+                          type="checkbox"
+                          checked={aceitaPrivacidade}
+                          onChange={(e) => setAceitaPrivacidade(e.target.checked)}
+                          className="mt-0.5 h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                        />
+                        <div>
+                          <p className="text-sm font-medium text-foreground">
+                            Li e aceito a{" "}
+                            <a href="/politica-de-privacidade" target="_blank" rel="noopener noreferrer" className="font-semibold text-primary underline underline-offset-2 hover:text-primary/80">
+                              Politica de Privacidade
+                            </a>
+                          </p>
+                        </div>
+                      </label>
+                    </div>
+
                     {errorMessage && <p className="text-sm text-destructive">{errorMessage}</p>}
 
                     <Button type="submit" disabled={loading} className="h-12 w-full text-base font-semibold md:h-10 md:w-auto">
@@ -517,6 +563,7 @@ const PublicCredencialDemutran = () => {
                   </form>
                 </CardContent>
               </Card>
+              </TermsGate>
 
               {protocol && (
                 <Card className="border-emerald-200 bg-emerald-50/40">

@@ -10,6 +10,11 @@
 -- Drop overly permissive policies
 DROP POLICY IF EXISTS "Public can upload demutran anexos" ON storage.objects;
 DROP POLICY IF EXISTS "Authenticated can manage demutran anexos" ON storage.objects;
+DROP POLICY IF EXISTS "Anon can upload public demutran documents" ON storage.objects;
+DROP POLICY IF EXISTS "Authenticated can upload demutran documents" ON storage.objects;
+DROP POLICY IF EXISTS "Authenticated can read demutran documents" ON storage.objects;
+DROP POLICY IF EXISTS "Authenticated can update demutran documents" ON storage.objects;
+DROP POLICY IF EXISTS "Authenticated can delete demutran documents" ON storage.objects;
 
 -- Anon can only upload to credenciais/ and recursos/ folders
 CREATE POLICY "Anon can upload public demutran documents"
@@ -189,6 +194,8 @@ BEGIN
       'id', v_concessionario.id,
       'categoria', v_concessionario.categoria,
       'origem_planilha', v_concessionario.origem_planilha,
+      'taxi_grupo', v_concessionario.taxi_grupo,
+      'estacionamento', v_concessionario.estacionamento,
       'ponto_referencia', v_concessionario.ponto_referencia,
       'numero_vaga', v_concessionario.numero_vaga,
       'titular_nome', v_concessionario.titular_nome,

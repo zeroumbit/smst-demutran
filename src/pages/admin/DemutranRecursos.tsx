@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Accessibility, BarChart3, CheckCircle, Clock, Eye, FileSpreadsheet, FileText, IdCard, Search, SlidersHorizontal, ThumbsDown, ThumbsUp, Users, X } from 'lucide-react';
+import { Accessibility, BarChart3, CheckCircle, Clock, Eye, FileSpreadsheet, FileText, IdCard, Search, SlidersHorizontal, ThumbsDown, ThumbsUp, Users, X, Loader2 } from 'lucide-react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { DataTable } from '@/components/admin/DataTable';
 import { Badge } from '@/components/ui/badge';
@@ -21,6 +21,8 @@ import { supabase } from '@/lib/supabase';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import type { DemutranRecurso, DemutranSolicitacaoStatus } from '@/types/admin';
+import { SecureLink } from '@/components/admin/SecureLink';
+import { getSignedUrl } from '@/lib/demutranUploads';
 
 const statusOptions: DemutranSolicitacaoStatus[] = ['pendente', 'em_analise', 'aprovado', 'rejeitado', 'concluido'];
 
@@ -184,9 +186,7 @@ const DemutranRecursos = () => {
     {
       header: 'Documento',
       accessor: (item: DemutranRecurso) => (
-        <a className="truncate text-xs text-primary underline" href={item.defesa_documento_url} target="_blank" rel="noreferrer">
-          Abrir anexo
-        </a>
+        <SecureLink url={item.defesa_documento_url} label="Abrir anexo" />
       ),
       className: 'min-w-[100px]',
     },
@@ -697,21 +697,61 @@ function SummaryCard({
 }
 
 function DocPreview({ url, label }: { url: string | null; label: string }) {
+  const [resolvedUrl, setResolvedUrl] = useState<string | null>(null);
   const [errored, setErrored] = useState(false);
-  if (!url) return null;
+  const [loading, setLoading] = useState(true);
 
-  const isImage = /\.(jpg|jpeg|png|gif|webp|avif|bmp)(\?.*)?$/i.test(url);
+  useEffect(() => {
+    if (!url) {
+      setLoading(false);
+      return;
+    }
+    
+    let active = true;
+    async function fetchUrl() {
+      try {
+        const signed = await getSignedUrl(url);
+        if (active) {
+          setResolvedUrl(signed);
+          setLoading(false);
+        }
+      } catch (err) {
+        console.error(err);
+        if (active) {
+          setResolvedUrl(url); // fallback
+          setLoading(false);
+        }
+      }
+    }
+
+    fetchUrl();
+    return () => {
+      active = false;
+    };
+  }, [url]);
+
+  if (!url) return null;
+  if (loading) {
+    return (
+      <div className="flex h-36 w-full items-center justify-center rounded-xl border border-border bg-muted/30 p-4">
+        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  const finalUrl = resolvedUrl || url;
+  const isImage = /\.(jpg|jpeg|png|gif|webp|avif|bmp)(\?.*)?$/i.test(finalUrl);
 
   return (
     <a
-      href={url}
+      href={finalUrl}
       target="_blank"
       rel="noreferrer"
       className="group relative flex flex-col items-center justify-center gap-2 rounded-xl border border-border bg-muted/30 p-4 transition-all hover:border-primary/40 hover:shadow-md"
     >
       {isImage && !errored ? (
         <img
-          src={url}
+          src={finalUrl}
           alt={label}
           className="h-24 w-full rounded-lg object-cover ring-1 ring-black/5"
           onError={() => setErrored(true)}

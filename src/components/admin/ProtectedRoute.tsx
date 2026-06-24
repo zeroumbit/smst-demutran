@@ -36,7 +36,7 @@ export const ProtectedRoute = ({
   if (allowedPapeis?.length) {
     const isAllowed = isSuperAdmin
       ? allowSuperAdmin && allowedPapeis.includes('super_admin')
-      : hasPapel(...allowedPapeis);
+      : hasPapel(...allowedPapeis) || (profile?.papel === 'tecnico' && !!profile?.modulos?.length);
 
     if (!isAllowed) {
       return <Navigate to="/admin/dashboard" replace />;

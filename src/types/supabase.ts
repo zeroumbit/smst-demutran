@@ -327,9 +327,11 @@ export type Database = {
           observacoes: string | null
           origem_planilha: string | null
           placa: string | null
+          estacionamento: string | null
           ponto_referencia: string | null
           rota: string | null
           setor_id: string
+          taxi_grupo: string | null
           telefone_notificacao: string | null
           titular_nome: string | null
           ultimo_alvara: string | null
@@ -361,9 +363,11 @@ export type Database = {
           observacoes?: string | null
           origem_planilha?: string | null
           placa?: string | null
+          estacionamento?: string | null
           ponto_referencia?: string | null
           rota?: string | null
           setor_id?: string
+          taxi_grupo?: string | null
           telefone_notificacao?: string | null
           titular_nome?: string | null
           ultimo_alvara?: string | null
@@ -395,9 +399,11 @@ export type Database = {
           observacoes?: string | null
           origem_planilha?: string | null
           placa?: string | null
+          estacionamento?: string | null
           ponto_referencia?: string | null
           rota?: string | null
           setor_id?: string
+          taxi_grupo?: string | null
           telefone_notificacao?: string | null
           titular_nome?: string | null
           ultimo_alvara?: string | null

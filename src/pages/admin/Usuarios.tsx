@@ -24,29 +24,28 @@ import { cn } from '@/lib/utils';
 import type { AdminProfileRow, ModuloSistema, PapelUsuario, Setor } from '@/types/admin';
 import { MODULOS_DEMUTRAN } from '@/types/admin';
 
-const papelOptionsGestor: Array<{ value: PapelUsuario; label: string }> = [
-  { value: 'admin_setor', label: 'Admin do Setor' },
+const papelOptions: Array<{ value: PapelUsuario; label: string }> = [
+  { value: 'gestor', label: 'Gestor de Setor' },
   { value: 'tecnico', label: 'Tecnico' },
 ];
 
-const papelOptionsFull: Array<{ value: PapelUsuario; label: string }> = [
+const papelFilterOptions: Array<{ value: PapelUsuario; label: string }> = [
   { value: 'super_admin', label: 'Super Admin' },
-  { value: 'gestor', label: 'Gestor' },
-  { value: 'admin_setor', label: 'Admin do Setor' },
+  { value: 'gestor', label: 'Gestor de Setor' },
   { value: 'tecnico', label: 'Tecnico' },
 ];
 
 const papelLabels: Record<PapelUsuario, string> = {
   super_admin: 'Super Admin',
-  gestor: 'Gestor',
-  admin_setor: 'Admin do Setor',
+  gestor: 'Gestor de Setor',
+  admin_setor: 'Gestor de Setor',
   tecnico: 'Tecnico',
 };
 
 const papelBadgeVariant: Record<PapelUsuario, string> = {
   super_admin: 'bg-purple-100 text-purple-800 border-purple-200',
   gestor: 'bg-blue-100 text-blue-800 border-blue-200',
-  admin_setor: 'bg-amber-100 text-amber-800 border-amber-200',
+  admin_setor: 'bg-blue-100 text-blue-800 border-blue-200',
   tecnico: 'bg-slate-100 text-slate-800 border-slate-200',
 };
 
@@ -156,7 +155,16 @@ const UsuariosPage = () => {
   const handleSubmit = async () => {
     const targetSetorId = isSuperAdmin ? createSetorId : currentSetorId;
 
-    if (!targetSetorId || !formData.firstName.trim() || !formData.lastName.trim() || !formData.password.trim() || !formData.email.trim()) {
+    if (isSuperAdmin && !createSetorId) {
+      toast({
+        title: 'Selecione o setor',
+        description: 'E necessario selecionar um setor para vincular o novo usuario.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (!formData.firstName.trim() || !formData.lastName.trim() || !formData.password.trim() || !formData.email.trim()) {
       toast({
         title: 'Campos obrigatorios',
         description: 'Preencha nome, sobrenome, senha e email do usuario.',
@@ -195,9 +203,10 @@ const UsuariosPage = () => {
       const refreshSetorId = isSuperAdmin ? undefined : targetSetorId;
       setTimeout(() => loadUsuarios(refreshSetorId), 300);
     } catch (error: any) {
+      console.error('Erro ao criar usuario:', error);
       toast({
         title: 'Erro ao criar usuario',
-        description: error.message || 'Nao foi possivel criar o usuario.',
+        description: error?.message || error?.error || 'Nao foi possivel criar o usuario.',
         variant: 'destructive',
       });
     }
@@ -288,7 +297,8 @@ const UsuariosPage = () => {
       setEditingItem(null);
       loadUsuarios(isSuperAdmin ? undefined : currentSetorId || undefined);
     } catch (error: any) {
-      toast({ title: 'Erro ao editar perfil', description: error.message || 'Nao foi possivel editar o perfil.', variant: 'destructive' });
+      console.error('Erro ao editar perfil:', error);
+      toast({ title: 'Erro ao editar perfil', description: error?.message || error?.error || 'Nao foi possivel editar o perfil.', variant: 'destructive' });
     }
   };
 
@@ -339,7 +349,7 @@ const UsuariosPage = () => {
   }, [filtroPapel, filtroSetor]);
 
   const canManageItem = (item: AdminProfileRow) =>
-    isSuperAdmin || (currentSetorId !== null && item.setor_id === currentSetorId && item.papel !== 'super_admin' && item.papel !== 'gestor');
+    isSuperAdmin || (currentSetorId !== null && item.setor_id === currentSetorId && item.papel !== 'super_admin' && item.papel !== 'gestor' && item.papel !== 'admin_setor');
   const canEditItem = canManageItem;
   const canDeleteItem = (item: AdminProfileRow) =>
     canManageItem(item) && item.user_id !== profile?.user_id;
@@ -350,6 +360,10 @@ const UsuariosPage = () => {
   const ativosCount = usuarios.filter((u) => u.ativo).length;
   const inativosCount = totalUsuarios - ativosCount;
   const setoresCount = new Set(usuarios.map((u) => u.setor_id).filter(Boolean)).size;
+  const createPapelOptions = useMemo(
+    () => isSuperAdmin ? papelOptions : papelOptions.filter((o) => o.value !== 'gestor'),
+    [isSuperAdmin],
+  );
 
   function renderMobileCard(item: AdminProfileRow) {
     return (
@@ -473,7 +487,7 @@ const UsuariosPage = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div className="space-y-1.5">
                   <Label className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Papel</Label>
                   <select
@@ -482,7 +496,7 @@ const UsuariosPage = () => {
                     onChange={(event) => setFiltroPapel(event.target.value)}
                   >
                     <option value="todos">Todos os papeis</option>
-                    {papelOptionsFull.map((option) => (
+                    {papelFilterOptions.map((option) => (
                       <option key={option.value} value={option.value}>
                         {option.label}
                       </option>
@@ -504,17 +518,18 @@ const UsuariosPage = () => {
                     ))}
                   </select>
                 </div>
-                <div className="col-span-2 space-y-1.5 lg:col-span-1">
-                  <Label className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Busca</Label>
-                  <div className="relative">
-                    <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                    <Input
-                      className="h-12 rounded-[18px] border-slate-200 bg-slate-50 pl-11 text-[15px] font-medium"
-                      value={searchTerm}
-                      onChange={(event) => setSearchTerm(event.target.value)}
-                      placeholder="Nome, email ou setor..."
-                    />
-                  </div>
+              </div>
+
+              <div className="mt-3 space-y-1.5">
+                <Label className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Busca</Label>
+                <div className="relative">
+                  <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <Input
+                    className="h-12 w-full rounded-[18px] border-slate-200 bg-slate-50 pl-11 text-[15px] font-medium"
+                    value={searchTerm}
+                    onChange={(event) => setSearchTerm(event.target.value)}
+                    placeholder="Nome, email ou setor..."
+                  />
                 </div>
               </div>
             </div>
@@ -601,6 +616,7 @@ const UsuariosPage = () => {
                   id="first-name"
                   value={formData.firstName}
                   onChange={(event) => setFormData((current) => ({ ...current, firstName: event.target.value }))}
+                  placeholder="Nome do usuario"
                 />
               </div>
               <div className="space-y-2">
@@ -609,8 +625,20 @@ const UsuariosPage = () => {
                   id="last-name"
                   value={formData.lastName}
                   onChange={(event) => setFormData((current) => ({ ...current, lastName: event.target.value }))}
+                  placeholder="Sobrenome do usuario"
                 />
               </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="usuario-email">Email do usuario</Label>
+              <Input
+                id="usuario-email"
+                type="email"
+                value={formData.email}
+                onChange={(event) => setFormData((current) => ({ ...current, email: event.target.value }))}
+                placeholder="usuario@caninde.ce.gov.br"
+              />
             </div>
 
             <div className="space-y-2">
@@ -622,6 +650,7 @@ const UsuariosPage = () => {
                   value={formData.password}
                   onChange={(event) => setFormData((current) => ({ ...current, password: event.target.value }))}
                   className="pr-10"
+                  placeholder="Senha de acesso"
                 />
                 <button
                   type="button"
@@ -653,15 +682,63 @@ const UsuariosPage = () => {
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="usuario-email">Email do usuario</Label>
-              <Input
-                id="usuario-email"
-                type="email"
-                value={formData.email}
-                onChange={(event) => setFormData((current) => ({ ...current, email: event.target.value }))}
-                placeholder="usuario@caninde.ce.gov.br"
-              />
+              <Label>Papel no sistema</Label>
+              <Select value={formData.papel} onValueChange={(value) => setFormData((current) => ({ ...current, papel: value as PapelUsuario }))}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {createPapelOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
+
+            {!isSuperAdmin && (
+              <div className="space-y-2">
+                <Label>Modulos de acesso</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  {MODULOS_DEMUTRAN.map((modulo) => {
+                    const isSelected = selectedModulos.includes(modulo.value);
+                    return (
+                      <button
+                        key={modulo.value}
+                        type="button"
+                        onClick={() =>
+                          setSelectedModulos((prev) =>
+                            isSelected ? prev.filter((m) => m !== modulo.value) : [...prev, modulo.value],
+                          )
+                        }
+                        className={cn(
+                          'flex items-center gap-2 rounded-lg border px-3 py-2.5 text-sm text-left transition-all',
+                          isSelected
+                            ? 'border-sky-300 bg-sky-50 text-sky-800 font-medium'
+                            : 'border-border text-muted-foreground hover:border-sky-300 hover:bg-sky-50/50',
+                        )}
+                      >
+                        <div
+                          className={cn(
+                            'flex h-5 w-5 shrink-0 items-center justify-center rounded border transition-all',
+                            isSelected ? 'border-sky-600 bg-sky-600 text-white' : 'border-border',
+                          )}
+                        >
+                          {isSelected && <Check className="h-3.5 w-3.5" />}
+                        </div>
+                        {modulo.label}
+                      </button>
+                    );
+                  })}
+                </div>
+                {selectedModulos.length > 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    {selectedModulos.length} modulo(s) selecionado(s)
+                  </p>
+                )}
+              </div>
+            )}
 
             <div className="space-y-2">
               <Label htmlFor="usuario-status">Status</Label>
@@ -676,65 +753,6 @@ const UsuariosPage = () => {
                 </span>
               </div>
             </div>
-
-              <div className="space-y-2">
-                <Label>Papel no sistema</Label>
-                <Select value={formData.papel} onValueChange={(value) => setFormData((current) => ({ ...current, papel: value as PapelUsuario }))}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {(isSuperAdmin ? papelOptionsFull : papelOptionsGestor).map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {!isSuperAdmin && (
-                <div className="space-y-2">
-                  <Label>Modulos de acesso</Label>
-                  <div className="grid grid-cols-2 gap-2">
-                    {MODULOS_DEMUTRAN.map((modulo) => {
-                      const isSelected = selectedModulos.includes(modulo.value);
-                      return (
-                        <button
-                          key={modulo.value}
-                          type="button"
-                          onClick={() =>
-                            setSelectedModulos((prev) =>
-                              isSelected ? prev.filter((m) => m !== modulo.value) : [...prev, modulo.value],
-                            )
-                          }
-                          className={cn(
-                            'flex items-center gap-2 rounded-lg border px-3 py-2.5 text-sm text-left transition-all',
-                            isSelected
-                              ? 'border-sky-300 bg-sky-50 text-sky-800 font-medium'
-                              : 'border-border text-muted-foreground hover:border-sky-300 hover:bg-sky-50/50',
-                          )}
-                        >
-                          <div
-                            className={cn(
-                              'flex h-5 w-5 shrink-0 items-center justify-center rounded border transition-all',
-                              isSelected ? 'border-sky-600 bg-sky-600 text-white' : 'border-border',
-                            )}
-                          >
-                            {isSelected && <Check className="h-3.5 w-3.5" />}
-                          </div>
-                          {modulo.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                  {selectedModulos.length > 0 && (
-                    <p className="text-xs text-muted-foreground">
-                      {selectedModulos.length} modulo(s) selecionado(s)
-                    </p>
-                  )}
-                </div>
-              )}
           </div>
         </ResponsiveDialog>
 
@@ -752,11 +770,11 @@ const UsuariosPage = () => {
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="edit-nome">Nome</Label>
-                <Input id="edit-nome" value={editNome} onChange={(e) => setEditNome(e.target.value)} />
+                <Input id="edit-nome" value={editNome} onChange={(e) => setEditNome(e.target.value)} placeholder="Nome do usuario" />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="edit-sobrenome">Sobrenome</Label>
-                <Input id="edit-sobrenome" value={editSobrenome} onChange={(e) => setEditSobrenome(e.target.value)} />
+                <Input id="edit-sobrenome" value={editSobrenome} onChange={(e) => setEditSobrenome(e.target.value)} placeholder="Sobrenome do usuario" />
               </div>
             </div>
 
@@ -767,7 +785,7 @@ const UsuariosPage = () => {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {(isSuperAdmin ? papelOptionsFull : papelOptionsGestor).map((option) => (
+                  {createPapelOptions.map((option) => (
                     <SelectItem key={option.value} value={option.value}>
                       {option.label}
                     </SelectItem>
