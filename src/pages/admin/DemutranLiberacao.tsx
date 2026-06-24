@@ -221,6 +221,8 @@ const DemutranLiberacao = () => {
   const [protocoloCopiado, setProtocoloCopiado] = useState(false);
   const [isConfirmacaoLiberacaoOpen, setIsConfirmacaoLiberacaoOpen] = useState(false);
   const [confirmacaoStep, setConfirmacaoStep] = useState<1 | 2>(1);
+  const [editandoObservacao, setEditandoObservacao] = useState(false);
+  const [observacaoText, setObservacaoText] = useState('');
 
   const copiarTexto = async (texto: string) => {
     try {
@@ -1775,10 +1777,59 @@ const DemutranLiberacao = () => {
                     />
                   )}
 
-                  {detalhesItem.observacao && (
+                  {detalhesItem.observacao !== undefined && (
                     <div className="rounded-[22px] border border-slate-200 bg-slate-50 px-4 py-4">
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Observacao</p>
-                      <p className="mt-2 whitespace-pre-line text-sm leading-6 text-slate-700">{detalhesItem.observacao}</p>
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Observacao</p>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (editandoObservacao) {
+                              setEditandoObservacao(false);
+                            } else {
+                              setObservacaoText(detalhesItem.observacao || '');
+                              setEditandoObservacao(true);
+                            }
+                          }}
+                          className="text-xs font-semibold text-primary hover:text-primary/80 transition-colors"
+                        >
+                          {editandoObservacao ? 'Cancelar' : 'Editar'}
+                        </button>
+                      </div>
+                      {editandoObservacao ? (
+                        <div className="mt-2 space-y-2">
+                          <Textarea
+                            rows={3}
+                            value={observacaoText}
+                            onChange={(e) => setObservacaoText(e.target.value)}
+                          />
+                          <div className="flex gap-2">
+                            <Button
+                              type="button"
+                              size="sm"
+                              onClick={async () => {
+                                const { error } = await supabase
+                                  .from('veiculos_recolhidos')
+                                  .update({ observacao: observacaoText.trim() || null, updated_at: new Date().toISOString() })
+                                  .eq('id', detalhesItem.id);
+                                if (error) {
+                                  toast({ title: 'Erro ao salvar', description: error.message, variant: 'destructive' });
+                                  return;
+                                }
+                                setDetalhesItem({ ...detalhesItem, observacao: observacaoText.trim() || null });
+                                setEditandoObservacao(false);
+                                toast({ title: 'Observacao atualizada' });
+                              }}
+                            >
+                              Salvar
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="mt-2 whitespace-pre-line text-sm leading-6 text-slate-700">
+                          {detalhesItem.observacao || 'Nenhuma observacao registrada.'}
+                        </p>
+                      )}
                     </div>
                   )}
                 </div>

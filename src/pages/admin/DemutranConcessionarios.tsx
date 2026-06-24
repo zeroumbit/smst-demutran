@@ -1619,43 +1619,54 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
+function SectionHeader({ children }: { children: React.ReactNode }) {
+  return <h3 className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">{children}</h3>;
+}
+
+function DetailCard({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl border border-border bg-card px-4 py-3">
+      <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">{label}</p>
+      <p className="mt-1 text-sm font-medium text-foreground">{label === 'Situacao financeira' ? value : (value || '-')}</p>
+    </div>
+  );
+}
+
 function ConcessionarioDetails({ item, onNotify }: { item: DemutranConcessionario; onNotify: () => void }) {
   const financial = getConcessionarioFinancialCopy(item);
-  const entries = [
-    ['Categoria', categoriaLabels[item.categoria]],
-    ['Grupo do taxi', item.taxi_grupo || '-'],
-    ['Situacao financeira', financial.label],
-    ['Origem da planilha', item.origem_planilha || '-'],
-    ['Estacionamento', item.estacionamento || '-'],
-    ['Numero da vaga / bata', item.numero_vaga || '-'],
-    ['Nome', item.titular_nome || '-'],
-    ['Endereco', item.endereco || '-'],
-    ['Veiculo', item.veiculo || '-'],
-    ['Placa', item.placa || '-'],
-    ['Fabricacao', item.fabricacao || '-'],
-    ['Ultimo alvara', item.ultimo_alvara || '-'],
-    ['Exercicio', item.exercicio || '-'],
-    ['CPF', item.cpf || '-'],
-    ['Inicio', item.inicio_atividade || '-'],
-    ['CNH', item.cnh_numero || '-'],
-    ['Validade CNH', item.validade_cnh || '-'],
-    ['Atividade remunerada', item.atividade_remunerada || '-'],
-    ['Curso', item.curso || '-'],
-    ['Motorista auxiliar', item.motorista_auxiliar || '-'],
-    ['CNH auxiliar / registro', item.cnh_auxiliar || '-'],
-    ['Validade CNH auxiliar', item.validade_cnh_auxiliar || '-'],
-    ['Categoria CNH', item.categoria_cnh || '-'],
-    ['Rota', item.rota || '-'],
-    ['Ponto / distrito', item.ponto_referencia || '-'],
-    ['Email notificacao', item.email_notificacao || '-'],
-    ['Telefone notificacao', item.telefone_notificacao || '-'],
-    ['Recebe notificacoes', item.aceita_notificacoes ? 'Sim' : 'Nao'],
-    ['Importado de planilha', item.importado_planilha ? 'Sim' : 'Nao'],
-    ['Status', item.ativo ? 'Ativo' : 'Inativo'],
-  ];
 
   const handlePrint = () => {
-    const rows = entries.map(([label, value]) =>
+    const allEntries: [string, string][] = [
+      ['Categoria', categoriaLabels[item.categoria]],
+      ['Grupo do taxi', item.taxi_grupo || '-'],
+      ['Situacao financeira', financial.label],
+      ['Estacionamento', item.estacionamento || '-'],
+      ['Numero da vaga / bata', item.numero_vaga || '-'],
+      ['Nome', item.titular_nome || '-'],
+      ['Endereco', item.endereco || '-'],
+      ['Veiculo', item.veiculo || '-'],
+      ['Placa', item.placa || '-'],
+      ['Fabricacao', item.fabricacao || '-'],
+      ['Ultimo alvara', item.ultimo_alvara || '-'],
+      ['Exercicio', item.exercicio || '-'],
+      ['CPF', item.cpf || '-'],
+      ['Inicio', item.inicio_atividade || '-'],
+      ['CNH', item.cnh_numero || '-'],
+      ['Validade CNH', item.validade_cnh || '-'],
+      ['Atividade remunerada', item.atividade_remunerada || '-'],
+      ['Curso', item.curso || '-'],
+      ['Motorista auxiliar', item.motorista_auxiliar || '-'],
+      ['CNH auxiliar / registro', item.cnh_auxiliar || '-'],
+      ['Validade CNH auxiliar', item.validade_cnh_auxiliar || '-'],
+      ['Categoria CNH', item.categoria_cnh || '-'],
+      ['Rota', item.rota || '-'],
+      ['Ponto / distrito', item.ponto_referencia || '-'],
+      ['Email notificacao', item.email_notificacao || '-'],
+      ['Telefone notificacao', item.telefone_notificacao || '-'],
+      ['Recebe notificacoes', item.aceita_notificacoes ? 'Sim' : 'Nao'],
+      ['Status', item.ativo ? 'Ativo' : 'Inativo'],
+    ];
+    const rows = allEntries.map(([label, value]) =>
       `<tr><td style="border:1px solid #cbd5e1;padding:6px;">${label}</td><td style="border:1px solid #cbd5e1;padding:6px;">${value}</td></tr>`
     ).join('');
     const obs = item.observacoes
@@ -1712,13 +1723,69 @@ function ConcessionarioDetails({ item, onNotify }: { item: DemutranConcessionari
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        {entries.map(([label, value]) => (
-          <div key={label} className="rounded-xl border border-border bg-card px-4 py-3">
-            <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">{label}</p>
-            <p className="mt-1 text-sm font-medium text-foreground">{value}</p>
+      <div className="space-y-4">
+        <SectionHeader>Dados da concessao</SectionHeader>
+        <div className="grid gap-4 md:grid-cols-3">
+          <DetailCard label="Categoria" value={categoriaLabels[item.categoria]} />
+          <DetailCard label="Situacao financeira" value={financial.label} />
+          <DetailCard label="Numero da vaga / bata" value={item.numero_vaga || '-'} />
+          <DetailCard label="Grupo do taxi" value={item.taxi_grupo || '-'} />
+          <DetailCard label="Estacionamento" value={item.estacionamento || '-'} />
+          <DetailCard label="Ponto / distrito" value={item.ponto_referencia || '-'} />
+          <DetailCard label="Exercicio" value={item.exercicio || '-'} />
+          <DetailCard label="Rota" value={item.rota || '-'} />
+        </div>
+      </div>
+
+      <div className="space-y-4">
+        <SectionHeader>Dados do concessionario</SectionHeader>
+        <div className="grid gap-4 md:grid-cols-3">
+          <div className="md:col-span-2">
+            <DetailCard label="Nome" value={item.titular_nome || '-'} />
           </div>
-        ))}
+          <DetailCard label="CPF" value={item.cpf || '-'} />
+        </div>
+        <DetailCard label="Endereco" value={item.endereco || '-'} />
+      </div>
+
+      <div className="space-y-4">
+        <SectionHeader>Dados do veiculo</SectionHeader>
+        <div className="grid gap-4 md:grid-cols-3">
+          <DetailCard label="Veiculo" value={item.veiculo || '-'} />
+          <DetailCard label="Placa" value={item.placa || '-'} />
+          <DetailCard label="Fabricacao" value={item.fabricacao || '-'} />
+          <DetailCard label="Ultimo alvara" value={item.ultimo_alvara || '-'} />
+        </div>
+      </div>
+
+      <div className="space-y-4">
+        <SectionHeader>Habilitacao</SectionHeader>
+        <div className="grid gap-4 md:grid-cols-3">
+          <DetailCard label="CNH" value={item.cnh_numero || '-'} />
+          <DetailCard label="Validade CNH" value={item.validade_cnh || '-'} />
+          <DetailCard label="Categoria CNH" value={item.categoria_cnh || '-'} />
+          <DetailCard label="Atividade remunerada" value={item.atividade_remunerada || '-'} />
+          <DetailCard label="Curso" value={item.curso || '-'} />
+          <DetailCard label="Inicio da atividade" value={item.inicio_atividade || '-'} />
+        </div>
+      </div>
+
+      <div className="space-y-4">
+        <SectionHeader>Motorista auxiliar</SectionHeader>
+        <DetailCard label="Nome" value={item.motorista_auxiliar || '-'} />
+        <div className="grid gap-4 md:grid-cols-2">
+          <DetailCard label="CNH auxiliar / registro" value={item.cnh_auxiliar || '-'} />
+          <DetailCard label="Validade CNH auxiliar" value={item.validade_cnh_auxiliar || '-'} />
+        </div>
+      </div>
+
+      <div className="space-y-4">
+        <SectionHeader>Notificacao</SectionHeader>
+        <div className="grid gap-4 md:grid-cols-3">
+          <DetailCard label="Email" value={item.email_notificacao || '-'} />
+          <DetailCard label="Telefone" value={item.telefone_notificacao || '-'} />
+          <DetailCard label="Recebe notificacoes" value={item.aceita_notificacoes ? 'Sim' : 'Nao'} />
+        </div>
       </div>
 
       <div className="rounded-xl border border-border bg-card px-4 py-3">
