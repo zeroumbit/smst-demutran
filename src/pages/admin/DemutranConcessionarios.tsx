@@ -621,6 +621,24 @@ const DemutranConcessionarios = () => {
       return;
     }
 
+    if (editingItem) {
+      const originalVeiculo = (editingItem.veiculo || '').trim();
+      const originalPlaca = (editingItem.placa || '').trim();
+      const newVeiculo = formData.veiculo.trim();
+      const newPlaca = normalizePlate(formData.placa);
+
+      if (newVeiculo !== originalVeiculo || newPlaca !== originalPlaca) {
+        const proceed = await confirm({
+          title: 'Alterar dados do veiculo',
+          description: 'A ação de alterar os dados do seu veiculo vai gerar uma taxa de transferência. Deseja mesmo fazer isso?',
+          confirmText: 'Sim, confirmar',
+          cancelText: 'Cancelar',
+          variant: 'default',
+        });
+        if (!proceed) return;
+      }
+    }
+
     setSaving(true);
     const payload = toPayload();
 
@@ -1560,40 +1578,53 @@ const DemutranConcessionarios = () => {
           )}
         </ResponsiveDialog>
 
-        <ResponsiveDialog
-          open={Boolean(notifyItem)}
-          onOpenChange={(open) => {
-            if (!open) {
-              setNotifyItem(null);
-            }
-          }}
-          title="Enviar notificacao"
-          description={notifyItem ? `Notifique ${notifyItem.titular_nome || 'o concessionario'} na area publica.` : ''}
-          onCancel={() => setNotifyItem(null)}
-          onConfirm={handleSendNotification}
-          confirmLabel={sendingNotification ? 'Enviando...' : 'Enviar notificacao'}
-        >
-          <div className="space-y-4 py-2">
-            <Field label="Titulo">
-              <Input value={notifyForm.titulo} onChange={(event) => setNotifyForm((current) => ({ ...current, titulo: event.target.value }))} />
-            </Field>
-            <Field label="Tipo">
-              <select
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                value={notifyForm.tipo}
-                onChange={(event) => setNotifyForm((current) => ({ ...current, tipo: event.target.value }))}
-              >
-                <option value="geral">Geral</option>
-                <option value="cadastro">Cadastro</option>
-                <option value="financeiro">Financeiro</option>
-                <option value="alerta">Alerta</option>
-              </select>
-            </Field>
-            <Field label="Mensagem">
-              <Textarea rows={5} value={notifyForm.mensagem} onChange={(event) => setNotifyForm((current) => ({ ...current, mensagem: event.target.value }))} />
-            </Field>
-          </div>
-        </ResponsiveDialog>
+        {notifyItem && (
+          <>
+            <div className="fixed inset-0 z-[100] bg-black/40" onClick={() => { setNotifyItem(null); setNotifyForm({ titulo: '', mensagem: '', tipo: 'geral' }); }} />
+            <div className="fixed inset-y-0 right-0 z-[110] w-full sm:max-w-md bg-background shadow-xl border-l flex flex-col animate-in slide-in-from-right duration-300">
+              <div className="flex items-center justify-between border-b px-6 py-4">
+                <div>
+                  <h2 className="text-lg font-semibold">Enviar notificacao</h2>
+                  <p className="text-sm text-muted-foreground">
+                    {notifyItem ? `Notifique ${notifyItem.titular_nome || 'o concessionario'} na area publica.` : ''}
+                  </p>
+                </div>
+                <button type="button" onClick={() => { setNotifyItem(null); setNotifyForm({ titulo: '', mensagem: '', tipo: 'geral' }); }} className="rounded-sm opacity-70 hover:opacity-100 transition-opacity">
+                  <X className="h-5 w-5" />
+                  <span className="sr-only">Fechar</span>
+                </button>
+              </div>
+              <div className="flex-1 overflow-y-auto px-6 py-6">
+                <div className="space-y-4">
+                  <Field label="Titulo">
+                    <Input value={notifyForm.titulo} onChange={(event) => setNotifyForm((current) => ({ ...current, titulo: event.target.value }))} />
+                  </Field>
+                  <Field label="Tipo">
+                    <select
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                      value={notifyForm.tipo}
+                      onChange={(event) => setNotifyForm((current) => ({ ...current, tipo: event.target.value }))}
+                    >
+                      <option value="geral">Geral</option>
+                      <option value="cadastro">Cadastro</option>
+                      <option value="financeiro">Financeiro</option>
+                      <option value="alerta">Alerta</option>
+                    </select>
+                  </Field>
+                  <Field label="Mensagem">
+                    <Textarea rows={5} value={notifyForm.mensagem} onChange={(event) => setNotifyForm((current) => ({ ...current, mensagem: event.target.value }))} />
+                  </Field>
+                </div>
+              </div>
+              <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 border-t px-6 py-4">
+                <Button variant="outline" onClick={() => { setNotifyItem(null); setNotifyForm({ titulo: '', mensagem: '', tipo: 'geral' }); }}>Cancelar</Button>
+                <Button onClick={handleSendNotification} disabled={sendingNotification}>
+                  {sendingNotification ? 'Enviando...' : 'Enviar notificacao'}
+                </Button>
+              </div>
+            </div>
+          </>
+        )}
       </div>
       {confirmDialog}
     </AdminLayout>
