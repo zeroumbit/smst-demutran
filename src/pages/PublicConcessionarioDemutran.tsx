@@ -1,10 +1,12 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react';
-import { Bell, CreditCard, Eye, EyeOff, IdCard, KeyRound, LogOut, Printer, Save } from 'lucide-react';
-import Hero from '@/components/shared/Hero';
+import { AlertTriangle, Bell, CarFront, CheckCircle, Clock, CreditCard, Eye, EyeOff, Home, KeyRound, LogOut, Printer, Save, ScrollText, Send, User, UserCircle, XCircle } from 'lucide-react';
 import { DemutranPortalLayout } from '@/components/demutran/DemutranPortalLayout';
 import { TermsGate } from '@/components/shared/TermsGate';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
@@ -25,25 +27,48 @@ const categoriaLabels: Record<DemutranConcessionario['categoria'], string> = {
   fretista: 'Fretista',
 };
 
-type PerfilEditavel = Pick<
-  DemutranConcessionario,
-  'endereco' | 'veiculo' | 'placa' | 'observacoes' | 'email_notificacao' | 'telefone_notificacao' | 'aceita_notificacoes'
-> & {
+const categoriaIcons: Record<DemutranConcessionario['categoria'], string> = {
+  mototaxi: '🏍️',
+  taxi: '🚕',
+  carro_horario: '🚗',
+  fretista: '🚛',
+};
+
+const vencimentoLabels: Record<string, string> = {
+  em_dia: 'Em dia',
+  vencendo: 'Vencendo este mês',
+  vencido: 'Vencido',
+};
+
+type PerfilEditavel = {
+  endereco: string;
+  email_notificacao: string;
+  telefone_notificacao: string;
+  aceita_notificacoes: boolean;
+  observacoes: string;
   novaSenha: string;
   confirmarNovaSenha: string;
 };
 
 const initialEdit: PerfilEditavel = {
   endereco: '',
-  veiculo: '',
-  placa: '',
-  observacoes: '',
   email_notificacao: '',
   telefone_notificacao: '',
   aceita_notificacoes: true,
+  observacoes: '',
   novaSenha: '',
   confirmarNovaSenha: '',
 };
+
+type Tab = 'home' | 'taxas' | 'veiculos' | 'concessao' | 'perfil';
+
+const tabs: { key: Tab; label: string; icon: typeof Home }[] = [
+  { key: 'home', label: 'Home', icon: Home },
+  { key: 'taxas', label: 'Taxas', icon: CreditCard },
+  { key: 'veiculos', label: 'Veículos', icon: CarFront },
+  { key: 'concessao', label: 'Concessão', icon: ScrollText },
+  { key: 'perfil', label: 'Perfil', icon: UserCircle },
+];
 
 const PublicConcessionarioDemutran = () => {
   const [sessionToken, setSessionToken] = useState<string | null>(null);
@@ -53,17 +78,30 @@ const PublicConcessionarioDemutran = () => {
   const [notificacoes, setNotificacoes] = useState<DemutranConcessionarioNotificacao[]>([]);
   const [loginForm, setLoginForm] = useState({ cpf: '', senha: '' });
   const [showSenha, setShowSenha] = useState(false);
+  const [showNovaSenha, setShowNovaSenha] = useState(false);
+  const [showConfirmarSenha, setShowConfirmarSenha] = useState(false);
   const [editForm, setEditForm] = useState<PerfilEditavel>(initialEdit);
+  const [tab, setTab] = useState<Tab>('home');
+  const [showNotificacoes, setShowNotificacoes] = useState(false);
+  const [alteracoes, setAlteracoes] = useState<any[]>([]);
+  const [veiculoForm, setVeiculoForm] = useState({ veiculo: '', placa: '', fabricacao: '', rota: '' });
+  const [solicitandoVeiculo, setSolicitandoVeiculo] = useState(false);
+  const [showConfirmTroca, setShowConfirmTroca] = useState(false);
+
+  const loadAlteracoes = async (token: string) => {
+    if (!token) return;
+    const { data, error } = await (supabase as any).rpc('listar_minhas_alteracoes', { _session_token: token });
+    if (!error && Array.isArray(data)) setAlteracoes(data);
+    else setAlteracoes([]);
+  };
 
   const syncEditForm = (data: DemutranConcessionario) => {
     setEditForm({
       endereco: data.endereco || '',
-      veiculo: data.veiculo || '',
-      placa: data.placa || '',
-      observacoes: data.observacoes || '',
       email_notificacao: data.email_notificacao || '',
       telefone_notificacao: data.telefone_notificacao || '',
       aceita_notificacoes: data.aceita_notificacoes,
+      observacoes: data.observacoes || '',
       novaSenha: '',
       confirmarNovaSenha: '',
     });
@@ -91,6 +129,8 @@ const PublicConcessionarioDemutran = () => {
     if (notError) {
       console.error(notError);
     }
+
+    void loadAlteracoes(token);
   };
 
   useEffect(() => {
@@ -108,11 +148,16 @@ const PublicConcessionarioDemutran = () => {
     }
 
     setLoading(true);
+    const cpfLimpo = loginForm.cpf.replace(/\D/g, '');
     const { data, error } = await (supabase as any).rpc('autenticar_concessionario', {
-      _cpf: loginForm.cpf,
+      _cpf: cpfLimpo,
       _senha: loginForm.senha,
     });
     setLoading(false);
+
+    if (error) {
+      console.error('Erro autenticar_concessionario:', error);
+    }
 
     if (error || !data?.length) {
       toast({ title: 'Acesso nao autorizado', description: 'CPF ou senha invalidos.', variant: 'destructive' });
@@ -143,8 +188,8 @@ const PublicConcessionarioDemutran = () => {
     const { data, error } = await (supabase as any).rpc('atualizar_perfil_concessionario_publico', {
       _session_token: sessionToken,
       _endereco: editForm.endereco,
-      _veiculo: editForm.veiculo,
-      _placa: editForm.placa,
+      _veiculo: null,
+      _placa: null,
       _observacoes: editForm.observacoes,
       _email_notificacao: editForm.email_notificacao,
       _telefone_notificacao: editForm.telefone_notificacao,
@@ -160,6 +205,45 @@ const PublicConcessionarioDemutran = () => {
 
     await loadPerfil(sessionToken);
     toast({ title: 'Cadastro atualizado' });
+  };
+
+  const handleSolicitarTrocaVeiculo = async () => {
+    if (!sessionToken) return;
+    if (!veiculoForm.veiculo.trim() || !veiculoForm.placa.trim()) {
+      toast({ title: 'Preencha veículo e placa', variant: 'destructive' });
+      return;
+    }
+    setSolicitandoVeiculo(true);
+    const { data, error } = await (supabase as any).rpc('solicitar_troca_veiculo', {
+      _session_token: sessionToken,
+      _veiculo: veiculoForm.veiculo,
+      _placa: veiculoForm.placa,
+      _fabricacao: veiculoForm.fabricacao || null,
+      _rota: veiculoForm.rota || null,
+    });
+    setSolicitandoVeiculo(false);
+
+    if (error || data?.error) {
+      toast({ title: 'Erro ao solicitar', description: error?.message || data?.error || 'Falha ao enviar solicitação.', variant: 'destructive' });
+      return;
+    }
+
+    setShowConfirmTroca(false);
+    setVeiculoForm({ veiculo: '', placa: '', fabricacao: '', rota: '' });
+    await loadPerfil(sessionToken);
+    toast({ title: 'Solicitação enviada', description: 'O DEMUTRAN analisará a troca de veículo e gerará a nova taxa de transferência.' });
+  };
+
+  const alteracaoStatusBadge: Record<string, string> = {
+    pendente: 'bg-amber-100 text-amber-800 border-amber-200',
+    aprovado: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+    rejeitado: 'bg-red-100 text-red-800 border-red-200',
+  };
+
+  const alteracaoStatusLabel: Record<string, string> = {
+    pendente: 'Pendente',
+    aprovado: 'Aprovado',
+    rejeitado: 'Rejeitado',
   };
 
   const handleLogout = () => {
@@ -218,217 +302,510 @@ const PublicConcessionarioDemutran = () => {
 
   return (
     <DemutranPortalLayout>
-      <Hero
-        title="Area do Concessionario"
-        description="Acesse com CPF e senha individual para consultar seu cadastro, acompanhar sua concessão e receber notificações."
-        className="bg-gradient-hero"
-      />
-
-      <section className="bg-background py-10 md:py-16">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6">
-          {!perfil ? (
-            <div className="mx-auto max-w-xl">
-              <TermsGate title="Aceite os termos para acessar" description="Para acessar os dados do concessionario, voce precisa aceitar nossos Termos de Uso e Politica de Privacidade.">
-                <Card className="border-primary/10 shadow-lg">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-xl">
-                      <KeyRound className="h-5 w-5 text-primary" />
-                      Entrar
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <form onSubmit={handleLogin} className="space-y-4">
-                      <div className="space-y-2">
-                        <Label>CPF</Label>
-                        <Input value={loginForm.cpf} maxLength={14} onChange={(event) => setLoginForm((current) => ({ ...current, cpf: maskCpf(event.target.value) }))} placeholder="000.000.000-00" />
+      {!perfil ? (
+        <section className="bg-background py-10 md:py-16">
+          <div className="mx-auto max-w-xl px-4 sm:px-6">
+            <TermsGate title="Aceite os termos para acessar" description="Para acessar os dados do concessionario, voce precisa aceitar nossos Termos de Uso e Politica de Privacidade.">
+              <Card className="border-primary/10 shadow-lg">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-xl">
+                    <KeyRound className="h-5 w-5 text-primary" />
+                    Entrar
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <form onSubmit={handleLogin} className="space-y-4">
+                    <div className="space-y-2">
+                      <Label>CPF</Label>
+                      <Input value={loginForm.cpf} maxLength={14} onChange={(event) => setLoginForm((current) => ({ ...current, cpf: maskCpf(event.target.value) }))} placeholder="000.000.000-00" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Senha</Label>
+                      <div className="relative">
+                        <Input
+                          type={showSenha ? 'text' : 'password'}
+                          value={loginForm.senha}
+                          onChange={(event) => setLoginForm((current) => ({ ...current, senha: event.target.value }))}
+                          className="pr-10"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowSenha((prev) => !prev)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                          tabIndex={-1}
+                        >
+                          {showSenha ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </button>
                       </div>
-                      <div className="space-y-2">
-                        <Label>Senha</Label>
-                        <div className="relative">
-                          <Input
-                            type={showSenha ? 'text' : 'password'}
-                            value={loginForm.senha}
-                            onChange={(event) => setLoginForm((current) => ({ ...current, senha: event.target.value }))}
-                            className="pr-10"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => setShowSenha((prev) => !prev)}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                            tabIndex={-1}
-                          >
-                            {showSenha ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                          </button>
+                    </div>
+                    <Button type="submit" className="w-full" disabled={loading}>
+                      {loading ? 'Entrando...' : 'Acessar meus dados'}
+                    </Button>
+                  </form>
+                </CardContent>
+              </Card>
+            </TermsGate>
+          </div>
+        </section>
+      ) : (
+        <section className="bg-background">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6">
+            <div className="flex items-center justify-between border-b border-border py-4">
+              <h1 className="text-[20px] font-bold text-foreground">Área do Concessionário</h1>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowNotificacoes((prev) => !prev)}
+                  className="relative rounded-full p-2 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                >
+                  <Bell className="h-5 w-5" />
+                  {unreadCount > 0 && (
+                    <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-destructive-foreground">
+                      {unreadCount}
+                    </span>
+                  )}
+                </button>
+                <Button variant="outline" size="sm" className="gap-2" onClick={handleLogout}>
+                  <LogOut className="h-4 w-4" />
+                  Sair
+                </Button>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-6 py-6 md:flex-row">
+              <nav className="flex shrink-0 flex-row gap-1 md:flex-col md:w-48">
+                {tabs.map((item) => (
+                  <button
+                    key={item.key}
+                    type="button"
+                    onClick={() => setTab(item.key)}
+                    className={`flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-semibold transition ${
+                      tab === item.key
+                        ? 'bg-primary/10 text-primary'
+                        : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                    }`}
+                  >
+                    <item.icon className="h-4 w-4" />
+                    {item.label}
+                  </button>
+                ))}
+              </nav>
+
+              <div className="flex-1 space-y-6 min-w-0">
+                {tab === 'home' && (
+                  <>
+                    <div className="rounded-xl border border-border bg-gradient-to-br from-primary/5 to-transparent p-6">
+                      <div className="flex items-start gap-4">
+                        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-2xl">
+                          {categoriaIcons[perfil.categoria]}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-xs uppercase tracking-[0.12em] text-muted-foreground">
+                            {categoriaLabels[perfil.categoria]}
+                          </p>
+                          <h2 className="mt-1 text-xl font-bold text-foreground">
+                            {perfil.titular_nome || 'Concessionário'}
+                          </h2>
+                          <p className="mt-1 text-sm text-muted-foreground">
+                            {perfil.veiculo ? `${perfil.veiculo}${perfil.placa ? ` • ${perfil.placa}` : ''}` : 'Sem veículo vinculado'}
+                          </p>
                         </div>
                       </div>
-                      <Button type="submit" className="w-full" disabled={loading}>
-                        {loading ? 'Entrando...' : 'Acessar meus dados'}
-                      </Button>
-                    </form>
-                  </CardContent>
-                </Card>
-              </TermsGate>
-            </div>
-          ) : (
-            <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-              <div className="space-y-6">
-                {financialStatus && (
-                  <Card
-                    className={
-                      financialStatus.status === 'pago'
-                        ? 'border-emerald-200 bg-emerald-50/70 shadow-lg'
-                        : financialStatus.status === 'prazo_aberto'
-                          ? 'border-blue-200 bg-blue-50/70 shadow-lg'
-                          : 'border-red-200 bg-red-50/80 shadow-lg'
-                    }
-                  >
+                    </div>
+
+                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                      <SummaryCard
+                        icon={CreditCard}
+                        label="Situação das taxas"
+                        value={financialStatus?.label || 'Indisponível'}
+                        variant={financialStatus?.status === 'pago' ? 'success' : financialStatus?.status === 'prazo_aberto' ? 'warning' : 'danger'}
+                      />
+                      <SummaryCard
+                        icon={ScrollText}
+                        label="Número da vaga"
+                        value={perfil.numero_vaga || 'Não informado'}
+                      />
+                      <SummaryCard
+                        icon={User}
+                        label="CNH"
+                        value={perfil.cnh_numero ? `${perfil.cnh_numero}${perfil.validade_cnh ? ` (val. ${perfil.validade_cnh})` : ''}` : 'Não informada'}
+                      />
+                      <SummaryCard
+                        icon={CarFront}
+                        label="Fabricação"
+                        value={perfil.fabricacao || 'Não informado'}
+                      />
+                      <SummaryCard
+                        icon={CalendarIcon}
+                        label="Último alvará"
+                        value={perfil.ultimo_alvara || 'Não informado'}
+                      />
+                      <SummaryCard
+                        icon={ScrollText}
+                        label="Início da atividade"
+                        value={perfil.inicio_atividade || 'Não informado'}
+                      />
+                    </div>
+                  </>
+                )}
+
+                {tab === 'taxas' && (
+                  <>
+                    {financialStatus ? (
+                      <Card
+                        className={
+                          financialStatus.status === 'pago'
+                            ? 'border-emerald-200 bg-emerald-50/70'
+                            : financialStatus.status === 'prazo_aberto'
+                              ? 'border-blue-200 bg-blue-50/70'
+                              : 'border-red-200 bg-red-50/80'
+                        }
+                      >
+                        <CardHeader>
+                          <CardTitle className="flex items-center gap-2 text-xl">
+                            <CreditCard className="h-5 w-5 text-primary" />
+                            Situação das taxas
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <p className="text-lg font-bold text-foreground">{financialStatus.label}</p>
+                          <p className="mt-2 text-sm leading-6 text-muted-foreground">{financialStatus.description}</p>
+                        </CardContent>
+                      </Card>
+                    ) : (
+                      <Card>
+                        <CardContent className="py-8 text-center text-sm text-muted-foreground">
+                          Nenhuma informação financeira disponível.
+                        </CardContent>
+                      </Card>
+                    )}
+                  </>
+                )}
+
+                {tab === 'veiculos' && (
+                  <>
+                    <Card>
+                      <CardHeader className="flex flex-row items-start justify-between gap-4">
+                        <div>
+                          <CardTitle className="flex items-center gap-2 text-xl">
+                            <CarFront className="h-5 w-5 text-primary" />
+                            Dados do veículo
+                          </CardTitle>
+                        </div>
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <Button size="sm" className="gap-2 shrink-0" onClick={() => setVeiculoForm({
+                              veiculo: perfil.veiculo || '',
+                              placa: perfil.placa || '',
+                              fabricacao: perfil.fabricacao || '',
+                              rota: perfil.rota || '',
+                            })}>
+                              <Send className="h-4 w-4" />
+                              Solicitar alteração
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent className="sm:max-w-lg">
+                            <DialogHeader>
+                              <DialogTitle className="flex items-center gap-2 text-lg">
+                                <CarFront className="h-5 w-5 text-primary" />
+                                Solicitar alteração de veículo
+                              </DialogTitle>
+                            </DialogHeader>
+                            <div className="space-y-4 pt-4">
+                              <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+                                <strong>⚠ Importante:</strong> A alteração do veículo ou placa gera uma nova taxa de transferência. Sua solicitação será analisada pelo DEMUTRAN.
+                              </div>
+                              <div className="grid gap-4 sm:grid-cols-2">
+                                <Field label="Veículo *">
+                                  <Input value={veiculoForm.veiculo} onChange={(e) => setVeiculoForm((prev) => ({ ...prev, veiculo: e.target.value }))} placeholder="Ex: Honda CG 150" />
+                                </Field>
+                                <Field label="Placa *">
+                                  <Input value={veiculoForm.placa} onChange={(e) => setVeiculoForm((prev) => ({ ...prev, placa: e.target.value.toUpperCase() }))} placeholder="ABC-1234" />
+                                </Field>
+                                <Field label="Fabricação">
+                                  <Input value={veiculoForm.fabricacao} onChange={(e) => setVeiculoForm((prev) => ({ ...prev, fabricacao: e.target.value }))} placeholder="Ex: 2020" />
+                                </Field>
+                                <Field label="Rota">
+                                  <Input value={veiculoForm.rota} onChange={(e) => setVeiculoForm((prev) => ({ ...prev, rota: e.target.value }))} placeholder="Ex: Canindé - Fortaleza" />
+                                </Field>
+                              </div>
+                              <div className="flex justify-end gap-3 pt-2">
+                                <DialogTrigger asChild>
+                                  <Button variant="outline">Cancelar</Button>
+                                </DialogTrigger>
+                                <Button onClick={() => setShowConfirmTroca(true)}>Solicitar</Button>
+                              </div>
+                            </div>
+                          </DialogContent>
+                        </Dialog>
+                      </CardHeader>
+                      <CardContent className="grid gap-4 sm:grid-cols-2">
+                        <Info label="Veículo" value={perfil.veiculo || '-'} />
+                        <Info label="Placa" value={perfil.placa || '-'} />
+                        <Info label="Fabricação" value={perfil.fabricacao || '-'} />
+                        <Info label="Rota" value={perfil.rota || '-'} />
+                        <Info label="Número da vaga / bata" value={perfil.numero_vaga || '-'} />
+                        <Info label="Estacionamento" value={perfil.estacionamento || '-'} />
+                      </CardContent>
+                    </Card>
+
+                    <AlertDialog open={showConfirmTroca} onOpenChange={setShowConfirmTroca}>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle className="flex items-center gap-2">
+                            <AlertTriangle className="h-5 w-5 text-amber-500" />
+                            Confirmar solicitação
+                          </AlertDialogTitle>
+                          <AlertDialogDescription className="space-y-3">
+                            <p>Ao solicitar a alteração dos dados do veículo:</p>
+                            <ul className="list-disc pl-5 space-y-1">
+                              <li>Uma <strong>nova taxa de transferência</strong> será gerada</li>
+                              <li>O DEMUTRAN analisará sua solicitação</li>
+                              <li>Você receberá uma notificação com o resultado</li>
+                            </ul>
+                            <p className="font-medium">Deseja continuar?</p>
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                          <AlertDialogAction onClick={handleSolicitarTrocaVeiculo} disabled={solicitandoVeiculo}>
+                            {solicitandoVeiculo ? 'Enviando...' : 'Confirmar solicitação'}
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2 text-lg">
+                          <Clock className="h-5 w-5 text-primary" />
+                          Histórico de solicitações
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        {alteracoes.length === 0 ? (
+                          <div className="rounded-xl border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">
+                            Nenhuma solicitação de alteração enviada até o momento.
+                          </div>
+                        ) : (
+                          <div className="space-y-3">
+                            {alteracoes.map((alt: any) => (
+                              <div key={alt.id} className="rounded-xl border border-border p-4">
+                                <div className="flex items-start justify-between gap-3">
+                                  <div className="space-y-1">
+                                    <p className="text-sm font-semibold text-foreground">
+                                      Solicitação de {new Date(alt.created_at).toLocaleDateString('pt-BR')}
+                                    </p>
+                                    <p className="text-xs text-muted-foreground">
+                                      Placa: {alt.dados_anteriores?.placa || '-'} → {alt.dados_novos?.placa || '-'}
+                                    </p>
+                                    <p className="text-xs text-muted-foreground">
+                                      Veículo: {alt.dados_anteriores?.veiculo || '-'} → {alt.dados_novos?.veiculo || '-'}
+                                    </p>
+                                  </div>
+                                  <Badge variant="outline" className={alteracaoStatusBadge[alt.status] || ''}>
+                                    {alt.status === 'aprovado' ? <CheckCircle className="mr-1 h-3 w-3" /> : alt.status === 'rejeitado' ? <XCircle className="mr-1 h-3 w-3" /> : <Clock className="mr-1 h-3 w-3" />}
+                                    {alteracaoStatusLabel[alt.status] || alt.status}
+                                  </Badge>
+                                </div>
+                                {alt.observacao_admin && (
+                                  <p className="mt-2 text-xs text-muted-foreground italic">
+                                    Observação: {alt.observacao_admin}
+                                  </p>
+                                )}
+                                {alt.analisado_em && (
+                                  <p className="mt-1 text-xs text-muted-foreground">
+                                    Analisado em: {new Date(alt.analisado_em).toLocaleString('pt-BR')}
+                                  </p>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </>
+                )}
+
+                {tab === 'concessao' && (
+                  <Card>
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2 text-xl">
-                        <CreditCard className="h-5 w-5 text-primary" />
-                        Situacao das taxas
+                        <ScrollText className="h-5 w-5 text-primary" />
+                        Dados da concessão
                       </CardTitle>
                     </CardHeader>
-                    <CardContent>
-                      <p className="text-sm font-bold text-foreground">{financialStatus.label}</p>
-                      <p className="mt-2 text-sm leading-6 text-muted-foreground">{financialStatus.description}</p>
+                    <CardContent className="grid gap-4 sm:grid-cols-2">
+                      <Info label="Categoria" value={categoriaLabels[perfil.categoria]} />
+                      <Info label="Grupo do taxi" value={perfil.taxi_grupo || '-'} />
+                      <Info label="Estacionamento" value={perfil.estacionamento || '-'} />
+                      <Info label="Número da vaga / bata" value={perfil.numero_vaga || '-'} />
+                      <Info label="Ponto / distrito" value={perfil.ponto_referencia || '-'} />
+                      <Info label="Início da atividade" value={perfil.inicio_atividade || '-'} />
+                      <Info label="Último alvará" value={perfil.ultimo_alvara || '-'} />
+                      <Info label="Exercício" value={perfil.exercicio || '-'} />
+                      <div className="sm:col-span-2">
+                        <h3 className="mb-3 text-sm font-semibold text-foreground">Habilitação</h3>
+                        <div className="grid gap-4 sm:grid-cols-2">
+                          <Info label="CNH" value={perfil.cnh_numero || '-'} />
+                          <Info label="Validade CNH" value={perfil.validade_cnh || '-'} />
+                          <Info label="Categoria CNH" value={perfil.categoria_cnh || '-'} />
+                          <Info label="Atividade remunerada" value={perfil.atividade_remunerada || '-'} />
+                          <Info label="Curso" value={perfil.curso || '-'} />
+                          <Info label="Motorista auxiliar" value={perfil.motorista_auxiliar || '-'} />
+                          <Info label="CNH auxiliar" value={perfil.cnh_auxiliar || '-'} />
+                          <Info label="Validade CNH auxiliar" value={perfil.validade_cnh_auxiliar || '-'} />
+                        </div>
+                      </div>
                     </CardContent>
                   </Card>
                 )}
 
-                <Card className="border-primary/10 shadow-lg">
-                  <CardHeader className="flex flex-row items-start justify-between gap-4">
-                    <div>
+                {tab === 'perfil' && (
+                  <Card>
+                    <CardHeader>
                       <CardTitle className="flex items-center gap-2 text-xl">
-                        <IdCard className="h-5 w-5 text-primary" />
-                        Meu cadastro
+                        <UserCircle className="h-5 w-5 text-primary" />
+                        Dados pessoais
                       </CardTitle>
-                      <p className="mt-2 text-sm text-muted-foreground">
-                        Alterações feitas pelo DEMUTRAN aparecem automaticamente aqui.
-                      </p>
-                    </div>
-                    <div className="flex shrink-0 gap-2">
-                      <Button type="button" variant="outline" size="sm" className="gap-2" onClick={handlePrint}>
-                        <Printer className="h-4 w-4" />
-                        Imprimir
-                      </Button>
-                      <Button type="button" variant="outline" size="sm" className="gap-2" onClick={handleLogout}>
-                        <LogOut className="h-4 w-4" />
-                        Sair
-                      </Button>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="grid gap-4 md:grid-cols-2">
-                    <Info label="Categoria" value={categoriaLabels[perfil.categoria]} />
-                    <Info label="Grupo do taxi" value={perfil.taxi_grupo || '-'} />
-                    <Info label="Estacionamento" value={perfil.estacionamento || '-'} />
-                    <Info label="Numero da vaga / bata" value={perfil.numero_vaga || '-'} />
-                    <Info label="Nome" value={perfil.titular_nome || '-'} />
-                    <Info label="CPF" value={perfil.cpf || '-'} />
-                    <Info label="Placa" value={perfil.placa || '-'} />
-                    <Info label="Veiculo" value={perfil.veiculo || '-'} />
-                    <Info label="Ultimo alvara" value={perfil.ultimo_alvara || '-'} />
-                    <Info label="Exercicio" value={perfil.exercicio || '-'} />
-                    <Info label="Rota" value={perfil.rota || '-'} />
-                    <Info label="Ponto / distrito" value={perfil.ponto_referencia || '-'} />
-                    <Info label="CNH" value={perfil.cnh_numero || '-'} />
-                    <Info label="Validade CNH" value={perfil.validade_cnh || '-'} />
-                  </CardContent>
-                </Card>
-
-                <Card className="border-primary/10 shadow-lg">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-xl">
-                      <CreditCard className="h-5 w-5 text-primary" />
-                      Atualizar dados permitidos
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <form onSubmit={handleSave} className="space-y-4">
-                      <div className="grid gap-4 md:grid-cols-2">
-                        <Field label="Endereco">
-                          <Input value={editForm.endereco || ''} onChange={(event) => setEditForm((current) => ({ ...current, endereco: event.target.value }))} />
+                    </CardHeader>
+                    <CardContent>
+                      <form onSubmit={handleSave} className="space-y-4">
+                        <div className="grid gap-4 sm:grid-cols-2">
+                          <Info label="Nome" value={perfil.titular_nome || '-'} />
+                          <Info label="CPF" value={perfil.cpf || '-'} />
+                        </div>
+                        <div className="grid gap-4 md:grid-cols-2">
+                          <Field label="Endereço">
+                            <Input value={editForm.endereco || ''} onChange={(event) => setEditForm((current) => ({ ...current, endereco: event.target.value }))} placeholder="Rua, número, bairro" />
+                          </Field>
+                          <Field label="Email para notificações">
+                            <Input type="email" value={editForm.email_notificacao || ''} onChange={(event) => setEditForm((current) => ({ ...current, email_notificacao: event.target.value }))} placeholder="seu@email.com" />
+                          </Field>
+                          <Field label="Telefone para notificações">
+                            <Input value={editForm.telefone_notificacao || ''} maxLength={15} onChange={(event) => setEditForm((current) => ({ ...current, telefone_notificacao: maskPhone(event.target.value) }))} placeholder="(00) 00000-0000" />
+                          </Field>
+                          <Field label="Nova senha">
+                            <div className="relative">
+                              <Input type={showNovaSenha ? 'text' : 'password'} placeholder="Opcional" value={editForm.novaSenha} onChange={(event) => setEditForm((current) => ({ ...current, novaSenha: event.target.value }))} className="pr-10" />
+                              <button type="button" onClick={() => setShowNovaSenha(!showNovaSenha)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" aria-label={showNovaSenha ? 'Ocultar senha' : 'Mostrar senha'}>
+                                {showNovaSenha ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                              </button>
+                            </div>
+                          </Field>
+                          <Field label="Confirmar nova senha">
+                            <div className="relative">
+                              <Input type={showConfirmarSenha ? 'text' : 'password'} value={editForm.confirmarNovaSenha} onChange={(event) => setEditForm((current) => ({ ...current, confirmarNovaSenha: event.target.value }))} className="pr-10" />
+                              <button type="button" onClick={() => setShowConfirmarSenha(!showConfirmarSenha)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" aria-label={showConfirmarSenha ? 'Ocultar senha' : 'Mostrar senha'}>
+                                {showConfirmarSenha ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                              </button>
+                            </div>
+                          </Field>
+                        </div>
+                        <Field label="Observações">
+                          <Textarea rows={4} value={editForm.observacoes || ''} onChange={(event) => setEditForm((current) => ({ ...current, observacoes: event.target.value }))} placeholder="Observações adicionais" />
                         </Field>
-                        <Field label="Veiculo">
-                          <Input value={editForm.veiculo || ''} onChange={(event) => setEditForm((current) => ({ ...current, veiculo: event.target.value }))} />
-                        </Field>
-                        <Field label="Placa">
-                          <Input value={editForm.placa || ''} onChange={(event) => setEditForm((current) => ({ ...current, placa: event.target.value.toUpperCase() }))} />
-                        </Field>
-                        <Field label="Email para notificacoes">
-                          <Input type="email" value={editForm.email_notificacao || ''} onChange={(event) => setEditForm((current) => ({ ...current, email_notificacao: event.target.value }))} />
-                        </Field>
-                        <Field label="Telefone para notificacoes">
-                          <Input value={editForm.telefone_notificacao || ''} maxLength={15} onChange={(event) => setEditForm((current) => ({ ...current, telefone_notificacao: maskPhone(event.target.value) }))} />
-                        </Field>
-                        <Field label="Nova senha">
-                          <Input type="password" placeholder="Opcional" value={editForm.novaSenha} onChange={(event) => setEditForm((current) => ({ ...current, novaSenha: event.target.value }))} />
-                        </Field>
-                        <Field label="Confirmar nova senha">
-                          <Input type="password" value={editForm.confirmarNovaSenha} onChange={(event) => setEditForm((current) => ({ ...current, confirmarNovaSenha: event.target.value }))} />
-                        </Field>
-                      </div>
-                      <Field label="Observacoes">
-                        <Textarea rows={4} value={editForm.observacoes || ''} onChange={(event) => setEditForm((current) => ({ ...current, observacoes: event.target.value }))} />
-                      </Field>
-                      <div className="flex items-center gap-3 rounded-md border border-border px-3 py-2">
-                        <Switch checked={editForm.aceita_notificacoes} onCheckedChange={(checked) => setEditForm((current) => ({ ...current, aceita_notificacoes: checked }))} />
-                        <span className="text-sm text-muted-foreground">{editForm.aceita_notificacoes ? 'Receber notificacoes do DEMUTRAN' : 'Notificacoes desativadas'}</span>
-                      </div>
-                      <Button type="submit" className="gap-2" disabled={saving}>
-                        <Save className="h-4 w-4" />
-                        {saving ? 'Salvando...' : 'Salvar alteracoes'}
-                      </Button>
-                    </form>
-                  </CardContent>
-                </Card>
+                        <div className="flex items-center gap-3 rounded-md border border-border px-3 py-2">
+                          <Switch checked={editForm.aceita_notificacoes} onCheckedChange={(checked) => setEditForm((current) => ({ ...current, aceita_notificacoes: checked }))} />
+                          <span className="text-sm text-muted-foreground">{editForm.aceita_notificacoes ? 'Receber notificações do DEMUTRAN' : 'Notificações desativadas'}</span>
+                        </div>
+                        <Button type="submit" className="gap-2" disabled={saving}>
+                          <Save className="h-4 w-4" />
+                          {saving ? 'Salvando...' : 'Salvar alterações'}
+                        </Button>
+                      </form>
+                    </CardContent>
+                  </Card>
+                )}
               </div>
 
-              <aside className="space-y-6">
-                <Card className="border-primary/10 shadow-lg">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-xl">
-                      <Bell className="h-5 w-5 text-primary" />
-                      Notificacoes
-                    </CardTitle>
-                    <p className="text-sm text-muted-foreground">
-                      {unreadCount > 0 ? `${unreadCount} notificacao(oes) nao lida(s)` : 'Nenhuma notificacao pendente'}
-                    </p>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    {notificacoes.length === 0 ? (
-                      <div className="rounded-xl border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">
-                        Nenhuma notificacao enviada pelo DEMUTRAN ate o momento.
-                      </div>
-                    ) : (
-                      notificacoes.map((item) => (
-                        <button
-                          key={item.id}
-                          type="button"
-                          onClick={() => void markAsRead(item.id)}
-                          className={`w-full rounded-2xl border p-4 text-left transition ${item.lida_em ? 'border-slate-200 bg-white' : 'border-amber-200 bg-amber-50/60'}`}
-                        >
-                          <div className="flex items-start justify-between gap-3">
-                            <div>
-                              <p className="text-sm font-bold text-foreground">{item.titulo}</p>
-                              <p className="mt-1 text-xs uppercase tracking-[0.12em] text-muted-foreground">{item.tipo}</p>
+              {showNotificacoes && (
+                <aside className="w-full shrink-0 md:w-80">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2 text-lg">
+                        <Bell className="h-5 w-5 text-primary" />
+                        Notificações
+                      </CardTitle>
+                      <p className="text-sm text-muted-foreground">
+                        {unreadCount > 0 ? `${unreadCount} notificação(ões) não lida(s)` : 'Nenhuma notificação pendente'}
+                      </p>
+                    </CardHeader>
+                    <CardContent className="space-y-3 max-h-[500px] overflow-y-auto">
+                      {notificacoes.length === 0 ? (
+                        <div className="rounded-xl border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">
+                          Nenhuma notificação enviada pelo DEMUTRAN até o momento.
+                        </div>
+                      ) : (
+                        notificacoes.map((item) => (
+                          <button
+                            key={item.id}
+                            type="button"
+                            onClick={() => void markAsRead(item.id)}
+                            className={`w-full rounded-2xl border p-4 text-left transition ${item.lida_em ? 'border-slate-200 bg-white' : 'border-amber-200 bg-amber-50/60'}`}
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <div>
+                                <p className="text-sm font-bold text-foreground">{item.titulo}</p>
+                                <p className="mt-1 text-xs uppercase tracking-[0.12em] text-muted-foreground">{item.tipo}</p>
+                              </div>
+                              {!item.lida_em && <span className="rounded-full bg-amber-500 px-2 py-1 text-[10px] font-bold text-white">Nova</span>}
                             </div>
-                            {!item.lida_em && <span className="rounded-full bg-amber-500 px-2 py-1 text-[10px] font-bold text-white">Nova</span>}
-                          </div>
-                          <p className="mt-3 text-sm leading-6 text-muted-foreground">{item.mensagem}</p>
-                          <p className="mt-3 text-xs text-muted-foreground">{new Date(item.created_at).toLocaleString('pt-BR')}</p>
-                        </button>
-                      ))
-                    )}
-                  </CardContent>
-                </Card>
-              </aside>
+                            <p className="mt-3 text-sm leading-6 text-muted-foreground">{item.mensagem}</p>
+                            <p className="mt-3 text-xs text-muted-foreground">{new Date(item.created_at).toLocaleString('pt-BR')}</p>
+                          </button>
+                        ))
+                      )}
+                    </CardContent>
+                  </Card>
+                </aside>
+              )}
             </div>
-          )}
-        </div>
-      </section>
+          </div>
+        </section>
+      )}
     </DemutranPortalLayout>
   );
 };
+
+function SummaryCard({
+  icon: Icon,
+  label,
+  value,
+  variant = 'default',
+}: {
+  icon: typeof CreditCard;
+  label: string;
+  value: string;
+  variant?: 'success' | 'warning' | 'danger' | 'default';
+}) {
+  const colors = {
+    success: 'border-emerald-200 bg-emerald-50/50 [&_svg]:text-emerald-600',
+    warning: 'border-amber-200 bg-amber-50/50 [&_svg]:text-amber-600',
+    danger: 'border-red-200 bg-red-50/50 [&_svg]:text-red-600',
+    default: 'border-border bg-card [&_svg]:text-primary',
+  };
+  return (
+    <div className={`rounded-xl border p-4 ${colors[variant]}`}>
+      <div className="flex items-center gap-2">
+        <Icon className="h-4 w-4" />
+        <p className="text-xs uppercase tracking-[0.12em] text-muted-foreground">{label}</p>
+      </div>
+      <p className="mt-2 text-sm font-semibold text-foreground">{value}</p>
+    </div>
+  );
+}
+
+function CalendarIcon(props: React.ComponentProps<'svg'>) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+      <line x1="16" y1="2" x2="16" y2="6" />
+      <line x1="8" y1="2" x2="8" y2="6" />
+      <line x1="3" y1="10" x2="21" y2="10" />
+    </svg>
+  );
+}
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (

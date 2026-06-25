@@ -1,9 +1,7 @@
 # Adding Administrator User to Supabase
 
-This document explains how to add the administrator user to your Supabase project with the credentials:
-
-- Email: `socialmidiasmstcaninde@gmail.com`
-- Password: `0413$mstC`
+> **⚠️ ATENÇÃO:** Não armazene senhas ou credenciais neste arquivo.  
+> Use variáveis de ambiente ou Supabase Secrets para gerenciar credenciais.
 
 ## Method 1: Using the Supabase Dashboard (Recommended)
 
@@ -11,8 +9,8 @@ This document explains how to add the administrator user to your Supabase projec
 2. Log in with your Supabase account credentials
 3. Navigate to Authentication → Users
 4. Click "New User"
-5. Enter the email: `socialmidiasmstcaninde@gmail.com`
-6. Set the password: `0413$mstC`
+5. Enter the email for the admin user
+6. Set a secure password
 7. Make sure "Email Confirm" is checked to confirm the user immediately
 8. Click "Create User"
 
@@ -23,6 +21,8 @@ A script has been provided to programmatically create the admin user.
 1. Make sure you have the required environment variables set:
    - `VITE_SUPABASE_URL`: Your Supabase project URL
    - `SUPABASE_SERVICE_ROLE_KEY`: Your Supabase service role key
+   - `ADMIN_EMAIL`: Admin user email
+   - `ADMIN_PASSWORD`: Admin user password
 
 2. Run the script:
    ```bash
@@ -35,6 +35,7 @@ Execute the following SQL command in the SQL Editor of your Supabase Dashboard:
 
 ```sql
 -- Create an authenticated user directly in the auth schema
+-- Substitua 'admin@exemplo.com' e 'senha-segura' pelas credenciais desejadas
 INSERT INTO auth.users (
   instance_id,
   id,
@@ -51,8 +52,8 @@ INSERT INTO auth.users (
   gen_random_uuid(),  -- id
   'authenticated',  -- aud
   'authenticated',  -- role
-  'socialmidiasmstcaninde@gmail.com',  -- email
-  crypt('0413$mstC', gen_salt('bf')),  -- encrypted_password
+  'admin@exemplo.com',  -- email (substitua)
+  crypt('senha-segura', gen_salt('bf')),  -- encrypted_password (substitua)
   NOW(),  -- email_confirmed_at
   NOW(),  -- created_at
   NOW(),  -- updated_at

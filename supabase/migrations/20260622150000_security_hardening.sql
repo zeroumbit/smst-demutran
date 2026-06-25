@@ -207,8 +207,7 @@ BEGIN
       'exercicio', v_concessionario.exercicio,
       'email_notificacao', v_concessionario.email_notificacao,
       'telefone_notificacao', v_concessionario.telefone_notificacao,
-      'aceita_notificacoes', v_concessionario.aceita_notificacoes,
-      'boleto_url', v_concessionario.boleto_url
+      'aceita_notificacoes', v_concessionario.aceita_notificacoes
     );
 
   RETURN;

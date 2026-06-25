@@ -75,6 +75,7 @@ export interface VeiculoRecolhido {
   proprietario_cpf_cnpj: string | null;
   infrator_nome: string | null;
   bairro_apreensao: string | null;
+  logradouro: string | null;
   data_recolhimento: string;
   data_liberacao: string | null;
   motivo: string;
@@ -226,4 +227,26 @@ export interface DemutranRecurso {
   analisado_em: string | null;
   created_at?: string | null;
   updated_at?: string | null;
+}
+
+export type PixChaveTipo = 'email' | 'cpf' | 'cnpj' | 'aleatoria';
+
+export interface ConfiguracaoPagamentoPixManual {
+  chave_tipo: PixChaveTipo;
+  chave_valor: string;
+  qrcode_ativo: boolean;
+  qrcode_url: string | null;
+  favorecido: string;
+  telefone: string;
+}
+
+export interface Configuracao {
+  id: string;
+  grupo: string;
+  tipo: string;
+  config: Record<string, unknown>;
+  ativo: boolean;
+  ordem: number;
+  created_at: string;
+  updated_at: string;
 }

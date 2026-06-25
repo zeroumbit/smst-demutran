@@ -178,7 +178,7 @@ Para resolver este problema:
 2. Vá até as configurações do projeto
 3. Adicione as seguintes variáveis de ambiente:
    - `VITE_SUPABASE_URL`: `https://dtuojkipijsmrmsynqjw.supabase.co`
-   - `VITE_SUPABASE_ANON_KEY`: `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1weHpwcnFxaGNkaXV0bWlubXNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA3MDk4OTMsImV4cCI6MjA3NjI4NTg5M30.JLTwZjIpw_o6aqeTlb-0q7DqwbVehGIEl6myYpf1Mdw`
+   - `VITE_SUPABASE_ANON_KEY`: `<cole-a-chave-anon-do-seu-projeto-Supabase>`
 
 Consulte a documentação adicional para mais detalhes: [FIX_VERCEL_ENV.md](FIX_VERCEL_ENV.md)
 

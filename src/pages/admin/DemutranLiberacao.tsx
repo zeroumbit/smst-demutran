@@ -51,6 +51,7 @@ const emptyApreensaoForm = {
   proprietario_cpf_cnpj: '',
   infrator_nome: '',
   bairro_apreensao: '',
+  logradouro: '',
   data_recolhimento: '',
   motivo: '',
   situacao: 'Apreendido',
@@ -594,6 +595,7 @@ const DemutranLiberacao = () => {
       _municipio: apreensaoForm.municipio.trim() || null,
       _infrator_nome: apreensaoForm.infrator_nome.trim() || null,
       _bairro_apreensao: apreensaoForm.bairro_apreensao.trim() || null,
+      _logradouro: apreensaoForm.logradouro.trim() || null,
       _data_recolhimento: new Date(apreensaoForm.data_recolhimento).toISOString(),
       _motivo: apreensaoForm.motivo.trim(),
       _situacao: apreensaoForm.situacao.trim(),
@@ -1542,108 +1544,129 @@ const DemutranLiberacao = () => {
           onConfirm={handleSubmitApreensao}
           confirmLabel="Salvar apreensao"
         >
-          <div className="space-y-3 py-2">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <Label htmlFor="data_recolhimento">Entrada/Recolhimento *</Label>
-                <Input id="data_recolhimento" type="datetime-local" value={apreensaoForm.data_recolhimento} onChange={(e) => setApreensaoForm({ ...apreensaoForm, data_recolhimento: e.target.value })} />
+          <div className="space-y-4 py-2">
+            <div>
+              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">Sobre a apreensão</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label htmlFor="data_recolhimento">Entrada/Recolhimento *</Label>
+                  <Input id="data_recolhimento" type="datetime-local" placeholder="Selecione a data e hora do recolhimento" value={apreensaoForm.data_recolhimento} onChange={(e) => setApreensaoForm({ ...apreensaoForm, data_recolhimento: e.target.value })} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Onde ele vai ficar *</Label>
+                  <Select value={apreensaoForm.local_custodia} onValueChange={(value) => setApreensaoForm({ ...apreensaoForm, local_custodia: value as VeiculoRecolhido['local_custodia'] })}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o patio de destino" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {custodyOptions.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label>Onde ele vai ficar *</Label>
-                <Select value={apreensaoForm.local_custodia} onValueChange={(value) => setApreensaoForm({ ...apreensaoForm, local_custodia: value as VeiculoRecolhido['local_custodia'] })}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {custodyOptions.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <Label htmlFor="placa">Placa *</Label>
-                <Input id="placa" value={apreensaoForm.placa} onChange={(e) => setApreensaoForm({ ...apreensaoForm, placa: normalizePlate(e.target.value) })} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="chassi">Chassi</Label>
-                <Input id="chassi" value={apreensaoForm.chassi} onChange={(e) => setApreensaoForm({ ...apreensaoForm, chassi: e.target.value.toUpperCase() })} />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="descricao_veiculo">Descricao do veiculo *</Label>
-              <Input id="descricao_veiculo" value={apreensaoForm.descricao_veiculo} onChange={(e) => setApreensaoForm({ ...apreensaoForm, descricao_veiculo: e.target.value })} />
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div className="space-y-2">
-                <Label htmlFor="ano">Ano</Label>
-                <Input id="ano" value={apreensaoForm.ano} onChange={(e) => setApreensaoForm({ ...apreensaoForm, ano: e.target.value })} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="cor">Cor</Label>
-                <Input id="cor" value={apreensaoForm.cor} onChange={(e) => setApreensaoForm({ ...apreensaoForm, cor: e.target.value })} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="modelo">Modelo</Label>
-                <Input id="modelo" value={apreensaoForm.modelo} onChange={(e) => setApreensaoForm({ ...apreensaoForm, modelo: e.target.value })} />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="municipio">Municipio</Label>
-              <Input id="municipio" value={apreensaoForm.municipio} onChange={(e) => setApreensaoForm({ ...apreensaoForm, municipio: e.target.value })} />
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <Label htmlFor="proprietario_nome">Nome do proprietario</Label>
-                <Input id="proprietario_nome" value={apreensaoForm.proprietario_nome} onChange={(e) => setApreensaoForm({ ...apreensaoForm, proprietario_nome: e.target.value })} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="proprietario_cpf_cnpj">CPF/CNPJ do proprietario</Label>
-                <Input id="proprietario_cpf_cnpj" value={apreensaoForm.proprietario_cpf_cnpj} onChange={(e) => setApreensaoForm({ ...apreensaoForm, proprietario_cpf_cnpj: e.target.value })} />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <Label htmlFor="infrator_nome">Nome do infrator</Label>
-                <Input id="infrator_nome" value={apreensaoForm.infrator_nome} onChange={(e) => setApreensaoForm({ ...apreensaoForm, infrator_nome: e.target.value })} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="bairro_apreensao">Bairro / distrito da apreensao</Label>
-                <Input id="bairro_apreensao" value={apreensaoForm.bairro_apreensao} onChange={(e) => setApreensaoForm({ ...apreensaoForm, bairro_apreensao: e.target.value })} />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="space-y-2">
+              <div className="space-y-2 mt-3">
                 <Label htmlFor="motivo">Motivo *</Label>
-                <Textarea id="motivo" rows={3} value={apreensaoForm.motivo} onChange={(e) => setApreensaoForm({ ...apreensaoForm, motivo: e.target.value })} />
+                <Textarea id="motivo" rows={3} placeholder="Descreva o motivo da apreensão" value={apreensaoForm.motivo} onChange={(e) => setApreensaoForm({ ...apreensaoForm, motivo: e.target.value })} />
               </div>
-              <div className="space-y-2">
+
+              <div className="space-y-2 mt-3">
                 <Label htmlFor="situacao">Situacao *</Label>
-                <Textarea id="situacao" rows={3} value={apreensaoForm.situacao} onChange={(e) => setApreensaoForm({ ...apreensaoForm, situacao: e.target.value })} />
+                <Textarea id="situacao" rows={3} placeholder="Descreva a situacao do veiculo" value={apreensaoForm.situacao} onChange={(e) => setApreensaoForm({ ...apreensaoForm, situacao: e.target.value })} />
               </div>
+
+              <div className="space-y-2 mt-3">
+                <Label htmlFor="logradouro">Logradouro</Label>
+                <Input id="logradouro" placeholder="Ex: Rua XV de Novembro, 123" value={apreensaoForm.logradouro} onChange={(e) => setApreensaoForm({ ...apreensaoForm, logradouro: e.target.value })} />
+              </div>
+
+              <div className="space-y-2 mt-3">
+                <Label htmlFor="bairro_apreensao">Bairro / distrito da apreensao</Label>
+                <Input id="bairro_apreensao" placeholder="Ex: Centro, Jardim America..." value={apreensaoForm.bairro_apreensao} onChange={(e) => setApreensaoForm({ ...apreensaoForm, bairro_apreensao: e.target.value })} />
+              </div>
+
+              {apreensaoForm.local_custodia === 'motos_delegacia' && (
+                <div className="space-y-2 mt-3">
+                  <Label htmlFor="numero_liberacao">Liberacao</Label>
+                  <Input id="numero_liberacao" placeholder="Numero do documento de liberacao" value={apreensaoForm.numero_liberacao} onChange={(e) => setApreensaoForm({ ...apreensaoForm, numero_liberacao: e.target.value })} />
+                </div>
+              )}
             </div>
 
-            {apreensaoForm.local_custodia === 'motos_delegacia' && (
-              <div className="space-y-2">
-                <Label htmlFor="numero_liberacao">Liberacao</Label>
-                <Input id="numero_liberacao" value={apreensaoForm.numero_liberacao} onChange={(e) => setApreensaoForm({ ...apreensaoForm, numero_liberacao: e.target.value })} />
-              </div>
-            )}
+            <hr className="border-t border-muted" />
 
-            <div className="space-y-2">
-              <Label htmlFor="observacao">Observacao</Label>
-              <Textarea id="observacao" rows={3} value={apreensaoForm.observacao} onChange={(e) => setApreensaoForm({ ...apreensaoForm, observacao: e.target.value })} />
+              <div>
+                <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">Dados do veículo</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="placa">Placa *</Label>
+                    <Input id="placa" placeholder="ABC-1234" value={apreensaoForm.placa} onChange={(e) => setApreensaoForm({ ...apreensaoForm, placa: normalizePlate(e.target.value) })} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="chassi">Chassi</Label>
+                    <Input id="chassi" placeholder="Numero do chassi" value={apreensaoForm.chassi} onChange={(e) => setApreensaoForm({ ...apreensaoForm, chassi: e.target.value.toUpperCase() })} />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="ano">Ano</Label>
+                    <Input id="ano" placeholder="Ex: 2010" value={apreensaoForm.ano} onChange={(e) => setApreensaoForm({ ...apreensaoForm, ano: e.target.value })} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="cor">Cor</Label>
+                    <Input id="cor" placeholder="Ex: Prata" value={apreensaoForm.cor} onChange={(e) => setApreensaoForm({ ...apreensaoForm, cor: e.target.value })} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="modelo">Modelo</Label>
+                    <Input id="modelo" placeholder="Ex: Uno" value={apreensaoForm.modelo} onChange={(e) => setApreensaoForm({ ...apreensaoForm, modelo: e.target.value })} />
+                  </div>
+                </div>
+
+                <div className="space-y-2 mt-3">
+                  <Label htmlFor="descricao_veiculo">Descricao do veiculo *</Label>
+                  <Input id="descricao_veiculo" placeholder="Ex: Fiat Uno Mille 1.0" value={apreensaoForm.descricao_veiculo} onChange={(e) => setApreensaoForm({ ...apreensaoForm, descricao_veiculo: e.target.value })} />
+                </div>
+
+                <div className="space-y-2 mt-3">
+                  <Label htmlFor="municipio">Municipio</Label>
+                  <Input id="municipio" placeholder="Ex: Sao Paulo" value={apreensaoForm.municipio} onChange={(e) => setApreensaoForm({ ...apreensaoForm, municipio: e.target.value })} />
+                </div>
+              </div>
+
+              <hr className="border-t border-muted" />
+
+              <div>
+                <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">Dados do condutor</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="sm:col-span-2 space-y-2">
+                    <Label htmlFor="proprietario_nome">Nome do proprietario</Label>
+                    <Input id="proprietario_nome" placeholder="Nome completo do proprietario" value={apreensaoForm.proprietario_nome} onChange={(e) => setApreensaoForm({ ...apreensaoForm, proprietario_nome: e.target.value })} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="proprietario_cpf_cnpj">CPF/CNPJ do proprietario</Label>
+                    <Input id="proprietario_cpf_cnpj" placeholder="000.000.000-00" value={apreensaoForm.proprietario_cpf_cnpj} onChange={(e) => setApreensaoForm({ ...apreensaoForm, proprietario_cpf_cnpj: e.target.value })} />
+                  </div>
+                </div>
+
+                <div className="space-y-2 mt-3">
+                  <Label htmlFor="infrator_nome">Nome do infrator</Label>
+                  <Input id="infrator_nome" placeholder="Nome completo do infrator (se diferente do proprietario)" value={apreensaoForm.infrator_nome} onChange={(e) => setApreensaoForm({ ...apreensaoForm, infrator_nome: e.target.value })} />
+                </div>
+              </div>
+
+            <hr className="border-t border-muted" />
+
+            <div>
+              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">Outras informações</h3>
+              <div className="space-y-2">
+                <Label htmlFor="observacao">Observacao</Label>
+                <Textarea id="observacao" rows={3} placeholder="Informacoes adicionais sobre a apreensao" value={apreensaoForm.observacao} onChange={(e) => setApreensaoForm({ ...apreensaoForm, observacao: e.target.value })} />
+              </div>
             </div>
           </div>
         </ResponsiveDialog>

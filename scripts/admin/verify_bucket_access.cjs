@@ -1,1 +1,28 @@
-const { createClient } = require('@supabase/supabase-js');const SUPABASE_URL = 'https://jpztntmwmrhdobxsyulj.supabase.co';const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1weHpwcnFxaGNkaXV0bWlubXNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA3MDk4OTMsImV4cCI6MjA3NjI4NTg5M30.JLTwZjIpw_o6aqeTlb-0q7DqwbVehGIEl6myYpf1Mdw';const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);async function checkBucket() {    console.log('🔍 Verificando acesso ao bucket "documentos" com Anon Key...');    try {        // Tentar listar arquivos no bucket (requer policy SELECT)        const { data, error } = await supabase.storage.from('documentos').list();        if (error) {            console.error('❌ Erro ao acessar bucket:', error.message);            if (error.message.includes('Bucket not found')) {                console.log('   O bucket não foi encontrado ou não está acessível publicamente.');            }        } else {            console.log('✅ Acesso ao bucket bem sucedido!');            console.log(`   Arquivos encontrados: ${data.length}`);        }        // Tentar obter URL pública de um arquivo fictício        const { data: publicUrlData } = supabase.storage.from('documentos').getPublicUrl('test.pdf');        console.log('ℹ️  URL Pública de teste:', publicUrlData.publicUrl);    } catch (err) {        console.error('❌ Erro inesperado:', err.message);    }}checkBucket();
+const { createClient } = require('@supabase/supabase-js');
+const SUPABASE_URL = process.env.VITE_SUPABASE_URL;
+const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY;
+if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+  console.error('ERRO: Defina VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY no .env');
+  process.exit(1);
+}
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+async function checkBucket() {
+    console.log('🔍 Verificando acesso ao bucket "documentos" com Anon Key...');
+    try {
+        const { data, error } = await supabase.storage.from('documentos').list();
+        if (error) {
+            console.error('❌ Erro ao acessar bucket:', error.message);
+            if (error.message.includes('Bucket not found')) {
+                console.log('   O bucket não foi encontrado ou não está acessível publicamente.');
+            }
+        } else {
+            console.log('✅ Acesso ao bucket bem sucedido!');
+            console.log(`   Arquivos encontrados: ${data.length}`);
+        }
+        const { data: publicUrlData } = supabase.storage.from('documentos').getPublicUrl('test.pdf');
+        console.log('ℹ️  URL Pública de teste:', publicUrlData.publicUrl);
+    } catch (err) {
+        console.error('❌ Erro inesperado:', err.message);
+    }
+}
+checkBucket();

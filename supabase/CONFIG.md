@@ -7,7 +7,7 @@ Este arquivo resume as configurações importantes para o desenvolvimento e depl
 - URL: https://dtuojkipijsmrmsynqjw.supabase.co
 
 ## Dados Importantes
-- Anon Public Key: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1weHpwcnFxaGNkaXV0bWlubXNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA3MDk4OTMsImV4cCI6MjA3NjI4NTg5M30.JLTwZjIpw_o6aqeTlb-0q7DqwbVehGIEl6myYpf1Mdw
+- Anon Public Key: (definir via variável de ambiente VITE_SUPABASE_ANON_KEY)
 - Service Role Key: (definir via variável de ambiente SUPABASE_SERVICE_ROLE_KEY)
 
 ## Tabelas do Banco de Dados

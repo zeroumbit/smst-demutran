@@ -1,5 +1,5 @@
 import { ChangeEvent, useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, Bell, Eye, FileSpreadsheet, IdCard, Loader2, Plus, Printer, Search, SlidersHorizontal, Upload, X } from 'lucide-react';
+import { AlertTriangle, Bell, Eye, EyeOff, FileSpreadsheet, IdCard, Loader2, Plus, Printer, Search, SlidersHorizontal, Upload, X } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { DataTable } from '@/components/admin/DataTable';
@@ -18,6 +18,7 @@ import { toast } from '@/hooks/use-toast';
 import { buildReportFileName, exportReportCsv, formatReportDate, openPdfPrintReport, printHtml } from '@/lib/reports';
 import { type ConcessionarioFinanceiroStatus, getConcessionarioFinancialCopy, getConcessionarioFinancialStatus } from '@/lib/demutranConcessionarioFinanceiro';
 import { supabase } from '@/lib/supabase';
+import { maskCpf, isValidCpf } from '@/lib/masks';
 import { cn } from '@/lib/utils';
 import type { DemutranConcessionario, Setor } from '@/types/admin';
 
@@ -332,6 +333,8 @@ const DemutranConcessionarios = () => {
   const [editingItem, setEditingItem] = useState<DemutranConcessionario | null>(null);
   const [viewingItem, setViewingItem] = useState<DemutranConcessionario | null>(null);
   const [formData, setFormData] = useState<FormData>(initialForm);
+  const [showSenhaAcesso, setShowSenhaAcesso] = useState(false);
+  const [showConfirmarSenha, setShowConfirmarSenha] = useState(false);
   const [notifyItem, setNotifyItem] = useState<DemutranConcessionario | null>(null);
   const [notifyForm, setNotifyForm] = useState({ titulo: '', mensagem: '', tipo: 'geral' });
   const [sendingNotification, setSendingNotification] = useState(false);
@@ -1359,7 +1362,7 @@ const DemutranConcessionarios = () => {
                   </select>
                 </Field>
                 <Field label="Numero da vaga / bata">
-                  <Input value={formData.numero_vaga} onChange={(event) => setFormData((current) => ({ ...current, numero_vaga: event.target.value }))} />
+                  <Input value={formData.numero_vaga} onChange={(event) => setFormData((current) => ({ ...current, numero_vaga: event.target.value }))} placeholder="Ex: 123" />
                 </Field>
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
@@ -1374,24 +1377,25 @@ const DemutranConcessionarios = () => {
                   <Input
                     value={formData.estacionamento}
                     onChange={(event) => setFormData((current) => ({ ...current, estacionamento: event.target.value }))}
+                    placeholder="Nome do estacionamento"
                   />
                 </Field>
               </div>
               <Field label="Ponto / distrito / referencia">
-                <Input value={formData.ponto_referencia} onChange={(event) => setFormData((current) => ({ ...current, ponto_referencia: event.target.value }))} />
+                <Input value={formData.ponto_referencia} onChange={(event) => setFormData((current) => ({ ...current, ponto_referencia: event.target.value }))} placeholder="Ex: Centro, Distrito Industrial" />
               </Field>
               <Field label="Nome do concessionario *">
-                <Input value={formData.titular_nome} onChange={(event) => setFormData((current) => ({ ...current, titular_nome: event.target.value }))} />
+                <Input value={formData.titular_nome} onChange={(event) => setFormData((current) => ({ ...current, titular_nome: event.target.value }))} placeholder="Nome completo do concessionario" />
               </Field>
               <div className="grid gap-3 sm:grid-cols-3">
                 <Field label="CPF">
-                  <Input value={formData.cpf} onChange={(event) => setFormData((current) => ({ ...current, cpf: normalizeCpf(event.target.value) }))} />
+                  <Input value={formData.cpf} onChange={(event) => setFormData((current) => ({ ...current, cpf: maskCpf(event.target.value) }))} placeholder="000.000.000-00" />
                 </Field>
                 <Field label="Email para notificacoes">
-                  <Input value={formData.email_notificacao} onChange={(event) => setFormData((current) => ({ ...current, email_notificacao: event.target.value }))} />
+                  <Input value={formData.email_notificacao} onChange={(event) => setFormData((current) => ({ ...current, email_notificacao: event.target.value }))} type="email" placeholder="concessionario@email.com" />
                 </Field>
                 <Field label="Telefone para notificacoes">
-                  <Input value={formData.telefone_notificacao} onChange={(event) => setFormData((current) => ({ ...current, telefone_notificacao: event.target.value }))} />
+                  <Input value={formData.telefone_notificacao} onChange={(event) => setFormData((current) => ({ ...current, telefone_notificacao: event.target.value }))} placeholder="(00) 00000-0000" />
                 </Field>
               </div>
             </div>
@@ -1400,23 +1404,23 @@ const DemutranConcessionarios = () => {
               <h3 className="text-sm font-bold uppercase tracking-[0.12em] text-slate-500">Dados do veiculo</h3>
               <div className="grid gap-3 sm:grid-cols-2">
                 <Field label="Veiculo">
-                  <Input value={formData.veiculo} onChange={(event) => setFormData((current) => ({ ...current, veiculo: event.target.value }))} />
+                  <Input value={formData.veiculo} onChange={(event) => setFormData((current) => ({ ...current, veiculo: event.target.value }))} placeholder="Ex: Honda CG 150" />
                 </Field>
                 <Field label="Placa">
-                  <Input value={formData.placa} onChange={(event) => setFormData((current) => ({ ...current, placa: normalizePlate(event.target.value) }))} />
+                  <Input value={formData.placa} onChange={(event) => setFormData((current) => ({ ...current, placa: normalizePlate(event.target.value) }))} placeholder="ABC-1234" />
                 </Field>
                 <Field label="Fabricacao">
-                  <Input value={formData.fabricacao} onChange={(event) => setFormData((current) => ({ ...current, fabricacao: event.target.value }))} />
+                  <Input value={formData.fabricacao} onChange={(event) => setFormData((current) => ({ ...current, fabricacao: event.target.value }))} placeholder="Ex: 2020" />
                 </Field>
                 <Field label="Ultimo alvara">
                   <Input type="date" value={formData.ultimo_alvara} onChange={(event) => setFormData((current) => ({ ...current, ultimo_alvara: event.target.value }))} />
                 </Field>
               </div>
               <Field label="Exercicio">
-                <Input value={formData.exercicio} onChange={(event) => setFormData((current) => ({ ...current, exercicio: event.target.value }))} />
+                <Input value={formData.exercicio} onChange={(event) => setFormData((current) => ({ ...current, exercicio: event.target.value }))} placeholder="Ex: 2024" />
               </Field>
               <Field label="Rota">
-                <Input value={formData.rota} onChange={(event) => setFormData((current) => ({ ...current, rota: event.target.value }))} />
+                <Input value={formData.rota} onChange={(event) => setFormData((current) => ({ ...current, rota: event.target.value }))} placeholder="Ex: Caninde - Fortaleza" />
               </Field>
             </div>
 
@@ -1424,28 +1428,28 @@ const DemutranConcessionarios = () => {
               <h3 className="text-sm font-bold uppercase tracking-[0.12em] text-slate-500">Dados pessoais</h3>
               <div className="grid gap-3 sm:grid-cols-2">
                 <Field label="Numero da CNH">
-                  <Input value={formData.cnh_numero} onChange={(event) => setFormData((current) => ({ ...current, cnh_numero: event.target.value }))} />
+                  <Input value={formData.cnh_numero} onChange={(event) => setFormData((current) => ({ ...current, cnh_numero: event.target.value }))} placeholder="Numero do documento" />
                 </Field>
                 <Field label="Validade da CNH">
                   <Input type="date" value={formData.validade_cnh} onChange={(event) => setFormData((current) => ({ ...current, validade_cnh: event.target.value }))} />
                 </Field>
                 <Field label="Atividade remunerada">
-                  <Input value={formData.atividade_remunerada} onChange={(event) => setFormData((current) => ({ ...current, atividade_remunerada: event.target.value }))} />
+                  <Input value={formData.atividade_remunerada} onChange={(event) => setFormData((current) => ({ ...current, atividade_remunerada: event.target.value }))} placeholder="Ex: Motorista de taxi" />
                 </Field>
                 <Field label="Categoria CNH">
-                  <Input value={formData.categoria_cnh} onChange={(event) => setFormData((current) => ({ ...current, categoria_cnh: event.target.value }))} />
+                  <Input value={formData.categoria_cnh} onChange={(event) => setFormData((current) => ({ ...current, categoria_cnh: event.target.value }))} placeholder="Ex: A, B, AB" />
                 </Field>
                 <Field label="Curso">
-                  <Input value={formData.curso} onChange={(event) => setFormData((current) => ({ ...current, curso: event.target.value }))} />
+                  <Input value={formData.curso} onChange={(event) => setFormData((current) => ({ ...current, curso: event.target.value }))} placeholder="Ex: Curso de condutor" />
                 </Field>
                 <Field label="Inicio da atividade">
                   <Input type="date" value={formData.inicio_atividade} onChange={(event) => setFormData((current) => ({ ...current, inicio_atividade: event.target.value }))} />
                 </Field>
                 <Field label="Motorista auxiliar">
-                  <Input value={formData.motorista_auxiliar} onChange={(event) => setFormData((current) => ({ ...current, motorista_auxiliar: event.target.value }))} />
+                  <Input value={formData.motorista_auxiliar} onChange={(event) => setFormData((current) => ({ ...current, motorista_auxiliar: event.target.value }))} placeholder="Nome completo" />
                 </Field>
                 <Field label="CNH auxiliar / registro">
-                  <Input value={formData.cnh_auxiliar} onChange={(event) => setFormData((current) => ({ ...current, cnh_auxiliar: event.target.value }))} />
+                  <Input value={formData.cnh_auxiliar} onChange={(event) => setFormData((current) => ({ ...current, cnh_auxiliar: event.target.value }))} placeholder="Numero do documento" />
                 </Field>
                 <Field label="Validade CNH auxiliar">
                   <Input type="date" value={formData.validade_cnh_auxiliar} onChange={(event) => setFormData((current) => ({ ...current, validade_cnh_auxiliar: event.target.value }))} />
@@ -1456,7 +1460,7 @@ const DemutranConcessionarios = () => {
             <div className="space-y-3">
               <h3 className="text-sm font-bold uppercase tracking-[0.12em] text-slate-500">Endereco</h3>
               <Field label="Endereco">
-                <Input value={formData.endereco} onChange={(event) => setFormData((current) => ({ ...current, endereco: event.target.value }))} />
+                <Input value={formData.endereco} onChange={(event) => setFormData((current) => ({ ...current, endereco: event.target.value }))} placeholder="Rua, numero, bairro, cidade" />
               </Field>
             </div>
 
@@ -1471,7 +1475,7 @@ const DemutranConcessionarios = () => {
             <div className="space-y-3">
               <h3 className="text-sm font-bold uppercase tracking-[0.12em] text-slate-500">Observacoes</h3>
               <Field label="Observacoes">
-                <Textarea rows={3} value={formData.observacoes} onChange={(event) => setFormData((current) => ({ ...current, observacoes: event.target.value }))} />
+                <Textarea rows={3} value={formData.observacoes} onChange={(event) => setFormData((current) => ({ ...current, observacoes: event.target.value }))} placeholder="Informacoes adicionais sobre o concessionario" />
               </Field>
             </div>
 
@@ -1486,19 +1490,32 @@ const DemutranConcessionarios = () => {
               </div>
               <div className="grid gap-4 md:grid-cols-2">
                 <Field label={editingItem ? 'Senha de acesso' : 'Senha de acesso *'}>
-                  <Input
-                    type="password"
-                    value={formData.senha_acesso}
-                    onChange={(event) => setFormData((current) => ({ ...current, senha_acesso: event.target.value }))}
-                    placeholder={editingItem ? 'Digite para criar ou redefinir a senha' : 'Minimo 6 caracteres'}
-                  />
+                  <div className="relative">
+                    <Input
+                      type={showSenhaAcesso ? 'text' : 'password'}
+                      value={formData.senha_acesso}
+                      onChange={(event) => setFormData((current) => ({ ...current, senha_acesso: event.target.value }))}
+                      placeholder={editingItem ? 'Digite para criar ou redefinir a senha' : 'Minimo 6 caracteres'}
+                      className="pr-10"
+                    />
+                    <button type="button" onClick={() => setShowSenhaAcesso(!showSenhaAcesso)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" aria-label={showSenhaAcesso ? 'Ocultar senha' : 'Mostrar senha'}>
+                      {showSenhaAcesso ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
                 </Field>
                 <Field label={editingItem ? 'Confirmar senha de acesso' : 'Confirmar senha *'}>
-                  <Input
-                    type="password"
-                    value={formData.confirmar_senha_acesso}
-                    onChange={(event) => setFormData((current) => ({ ...current, confirmar_senha_acesso: event.target.value }))}
-                  />
+                  <div className="relative">
+                    <Input
+                      type={showConfirmarSenha ? 'text' : 'password'}
+                      value={formData.confirmar_senha_acesso}
+                      onChange={(event) => setFormData((current) => ({ ...current, confirmar_senha_acesso: event.target.value }))}
+                      placeholder="Repita a senha"
+                      className="pr-10"
+                    />
+                    <button type="button" onClick={() => setShowConfirmarSenha(!showConfirmarSenha)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" aria-label={showConfirmarSenha ? 'Ocultar senha' : 'Mostrar senha'}>
+                      {showConfirmarSenha ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
                 </Field>
               </div>
               <p className="text-xs text-muted-foreground">

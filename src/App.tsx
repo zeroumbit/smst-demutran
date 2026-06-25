@@ -55,6 +55,7 @@ const AdminDemutranMidias = React.lazy(() => import("./pages/admin/DemutranMidia
 const AdminMidias = React.lazy(() => import("./pages/admin/MidiasPage"));
 const AdminDemutranConteudos = React.lazy(() => import("./pages/admin/DemutranConteudos"));
 const AdminProfile = React.lazy(() => import("./pages/admin/Profile"));
+const AdminConfiguracoes = React.lazy(() => import("./pages/admin/Configuracoes"));
 
 const queryClient = new QueryClient();
 
@@ -200,6 +201,13 @@ const App = () => (
               <SuspenseWrapper>
                 <ProtectedRoute allowedPapeis={['super_admin', 'gestor', 'admin_setor', 'tecnico']}>
                   <AdminProfile />
+                </ProtectedRoute>
+              </SuspenseWrapper>
+            } />
+            <Route path="/admin/configuracoes" element={
+              <SuspenseWrapper>
+                <ProtectedRoute allowedPapeis={['super_admin']}>
+                  <AdminConfiguracoes />
                 </ProtectedRoute>
               </SuspenseWrapper>
             } />

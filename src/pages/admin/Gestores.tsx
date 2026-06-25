@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Pencil, Plus, Trash2 } from 'lucide-react';
+import { Eye, EyeOff, Pencil, Plus, Trash2 } from 'lucide-react';
 import { useConfirmDialog } from '@/components/ui/use-confirm-dialog';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { DataTable } from '@/components/admin/DataTable';
@@ -52,6 +52,7 @@ const GestoresPage = () => {
   const [loading, setLoading] = useState(true);
   const [formData, setFormData] = useState(initialForm);
   const [editingItem, setEditingItem] = useState<GestorRow | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
 
   const loadData = async () => {
     setLoading(true);
@@ -378,13 +379,19 @@ const GestoresPage = () => {
 
             <div className="space-y-2">
               <Label htmlFor="password">Senha</Label>
-              <Input
-                id="password"
-                type="password"
-                value={formData.password}
-                onChange={(event) => setFormData((current) => ({ ...current, password: event.target.value }))}
-                disabled={Boolean(editingItem)}
-              />
+              <div className="relative">
+                <Input
+                  id="password"
+                  type={showPassword ? 'text' : 'password'}
+                  value={formData.password}
+                  onChange={(event) => setFormData((current) => ({ ...current, password: event.target.value }))}
+                  disabled={Boolean(editingItem)}
+                  className="pr-10"
+                />
+                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}>
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
               {editingItem && (
                 <p className="text-xs text-muted-foreground">
                   A troca de senha do gestor sera tratada em fluxo proprio; aqui editamos apenas dados cadastrais e status.

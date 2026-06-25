@@ -55,11 +55,11 @@ export function ConsentBar() {
               <p className="text-sm font-bold text-foreground">Privacidade e Termos</p>
               <p className="text-xs sm:text-sm leading-relaxed text-muted-foreground">
                 Ao continuar navegando, voce aceita nossos{" "}
-                <Link to="/termos-de-uso" className="font-semibold text-primary underline underline-offset-2 hover:text-primary/80">
+                <Link to="/termos-de-uso" target="_blank" rel="noopener noreferrer" className="font-semibold text-primary underline underline-offset-2 hover:text-primary/80">
                   Termos de Uso
                 </Link>{" "}
                 e{" "}
-                <Link to="/politica-de-privacidade" className="font-semibold text-primary underline underline-offset-2 hover:text-primary/80">
+                <Link to="/politica-de-privacidade" target="_blank" rel="noopener noreferrer" className="font-semibold text-primary underline underline-offset-2 hover:text-primary/80">
                   Politica de Privacidade
                 </Link>.
               </p>

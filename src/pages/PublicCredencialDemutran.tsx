@@ -1,5 +1,5 @@
 import { FormEvent, useRef, useState } from 'react';
-import { Accessibility, FileSearch, FileText, ShieldCheck, Upload } from 'lucide-react';
+import { Accessibility, FileSearch, FileText, ShieldCheck, Smartphone, Upload } from 'lucide-react';
 import Hero from '@/components/shared/Hero';
 import { DemutranPortalLayout } from '@/components/demutran/DemutranPortalLayout';
 import { TermsGate } from '@/components/shared/TermsGate';
@@ -564,6 +564,59 @@ const PublicCredencialDemutran = () => {
                 </CardContent>
               </Card>
               </TermsGate>
+
+              <div className="overflow-hidden rounded-xl border border-primary/10 bg-gradient-to-br from-blue-50 to-white shadow-sm">
+                <div className="flex flex-col items-center gap-6 p-6 md:flex-row md:p-8">
+                  <div className="shrink-0">
+                    <img
+                      src="/images/cnh-do-brasil.webp"
+                      alt="CNH do Brasil"
+                      className="h-28 w-28 rounded-2xl object-cover shadow-md md:h-36 md:w-36"
+                    />
+                  </div>
+                  <div className="flex flex-1 flex-col items-center gap-5 text-center md:items-start md:text-left">
+                    <div>
+                      <div className="mb-2 flex items-center gap-2">
+                        <Smartphone className="h-5 w-5 text-primary" />
+                        <h3 className="text-lg font-bold text-foreground">CNH Digital</h3>
+                      </div>
+                      <p className="text-sm leading-relaxed text-muted-foreground">
+                        A CNH Digital (e-CNH) é a versão eletrônica da Carteira Nacional de Habilitação, com
+                        validade em todo o território nacional. Ela pode ser utilizada no lugar do documento
+                        impresso e está disponível gratuitamente para todos os condutores habilitados.
+                        Baixe o aplicativo oficial e tenha sua CNH sempre à mão no celular.
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <a
+                        href="https://play.google.com/store/apps/details?id=br.gov.serpro.cnhe"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="transition-opacity hover:opacity-80"
+                      >
+                        <img
+                          src="/images/Google_Play.svg"
+                          alt="Google Play"
+                          className="h-[86px] md:h-[101px]"
+                        />
+                      </a>
+                      <div className="h-10 w-px bg-border" />
+                      <a
+                        href="https://apps.apple.com/br/app/cnh-do-brasil/id1275057217"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="transition-opacity hover:opacity-80"
+                      >
+                        <img
+                          src="/images/App_Store.svg"
+                          alt="App Store"
+                          className="h-12 md:h-14"
+                        />
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              </div>
 
               {protocol && (
                 <Card className="border-emerald-200 bg-emerald-50/40">
