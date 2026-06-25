@@ -139,6 +139,8 @@ export interface DemutranConcessionario {
   aceita_notificacoes: boolean;
   importado_planilha: boolean;
   ativo: boolean;
+  concessao_arquivo_url: string | null;
+  concessao_arquivo_nome: string | null;
   created_at?: string | null;
   updated_at?: string | null;
 }

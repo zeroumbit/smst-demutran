@@ -1,17 +1,18 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { AlertTriangle, Bell, CarFront, CheckCircle, Clock, CreditCard, Eye, EyeOff, Home, KeyRound, LogOut, Printer, Save, ScrollText, Send, User, UserCircle, XCircle } from 'lucide-react';
+import { AlertTriangle, Bell, CarFront, CheckCircle, Clock, CreditCard, Eye, EyeOff, Home, KeyRound, LogOut, Printer, Save, ScrollText, Send, User, UserCircle, X, XCircle } from 'lucide-react';
 import { DemutranPortalLayout } from '@/components/demutran/DemutranPortalLayout';
 import { TermsGate } from '@/components/shared/TermsGate';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { toast } from '@/hooks/use-toast';
 import { getConcessionarioFinancialCopy } from '@/lib/demutranConcessionarioFinanceiro';
@@ -92,6 +93,29 @@ const PublicConcessionarioDemutran = () => {
   const [veiculoForm, setVeiculoForm] = useState({ veiculo: '', placa: '', fabricacao: '', rota: '' });
   const [solicitandoVeiculo, setSolicitandoVeiculo] = useState(false);
   const [showConfirmTroca, setShowConfirmTroca] = useState(false);
+  const [dismissedDebitoBanner, setDismissedDebitoBanner] = useState(false);
+
+  // Estados para Taxas de Serviços
+  const [taxas, setTaxas] = useState<any[]>([]);
+  const [loadingTaxas, setLoadingTaxas] = useState(false);
+  const [activeTabTaxas, setActiveTabTaxas] = useState<'demutran' | 'carro_horario' | 'mototaxi'>('demutran');
+
+  const loadTaxasPublicas = async () => {
+    setLoadingTaxas(true);
+    try {
+      const { data, error } = await supabase
+        .from('demutran_taxas')
+        .select('*')
+        .order('created_at', { ascending: true });
+      if (!error && data) {
+        setTaxas(data);
+      }
+    } catch (e) {
+      console.error('Erro ao carregar taxas públicas:', e);
+    } finally {
+      setLoadingTaxas(false);
+    }
+  };
 
   const loadAlteracoes = async (token: string) => {
     if (!token) return;
@@ -144,6 +168,7 @@ const PublicConcessionarioDemutran = () => {
       setSessionToken(stored);
       void loadPerfil(stored);
     }
+    void loadTaxasPublicas();
   }, []);
 
   useEffect(() => {
@@ -322,47 +347,124 @@ const PublicConcessionarioDemutran = () => {
     <DemutranPortalLayout>
       {!perfil ? (
         <section className="bg-background py-10 md:py-16">
-          <div className="mx-auto max-w-xl px-4 sm:px-6">
-            <TermsGate title="Aceite os termos para acessar" description="Para acessar os dados do concessionario, voce precisa aceitar nossos Termos de Uso e Politica de Privacidade.">
-              <Card className="border-primary/10 shadow-lg">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-xl">
-                    <KeyRound className="h-5 w-5 text-primary" />
-                    Entrar
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <form onSubmit={handleLogin} className="space-y-4">
-                    <div className="space-y-2">
-                      <Label>CPF</Label>
-                      <Input value={loginForm.cpf} maxLength={14} onChange={(event) => setLoginForm((current) => ({ ...current, cpf: maskCpf(event.target.value) }))} placeholder="000.000.000-00" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Senha</Label>
-                      <div className="relative">
-                        <Input
-                          type={showSenha ? 'text' : 'password'}
-                          value={loginForm.senha}
-                          onChange={(event) => setLoginForm((current) => ({ ...current, senha: event.target.value }))}
-                          className="pr-10"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowSenha((prev) => !prev)}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                          tabIndex={-1}
-                        >
-                          {showSenha ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                        </button>
+          <div className="mx-auto max-w-6xl px-4 sm:px-6">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+              {/* Login do Concessionário */}
+              <div className="lg:col-span-5">
+                <TermsGate title="Aceite os termos para acessar" description="Para acessar os dados do concessionario, voce precisa aceitar nossos Termos de Uso e Politica de Privacidade.">
+                  <Card className="border-primary/10 shadow-lg">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2 text-xl">
+                        <KeyRound className="h-5 w-5 text-primary" />
+                        Entrar
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <form onSubmit={handleLogin} className="space-y-4">
+                        <div className="space-y-2">
+                          <Label>CPF</Label>
+                          <Input value={loginForm.cpf} maxLength={14} onChange={(event) => setLoginForm((current) => ({ ...current, cpf: maskCpf(event.target.value) }))} placeholder="000.000.000-00" />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Senha</Label>
+                          <div className="relative">
+                            <Input
+                              type={showSenha ? 'text' : 'password'}
+                              value={loginForm.senha}
+                              onChange={(event) => setLoginForm((current) => ({ ...current, senha: event.target.value }))}
+                              className="pr-10"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowSenha((prev) => !prev)}
+                              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                              tabIndex={-1}
+                            >
+                              {showSenha ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                            </button>
+                          </div>
+                        </div>
+                        <Button type="submit" className="w-full" disabled={loading}>
+                          {loading ? 'Entrando...' : 'Acessar meus dados'}
+                        </Button>
+                      </form>
+                    </CardContent>
+                  </Card>
+                </TermsGate>
+              </div>
+
+              {/* Tabela Explicativa de Preços (Pública) */}
+              <div className="lg:col-span-7 space-y-6">
+                <Card className="border-border shadow-md">
+                  <CardHeader className="pb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="rounded-[14px] bg-primary/10 p-2.5 text-primary">
+                        <CreditCard className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <CardTitle>Tabela de Preços e Taxas Vigentes</CardTitle>
+                        <CardDescription>Consulte os valores oficiais das taxas de serviços cobrados pelo DEMUTRAN.</CardDescription>
                       </div>
                     </div>
-                    <Button type="submit" className="w-full" disabled={loading}>
-                      {loading ? 'Entrando...' : 'Acessar meus dados'}
-                    </Button>
-                  </form>
-                </CardContent>
-              </Card>
-            </TermsGate>
+                  </CardHeader>
+                  <CardContent>
+                    {loadingTaxas ? (
+                      <p className="text-sm text-muted-foreground text-center py-6">Carregando taxas vigentes...</p>
+                    ) : (
+                      <Tabs value={activeTabTaxas} onValueChange={(value) => setActiveTabTaxas(value as any)} className="w-full">
+                        <TabsList className="grid w-full grid-cols-3 mb-6 bg-muted/60 p-1 rounded-xl">
+                          <TabsTrigger value="demutran" className="rounded-lg text-xs font-semibold py-2">DEMUTRAN</TabsTrigger>
+                          <TabsTrigger value="carro_horario" className="rounded-lg text-xs font-semibold py-2">Carro Horário</TabsTrigger>
+                          <TabsTrigger value="mototaxi" className="rounded-lg text-xs font-semibold py-2">Mototaxistas</TabsTrigger>
+                        </TabsList>
+
+                        {['demutran', 'carro_horario', 'mototaxi'].map((tabTipo) => {
+                          const filteredTaxas = taxas.filter((taxa) => taxa.tipo === tabTipo);
+                          return (
+                            <TabsContent key={tabTipo} value={tabTipo} className="mt-0">
+                              {filteredTaxas.length === 0 ? (
+                                <div className="flex flex-col items-center justify-center py-8 text-center border border-dashed rounded-2xl bg-muted/10">
+                                  <p className="text-sm text-muted-foreground">Nenhuma taxa cadastrada ou ativa.</p>
+                                </div>
+                              ) : (
+                                <div className="overflow-hidden rounded-xl border border-border bg-card">
+                                  <table className="w-full text-left text-sm border-collapse">
+                                    <thead>
+                                      <tr className="border-b border-border bg-muted/40 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                                        <th className="px-4 py-3.5 font-semibold">Serviço</th>
+                                        <th className="px-4 py-3.5 text-right font-semibold">Valor</th>
+                                        <th className="px-4 py-3.5 font-semibold">Observação</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-border">
+                                      {filteredTaxas.map((taxa) => (
+                                        <tr key={taxa.id} className="transition-colors hover:bg-muted/5">
+                                          <td className="px-4 py-3 text-xs font-medium text-foreground">{taxa.servico}</td>
+                                          <td className="px-4 py-3 text-right text-xs font-semibold text-foreground">
+                                            {taxa.valor !== null ? (
+                                              new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(taxa.valor)
+                                            ) : (
+                                              <span className="text-muted-foreground italic">—</span>
+                                            )}
+                                          </td>
+                                          <td className="px-4 py-3 text-[11px] text-muted-foreground">
+                                            {taxa.observacao || <span className="italic text-muted-foreground/30">—</span>}
+                                          </td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              )}
+                            </TabsContent>
+                          );
+                        })}
+                      </Tabs>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
           </div>
         </section>
       ) : (
@@ -431,6 +533,21 @@ const PublicConcessionarioDemutran = () => {
                       </div>
                     </div>
 
+                    {financialStatus?.status === 'em_debito' && !dismissedDebitoBanner && (
+                      <div className="rounded-xl border border-red-200 bg-red-50 p-4 flex items-start justify-between gap-3">
+                        <div className="flex items-start gap-3">
+                          <AlertTriangle className="h-5 w-5 text-red-600 shrink-0 mt-0.5" />
+                          <div>
+                            <p className="text-sm font-bold text-red-800">Você está em débito</p>
+                            <p className="mt-1 text-sm text-red-700">{financialStatus.description}</p>
+                          </div>
+                        </div>
+                        <button type="button" onClick={() => setDismissedDebitoBanner(true)} className="shrink-0 rounded-full p-1 text-red-500 hover:bg-red-200 hover:text-red-700 transition-colors">
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                    )}
+
                     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                       <SummaryCard
                         icon={CreditCard}
@@ -497,6 +614,76 @@ const PublicConcessionarioDemutran = () => {
                         </CardContent>
                       </Card>
                     )}
+
+                    {/* Tabela de Preços e Taxas para Consulta do Concessionário */}
+                    <Card className="border-border shadow-sm mt-6">
+                      <CardHeader className="pb-4">
+                        <div className="flex items-center gap-3">
+                          <div className="rounded-[14px] bg-primary/10 p-2.5 text-primary">
+                            <CreditCard className="h-5 w-5" />
+                          </div>
+                          <div>
+                            <CardTitle>Tabela de Taxas Vigentes</CardTitle>
+                            <CardDescription>Valores oficiais vigentes do DEMUTRAN para as categorias de serviço.</CardDescription>
+                          </div>
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        {loadingTaxas ? (
+                          <p className="text-sm text-muted-foreground text-center py-6">Carregando taxas...</p>
+                        ) : (
+                          <Tabs value={activeTabTaxas} onValueChange={(value) => setActiveTabTaxas(value as any)} className="w-full">
+                            <TabsList className="grid w-full grid-cols-3 mb-6 bg-muted/60 p-1 rounded-xl">
+                              <TabsTrigger value="demutran" className="rounded-lg text-xs font-semibold py-2">Taxas do DEMUTRAN</TabsTrigger>
+                              <TabsTrigger value="carro_horario" className="rounded-lg text-xs font-semibold py-2">Carros de Horário</TabsTrigger>
+                              <TabsTrigger value="mototaxi" className="rounded-lg text-xs font-semibold py-2">Mototaxistas</TabsTrigger>
+                            </TabsList>
+
+                            {['demutran', 'carro_horario', 'mototaxi'].map((tabTipo) => {
+                              const filteredTaxas = taxas.filter((taxa) => taxa.tipo === tabTipo);
+                              return (
+                                <TabsContent key={tabTipo} value={tabTipo} className="mt-0">
+                                  {filteredTaxas.length === 0 ? (
+                                    <div className="flex flex-col items-center justify-center py-8 text-center border border-dashed rounded-2xl bg-muted/10">
+                                      <p className="text-sm text-muted-foreground">Nenhuma taxa cadastrada ou ativa.</p>
+                                    </div>
+                                  ) : (
+                                    <div className="overflow-hidden rounded-xl border border-border bg-card">
+                                      <table className="w-full text-left text-sm border-collapse">
+                                        <thead>
+                                          <tr className="border-b border-border bg-muted/40 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                                            <th className="px-4 py-3.5 font-semibold">Serviço</th>
+                                            <th className="px-4 py-3.5 text-right font-semibold">Valor</th>
+                                            <th className="px-4 py-3.5 font-semibold">Observação</th>
+                                          </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-border">
+                                          {filteredTaxas.map((taxa) => (
+                                            <tr key={taxa.id} className="transition-colors hover:bg-muted/5">
+                                              <td className="px-4 py-3 text-xs font-medium text-foreground">{taxa.servico}</td>
+                                              <td className="px-4 py-3 text-right text-xs font-semibold text-foreground">
+                                                {taxa.valor !== null ? (
+                                                  new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(taxa.valor)
+                                                ) : (
+                                                  <span className="text-muted-foreground italic">—</span>
+                                                )}
+                                              </td>
+                                              <td className="px-4 py-3 text-[11px] text-muted-foreground">
+                                                {taxa.observacao || <span className="italic text-muted-foreground/30">—</span>}
+                                              </td>
+                                            </tr>
+                                          ))}
+                                        </tbody>
+                                      </table>
+                                    </div>
+                                  )}
+                                </TabsContent>
+                              );
+                            })}
+                          </Tabs>
+                        )}
+                      </CardContent>
+                    </Card>
                   </>
                 )}
 
@@ -648,10 +835,33 @@ const PublicConcessionarioDemutran = () => {
                 {tab === 'concessao' && (
                   <Card>
                     <CardHeader>
-                      <CardTitle className="flex items-center gap-2 text-xl">
-                        <ScrollText className="h-5 w-5 text-primary" />
-                        Dados da concessão
-                      </CardTitle>
+                      <div className="flex items-start justify-between gap-4">
+                        <CardTitle className="flex items-center gap-2 text-xl">
+                          <ScrollText className="h-5 w-5 text-primary" />
+                          Dados da concessão
+                        </CardTitle>
+                        {perfil.concessao_arquivo_url && (
+                          <div className="flex gap-2 shrink-0">
+                            <a
+                              href={perfil.concessao_arquivo_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground hover:bg-muted transition-colors"
+                            >
+                              <Printer className="h-4 w-4" />
+                              Imprimir
+                            </a>
+                            <a
+                              href={perfil.concessao_arquivo_url}
+                              download={perfil.concessao_arquivo_nome || 'concessao'}
+                              className="inline-flex items-center gap-2 rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground hover:opacity-90 transition-opacity"
+                            >
+                              <Save className="h-4 w-4" />
+                              Download
+                            </a>
+                          </div>
+                        )}
+                      </div>
                     </CardHeader>
                     <CardContent className="grid gap-4 sm:grid-cols-2">
                       <Info label="Categoria" value={categoriaLabels[perfil.categoria]} />
@@ -693,16 +903,19 @@ const PublicConcessionarioDemutran = () => {
                           <Info label="Nome" value={perfil.titular_nome || '-'} />
                           <Info label="CPF" value={perfil.cpf || '-'} />
                         </div>
-                        <div className="grid gap-4 md:grid-cols-2">
-                          <Field label="Endereço">
-                            <Input value={editForm.endereco || ''} onChange={(event) => setEditForm((current) => ({ ...current, endereco: event.target.value }))} placeholder="Rua, número, bairro" />
-                          </Field>
-                          <Field label="Email para notificações">
+                        <Field label="Endereço">
+                          <Input value={editForm.endereco || ''} onChange={(event) => setEditForm((current) => ({ ...current, endereco: event.target.value }))} placeholder="Rua, número, bairro" />
+                        </Field>
+                        <div className="grid gap-4 sm:grid-cols-2">
+                          <Field label="Email">
                             <Input type="email" value={editForm.email_notificacao || ''} onChange={(event) => setEditForm((current) => ({ ...current, email_notificacao: event.target.value }))} placeholder="seu@email.com" />
                           </Field>
-                          <Field label="Telefone para notificações">
+                          <Field label="Telefone">
                             <Input value={editForm.telefone_notificacao || ''} maxLength={15} onChange={(event) => setEditForm((current) => ({ ...current, telefone_notificacao: maskPhone(event.target.value) }))} placeholder="(00) 00000-0000" />
                           </Field>
+                        </div>
+                        <p className="-mt-2 text-xs text-muted-foreground">Email e telefone poderão ser usados para envio de notificações.</p>
+                        <div className="grid gap-4 sm:grid-cols-2">
                           <Field label="Nova senha">
                             <div className="relative">
                               <Input type={showNovaSenha ? 'text' : 'password'} placeholder="Opcional" value={editForm.novaSenha} onChange={(event) => setEditForm((current) => ({ ...current, novaSenha: event.target.value }))} className="pr-10" />
