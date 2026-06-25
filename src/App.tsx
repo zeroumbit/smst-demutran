@@ -102,6 +102,11 @@ const App = () => (
                 <PublicConcessionarioDemutran />
               </SuspenseWrapper>
             } />
+            <Route path="/demutran/concessionario/area" element={
+              <SuspenseWrapper>
+                <PublicConcessionarioDemutran />
+              </SuspenseWrapper>
+            } />
             <Route path="/demutran/recursos" element={
               <SuspenseWrapper>
                 <PublicRecursoDemutran />
@@ -206,7 +211,7 @@ const App = () => (
             } />
             <Route path="/admin/configuracoes" element={
               <SuspenseWrapper>
-                <ProtectedRoute allowedPapeis={['super_admin']}>
+                <ProtectedRoute allowedPapeis={['super_admin', 'gestor']} requiredSetorSlug="demutran">
                   <AdminConfiguracoes />
                 </ProtectedRoute>
               </SuspenseWrapper>

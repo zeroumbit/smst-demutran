@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
-import { CreditCard, ImageIcon, Plus, Settings2, Trash2, Upload, X } from 'lucide-react';
+import { CreditCard, Edit2, ImageIcon, Percent, Plus, Settings2, Trash2, Upload, X } from 'lucide-react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -9,6 +9,8 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/lib/supabase';
 import { sanitizeFileName, validateFileUpload, IMAGE_UPLOAD_RULES } from '@/lib/upload';
@@ -49,6 +51,15 @@ async function uploadQrcode(file: File): Promise<string> {
   return data.publicUrl;
 }
 
+type DemutranTaxa = {
+  id: string;
+  tipo: 'demutran' | 'carro_horario' | 'mototaxi';
+  servico: string;
+  valor: number | null;
+  observacao: string | null;
+  setor_id: string;
+};
+
 const Configuracoes = () => {
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
@@ -59,9 +70,124 @@ const Configuracoes = () => {
   const [qrcodePreview, setQrcodePreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Estados para Taxas
+  const [taxas, setTaxas] = useState<DemutranTaxa[]>([]);
+  const [loadingTaxas, setLoadingTaxas] = useState(false);
+  const [showTaxaDialog, setShowTaxaDialog] = useState(false);
+  const [editingTaxa, setEditingTaxa] = useState<DemutranTaxa | null>(null);
+  const [taxaForm, setTaxaForm] = useState({
+    tipo: 'demutran' as DemutranTaxa['tipo'],
+    servico: '',
+    valor: '',
+    observacao: '',
+  });
+  const [activeTab, setActiveTab] = useState<DemutranTaxa['tipo']>('demutran');
+
   useEffect(() => {
     loadPixConfig();
+    loadTaxas();
   }, []);
+
+  async function loadTaxas() {
+    setLoadingTaxas(true);
+    try {
+      const { data, error } = await supabase
+        .from('demutran_taxas')
+        .select('*')
+        .order('created_at', { ascending: true });
+
+      if (error) throw error;
+      setTaxas((data as DemutranTaxa[]) ?? []);
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: 'Erro ao carregar taxas', description: err.message });
+    } finally {
+      setLoadingTaxas(false);
+    }
+  }
+
+  async function handleSaveTaxa() {
+    if (!taxaForm.servico.trim()) {
+      toast({ variant: 'destructive', title: 'Campo obrigatório', description: 'Informe o nome do serviço.' });
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const valorLimpo = taxaForm.valor.trim().replace(',', '.');
+      const valorNumerico = valorLimpo ? parseFloat(valorLimpo) : null;
+      
+      const payload = {
+        tipo: taxaForm.tipo,
+        servico: taxaForm.servico.trim(),
+        valor: valorNumerico,
+        observacao: taxaForm.observacao.trim() || null,
+      };
+
+      if (editingTaxa) {
+        const { error } = await supabase
+          .from('demutran_taxas')
+          .update(payload)
+          .eq('id', editingTaxa.id);
+
+        if (error) throw error;
+        toast({ title: 'Taxa atualizada', description: 'A taxa foi atualizada com sucesso.' });
+      } else {
+        const { error } = await supabase
+          .from('demutran_taxas')
+          .insert([payload]);
+
+        if (error) throw error;
+        toast({ title: 'Taxa criada', description: 'A taxa foi criada com sucesso.' });
+      }
+
+      setShowTaxaDialog(false);
+      setEditingTaxa(null);
+      setTaxaForm({ tipo: 'demutran', servico: '', valor: '', observacao: '' });
+      await loadTaxas();
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: 'Erro ao salvar taxa', description: err.message });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleDeleteTaxa(id: string) {
+    if (!confirm('Deseja realmente excluir esta taxa?')) return;
+    try {
+      const { error } = await supabase
+        .from('demutran_taxas')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+      toast({ title: 'Taxa excluída', description: 'A taxa foi removida com sucesso.' });
+      await loadTaxas();
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: 'Erro ao excluir taxa', description: err.message });
+    }
+  }
+
+  function startEditTaxa(taxa: DemutranTaxa) {
+    setEditingTaxa(taxa);
+    setTaxaForm({
+      tipo: taxa.tipo,
+      servico: taxa.servico,
+      valor: taxa.valor !== null ? taxa.valor.toString().replace('.', ',') : '',
+      observacao: taxa.observacao || '',
+    });
+    setShowTaxaDialog(true);
+  }
+
+  function startCreateTaxa() {
+    setEditingTaxa(null);
+    setTaxaForm({
+      tipo: activeTab,
+      servico: '',
+      valor: '',
+      observacao: '',
+    });
+    setShowTaxaDialog(true);
+  }
 
   async function loadPixConfig() {
     setLoading(true);
@@ -186,7 +312,102 @@ const Configuracoes = () => {
           </div>
         </section>
 
-        <Card>
+        {/* CARD CONFIGURAÇÕES DE TAXAS */}
+        <Card className="border border-border shadow-sm">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+            <div className="flex items-center gap-3">
+              <div className="rounded-[14px] bg-primary/10 p-2.5 text-primary">
+                <Percent className="h-5 w-5" />
+              </div>
+              <div>
+                <CardTitle>Configurações de Taxas</CardTitle>
+                <CardDescription>Configure as taxas cobradas pelo DEMUTRAN por tipo de serviço.</CardDescription>
+              </div>
+            </div>
+            <Button onClick={startCreateTaxa} className="rounded-xl flex items-center gap-2">
+              <Plus className="h-4 w-4" /> Nova Taxa
+            </Button>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {loadingTaxas ? (
+              <p className="text-sm text-muted-foreground">Carregando taxas...</p>
+            ) : (
+              <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as DemutranTaxa['tipo'])} className="w-full">
+                <TabsList className="grid w-full grid-cols-3 mb-6 bg-muted/60 p-1 rounded-xl">
+                  <TabsTrigger value="demutran" className="rounded-lg text-xs font-semibold py-2">Taxas do DEMUTRAN</TabsTrigger>
+                  <TabsTrigger value="carro_horario" className="rounded-lg text-xs font-semibold py-2">Carros de Horário</TabsTrigger>
+                  <TabsTrigger value="mototaxi" className="rounded-lg text-xs font-semibold py-2">Mototaxistas</TabsTrigger>
+                </TabsList>
+
+                {['demutran', 'carro_horario', 'mototaxi'].map((tabTipo) => {
+                  const filteredTaxas = taxas.filter((taxa) => taxa.tipo === tabTipo);
+                  return (
+                    <TabsContent key={tabTipo} value={tabTipo} className="mt-0">
+                      {filteredTaxas.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-8 text-center border border-dashed rounded-2xl bg-muted/10">
+                          <p className="text-sm text-muted-foreground">Nenhuma taxa cadastrada nesta categoria.</p>
+                        </div>
+                      ) : (
+                        <div className="overflow-hidden rounded-xl border border-border bg-card">
+                          <table className="w-full text-left text-sm border-collapse">
+                            <thead>
+                              <tr className="border-b border-border bg-muted/40 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                                <th className="px-4 py-3.5 font-semibold">Serviço</th>
+                                <th className="px-4 py-3.5 font-semibold text-right">Valor</th>
+                                <th className="px-4 py-3.5 font-semibold">Observação</th>
+                                <th className="px-4 py-3.5 font-semibold text-center w-24">Ações</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-border">
+                              {filteredTaxas.map((taxa) => (
+                                <tr key={taxa.id} className="transition-colors hover:bg-muted/10">
+                                  <td className="px-4 py-3.5 font-medium text-foreground">{taxa.servico}</td>
+                                  <td className="px-4 py-3.5 text-right font-medium text-foreground">
+                                    {taxa.valor !== null ? (
+                                      new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(taxa.valor)
+                                    ) : (
+                                      <span className="text-xs text-muted-foreground italic">—</span>
+                                    )}
+                                  </td>
+                                  <td className="px-4 py-3.5 text-xs text-muted-foreground">
+                                    {taxa.observacao || <span className="italic text-muted-foreground/50">Sem observação</span>}
+                                  </td>
+                                  <td className="px-4 py-3.5 text-center">
+                                    <div className="flex items-center justify-center gap-1">
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                                        onClick={() => startEditTaxa(taxa)}
+                                      >
+                                        <Edit2 className="h-4 w-4" />
+                                      </Button>
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                        onClick={() => handleDeleteTaxa(taxa.id)}
+                                      >
+                                        <Trash2 className="h-4 w-4" />
+                                      </Button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </TabsContent>
+                  );
+                })}
+              </Tabs>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* CARD MEIO DE PAGAMENTO */}
+        <Card className="border border-border shadow-sm">
           <CardHeader>
             <div className="flex items-center gap-3">
               <div className="rounded-[14px] bg-primary/10 p-2.5 text-primary">
@@ -346,6 +567,74 @@ const Configuracoes = () => {
             )}
           </CardContent>
         </Card>
+
+        {/* DIALOG DE TAXAS */}
+        <Dialog open={showTaxaDialog} onOpenChange={setShowTaxaDialog}>
+          <DialogContent className="sm:max-w-[425px] rounded-2xl">
+            <DialogHeader>
+              <DialogTitle>{editingTaxa ? 'Editar Taxa' : 'Nova Taxa'}</DialogTitle>
+              <DialogDescription>
+                Configure os detalhes da taxa cobrada pelo serviço do DEMUTRAN.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="taxa_tipo">Tipo de Taxa *</Label>
+                <Select
+                  value={taxaForm.tipo}
+                  onValueChange={(value: DemutranTaxa['tipo']) => setTaxaForm((prev) => ({ ...prev, tipo: value }))}
+                >
+                  <SelectTrigger id="taxa_tipo">
+                    <SelectValue placeholder="Selecione o tipo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="demutran">Taxas do DEMUTRAN</SelectItem>
+                    <SelectItem value="carro_horario">Carros de Horário</SelectItem>
+                    <SelectItem value="mototaxi">Mototaxistas</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="taxa_servico">Serviço / Descrição *</Label>
+                <Input
+                  id="taxa_servico"
+                  value={taxaForm.servico}
+                  onChange={(e) => setTaxaForm((prev) => ({ ...prev, servico: e.target.value }))}
+                  placeholder="Ex: Vistoria Especial"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="taxa_valor">Valor (R$)</Label>
+                <Input
+                  id="taxa_valor"
+                  value={taxaForm.valor}
+                  onChange={(e) => setTaxaForm((prev) => ({ ...prev, valor: e.target.value }))}
+                  placeholder="Ex: 111,23 (deixe em branco se for isento/variável)"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="taxa_observacao">Observação</Label>
+                <Input
+                  id="taxa_observacao"
+                  value={taxaForm.observacao}
+                  onChange={(e) => setTaxaForm((prev) => ({ ...prev, observacao: e.target.value }))}
+                  placeholder="Ex: 80 UFIR's do Ceará"
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowTaxaDialog(false)} disabled={saving}>
+                Cancelar
+              </Button>
+              <Button onClick={handleSaveTaxa} disabled={saving}>
+                {saving ? 'Salvando...' : 'Salvar Taxa'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </AdminLayout>
   );

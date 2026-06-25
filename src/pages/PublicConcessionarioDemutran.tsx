@@ -1,4 +1,5 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { AlertTriangle, Bell, CarFront, CheckCircle, Clock, CreditCard, Eye, EyeOff, Home, KeyRound, LogOut, Printer, Save, ScrollText, Send, User, UserCircle, XCircle } from 'lucide-react';
 import { DemutranPortalLayout } from '@/components/demutran/DemutranPortalLayout';
 import { TermsGate } from '@/components/shared/TermsGate';
@@ -11,6 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { toast } from '@/hooks/use-toast';
 import { getConcessionarioFinancialCopy } from '@/lib/demutranConcessionarioFinanceiro';
 import { printHtml } from '@/lib/reports';
@@ -71,6 +73,9 @@ const tabs: { key: Tab; label: string; icon: typeof Home }[] = [
 ];
 
 const PublicConcessionarioDemutran = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const isAreaRoute = location.pathname === '/demutran/concessionario/area';
   const [sessionToken, setSessionToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -135,10 +140,21 @@ const PublicConcessionarioDemutran = () => {
 
   useEffect(() => {
     const stored = localStorage.getItem(SESSION_KEY);
-    if (!stored) return;
-    setSessionToken(stored);
-    void loadPerfil(stored);
+    if (stored) {
+      setSessionToken(stored);
+      void loadPerfil(stored);
+    }
   }, []);
+
+  useEffect(() => {
+    const stored = localStorage.getItem(SESSION_KEY);
+    if (stored && sessionToken === null) return;
+    if (stored && !isAreaRoute) {
+      navigate('/demutran/concessionario/area', { replace: true });
+    } else if (!stored && isAreaRoute) {
+      navigate('/demutran/concessionario', { replace: true });
+    }
+  }, [sessionToken, isAreaRoute, navigate]);
 
   const handleLogin = async (event: FormEvent) => {
     event.preventDefault();
@@ -169,6 +185,7 @@ const PublicConcessionarioDemutran = () => {
     setSessionToken(token);
     setLoginForm({ cpf: '', senha: '' });
     await loadPerfil(token);
+    navigate('/demutran/concessionario/area', { replace: true });
     toast({ title: 'Acesso liberado' });
   };
 
@@ -252,6 +269,7 @@ const PublicConcessionarioDemutran = () => {
     setPerfil(null);
     setNotificacoes([]);
     setEditForm(initialEdit);
+    navigate('/demutran/concessionario', { replace: true });
   };
 
   const handlePrint = () => {
@@ -719,47 +737,45 @@ const PublicConcessionarioDemutran = () => {
                 )}
               </div>
 
-              {showNotificacoes && (
-                <aside className="w-full shrink-0 md:w-80">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2 text-lg">
-                        <Bell className="h-5 w-5 text-primary" />
-                        Notificações
-                      </CardTitle>
-                      <p className="text-sm text-muted-foreground">
-                        {unreadCount > 0 ? `${unreadCount} notificação(ões) não lida(s)` : 'Nenhuma notificação pendente'}
-                      </p>
-                    </CardHeader>
-                    <CardContent className="space-y-3 max-h-[500px] overflow-y-auto">
-                      {notificacoes.length === 0 ? (
-                        <div className="rounded-xl border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">
-                          Nenhuma notificação enviada pelo DEMUTRAN até o momento.
-                        </div>
-                      ) : (
-                        notificacoes.map((item) => (
-                          <button
-                            key={item.id}
-                            type="button"
-                            onClick={() => void markAsRead(item.id)}
-                            className={`w-full rounded-2xl border p-4 text-left transition ${item.lida_em ? 'border-slate-200 bg-white' : 'border-amber-200 bg-amber-50/60'}`}
-                          >
-                            <div className="flex items-start justify-between gap-3">
-                              <div>
-                                <p className="text-sm font-bold text-foreground">{item.titulo}</p>
-                                <p className="mt-1 text-xs uppercase tracking-[0.12em] text-muted-foreground">{item.tipo}</p>
-                              </div>
-                              {!item.lida_em && <span className="rounded-full bg-amber-500 px-2 py-1 text-[10px] font-bold text-white">Nova</span>}
+              <Sheet open={showNotificacoes} onOpenChange={setShowNotificacoes}>
+                <SheetContent side="right" className="w-[400px] sm:w-[540px] max-w-full overflow-y-auto flex flex-col gap-6 p-6">
+                  <SheetHeader className="text-left flex flex-col gap-1.5">
+                    <SheetTitle className="flex items-center gap-2 text-lg">
+                      <Bell className="h-5 w-5 text-primary" />
+                      Notificações
+                    </SheetTitle>
+                    <SheetDescription>
+                      {unreadCount > 0 ? `${unreadCount} notificação(ões) não lida(s)` : 'Nenhuma notificação pendente'}
+                    </SheetDescription>
+                  </SheetHeader>
+                  <div className="space-y-3 flex-1 overflow-y-auto pr-1">
+                    {notificacoes.length === 0 ? (
+                      <div className="rounded-xl border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">
+                        Nenhuma notificação enviada pelo DEMUTRAN até o momento.
+                      </div>
+                    ) : (
+                      notificacoes.map((item) => (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => void markAsRead(item.id)}
+                          className={`w-full rounded-2xl border p-4 text-left transition ${item.lida_em ? 'border-slate-200 bg-white hover:bg-slate-50' : 'border-amber-200 bg-amber-50/60 hover:bg-amber-50'}`}
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <p className="text-sm font-bold text-foreground">{item.titulo}</p>
+                              <p className="mt-1 text-xs uppercase tracking-[0.12em] text-muted-foreground">{item.tipo}</p>
                             </div>
-                            <p className="mt-3 text-sm leading-6 text-muted-foreground">{item.mensagem}</p>
-                            <p className="mt-3 text-xs text-muted-foreground">{new Date(item.created_at).toLocaleString('pt-BR')}</p>
-                          </button>
-                        ))
-                      )}
-                    </CardContent>
-                  </Card>
-                </aside>
-              )}
+                            {!item.lida_em && <span className="rounded-full bg-amber-500 px-2 py-1 text-[10px] font-bold text-white animate-pulse">Nova</span>}
+                          </div>
+                          <p className="mt-3 text-sm leading-6 text-muted-foreground">{item.mensagem}</p>
+                          <p className="mt-3 text-xs text-muted-foreground">{new Date(item.created_at).toLocaleString('pt-BR')}</p>
+                        </button>
+                      ))
+                    )}
+                  </div>
+                </SheetContent>
+              </Sheet>
             </div>
           </div>
         </section>

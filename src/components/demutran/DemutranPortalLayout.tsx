@@ -24,7 +24,7 @@ const utilityItems = [
 ];
 
 function isCurrent(pathname: string, href: string) {
-  return pathname === href;
+  return pathname === href || (href === '/demutran/concessionario' && pathname.startsWith('/demutran/concessionario'));
 }
 
 function DemutranPortalNav() {

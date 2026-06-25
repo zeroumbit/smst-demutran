@@ -54,7 +54,7 @@ const defaultMenuItems: MenuItem[] = [
   { icon: Building2, label: 'Setores', path: '/admin/setores', allowedPapeis: ['super_admin'] },
   { icon: ImageIcon, label: 'Midias', path: '/admin/midias', allowedPapeis: ['super_admin', 'gestor', 'admin_setor'] },
   { icon: Users, label: 'Usuarios', path: '/admin/usuarios', allowedPapeis: ['super_admin', 'gestor'] },
-  { icon: Settings2, label: 'Configuracoes', path: '/admin/configuracoes', allowedPapeis: ['super_admin'] },
+  { icon: Settings2, label: 'Configuracoes', path: '/admin/configuracoes', allowedPapeis: ['super_admin', 'gestor'] },
   { icon: UserCircle2, label: 'Perfil', path: '/admin/perfil', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
 ];
 
@@ -69,7 +69,7 @@ const demutranMenuItems: MenuItem[] = [
   { icon: Building2, label: 'Setores', path: '/admin/setores', allowedPapeis: ['super_admin'] },
   { icon: ImageIcon, label: 'Midias', path: '/admin/demutran/midias', allowedPapeis: ['super_admin', 'gestor', 'admin_setor'] },
   { icon: Users, label: 'Usuarios', path: '/admin/usuarios', allowedPapeis: ['super_admin', 'gestor'] },
-  { icon: Settings2, label: 'Configuracoes', path: '/admin/configuracoes', allowedPapeis: ['super_admin'] },
+  { icon: Settings2, label: 'Configuracoes', path: '/admin/configuracoes', allowedPapeis: ['super_admin', 'gestor'] },
   { icon: UserCircle2, label: 'Perfil', path: '/admin/perfil', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
 ];
 
@@ -207,6 +207,12 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
     const filterItem = (item: MenuItem): MenuItem | null => {
       if (item.path?.startsWith('/admin/demutran/')) {
         if (profile?.setor_slug && profile.setor_slug !== 'demutran' && !isSuperAdmin) {
+          return null;
+        }
+      }
+
+      if (item.path === '/admin/configuracoes') {
+        if (!isSuperAdmin && (!profile?.setor_slug || profile.setor_slug !== 'demutran')) {
           return null;
         }
       }
