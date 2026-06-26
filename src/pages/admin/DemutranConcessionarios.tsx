@@ -1,5 +1,5 @@
 import { ChangeEvent, useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, Bell, Eye, EyeOff, FileSpreadsheet, IdCard, Loader2, Plus, Printer, Search, SlidersHorizontal, Upload, X } from 'lucide-react';
+import { AlertTriangle, Bell, Download, Eye, EyeOff, FileSpreadsheet, IdCard, Loader2, Plus, Printer, Search, SlidersHorizontal, Upload, X } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { DataTable } from '@/components/admin/DataTable';
@@ -329,6 +329,7 @@ const DemutranConcessionarios = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [importing, setImporting] = useState(false);
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<DemutranConcessionario | null>(null);
   const [viewingItem, setViewingItem] = useState<DemutranConcessionario | null>(null);
@@ -785,6 +786,7 @@ const DemutranConcessionarios = () => {
 
     if (!effectiveSetorId) {
       toast({ title: 'Setor nao identificado', description: 'Nao foi possivel identificar o setor do usuario.', variant: 'destructive' });
+      setIsImportDialogOpen(false);
       return;
     }
 
@@ -805,6 +807,17 @@ const DemutranConcessionarios = () => {
       if (!payload.length) {
         toast({ title: 'Nenhum registro importado', description: 'A planilha nao possui abas compativeis com concessionarios.', variant: 'destructive' });
         setImporting(false);
+        setIsImportDialogOpen(false);
+        return;
+      }
+
+      const confirmed = await confirm({
+        title: 'Importar concessionarios',
+        description: `Deseja importar ${payload.length} concessionario(s)? Esta acao nao pode ser desfeita.`,
+      });
+      if (!confirmed) {
+        setImporting(false);
+        setIsImportDialogOpen(false);
         return;
       }
 
@@ -818,6 +831,7 @@ const DemutranConcessionarios = () => {
       );
 
       setImporting(false);
+      setIsImportDialogOpen(false);
 
       if (error) {
         toast({ title: 'Erro ao importar planilha', description: error.message, variant: 'destructive' });
@@ -828,12 +842,62 @@ const DemutranConcessionarios = () => {
       loadData();
     } catch (error) {
       setImporting(false);
+      setIsImportDialogOpen(false);
       toast({
         title: 'Erro ao processar arquivo',
         description: error instanceof Error ? error.message : 'Falha ao ler a planilha.',
         variant: 'destructive',
       });
     }
+  };
+
+  const handleDownloadModelo = () => {
+    const wb = XLSX.utils.book_new();
+
+    const sheets = [
+      {
+        name: 'Mototaxi',
+        headers: [
+          'Numero Vaga', 'Titular Nome', 'Endereco', 'Veiculo', 'Placa',
+          'Ultimo Alvara', 'Exercicio', 'CPF', 'Inicio Atividade',
+          'CNH Numero', 'Validade CNH', 'Atividade Remunerada', 'Curso', 'Observacoes',
+        ],
+      },
+      {
+        name: 'Taxi',
+        headers: [
+          'Numero Vaga', 'Titular Nome', 'Endereco', 'Veiculo', 'Placa',
+          'Fabricacao', 'Ultimo Alvara', 'Exercicio', 'Inicio Atividade', 'CPF',
+          'Validade CNH', 'Atividade Remunerada', 'Curso',
+          'Motorista Auxiliar', 'CNH Auxiliar', 'Validade CNH Auxiliar',
+          'Categoria CNH', 'Observacoes',
+        ],
+      },
+      {
+        name: 'Carro Horario',
+        headers: [
+          'Numero Vaga', 'Titular Nome', 'Rota', 'Veiculo', 'Placa',
+          'Ultimo Alvara', 'Observacoes', 'CPF', 'CNH Numero',
+          'Validade CNH', 'Curso', 'Inicio Atividade', 'CNH Auxiliar',
+          'Categoria CNH', 'Validade CNH Auxiliar',
+        ],
+      },
+      {
+        name: 'Fretista',
+        headers: [
+          'Numero Vaga', 'Titular Nome', 'Endereco', 'Veiculo', 'Placa',
+          'Ultimo Alvara', 'Motorista Auxiliar',
+        ],
+      },
+    ];
+
+    for (const sheet of sheets) {
+      const emptyRow = sheet.headers.map(() => '');
+      const ws = XLSX.utils.aoa_to_sheet([sheet.headers, emptyRow]);
+      XLSX.utils.book_append_sheet(wb, ws, sheet.name);
+    }
+
+    XLSX.writeFile(wb, 'modelo-concessionarios.xlsx');
   };
 
   const columns = [
@@ -1014,15 +1078,10 @@ const DemutranConcessionarios = () => {
                     </SelectContent>
                   </Select>
                 )}
-                <label className="inline-flex cursor-pointer">
-                  <input type="file" accept=".xlsx,.xls" className="hidden" onChange={handleFileImport} disabled={importing} />
-                  <Button type="button" variant="secondary" className="gap-2 rounded-[18px] bg-white/20 text-white shadow-none hover:bg-white/30" disabled={importing} asChild>
-                    <span>
-                      {importing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-                      Importar
-                    </span>
-                  </Button>
-                </label>
+                <Button type="button" variant="secondary" className="gap-2 rounded-[18px] bg-white/20 text-white shadow-none hover:bg-white/30" onClick={() => setIsImportDialogOpen(true)}>
+                  <Upload className="h-4 w-4" />
+                  Importar
+                </Button>
                 <Button type="button" variant="secondary" className="gap-2 rounded-[18px] bg-white/20 text-white shadow-none hover:bg-white/30" onClick={() => setIsReportDialogOpen(true)}>
                   <FileSpreadsheet className="h-4 w-4" />
                   Relatorio
@@ -1057,15 +1116,10 @@ const DemutranConcessionarios = () => {
                   </SelectContent>
                 </Select>
               )}
-              <label className="inline-flex cursor-pointer flex-1">
-                <input type="file" accept=".xlsx,.xls" className="hidden" onChange={handleFileImport} disabled={importing} />
-                <Button type="button" variant="secondary" className="h-12 flex-1 gap-2 rounded-[18px] bg-white/20 text-white shadow-none hover:bg-white/30" disabled={importing} asChild>
-                  <span>
-                    {importing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-                    Planilha
-                  </span>
-                </Button>
-              </label>
+              <Button type="button" variant="secondary" className="h-12 flex-1 gap-2 rounded-[18px] bg-white/20 text-white shadow-none hover:bg-white/30" onClick={() => setIsImportDialogOpen(true)}>
+                <Upload className="h-4 w-4" />
+                Importar
+              </Button>
               <Button type="button" variant="secondary" className="h-12 flex-1 gap-2 rounded-[18px] bg-white/20 text-white shadow-none hover:bg-white/30" onClick={() => setIsReportDialogOpen(true)}>
                 <FileSpreadsheet className="h-4 w-4" />
                 Relatorio
@@ -1627,6 +1681,44 @@ const DemutranConcessionarios = () => {
         )}
       </div>
       {confirmDialog}
+
+      <ResponsiveDialog
+        open={isImportDialogOpen}
+        onOpenChange={setIsImportDialogOpen}
+        title="Importar concessionarios"
+        description="Baixe o modelo da planilha, preencha os dados e faca o upload."
+      >
+        <div className="space-y-6 py-4">
+          <div className="rounded-xl border border-dashed border-slate-200 p-6 text-center">
+            <p className="text-sm font-medium text-slate-700">1. Baixe o modelo da planilha</p>
+            <p className="mt-1 text-xs text-slate-500">Preencha os dados no arquivo modelo e depois importe abaixo.</p>
+            <Button type="button" variant="outline" className="mt-4 gap-2" onClick={handleDownloadModelo}>
+              <Download className="h-4 w-4" />
+              Baixar modelo
+            </Button>
+          </div>
+
+          <div className="rounded-xl border border-dashed border-slate-200 p-6 text-center">
+            <p className="text-sm font-medium text-slate-700">2. Selecione o arquivo preenchido</p>
+            <p className="mt-1 text-xs text-slate-500">Formatos aceitos: .xlsx, .xls, .csv</p>
+            <label className="mt-4 inline-flex cursor-pointer">
+              <input
+                type="file"
+                className="hidden"
+                accept=".xlsx,.xls,.csv"
+                onChange={handleFileImport}
+                disabled={importing}
+              />
+              <Button type="button" variant="default" className="gap-2" disabled={importing} asChild>
+                <span>
+                  <Upload className="h-4 w-4" />
+                  {importing ? 'Importando...' : 'Selecionar arquivo'}
+                </span>
+              </Button>
+            </label>
+          </div>
+        </div>
+      </ResponsiveDialog>
     </AdminLayout>
   );
 };

@@ -45,6 +45,26 @@ export interface Setor {
   updated_at?: string | null;
 }
 
+export interface GuardaMunicipalGraduacao {
+  id: string;
+  nome: string;
+  ordem: number;
+  ativo: boolean;
+  created_at?: string | null;
+  updated_at?: string | null;
+}
+
+export interface GuardaMunicipal {
+  id: string;
+  matricula: string;
+  nome: string;
+  graduacao_id: string;
+  graduacao_nome?: string | null;
+  ativo: boolean;
+  created_at?: string | null;
+  updated_at?: string | null;
+}
+
 export interface AdminProfileRow {
   perfil_id: string;
   user_id: string;
@@ -74,8 +94,21 @@ export interface VeiculoRecolhido {
   proprietario_nome: string;
   proprietario_cpf_cnpj: string | null;
   infrator_nome: string | null;
+  genero_condutor: 'masculino' | 'feminino' | 'nao_informado' | 'outro' | null;
   bairro_apreensao: string | null;
   logradouro: string | null;
+  restricao_legal:
+    | 'busca_apreensao'
+    | 'restricao_circulacao_penhora'
+    | 'restricao_transferencia'
+    | 'alienacao_fiduciaria'
+    | 'alerta_roubo_furto'
+    | 'apropriacao_indebita'
+    | 'bloqueio_falta_transferencia'
+    | 'restricao_media_grande_monta'
+    | 'queixa_duble_clonagem'
+    | null;
+  envolvimento_acidente: 'nao' | 'sem_vitima' | 'com_vitima' | null;
   data_recolhimento: string;
   data_liberacao: string | null;
   motivo: string;

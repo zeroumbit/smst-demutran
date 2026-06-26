@@ -53,8 +53,9 @@ const defaultMenuItems: MenuItem[] = [
   { icon: FileText, label: 'Documentos', path: '/admin/documentos', allowedPapeis: ['super_admin', 'gestor', 'admin_setor'] },
   { icon: Building2, label: 'Setores', path: '/admin/setores', allowedPapeis: ['super_admin'] },
   { icon: ImageIcon, label: 'Midias', path: '/admin/midias', allowedPapeis: ['super_admin', 'gestor', 'admin_setor'] },
-  { icon: Users, label: 'Usuarios', path: '/admin/usuarios', allowedPapeis: ['super_admin', 'gestor'] },
   { icon: Settings2, label: 'Configuracoes', path: '/admin/configuracoes', allowedPapeis: ['super_admin', 'gestor'] },
+  { icon: Users, label: 'Guardas Municipais', path: '/admin/guardas-municipais', allowedPapeis: ['super_admin'] },
+  { icon: Users, label: 'Usuarios', path: '/admin/usuarios', allowedPapeis: ['super_admin', 'gestor'] },
   { icon: UserCircle2, label: 'Perfil', path: '/admin/perfil', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
 ];
 
@@ -68,8 +69,9 @@ const demutranMenuItems: MenuItem[] = [
   { icon: FileText, label: 'Documentos', path: '/admin/demutran/documentos', allowedPapeis: ['super_admin', 'gestor', 'admin_setor'] },
   { icon: Building2, label: 'Setores', path: '/admin/setores', allowedPapeis: ['super_admin'] },
   { icon: ImageIcon, label: 'Midias', path: '/admin/demutran/midias', allowedPapeis: ['super_admin', 'gestor', 'admin_setor'] },
-  { icon: Users, label: 'Usuarios', path: '/admin/usuarios', allowedPapeis: ['super_admin', 'gestor'] },
   { icon: Settings2, label: 'Configuracoes', path: '/admin/configuracoes', allowedPapeis: ['super_admin', 'gestor'] },
+  { icon: Users, label: 'Guardas Municipais', path: '/admin/guardas-municipais', allowedPapeis: ['super_admin'] },
+  { icon: Users, label: 'Usuarios', path: '/admin/usuarios', allowedPapeis: ['super_admin', 'gestor'] },
   { icon: UserCircle2, label: 'Perfil', path: '/admin/perfil', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
 ];
 

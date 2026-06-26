@@ -186,6 +186,71 @@ export type Database = {
         }
         Relationships: []
       }
+      guarda_municipal_graduacoes: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          id: string
+          nome: string
+          ordem: number
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          id?: string
+          nome: string
+          ordem?: number
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          id?: string
+          nome?: string
+          ordem?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      guardas_municipais: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          graduacao_id: string
+          id: string
+          matricula: string
+          nome: string
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          graduacao_id: string
+          id?: string
+          matricula: string
+          nome: string
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          graduacao_id?: string
+          id?: string
+          matricula?: string
+          nome?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "guardas_municipais_graduacao_id_fkey"
+            columns: ["graduacao_id"]
+            isOneToOne: false
+            referencedRelation: "guarda_municipal_graduacoes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       demutran_concessionario_acessos: {
         Row: {
           concessionario_id: string
@@ -1207,23 +1272,33 @@ export type Database = {
       }
       veiculos_recolhidos: {
         Row: {
+          bairro_apreensao: string | null
           chassi: string | null
           created_at: string
           data_liberacao: string | null
           data_recolhimento: string
           descricao_veiculo: string
+          envolvimento_acidente: string | null
+          genero_condutor: string | null
           id: string
           importado_planilha: boolean
           liberacao_registrada_no_sistema: boolean
           liberado_por: string | null
           local_custodia: Database["public"]["Enums"]["demutran_local_custodia"]
+          logradouro: string | null
           motivo: string
+          municipio: string | null
+          ano: string | null
+          cor: string | null
+          modelo: string | null
           numero_liberacao: string | null
           observacao: string | null
           placa: string
           proprietario_cpf_cnpj: string | null
           proprietario_nome: string
           protocolo: string
+          restricao_legal: string | null
+          infrator_nome: string | null
           setor_id: string
           situacao: string
           status: string
@@ -1231,23 +1306,33 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          bairro_apreensao?: string | null
           chassi?: string | null
+          ano?: string | null
+          cor?: string | null
           created_at?: string
           data_liberacao?: string | null
           data_recolhimento: string
           descricao_veiculo?: string
+          envolvimento_acidente?: string | null
+          genero_condutor?: string | null
           id?: string
           importado_planilha?: boolean
+          infrator_nome?: string | null
           liberacao_registrada_no_sistema?: boolean
           liberado_por?: string | null
           local_custodia?: Database["public"]["Enums"]["demutran_local_custodia"]
+          logradouro?: string | null
           motivo: string
+          modelo?: string | null
+          municipio?: string | null
           numero_liberacao?: string | null
           observacao?: string | null
           placa: string
           proprietario_cpf_cnpj?: string | null
           proprietario_nome: string
           protocolo?: string
+          restricao_legal?: string | null
           setor_id: string
           situacao?: string
           status?: string
@@ -1255,23 +1340,33 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          ano?: string | null
+          bairro_apreensao?: string | null
           chassi?: string | null
+          cor?: string | null
           created_at?: string
           data_liberacao?: string | null
           data_recolhimento?: string
           descricao_veiculo?: string
+          envolvimento_acidente?: string | null
+          genero_condutor?: string | null
           id?: string
           importado_planilha?: boolean
+          infrator_nome?: string | null
           liberacao_registrada_no_sistema?: boolean
           liberado_por?: string | null
           local_custodia?: Database["public"]["Enums"]["demutran_local_custodia"]
+          logradouro?: string | null
           motivo?: string
+          modelo?: string | null
+          municipio?: string | null
           numero_liberacao?: string | null
           observacao?: string | null
           placa?: string
           proprietario_cpf_cnpj?: string | null
           proprietario_nome?: string
           protocolo?: string
+          restricao_legal?: string | null
           setor_id?: string
           situacao?: string
           status?: string
@@ -1744,15 +1839,25 @@ export type Database = {
           }
       recolher_veiculo: {
         Args: {
+          _ano?: string
+          _bairro_apreensao?: string
           _chassi?: string
+          _cor?: string
           _data_recolhimento?: string
           _descricao_veiculo?: string
+          _envolvimento_acidente?: string
+          _genero_condutor?: string
+          _infrator_nome?: string
           _local_custodia?: Database["public"]["Enums"]["demutran_local_custodia"]
+          _logradouro?: string
           _motivo?: string
+          _modelo?: string
+          _municipio?: string
           _observacao?: string
           _placa: string
           _proprietario_cpf_cnpj?: string
           _proprietario_nome: string
+          _restricao_legal?: string
           _situacao?: string
         }
         Returns: {

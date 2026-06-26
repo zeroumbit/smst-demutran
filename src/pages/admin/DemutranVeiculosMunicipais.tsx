@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Building2, Calendar, CarFront, CheckCircle, Clock, Eye, FileSpreadsheet, IdCard, Search, ShieldCheck, SlidersHorizontal, User, X } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
+import { Building2, Calendar, CarFront, CheckCircle, Clock, Download, Eye, FileSpreadsheet, IdCard, Search, ShieldCheck, SlidersHorizontal, Upload, User, X } from 'lucide-react';
 import { useConfirmDialog } from '@/components/ui/use-confirm-dialog';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { DataTable } from '@/components/admin/DataTable';
@@ -23,6 +23,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 import type { DemutranVeiculoMunicipal } from '@/types/admin';
+import * as XLSX from 'xlsx';
 
 const SECRETARIAS = [
   'Administracao',
@@ -72,6 +73,9 @@ const DemutranVeiculosMunicipais = () => {
   const [selectedReportOption, setSelectedReportOption] = useState('todos');
   const [selectedReportFormat, setSelectedReportFormat] = useState<'csv' | 'pdf'>('csv');
   const [selectedCustomReportFormat, setSelectedCustomReportFormat] = useState<'csv' | 'pdf'>('csv');
+  const [isImporting, setIsImporting] = useState(false);
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const loadData = async () => {
     setLoading(true);
@@ -164,6 +168,135 @@ const DemutranVeiculosMunicipais = () => {
 
     toast({ title: 'Veiculo excluido' });
     setItems((current) => current.filter((currentItem) => currentItem.id !== item.id));
+  };
+
+  const handleDownloadModelo = () => {
+    const wb = XLSX.utils.book_new();
+    const headers = ['Placa', 'Chassi', 'Secretaria Responsavel', 'Motorista Responsavel', 'Observacao'];
+    const ws = XLSX.utils.aoa_to_sheet([headers, ['', '', '', '', '']]);
+    XLSX.utils.book_append_sheet(wb, ws, 'Frota');
+    XLSX.writeFile(wb, 'modelo-frota-municipal.xlsx');
+  };
+
+  const handleFileImport = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+
+    if (!file) return;
+
+    if (!setorId) {
+      toast({ title: 'Setor nao identificado', description: 'Nao foi possivel identificar o setor do usuario.', variant: 'destructive' });
+      return;
+    }
+
+    setIsImporting(true);
+
+    try {
+      const buffer = await file.arrayBuffer();
+      const workbook = XLSX.read(buffer, { type: 'array' });
+      const payload: Record<string, unknown>[] = [];
+
+      const normalizeHeader = (header: string) =>
+        header
+          .toLowerCase()
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .replace(/[^a-z0-9_]/g, '')
+          .trim();
+
+      for (const sheetName of workbook.SheetNames) {
+        const rows = XLSX.utils.sheet_to_json<unknown[]>(workbook.Sheets[sheetName], {
+          header: 1,
+          defval: '',
+        });
+
+        const headerIndex = rows.findIndex((row) =>
+          Array.isArray(row) && row.some((cell) => normalizeHeader(String(cell || '')) === 'placa'),
+        );
+
+        if (headerIndex === -1) continue;
+
+        const headers = (rows[headerIndex] as unknown[]).map((cell) => normalizeHeader(String(cell || '')));
+        const dataRows = rows.slice(headerIndex + 1);
+
+        const columnMap: Record<string, number> = {};
+        headers.forEach((header, index) => {
+          if (header === 'placa') columnMap.placa = index;
+          else if (header === 'chassi') columnMap.chassi = index;
+          else if (header === 'secretaria_responsavel' || header === 'secretaria' || header === 'orgao') columnMap.secretaria_responsavel = index;
+          else if (header === 'motorista_responsavel' || header === 'motorista') columnMap.motorista_responsavel = index;
+          else if (header === 'observacao' || header === 'obs' || header === 'observacoes') columnMap.observacao = index;
+          else if (header === 'ativo' || header === 'status' || header === 'situacao') columnMap.ativo = index;
+        });
+
+        if (columnMap.placa === undefined || columnMap.chassi === undefined || columnMap.secretaria_responsavel === undefined) {
+          throw new Error(`A aba "${sheetName}" nao possui as colunas obrigatorias (placa, chassi, secretaria).`);
+        }
+
+        for (const row of dataRows) {
+          if (!Array.isArray(row)) continue;
+
+          const placa = normalizePlate(String(row[columnMap.placa] || '').trim());
+          const chassi = String(row[columnMap.chassi] || '').trim().toUpperCase();
+          const secretaria = String(row[columnMap.secretaria_responsavel] || '').trim();
+
+          if (!placa || !chassi || !secretaria) continue;
+
+          const motorista = columnMap.motorista_responsavel !== undefined
+            ? String(row[columnMap.motorista_responsavel] || '').trim() || null
+            : null;
+
+          const observacao = columnMap.observacao !== undefined
+            ? String(row[columnMap.observacao] || '').trim() || null
+            : null;
+
+          let ativo = true;
+          if (columnMap.ativo !== undefined) {
+            const rawAtivo = String(row[columnMap.ativo] || '').trim().toLowerCase();
+            ativo = rawAtivo === '' || rawAtivo === '1' || rawAtivo === 'sim' || rawAtivo === 'ativo' || rawAtivo === 'true';
+          }
+
+          payload.push({
+            setor_id: setorId,
+            placa,
+            chassi,
+            secretaria_responsavel: secretaria,
+            motorista_responsavel: motorista,
+            observacao,
+            ativo,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          });
+        }
+      }
+
+      if (!payload.length) {
+        toast({ title: 'Planilha vazia', description: 'Nenhuma linha valida foi encontrada.', variant: 'destructive' });
+        setIsImporting(false);
+        return;
+      }
+
+      const confirmed = await confirm({
+        title: 'Importar veiculos',
+        description: `Deseja importar ${payload.length} veiculo(s) para a frota municipal? Esta acao nao pode ser desfeita.`,
+      });
+      if (!confirmed) {
+        setIsImporting(false);
+        return;
+      }
+
+      const { error } = await supabase.from('demutran_veiculos_municipais').insert(payload);
+      if (error) throw error;
+
+      toast({ title: 'Importacao concluida', description: `${payload.length} veiculo(s) importado(s) com sucesso.` });
+      loadData();
+      setIsImportDialogOpen(false);
+    } catch (error) {
+      toast({ title: 'Erro ao importar', description: error instanceof Error ? error.message : 'Erro inesperado.', variant: 'destructive' });
+      setIsImportDialogOpen(false);
+    } finally {
+      setIsImporting(false);
+    }
   };
 
   const filteredItems = useMemo(() => {
@@ -489,6 +622,10 @@ const DemutranVeiculosMunicipais = () => {
             <FileSpreadsheet className="mr-2 h-4 w-4" />
             Gerar relatorio
           </Button>
+          <Button type="button" variant="outline" onClick={() => setIsImportDialogOpen(true)}>
+            <Upload className="mr-2 h-4 w-4" />
+            Importar
+          </Button>
           <Button onClick={() => setIsDialogOpen(true)} className="gap-2">
             <IdCard className="h-4 w-4" />
             Novo Veiculo
@@ -639,6 +776,44 @@ const DemutranVeiculosMunicipais = () => {
         </ResponsiveDialog>
       </div>
       {confirmDialog}
+
+      <ResponsiveDialog
+        open={isImportDialogOpen}
+        onOpenChange={setIsImportDialogOpen}
+        title="Importacao em massa"
+        description="Baixe o modelo preenchido e faca o upload dos dados."
+      >
+        <div className="space-y-6 py-4">
+          <div className="rounded-xl border border-dashed border-slate-200 p-6 text-center">
+            <p className="text-sm font-medium text-slate-700">1. Baixe o modelo da planilha</p>
+            <p className="mt-1 text-xs text-slate-500">Preencha os dados no arquivo modelo e depois importe abaixo.</p>
+            <Button type="button" variant="outline" className="mt-4 gap-2" onClick={handleDownloadModelo}>
+              <Download className="h-4 w-4" />
+              Baixar modelo
+            </Button>
+          </div>
+
+          <div className="rounded-xl border border-dashed border-slate-200 p-6 text-center">
+            <p className="text-sm font-medium text-slate-700">2. Selecione o arquivo preenchido</p>
+            <p className="mt-1 text-xs text-slate-500">Formatos aceitos: .xlsx, .xls, .csv</p>
+            <label className="mt-4 inline-flex cursor-pointer">
+              <input
+                type="file"
+                className="hidden"
+                accept=".xlsx,.xls,.csv"
+                onChange={handleFileImport}
+                disabled={isImporting}
+              />
+              <Button type="button" variant="default" className="gap-2" disabled={isImporting} asChild>
+                <span>
+                  <Upload className="h-4 w-4" />
+                  {isImporting ? 'Importando...' : 'Selecionar arquivo'}
+                </span>
+              </Button>
+            </label>
+          </div>
+        </div>
+      </ResponsiveDialog>
     </AdminLayout>
   );
 };

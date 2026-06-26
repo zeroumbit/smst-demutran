@@ -1,6 +1,6 @@
 import { ChangeEvent, useEffect, useMemo, useState } from 'react';
 import * as XLSX from 'xlsx';
-import { Car, CheckCircle2, CircleDollarSign, Copy, Eye, FileSpreadsheet, Plus, Printer, Search, SlidersHorizontal, Warehouse, X } from 'lucide-react';
+import { Car, CheckCircle2, CircleDollarSign, Copy, Download, Eye, FileSpreadsheet, Plus, Printer, Search, SlidersHorizontal, Upload, Warehouse, X } from 'lucide-react';
 import { useConfirmDialog } from '@/components/ui/use-confirm-dialog';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { DataTable } from '@/components/admin/DataTable';
@@ -39,6 +39,40 @@ const custodyOptions = [
   { value: 'veiculos_forum', label: 'Veiculos de Forum' },
 ] as const;
 
+const genderOptions = [
+  { value: 'masculino', label: 'Masculino' },
+  { value: 'feminino', label: 'Feminino' },
+  { value: 'nao_informado', label: 'Nao informado' },
+  { value: 'outro', label: 'Outro' },
+] as const;
+
+const legalRestrictionOptions = [
+  { value: 'busca_apreensao', label: 'Busca e Apreensao', description: 'Ordem judicial para recolher o veiculo por falta de pagamento do financiamento.' },
+  { value: 'restricao_circulacao_penhora', label: 'Restricao de Circulacao (Penhora)', description: 'Bloqueio judicial grave que impede o carro de andar em vias publicas.' },
+  { value: 'restricao_transferencia', label: 'Restricao de Transferencia', description: 'Bloqueio judicial que impede a venda ou troca de nome do proprietario.' },
+  { value: 'alienacao_fiduciaria', label: 'Alienacao Fiduciaria', description: 'O veiculo esta financiado e alienado ao banco ate a quitacao da divida.' },
+  { value: 'alerta_roubo_furto', label: 'Alerta de Roubo ou Furto', description: 'Cadastro policial que indica que o veiculo e fruto de crime.' },
+  { value: 'apropriacao_indebita', label: 'Apropriacao Indebita', description: 'Registro policial de quando o carro foi alugado ou emprestado e nao foi devolvido.' },
+  { value: 'bloqueio_falta_transferencia', label: 'Bloqueio por Falta de Transferencia', description: 'O comprador nao passou o carro para o nome no prazo de 30 dias.' },
+  { value: 'restricao_media_grande_monta', label: 'Restricao de Media ou Grande Monta', description: 'Bloqueio por acidente grave que exige vistoria ou impede o retorno as ruas.' },
+  { value: 'queixa_duble_clonagem', label: 'Queixa de Duble / Clonagem', description: 'Marcacao administrativa para investigar placas clonadas e multas indevidas.' },
+] as const;
+
+const accidentOptions = [
+  { value: 'nao', label: 'Nao' },
+  { value: 'sem_vitima', label: 'Sim, sem vitima' },
+  { value: 'com_vitima', label: 'Sim, com vitima' },
+] as const;
+
+type LogradouroSuggestion = {
+  nome: string;
+  bairro: string | null;
+  cep: string | null;
+  municipio: string | null;
+  uf: string | null;
+  origem: string;
+};
+
 const emptyApreensaoForm = {
   placa: '',
   chassi: '',
@@ -50,8 +84,11 @@ const emptyApreensaoForm = {
   proprietario_nome: '',
   proprietario_cpf_cnpj: '',
   infrator_nome: '',
+  genero_condutor: '',
   bairro_apreensao: '',
   logradouro: '',
+  restricao_legal: '',
+  envolvimento_acidente: '',
   data_recolhimento: '',
   motivo: '',
   situacao: 'Apreendido',
@@ -89,6 +126,15 @@ const sheetToCustodyMap: Record<string, VeiculoRecolhido['local_custodia']> = {
 
 const getCustodyLabel = (value: VeiculoRecolhido['local_custodia']) =>
   custodyOptions.find((option) => option.value === value)?.label || value;
+
+const getGenderLabel = (value: VeiculoRecolhido['genero_condutor']) =>
+  genderOptions.find((option) => option.value === value)?.label || 'Nao informado';
+
+const getRestrictionLabel = (value: VeiculoRecolhido['restricao_legal']) =>
+  legalRestrictionOptions.find((option) => option.value === value)?.label || 'Nao informado';
+
+const getAccidentLabel = (value: VeiculoRecolhido['envolvimento_acidente']) =>
+  accidentOptions.find((option) => option.value === value)?.label || 'Nao informado';
 
 const buildSyntheticPlate = (sheetName: string, rowNumber: number, chassi: string) => {
   const sheetPrefix = normalizeHeader(sheetName).replace(/_/g, '').slice(0, 8).toUpperCase() || 'IMPORT';
@@ -224,6 +270,9 @@ const DemutranLiberacao = () => {
   const [confirmacaoStep, setConfirmacaoStep] = useState<1 | 2>(1);
   const [editandoObservacao, setEditandoObservacao] = useState(false);
   const [observacaoText, setObservacaoText] = useState('');
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
+  const [logradouroSuggestions, setLogradouroSuggestions] = useState<LogradouroSuggestion[]>([]);
+  const [loadingLogradouros, setLoadingLogradouros] = useState(false);
 
   const copiarTexto = async (texto: string) => {
     try {
@@ -259,6 +308,7 @@ const DemutranLiberacao = () => {
         <tr><td style="border:1px solid #cbd5e1;padding:6px;">Cor</td><td style="border:1px solid #cbd5e1;padding:6px;">${item.cor || 'Nao informado'}</td></tr>
         <tr><td style="border:1px solid #cbd5e1;padding:6px;">Modelo</td><td style="border:1px solid #cbd5e1;padding:6px;">${item.modelo || 'Nao informado'}</td></tr>
         <tr><td style="border:1px solid #cbd5e1;padding:6px;">Municipio</td><td style="border:1px solid #cbd5e1;padding:6px;">${item.municipio || 'Nao informado'}</td></tr>
+        <tr><td style="border:1px solid #cbd5e1;padding:6px;">Genero do condutor</td><td style="border:1px solid #cbd5e1;padding:6px;">${getGenderLabel(item.genero_condutor)}</td></tr>
         <tr><td style="border:1px solid #cbd5e1;padding:6px;">Taxa diaria</td><td style="border:1px solid #cbd5e1;padding:6px;">${formatCurrency(getTaxaDiariaValue(item))}</td></tr>
         <tr><td style="border:1px solid #cbd5e1;padding:6px;">Dias de estadia</td><td style="border:1px solid #cbd5e1;padding:6px;">${getDiasEstadia(item)} dia(s)</td></tr>
         <tr><td style="border:1px solid #cbd5e1;padding:6px;font-weight:700;">Total acumulado</td><td style="border:1px solid #cbd5e1;padding:6px;font-weight:700;">${formatCurrency(getValorEstadia(item))}</td></tr>
@@ -275,7 +325,10 @@ const DemutranLiberacao = () => {
         <tr><th style="border:1px solid #cbd5e1;padding:6px;background:#e2e8f0;text-align:left;">Campo</th><th style="border:1px solid #cbd5e1;padding:6px;background:#e2e8f0;text-align:left;">Valor</th></tr>
         <tr><td style="border:1px solid #cbd5e1;padding:6px;">Chassi</td><td style="border:1px solid #cbd5e1;padding:6px;">${item.chassi || 'Nao informado'}</td></tr>
         <tr><td style="border:1px solid #cbd5e1;padding:6px;">Motivo</td><td style="border:1px solid #cbd5e1;padding:6px;">${item.motivo || 'Nao informado'}</td></tr>
+        <tr><td style="border:1px solid #cbd5e1;padding:6px;">Restricao legal</td><td style="border:1px solid #cbd5e1;padding:6px;">${getRestrictionLabel(item.restricao_legal)}</td></tr>
+        <tr><td style="border:1px solid #cbd5e1;padding:6px;">Envolvimento em acidente</td><td style="border:1px solid #cbd5e1;padding:6px;">${getAccidentLabel(item.envolvimento_acidente)}</td></tr>
         <tr><td style="border:1px solid #cbd5e1;padding:6px;">Bairro / distrito da apreensao</td><td style="border:1px solid #cbd5e1;padding:6px;">${item.bairro_apreensao || 'Nao informado'}</td></tr>
+        <tr><td style="border:1px solid #cbd5e1;padding:6px;">Logradouro</td><td style="border:1px solid #cbd5e1;padding:6px;">${item.logradouro || 'Nao informado'}</td></tr>
         <tr><td style="border:1px solid #cbd5e1;padding:6px;">Descricao</td><td style="border:1px solid #cbd5e1;padding:6px;">${item.descricao_veiculo || 'Nao informada'}</td></tr>
       </table>`;
     printHtml('Veiculo recolhido - ' + item.placa, html);
@@ -321,6 +374,26 @@ const DemutranLiberacao = () => {
     setLoading(false);
   };
 
+  const loadLogradouroSuggestions = async () => {
+    if (!effectiveSetorId) return;
+
+    setLoadingLogradouros(true);
+    const { data, error } = await supabase.rpc('listar_logradouros_demutran', {
+      _setor_id: effectiveSetorId,
+      _search: null,
+      _limit: 200,
+    });
+
+    if (error) {
+      toast({ title: 'Erro ao carregar logradouros', description: error.message, variant: 'destructive' });
+      setLoadingLogradouros(false);
+      return;
+    }
+
+    setLogradouroSuggestions((data || []) as LogradouroSuggestion[]);
+    setLoadingLogradouros(false);
+  };
+
   useEffect(() => {
     loadSetores();
   }, []);
@@ -330,6 +403,11 @@ const DemutranLiberacao = () => {
       loadVeiculos();
     }
   }, [effectiveSetorId]);
+
+  useEffect(() => {
+    if (!isApreensaoDialogOpen || !effectiveSetorId) return;
+    loadLogradouroSuggestions();
+  }, [effectiveSetorId, isApreensaoDialogOpen]);
 
   const apreendidos = useMemo(
     () => veiculos.filter((item) => item.status !== 'liberado'),
@@ -440,6 +518,21 @@ const DemutranLiberacao = () => {
     [veiculos],
   );
 
+  const filteredLogradouroSuggestions = useMemo(() => {
+    const termo = apreensaoForm.logradouro.trim().toLowerCase();
+    if (!termo) {
+      return logradouroSuggestions.slice(0, 40);
+    }
+
+    return logradouroSuggestions
+      .filter((item) => {
+        const nome = item.nome.toLowerCase();
+        const bairro = (item.bairro || '').toLowerCase();
+        return nome.includes(termo) || bairro.includes(termo);
+      })
+      .slice(0, 40);
+  }, [apreensaoForm.logradouro, logradouroSuggestions]);
+
   const vehicleRows = (items: VeiculoRecolhido[]) =>
     items.map((item) => ({
       Placa: item.placa,
@@ -449,6 +542,11 @@ const DemutranLiberacao = () => {
       Local_custodia: getCustodyLabel(item.local_custodia),
       Proprietario: item.proprietario_nome || '-',
       CPF_CNPJ: item.proprietario_cpf_cnpj || '-',
+      Genero_condutor: getGenderLabel(item.genero_condutor),
+      Logradouro: item.logradouro || '-',
+      Bairro_apreensao: item.bairro_apreensao || '-',
+      Restricao_legal: getRestrictionLabel(item.restricao_legal),
+      Envolvimento_acidente: getAccidentLabel(item.envolvimento_acidente),
       Entrada: formatReportDateTime(item.data_recolhimento),
       Liberacao: formatReportDateTime(item.data_liberacao),
       Numero_liberacao: item.numero_liberacao || '-',
@@ -514,6 +612,7 @@ const DemutranLiberacao = () => {
 
   const closeApreensaoDialog = () => {
     setApreensaoForm(emptyApreensaoForm);
+    setLogradouroSuggestions([]);
     setIsApreensaoDialogOpen(false);
   };
 
@@ -531,10 +630,10 @@ const DemutranLiberacao = () => {
   };
 
   const handleSubmitApreensao = async () => {
-    if (!effectiveSetorId || !apreensaoForm.placa || !apreensaoForm.data_recolhimento || !apreensaoForm.descricao_veiculo || !apreensaoForm.motivo || !apreensaoForm.situacao) {
+    if (!effectiveSetorId || !apreensaoForm.placa || !apreensaoForm.data_recolhimento || !apreensaoForm.descricao_veiculo || !apreensaoForm.logradouro || !apreensaoForm.motivo || !apreensaoForm.situacao) {
       toast({
         title: 'Campos obrigatorios',
-        description: 'Preencha entrada, placa, descricao do veiculo, motivo e situacao.',
+        description: 'Preencha entrada, placa, logradouro, descricao do veiculo, motivo e situacao.',
         variant: 'destructive',
       });
       return;
@@ -594,8 +693,11 @@ const DemutranLiberacao = () => {
       _modelo: apreensaoForm.modelo.trim() || null,
       _municipio: apreensaoForm.municipio.trim() || null,
       _infrator_nome: apreensaoForm.infrator_nome.trim() || null,
+      _genero_condutor: apreensaoForm.genero_condutor || null,
       _bairro_apreensao: apreensaoForm.bairro_apreensao.trim() || null,
       _logradouro: apreensaoForm.logradouro.trim() || null,
+      _restricao_legal: apreensaoForm.restricao_legal || null,
+      _envolvimento_acidente: apreensaoForm.envolvimento_acidente || null,
       _data_recolhimento: new Date(apreensaoForm.data_recolhimento).toISOString(),
       _motivo: apreensaoForm.motivo.trim(),
       _situacao: apreensaoForm.situacao.trim(),
@@ -848,6 +950,9 @@ const DemutranLiberacao = () => {
             const descricaoVeiculo = String(normalized.descricao_do_veiculo || normalized.veiculo || normalized.descricao_veiculo || '').trim();
             const motivo = String(normalized.motivo_da_apreensao || normalized.motivo || '').trim();
             const situacao = String(normalized.situacao_detran || normalized.situacao || '').trim();
+            const generoCondutor = String(normalized.genero_do_condutor || normalized.genero_condutor || '').trim().toLowerCase();
+            const restricaoLegal = String(normalized.restricao_legal || normalized.restricoes_legais || '').trim().toLowerCase();
+            const envolvimentoAcidente = String(normalized.envolvimento_acidente || normalized.envolvido_em_acidente || '').trim().toLowerCase();
             const dataRecolhimento = parseSpreadsheetDate(normalized.entrada || normalized.data || normalized.entrada_recolhimento || normalized.data_de_entrada);
             const liberacaoTextoPrincipal = String(normalized.liberacao || '').trim();
             const liberacaoTextoSecundario = unnamedAfterSituacaoIndex >= 0
@@ -876,6 +981,12 @@ const DemutranLiberacao = () => {
               descricao_veiculo: descricaoVeiculo,
               proprietario_nome: 'Nao informado',
               proprietario_cpf_cnpj: null,
+              genero_condutor:
+                generoCondutor === 'masculino' || generoCondutor === 'feminino' || generoCondutor === 'nao_informado' || generoCondutor === 'outro'
+                  ? generoCondutor
+                  : null,
+              bairro_apreensao: String(normalized.bairro_apreensao || '').trim() || null,
+              logradouro: String(normalized.logradouro || '').trim() || null,
               data_recolhimento: dataRecolhimento,
               data_liberacao: liberacaoMetadata.dataIso,
               motivo: motivo || 'Nao informado',
@@ -883,6 +994,8 @@ const DemutranLiberacao = () => {
               situacao: situacao || 'Nao informado',
               local_custodia: localCustodia,
               numero_liberacao: localCustodia === 'motos_delegacia' ? liberacaoMetadata.texto : null,
+              restricao_legal: legalRestrictionOptions.find((option) => option.value === restricaoLegal)?.value || null,
+              envolvimento_acidente: accidentOptions.find((option) => option.value === envolvimentoAcidente)?.value || null,
               importado_planilha: true,
               liberacao_registrada_no_sistema: false,
               observacao: [
@@ -901,6 +1014,7 @@ const DemutranLiberacao = () => {
 
       if (!payload.length) {
         toast({ title: 'Planilha vazia', description: 'Nenhuma linha valida foi encontrada no modelo.', variant: 'destructive' });
+        setIsImportDialogOpen(false);
         return;
       }
 
@@ -908,7 +1022,10 @@ const DemutranLiberacao = () => {
         title: 'Cadastro em massa',
         description: `Deseja importar ${payload.length} veiculo(s) para o patio? Esta acao nao pode ser desfeita.`,
       });
-      if (!confirmed) return;
+      if (!confirmed) {
+        setIsImportDialogOpen(false);
+        return;
+      }
 
       const { error } = await supabase.from('veiculos_recolhidos').insert(payload);
       if (error) {
@@ -922,13 +1039,37 @@ const DemutranLiberacao = () => {
           : `${payload.length} veiculo(s) foram importados para o patio.`,
       });
       loadVeiculos();
+      setIsImportDialogOpen(false);
     } catch (error: any) {
       toast({
         title: 'Erro ao importar planilha',
         description: error.message || 'Nao foi possivel processar a planilha.',
         variant: 'destructive',
       });
+      setIsImportDialogOpen(false);
     }
+  };
+
+  const handleDownloadModelo = () => {
+    const wb = XLSX.utils.book_new();
+    const headers = [
+      'Placa', 'Chassi', 'Descricao do Veiculo', 'Ano', 'Cor', 'Modelo',
+      'Municipio', 'Proprietario Nome', 'Proprietario CPF CNPJ', 'Infrator Nome', 'Genero do Condutor',
+      'Bairro Apreensao', 'Logradouro', 'Restricao Legal', 'Envolvimento Acidente', 'Data de Entrada', 'Motivo',
+      'Situacao', 'Liberacao', 'Observacao',
+    ];
+    const emptyRow = headers.map(() => '');
+    const sheets = [
+      { name: 'Automoveis', label: 'Automoveis' },
+      { name: 'Motos', label: 'Motos' },
+      { name: 'Motos Delegacia', label: 'Motos Delegacia' },
+      { name: 'Veiculos Processo Forum', label: 'Veiculos Processo Forum' },
+    ];
+    for (const sheet of sheets) {
+      const ws = XLSX.utils.aoa_to_sheet([headers, emptyRow]);
+      XLSX.utils.book_append_sheet(wb, ws, sheet.name);
+    }
+    XLSX.writeFile(wb, 'modelo-veiculos-recolhidos.xlsx');
   };
 
   const apreensoesColumns = [
@@ -1325,20 +1466,10 @@ const DemutranLiberacao = () => {
                   <CircleDollarSign className="h-4 w-4" />
                   Aplicar taxa em massa
                 </Button>
-                <label className="w-full">
-                  <input
-                    type="file"
-                    accept=".xlsx,.xls,.csv"
-                    className="hidden"
-                    onChange={handleMassUpload}
-                  />
-                  <Button type="button" variant="outline" className="h-12 gap-2 rounded-[18px] text-[14px] font-semibold w-full" asChild>
-                    <span>
-                      <FileSpreadsheet className="h-4 w-4" />
-                      Cadastro em Massa
-                    </span>
-                  </Button>
-                </label>
+                <Button type="button" variant="outline" className="h-12 gap-2 rounded-[18px] text-[14px] font-semibold" onClick={() => setIsImportDialogOpen(true)}>
+                  <FileSpreadsheet className="h-4 w-4" />
+                  Cadastro em Massa
+                </Button>
                 <Button onClick={() => setIsApreensaoDialogOpen(true)} className="h-12 gap-2 rounded-[18px] text-[14px] font-semibold w-full" disabled={!effectiveSetorId}>
                   <Plus className="w-4 h-4" />
                   Nova Apreensao
@@ -1547,7 +1678,7 @@ const DemutranLiberacao = () => {
           <div className="space-y-4 py-2">
             <div>
               <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">Sobre a apreensão</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div className="space-y-2">
                   <Label htmlFor="data_recolhimento">Entrada/Recolhimento *</Label>
                   <Input id="data_recolhimento" type="datetime-local" placeholder="Selecione a data e hora do recolhimento" value={apreensaoForm.data_recolhimento} onChange={(e) => setApreensaoForm({ ...apreensaoForm, data_recolhimento: e.target.value })} />
@@ -1567,6 +1698,26 @@ const DemutranLiberacao = () => {
                     </SelectContent>
                   </Select>
                 </div>
+                <div className="space-y-2">
+                  <Label>Restricoes legais</Label>
+                  <Select value={apreensaoForm.restricao_legal || undefined} onValueChange={(value) => setApreensaoForm({ ...apreensaoForm, restricao_legal: value })}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione se houver" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {legalRestrictionOptions.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {apreensaoForm.restricao_legal && (
+                    <p className="text-xs text-muted-foreground">
+                      {legalRestrictionOptions.find((option) => option.value === apreensaoForm.restricao_legal)?.description}
+                    </p>
+                  )}
+                </div>
               </div>
 
               <div className="space-y-2 mt-3">
@@ -1580,8 +1731,46 @@ const DemutranLiberacao = () => {
               </div>
 
               <div className="space-y-2 mt-3">
-                <Label htmlFor="logradouro">Logradouro</Label>
-                <Input id="logradouro" placeholder="Ex: Rua XV de Novembro, 123" value={apreensaoForm.logradouro} onChange={(e) => setApreensaoForm({ ...apreensaoForm, logradouro: e.target.value })} />
+                <Label htmlFor="logradouro">Logradouro *</Label>
+                <div className="relative">
+                  <Input
+                    id="logradouro"
+                    autoComplete="off"
+                    placeholder={loadingLogradouros ? 'Carregando ruas do municipio...' : 'Digite para buscar uma rua'}
+                    value={apreensaoForm.logradouro}
+                    onChange={(e) => setApreensaoForm((current) => ({ ...current, logradouro: e.target.value }))}
+                  />
+                  {!!filteredLogradouroSuggestions.length && (
+                    <div className="absolute z-20 mt-2 max-h-64 w-full overflow-auto rounded-xl border border-slate-200 bg-white shadow-lg">
+                      {filteredLogradouroSuggestions.map((item) => (
+                        <button
+                          key={`${item.nome}-${item.bairro || 'sem-bairro'}`}
+                          type="button"
+                          className="block w-full border-b border-slate-100 px-3 py-2 text-left last:border-b-0 hover:bg-slate-50"
+                          onMouseDown={(event) => event.preventDefault()}
+                          onClick={() => {
+                            setApreensaoForm((current) => ({
+                              ...current,
+                              logradouro: item.nome,
+                              bairro_apreensao: current.bairro_apreensao || item.bairro || '',
+                              municipio: current.municipio || item.municipio || '',
+                            }));
+                          }}
+                        >
+                          <p className="truncate text-sm font-medium text-slate-900">{item.nome}</p>
+                          <p className="truncate text-xs text-slate-500">
+                            {[item.bairro, item.municipio].filter(Boolean).join(' - ') || 'Rua cadastrada'}
+                          </p>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {loadingLogradouros
+                    ? 'Carregando ruas do municipio...'
+                    : 'Digite o nome da rua e selecione uma sugestao. Se nao aparecer, continue escrevendo manualmente.'}
+                </p>
               </div>
 
               <div className="space-y-2 mt-3">
@@ -1653,9 +1842,42 @@ const DemutranLiberacao = () => {
                   </div>
                 </div>
 
+                <div className="grid grid-cols-1 gap-3 mt-3 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="infrator_nome">Nome do infrator</Label>
+                    <Input id="infrator_nome" placeholder="Nome completo do infrator (se diferente do proprietario)" value={apreensaoForm.infrator_nome} onChange={(e) => setApreensaoForm({ ...apreensaoForm, infrator_nome: e.target.value })} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Genero do condutor</Label>
+                    <Select value={apreensaoForm.genero_condutor || undefined} onValueChange={(value) => setApreensaoForm({ ...apreensaoForm, genero_condutor: value })}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione se informado" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {genderOptions.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
                 <div className="space-y-2 mt-3">
-                  <Label htmlFor="infrator_nome">Nome do infrator</Label>
-                  <Input id="infrator_nome" placeholder="Nome completo do infrator (se diferente do proprietario)" value={apreensaoForm.infrator_nome} onChange={(e) => setApreensaoForm({ ...apreensaoForm, infrator_nome: e.target.value })} />
+                  <Label>Envolvido em acidente</Label>
+                  <Select value={apreensaoForm.envolvimento_acidente || undefined} onValueChange={(value) => setApreensaoForm({ ...apreensaoForm, envolvimento_acidente: value })}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione se houve acidente" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {accidentOptions.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 
@@ -1741,6 +1963,8 @@ const DemutranLiberacao = () => {
                     <NativeInfoTile label="Cor" value={detalhesItem.cor || 'Nao informado'} />
                     <NativeInfoTile label="Modelo" value={detalhesItem.modelo || 'Nao informado'} />
                     <NativeInfoTile label="Municipio" value={detalhesItem.municipio || 'Nao informado'} />
+                    <NativeInfoTile label="Genero do condutor" value={getGenderLabel(detalhesItem.genero_condutor)} />
+                    <NativeInfoTile label="Acidente" value={getAccidentLabel(detalhesItem.envolvimento_acidente)} />
                   </div>
 
                   <div className="rounded-[22px] border border-emerald-100 bg-emerald-50/70 p-4">
@@ -1775,6 +1999,8 @@ const DemutranLiberacao = () => {
                           ),
                         },
                         { label: 'Infrator', value: detalhesItem.infrator_nome || 'Nao informado' },
+                        { label: 'Logradouro', value: detalhesItem.logradouro || 'Nao informado' },
+                        { label: 'Bairro / distrito', value: detalhesItem.bairro_apreensao || 'Nao informado' },
                       ]}
                     />
 
@@ -1783,7 +2009,7 @@ const DemutranLiberacao = () => {
                       rows={[
                         { label: 'Chassi', value: detalhesItem.chassi || 'Nao informado' },
                         { label: 'Motivo', value: detalhesItem.motivo || 'Nao informado' },
-                        { label: 'Bairro / distrito', value: detalhesItem.bairro_apreensao || 'Nao informado' },
+                        { label: 'Restricao legal', value: getRestrictionLabel(detalhesItem.restricao_legal) },
                         { label: 'Descricao', value: detalhesItem.descricao_veiculo || 'Nao informada' },
                       ]}
                     />
@@ -2034,6 +2260,43 @@ const DemutranLiberacao = () => {
         </ResponsiveDialog>
       </div>
       {confirmDialog}
+
+      <ResponsiveDialog
+        open={isImportDialogOpen}
+        onOpenChange={setIsImportDialogOpen}
+        title="Cadastro em massa"
+        description="Baixe o modelo da planilha, preencha os dados e faca o upload."
+      >
+        <div className="space-y-6 py-4">
+          <div className="rounded-xl border border-dashed border-slate-200 p-6 text-center">
+            <p className="text-sm font-medium text-slate-700">1. Baixe o modelo da planilha</p>
+            <p className="mt-1 text-xs text-slate-500">Preencha os dados no arquivo modelo e depois importe abaixo.</p>
+            <Button type="button" variant="outline" className="mt-4 gap-2" onClick={handleDownloadModelo}>
+              <Download className="h-4 w-4" />
+              Baixar modelo
+            </Button>
+          </div>
+
+          <div className="rounded-xl border border-dashed border-slate-200 p-6 text-center">
+            <p className="text-sm font-medium text-slate-700">2. Selecione o arquivo preenchido</p>
+            <p className="mt-1 text-xs text-slate-500">Formatos aceitos: .xlsx, .xls, .csv</p>
+            <label className="mt-4 inline-flex cursor-pointer">
+              <input
+                type="file"
+                className="hidden"
+                accept=".xlsx,.xls,.csv"
+                onChange={handleMassUpload}
+              />
+              <Button type="button" variant="default" className="gap-2" asChild>
+                <span>
+                  <Upload className="h-4 w-4" />
+                  Selecionar arquivo
+                </span>
+              </Button>
+            </label>
+          </div>
+        </div>
+      </ResponsiveDialog>
     </AdminLayout>
   );
 };

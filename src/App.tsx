@@ -56,6 +56,7 @@ const AdminMidias = React.lazy(() => import("./pages/admin/MidiasPage"));
 const AdminDemutranConteudos = React.lazy(() => import("./pages/admin/DemutranConteudos"));
 const AdminProfile = React.lazy(() => import("./pages/admin/Profile"));
 const AdminConfiguracoes = React.lazy(() => import("./pages/admin/Configuracoes"));
+const AdminGuardasMunicipais = React.lazy(() => import("./pages/admin/GuardasMunicipais"));
 
 const queryClient = new QueryClient();
 
@@ -234,6 +235,13 @@ const App = () => (
               <SuspenseWrapper>
                 <ProtectedRoute allowedPapeis={['super_admin', 'gestor']}>
                   <AdminUsuarios />
+                </ProtectedRoute>
+              </SuspenseWrapper>
+            } />
+            <Route path="/admin/guardas-municipais" element={
+              <SuspenseWrapper>
+                <ProtectedRoute allowedPapeis={['super_admin']}>
+                  <AdminGuardasMunicipais />
                 </ProtectedRoute>
               </SuspenseWrapper>
             } />
