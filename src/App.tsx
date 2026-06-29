@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/admin/ProtectedRoute";
 import { ConsentBar } from "@/components/shared/ConsentBar";
+import { ThemeProvider } from "next-themes";
 
 // Lazy load public pages
 const Index = React.lazy(() => import("./pages/Index"));
@@ -28,6 +29,9 @@ const PublicConcessionarioDemutran = React.lazy(() => import("./pages/PublicConc
 const PublicRecursoDemutran = React.lazy(() => import("./pages/PublicRecursoDemutran"));
 const PublicDocumentosDemutran = React.lazy(() => import("./pages/PublicDocumentosDemutran"));
 const PublicMidiasDemutran = React.lazy(() => import("./pages/PublicMidiasDemutran"));
+const FalaCidadaoNovaSolicitacao = React.lazy(() => import("./pages/FalaCidadaoNovaSolicitacao"));
+const FalaCidadaoAcompanhar = React.lazy(() => import("./pages/FalaCidadaoAcompanhar"));
+const FalaCidadaoMinhasSolicitacoes = React.lazy(() => import("./pages/FalaCidadaoMinhasSolicitacoes"));
 const TermosDeUso = React.lazy(() => import("./pages/TermosDeUso"));
 const PoliticaDePrivacidade = React.lazy(() => import("./pages/PoliticaDePrivacidade"));
 const NotFound = React.lazy(() => import("./pages/NotFound"));
@@ -57,6 +61,7 @@ const AdminDemutranConteudos = React.lazy(() => import("./pages/admin/DemutranCo
 const AdminProfile = React.lazy(() => import("./pages/admin/Profile"));
 const AdminConfiguracoes = React.lazy(() => import("./pages/admin/Configuracoes"));
 const AdminGuardasMunicipais = React.lazy(() => import("./pages/admin/GuardasMunicipais"));
+const AdminFalaCidadao = React.lazy(() => import("./pages/admin/FalaCidadao"));
 
 const queryClient = new QueryClient();
 
@@ -70,12 +75,13 @@ const SuspenseWrapper = ({ children }: { children: React.ReactNode }) => (
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <AuthProvider>
-          <Routes>
+    <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <AuthProvider>
+            <Routes>
             {/* Public Routes */}
             <Route path="/" element={
               <SuspenseWrapper>
@@ -121,6 +127,22 @@ const App = () => (
             <Route path="/demutran/midias" element={
               <SuspenseWrapper>
                 <PublicMidiasDemutran />
+              </SuspenseWrapper>
+            } />
+            <Route path="/fala-cidadao" element={<Navigate to="/fala-cidadao/nova-solicitacao" replace />} />
+            <Route path="/fala-cidadao/nova-solicitacao" element={
+              <SuspenseWrapper>
+                <FalaCidadaoNovaSolicitacao />
+              </SuspenseWrapper>
+            } />
+            <Route path="/fala-cidadao/acompanhar" element={
+              <SuspenseWrapper>
+                <FalaCidadaoAcompanhar />
+              </SuspenseWrapper>
+            } />
+            <Route path="/fala-cidadao/minhas-solicitacoes" element={
+              <SuspenseWrapper>
+                <FalaCidadaoMinhasSolicitacoes />
               </SuspenseWrapper>
             } />
             <Route path="/demutran/educacao" element={<Navigate to="/demutran/midias" replace />} />
@@ -242,6 +264,13 @@ const App = () => (
               <SuspenseWrapper>
                 <ProtectedRoute allowedPapeis={['super_admin']}>
                   <AdminGuardasMunicipais />
+                </ProtectedRoute>
+              </SuspenseWrapper>
+            } />
+            <Route path="/admin/fala-cidadao" element={
+              <SuspenseWrapper>
+                <ProtectedRoute allowedPapeis={['super_admin', 'gestor', 'admin_setor', 'tecnico']} requiredSetorSlug="fala-cidadao">
+                  <AdminFalaCidadao />
                 </ProtectedRoute>
               </SuspenseWrapper>
             } />
@@ -381,6 +410,7 @@ const App = () => (
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
+    </ThemeProvider>
   </QueryClientProvider>
 );
 

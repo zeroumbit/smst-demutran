@@ -226,12 +226,83 @@ const getValorEstadia = (item: VeiculoRecolhido) =>
 const getVehicleKind = (item: VeiculoRecolhido) =>
   item.local_custodia === 'motos' || item.local_custodia === 'motos_delegacia' ? 'Moto' : 'Carro';
 
+const getPeriodoRange = (periodo: string, dataInicio?: string, dataFim?: string): { inicio: string | null; fim: string | null } => {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = now.getMonth();
+  const d = now.getDate();
+
+  switch (periodo) {
+    case 'hoje':
+      return {
+        inicio: `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`,
+        fim: `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`,
+      };
+    case 'semana': {
+      const dia = now.getDay();
+      const diff = dia === 0 ? 6 : dia - 1;
+      const inicio = new Date(now);
+      inicio.setDate(now.getDate() - diff);
+      const fim = new Date(inicio);
+      fim.setDate(inicio.getDate() + 6);
+      return {
+        inicio: inicio.toISOString().slice(0, 10),
+        fim: fim.toISOString().slice(0, 10),
+      };
+    }
+    case 'mes':
+      return {
+        inicio: `${y}-${String(m + 1).padStart(2, '0')}-01`,
+        fim: new Date(y, m + 1, 0).toISOString().slice(0, 10),
+      };
+    case 'ano':
+      return {
+        inicio: `${y}-01-01`,
+        fim: `${y}-12-31`,
+      };
+    case '3meses': {
+      const d3 = new Date(now);
+      d3.setMonth(m - 2);
+      d3.setDate(1);
+      return {
+        inicio: d3.toISOString().slice(0, 10),
+        fim: now.toISOString().slice(0, 10),
+      };
+    }
+    case '6meses': {
+      const d6 = new Date(now);
+      d6.setMonth(m - 5);
+      d6.setDate(1);
+      return {
+        inicio: d6.toISOString().slice(0, 10),
+        fim: now.toISOString().slice(0, 10),
+      };
+    }
+    case '12meses': {
+      const d12 = new Date(now);
+      d12.setMonth(m - 11);
+      d12.setDate(1);
+      return {
+        inicio: d12.toISOString().slice(0, 10),
+        fim: now.toISOString().slice(0, 10),
+      };
+    }
+    case 'intervalo':
+      return {
+        inicio: dataInicio || null,
+        fim: dataFim || null,
+      };
+    default:
+      return { inicio: null, fim: null };
+  }
+};
+
 const DemutranLiberacao = () => {
-  const { isSuperAdmin, setorId, profile } = useAuth();
+  const { setorId, profile } = useAuth();
   const { confirm, confirmDialog } = useConfirmDialog();
   const [setores, setSetores] = useState<Setor[]>([]);
   const [veiculos, setVeiculos] = useState<VeiculoRecolhido[]>([]);
-  const [selectedSetorId, setSelectedSetorId] = useState<string>('');
+  const [demutranSetorId, setDemutranSetorId] = useState<string>('');
   const [searchTermPatio, setSearchTermPatio] = useState('');
   const [searchTermLiberados, setSearchTermLiberados] = useState('');
   const [filtroTipo, setFiltroTipo] = useState<string>('todos');
@@ -241,6 +312,7 @@ const DemutranLiberacao = () => {
   const [dataEntradaFim, setDataEntradaFim] = useState('');
   const [dataSaidaInicio, setDataSaidaInicio] = useState('');
   const [dataSaidaFim, setDataSaidaFim] = useState('');
+  const [valorPeriodo, setValorPeriodo] = useState<string>('total');
   const [filtrosAbertos, setFiltrosAbertos] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -253,10 +325,12 @@ const DemutranLiberacao = () => {
   const [cpfEditValue, setCpfEditValue] = useState('');
   const [cpfEditJustificativa, setCpfEditJustificativa] = useState('');
   const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
-  const [isCustomReportDialogOpen, setIsCustomReportDialogOpen] = useState(false);
-  const [selectedReportOption, setSelectedReportOption] = useState('patio_todos');
-  const [selectedReportFormat, setSelectedReportFormat] = useState<'csv' | 'pdf'>('csv');
-  const [selectedCustomReportFormat, setSelectedCustomReportFormat] = useState<'csv' | 'pdf'>('csv');
+  const [reportTipo, setReportTipo] = useState<string>('todos');
+  const [reportEstado, setReportEstado] = useState<string>('todos');
+  const [reportPeriodo, setReportPeriodo] = useState<string>('todos');
+  const [reportDataInicio, setReportDataInicio] = useState('');
+  const [reportDataFim, setReportDataFim] = useState('');
+  const [reportFormato, setReportFormato] = useState<'csv' | 'pdf'>('csv');
 
   const [detalhesItem, setDetalhesItem] = useState<VeiculoRecolhido | null>(null);
   const [liberacaoItem, setLiberacaoItem] = useState<VeiculoRecolhido | null>(null);
@@ -334,7 +408,7 @@ const DemutranLiberacao = () => {
     printHtml('Veiculo recolhido - ' + item.placa, html);
   };
 
-  const effectiveSetorId = isSuperAdmin ? selectedSetorId : (setorId || '');
+  const effectiveSetorId = demutranSetorId || setorId || '';
 
   const loadSetores = async () => {
     const { data, error } = await supabase.rpc('get_manageable_setores');
@@ -346,8 +420,8 @@ const DemutranLiberacao = () => {
     const demutranOnly = ((data || []) as Setor[]).filter((setor) => setor.slug === 'demutran');
     setSetores(demutranOnly);
 
-    if (!selectedSetorId && demutranOnly[0]?.id) {
-      setSelectedSetorId(setorId || demutranOnly[0].id);
+    if (demutranOnly[0]?.id) {
+      setDemutranSetorId(demutranOnly[0].id);
     }
   };
 
@@ -518,6 +592,25 @@ const DemutranLiberacao = () => {
     [veiculos],
   );
 
+  const valorPeriodoLabel: Record<string, string> = {
+    total: 'Total em taxas',
+    hoje: 'Taxas de hoje',
+    semana: 'Taxas da semana',
+    mes: 'Taxas do mes',
+    '3meses': 'Taxas dos ultimos 3 meses',
+    '6meses': 'Taxas dos ultimos 6 meses',
+    '12meses': 'Taxas dos ultimos 12 meses',
+  };
+
+  const valorFiltrado = useMemo(() => {
+    if (valorPeriodo === 'total') return valorAcumulado;
+    const range = getPeriodoRange(valorPeriodo);
+    if (!range.inicio) return valorAcumulado;
+    return veiculos
+      .filter((item) => matchData(item.data_recolhimento, range.inicio, range.fim))
+      .reduce((acc, item) => acc + getValorEstadia(item), 0);
+  }, [veiculos, valorPeriodo, valorAcumulado]);
+
   const filteredLogradouroSuggestions = useMemo(() => {
     const termo = apreensaoForm.logradouro.trim().toLowerCase();
     if (!termo) {
@@ -558,56 +651,56 @@ const DemutranLiberacao = () => {
       Valor_estadia: formatReportCurrency(getValorEstadia(item)),
     }));
 
-  const buildSelectedVehicleReport = () => {
-    const reportMap: Record<string, { title: string; rows: ReturnType<typeof vehicleRows> }> = {
-      filtros_aplicados: { title: 'Veiculos com filtros aplicados', rows: vehicleRows(filteredConsolidado) },
-      patio_todos: { title: 'Veiculos no patio', rows: vehicleRows(filteredApreendidos) },
-      patio_carros: { title: 'Carros no patio', rows: vehicleRows(filteredApreendidos.filter((item) => getVehicleKind(item) === 'Carro')) },
-      patio_motos: { title: 'Motos no patio', rows: vehicleRows(filteredApreendidos.filter((item) => getVehicleKind(item) === 'Moto')) },
-      liberados_todos: { title: 'Veiculos liberados', rows: vehicleRows(filteredLiberados) },
-      liberados_carros: { title: 'Carros liberados', rows: vehicleRows(filteredLiberados.filter((item) => getVehicleKind(item) === 'Carro')) },
-      liberados_motos: { title: 'Motos liberadas', rows: vehicleRows(filteredLiberados.filter((item) => getVehicleKind(item) === 'Moto')) },
-      origem_forum: { title: 'Veiculos do forum', rows: vehicleRows(filteredConsolidado.filter((item) => item.local_custodia === 'veiculos_forum')) },
-      origem_delegacia: { title: 'Motos de delegacia', rows: vehicleRows(filteredConsolidado.filter((item) => item.local_custodia === 'motos_delegacia')) },
-      consolidado_geral: { title: 'Consolidado geral', rows: vehicleRows(filteredConsolidado) },
-    };
+  const handleGenerateReport = () => {
+    let baseItems: VeiculoRecolhido[];
+    if (reportEstado === 'patio') {
+      baseItems = apreendidos;
+    } else if (reportEstado === 'liberados') {
+      baseItems = liberados;
+    } else {
+      baseItems = veiculos;
+    }
 
-    return reportMap[selectedReportOption];
-  };
+    if (reportTipo === 'carro') {
+      baseItems = baseItems.filter((i) => getVehicleKind(i) === 'Carro');
+    } else if (reportTipo === 'moto') {
+      baseItems = baseItems.filter((i) => getVehicleKind(i) === 'Moto');
+    }
 
-  const handleGenerateVehicleReport = () => {
-    const report = buildSelectedVehicleReport();
+    const periodoRange = getPeriodoRange(reportPeriodo, reportDataInicio, reportDataFim);
+    if (periodoRange.inicio) {
+      baseItems = baseItems.filter((item) => matchData(item.data_recolhimento, periodoRange.inicio, periodoRange.fim));
+    }
 
-    if (!report || !report.rows.length) {
-      toast({ title: 'Sem dados', description: 'Nao existem registros para o relatorio selecionado.', variant: 'destructive' });
+    const rows = vehicleRows(baseItems);
+    if (!rows.length) {
+      toast({ title: 'Sem dados', description: 'Nenhum registro encontrado para os filtros selecionados.', variant: 'destructive' });
       return;
     }
 
-    const fileName = buildReportFileName('veiculos-recolhidos', report.title);
+    const titleParts = [
+      reportEstado !== 'todos' ? (reportEstado === 'patio' ? 'No patio' : 'Liberados') : 'Todos',
+      reportTipo !== 'todos' ? reportTipo : '',
+      periodoRange.inicio ? `${periodoRange.inicio} a ${periodoRange.fim}` : '',
+    ].filter(Boolean).join(' - ');
 
-    if (selectedReportFormat === 'csv') {
-      exportReportCsv(fileName, report.rows);
+    const fileName = buildReportFileName('veiculos', titleParts);
+    if (reportFormato === 'csv') {
+      exportReportCsv(fileName, rows);
     } else {
-      openPdfPrintReport(report.title, [{ name: report.title, rows: report.rows }]);
+      openPdfPrintReport(`Relatorio - ${titleParts}`, [{ name: titleParts, rows }]);
     }
-
     setIsReportDialogOpen(false);
   };
 
-  const handleGenerateCustomVehicleReport = () => {
-    const rows = vehicleRows(filteredConsolidado);
+  const handleGenerateGeral = () => {
+    const rows = vehicleRows(veiculos);
     if (!rows.length) {
-      toast({ title: 'Sem dados', description: 'Nao existem registros para os filtros aplicados.', variant: 'destructive' });
+      toast({ title: 'Sem dados', description: 'Nenhum veiculo cadastrado.', variant: 'destructive' });
       return;
     }
-
-    const fileName = buildReportFileName('veiculos-recolhidos', 'filtros-aplicados');
-    if (selectedCustomReportFormat === 'csv') {
-      exportReportCsv(fileName, rows);
-    } else {
-      openPdfPrintReport('Veiculos com filtros aplicados', [{ name: 'Filtros aplicados', rows }]);
-    }
-    setIsCustomReportDialogOpen(false);
+    const fileName = buildReportFileName('veiculos', 'geral');
+    exportReportCsv(fileName, rows);
   };
 
   const closeApreensaoDialog = () => {
@@ -1296,29 +1389,37 @@ const DemutranLiberacao = () => {
               <SummaryCard title="Total" value={veiculos.length} subtitle="Veiculos cadastrados" icon={Car} />
               <SummaryCard title="No patio" value={apreendidos.length} subtitle="Atualmente apreendidos" icon={Warehouse} />
               <SummaryCard title="Liberados" value={liberados.length} subtitle="Ja liberados" icon={CheckCircle2} />
-              <SummaryCard title="Valor" value={formatCurrency(valorAcumulado)} subtitle="Total em taxas" icon={CircleDollarSign} />
+              <div className="rounded-[26px] bg-white/10 p-4 backdrop-blur-sm sm:p-5">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-white/60 leading-none">Valor</span>
+                      <Select value={valorPeriodo} onValueChange={setValorPeriodo}>
+                        <SelectTrigger className="h-auto border-0 bg-transparent p-0 text-[11px] font-bold uppercase tracking-[0.14em] text-white/60 shadow-none focus:ring-0 focus:ring-offset-0 [&>svg]:text-white/60 [&>svg]:h-3 [&>svg]:w-3">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="total">Total</SelectItem>
+                          <SelectItem value="hoje">Hoje</SelectItem>
+                          <SelectItem value="semana">Essa semana</SelectItem>
+                          <SelectItem value="mes">Este mes</SelectItem>
+                          <SelectItem value="3meses">Ultimos 3 meses</SelectItem>
+                          <SelectItem value="6meses">Ultimos 6 meses</SelectItem>
+                          <SelectItem value="12meses">Ultimos 12 meses</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <p className="mt-1 text-[20px] font-black tracking-[-0.04em] text-white sm:text-[28px]">{formatCurrency(valorFiltrado)}</p>
+                    <p className="mt-0.5 text-[13px] leading-5 text-white/70">{valorPeriodoLabel[valorPeriodo] || 'Total em taxas'}</p>
+                  </div>
+                  <div className="shrink-0 rounded-[18px] bg-white/15 p-3 text-white backdrop-blur-sm">
+                    <CircleDollarSign className="h-5 w-5" />
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </section>
-
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          {isSuperAdmin && (
-            <div className="w-full sm:max-w-xs">
-              <Select value={selectedSetorId} onValueChange={setSelectedSetorId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione um setor" />
-                </SelectTrigger>
-                <SelectContent>
-                  {setores.map((setor) => (
-                    <SelectItem key={setor.id} value={setor.id}>
-                      {setor.nome}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-        </div>
 
         <div className={`lg:block ${filtrosAbertos ? 'block' : 'hidden'}`}>
           <div className="sticky top-0 z-10 bg-white pb-2 lg:rounded-[30px] lg:border lg:border-slate-200/80 lg:px-5 lg:pt-4">
@@ -1418,15 +1519,13 @@ const DemutranLiberacao = () => {
 
         <Tabs defaultValue="patio" className="space-y-5">
           <div className="flex flex-wrap items-center justify-end gap-2">
-            {activeFiltersCount > 0 && (
-              <Button type="button" variant="outline" className="gap-2" onClick={() => setIsCustomReportDialogOpen(true)}>
-                <FileSpreadsheet className="h-4 w-4" />
-                Relatorio personalizado
-              </Button>
-            )}
             <Button type="button" variant="outline" className="gap-2" onClick={() => setIsReportDialogOpen(true)}>
               <FileSpreadsheet className="h-4 w-4" />
-              Gerar relatorio
+              Relatorio personalizado
+            </Button>
+            <Button type="button" variant="default" className="gap-2" onClick={handleGenerateGeral}>
+              <FileSpreadsheet className="h-4 w-4" />
+              Relatorio geral
             </Button>
           </div>
           <TabsList className="grid h-auto grid-cols-3 rounded-[26px] bg-slate-100/80 p-1.5">
@@ -1455,7 +1554,7 @@ const DemutranLiberacao = () => {
               <div className="relative w-full">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                  className="h-12 rounded-[18px] border-slate-200 bg-slate-50 pl-11 text-[15px] font-medium"
+                  className="h-12 rounded-[18px] border-slate-200 bg-white pl-11 text-[15px] font-medium"
                   value={searchTermPatio}
                   onChange={(event) => setSearchTermPatio(event.target.value)}
                   placeholder="Buscar por placa, descrição, pátio ou situação"
@@ -1481,7 +1580,7 @@ const DemutranLiberacao = () => {
               <div className="p-8 text-center text-muted-foreground">Carregando veículos no pátio...</div>
             ) : (
               <>
-                {filteredApreendidos.length > 0 && (
+                {activeFiltersCount > 0 && filteredApreendidos.length > 0 && (
                   <div className="flex flex-wrap items-center gap-4">
                     {(() => {
                       const carros = filteredApreendidos.filter((i) => i.local_custodia !== 'motos' && i.local_custodia !== 'motos_delegacia').length;
@@ -1516,7 +1615,7 @@ const DemutranLiberacao = () => {
             <div className="relative w-full">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                className="h-12 rounded-[18px] border-slate-200 bg-slate-50 pl-11 text-[15px] font-medium"
+                className="h-12 rounded-[18px] border-slate-200 bg-white pl-11 text-[15px] font-medium"
                 value={searchTermLiberados}
                 onChange={(event) => setSearchTermLiberados(event.target.value)}
                 placeholder="Buscar por placa, descrição, pátio, situação ou liberação"
@@ -1527,7 +1626,7 @@ const DemutranLiberacao = () => {
               <div className="p-8 text-center text-muted-foreground">Carregando liberações...</div>
             ) : (
               <>
-                {filteredLiberados.length > 0 && (
+                {activeFiltersCount > 0 && filteredLiberados.length > 0 && (
                   <div className="flex flex-wrap items-center gap-4">
                     {(() => {
                       const carros = filteredLiberados.filter((i) => i.local_custodia !== 'motos' && i.local_custodia !== 'motos_delegacia').length;
@@ -1559,7 +1658,7 @@ const DemutranLiberacao = () => {
           </TabsContent>
 
           <TabsContent value="consolidado" className="space-y-5">
-            {filteredConsolidado.length > 0 && (
+            {activeFiltersCount > 0 && filteredConsolidado.length > 0 && (
               <div className="flex flex-wrap items-center gap-4">
                 {(() => {
                   const carros = filteredConsolidado.filter((i) => i.local_custodia !== 'motos' && i.local_custodia !== 'motos_delegacia').length;
@@ -1594,66 +1693,69 @@ const DemutranLiberacao = () => {
         </Tabs>
 
         <ResponsiveDialog
-          open={isCustomReportDialogOpen}
-          onOpenChange={setIsCustomReportDialogOpen}
-          title="Relatorio personalizado"
-          description="Gerar relatorio exatamente com os filtros aplicados. Escolha o formato."
-          onCancel={() => setIsCustomReportDialogOpen(false)}
-          onConfirm={handleGenerateCustomVehicleReport}
-          confirmLabel={selectedCustomReportFormat === 'csv' ? 'Baixar CSV' : 'Gerar PDF'}
-        >
-          <div className="space-y-4 py-2">
-            <div className="space-y-2">
-              <Label>Formato</Label>
-              <Select value={selectedCustomReportFormat} onValueChange={(value) => setSelectedCustomReportFormat(value as 'csv' | 'pdf')}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="csv">CSV</SelectItem>
-                  <SelectItem value="pdf">PDF</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </ResponsiveDialog>
-
-        <ResponsiveDialog
           open={isReportDialogOpen}
           onOpenChange={setIsReportDialogOpen}
-          title="Gerar relatorio"
-          description="Escolha o tipo de relatorio e o formato de saida."
+          title="Relatorio personalizado"
+          description="Escolha o tipo, estado, periodo e formato do relatorio."
           onCancel={() => setIsReportDialogOpen(false)}
-          onConfirm={handleGenerateVehicleReport}
-          confirmLabel={selectedReportFormat === 'csv' ? 'Baixar CSV' : 'Gerar PDF'}
+          onConfirm={handleGenerateReport}
+          confirmLabel={reportFormato === 'csv' ? 'Baixar CSV' : 'Gerar PDF'}
         >
           <div className="space-y-4 py-2">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label>Tipo</Label>
+                <Select value={reportTipo} onValueChange={setReportTipo}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todos">Todos</SelectItem>
+                    <SelectItem value="carro">Carro</SelectItem>
+                    <SelectItem value="moto">Moto</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Estado</Label>
+                <Select value={reportEstado} onValueChange={setReportEstado}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todos">Todos</SelectItem>
+                    <SelectItem value="patio">No patio</SelectItem>
+                    <SelectItem value="liberados">Liberados</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
             <div className="space-y-2">
-              <Label>Opcao de relatorio</Label>
-              <Select value={selectedReportOption} onValueChange={setSelectedReportOption}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
+              <Label>Periodo</Label>
+              <Select value={reportPeriodo} onValueChange={setReportPeriodo}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="filtros_aplicados">Resultado dos filtros aplicados</SelectItem>
-                  <SelectItem value="patio_todos">Todos no patio</SelectItem>
-                  <SelectItem value="patio_carros">Carros no patio</SelectItem>
-                  <SelectItem value="patio_motos">Motos no patio</SelectItem>
-                  <SelectItem value="liberados_todos">Todos liberados</SelectItem>
-                  <SelectItem value="liberados_carros">Carros liberados</SelectItem>
-                  <SelectItem value="liberados_motos">Motos liberadas</SelectItem>
-                  <SelectItem value="origem_forum">Veiculos do forum</SelectItem>
-                  <SelectItem value="origem_delegacia">Motos de delegacia</SelectItem>
-                  <SelectItem value="consolidado_geral">Consolidado geral</SelectItem>
+                  <SelectItem value="todos">Todos os tempos</SelectItem>
+                  <SelectItem value="hoje">Hoje</SelectItem>
+                  <SelectItem value="semana">Esta semana</SelectItem>
+                  <SelectItem value="mes">Este mes</SelectItem>
+                  <SelectItem value="ano">Este ano</SelectItem>
+                  <SelectItem value="intervalo">Intervalo personalizado</SelectItem>
                 </SelectContent>
               </Select>
             </div>
+            {reportPeriodo === 'intervalo' && (
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>Data inicio</Label>
+                  <Input type="date" value={reportDataInicio} onChange={(e) => setReportDataInicio(e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Data fim</Label>
+                  <Input type="date" value={reportDataFim} onChange={(e) => setReportDataFim(e.target.value)} />
+                </div>
+              </div>
+            )}
             <div className="space-y-2">
               <Label>Formato</Label>
-              <Select value={selectedReportFormat} onValueChange={(value) => setSelectedReportFormat(value as 'csv' | 'pdf')}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
+              <Select value={reportFormato} onValueChange={(value) => setReportFormato(value as 'csv' | 'pdf')}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="csv">CSV</SelectItem>
                   <SelectItem value="pdf">PDF</SelectItem>
@@ -2317,7 +2419,7 @@ function SummaryCard({
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="truncate text-[11px] font-semibold uppercase tracking-[0.16em] text-white/60">{title}</p>
-          <p className="mt-2 text-[18px] font-black tracking-[-0.06em] text-white break-words sm:text-[22px]">{value}</p>
+          <p className="mt-2 text-[20px] font-black tracking-[-0.06em] text-white break-words sm:text-[28px]">{value}</p>
           <p className="mt-1 hidden text-[12px] leading-5 text-white sm:block">{subtitle}</p>
         </div>
         <div className="shrink-0 rounded-[18px] bg-white/12 p-2.5 text-white sm:rounded-[20px] sm:p-3">

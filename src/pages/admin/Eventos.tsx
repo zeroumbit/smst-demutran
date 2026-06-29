@@ -9,13 +9,6 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { ResponsiveDialog } from '@/components/ui/responsive-dialog';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
@@ -38,8 +31,7 @@ const Eventos = ({ layout = true }: { layout?: boolean } = {}) => {
   const { isSuperAdmin, setorId } = useAuth();
   const { confirm, confirmDialog } = useConfirmDialog();
   const [eventos, setEventos] = useState<Evento[]>([]);
-  const [setores, setSetores] = useState<Setor[]>([]);
-  const [selectedSetorId, setSelectedSetorId] = useState<string>('global');
+  const [demutranSetorId, setDemutranSetorId] = useState<string>('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<Evento | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -53,20 +45,21 @@ const Eventos = ({ layout = true }: { layout?: boolean } = {}) => {
   });
   const [loading, setLoading] = useState(true);
 
-  const effectiveSetorId = isSuperAdmin ? selectedSetorId : (setorId || 'global');
+  const effectiveSetorId = demutranSetorId || setorId || '';
 
   const loadSetores = async () => {
     const { data } = await supabase.rpc('get_manageable_setores');
-    setSetores((data || []) as Setor[]);
+    const demutranOnly = ((data || []) as Setor[]).filter((setor) => setor.slug === 'demutran');
+    if (demutranOnly[0]?.id) {
+      setDemutranSetorId(demutranOnly[0].id);
+    }
   };
 
   const loadEventos = async () => {
     setLoading(true);
     let query = supabase.from('eventos').select('*').order('data', { ascending: false });
 
-    if (effectiveSetorId === 'global') {
-      query = isSuperAdmin ? query.is('setor_id', null) : query.eq('setor_id', setorId);
-    } else {
+    if (effectiveSetorId) {
       query = query.eq('setor_id', effectiveSetorId);
     }
 
@@ -104,7 +97,7 @@ const Eventos = ({ layout = true }: { layout?: boolean } = {}) => {
       data: formData.data,
       horario: formData.horario || null,
       ativo: formData.ativo,
-      setor_id: effectiveSetorId === 'global' ? null : effectiveSetorId,
+      setor_id: effectiveSetorId || null,
       updated_at: new Date().toISOString(),
     };
 
@@ -136,9 +129,6 @@ const Eventos = ({ layout = true }: { layout?: boolean } = {}) => {
       horario: item.horario || '',
       ativo: item.ativo,
     });
-    if (isSuperAdmin) {
-      setSelectedSetorId(item.setor_id || 'global');
-    }
     setIsDialogOpen(true);
   };
 
@@ -177,7 +167,6 @@ const Eventos = ({ layout = true }: { layout?: boolean } = {}) => {
     { header: 'Titulo', accessor: 'titulo' as const },
     { header: 'Local', accessor: 'local' as const },
     { header: 'Data', accessor: (item: Evento) => new Date(item.data).toLocaleDateString('pt-BR') },
-    { header: 'Escopo', accessor: (item: Evento) => setores.find((setor) => setor.id === item.setor_id)?.nome || 'Global' },
   ];
 
   const content = (
@@ -204,23 +193,6 @@ const Eventos = ({ layout = true }: { layout?: boolean } = {}) => {
           />
         </div>
 
-        {isSuperAdmin && (
-          <div className="w-full sm:max-w-xs">
-            <Select value={selectedSetorId} onValueChange={setSelectedSetorId}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="global">Global</SelectItem>
-                {setores.map((setor) => (
-                  <SelectItem key={setor.id} value={setor.id}>
-                    {setor.nome}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        )}
       </div>
 
       {loading ? (
@@ -247,25 +219,6 @@ const Eventos = ({ layout = true }: { layout?: boolean } = {}) => {
         confirmLabel={editingItem ? 'Atualizar' : 'Criar'}
       >
         <div className="space-y-3 py-2">
-          {isSuperAdmin && (
-            <div className="space-y-2">
-              <Label>Escopo do conteudo</Label>
-              <Select value={selectedSetorId} onValueChange={setSelectedSetorId}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="global">Global</SelectItem>
-                  {setores.map((setor) => (
-                    <SelectItem key={setor.id} value={setor.id}>
-                      {setor.nome}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-
           <div className="space-y-2">
             <Label htmlFor="titulo">Titulo *</Label>
             <Input id="titulo" value={formData.titulo} onChange={(e) => setFormData({ ...formData, titulo: e.target.value })} />

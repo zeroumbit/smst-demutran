@@ -9,13 +9,6 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { ResponsiveDialog } from '@/components/ui/responsive-dialog';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/lib/supabase';
 import { IMAGE_UPLOAD_RULES, sanitizeFileName, validateFileUpload } from '@/lib/upload';
@@ -45,8 +38,7 @@ const Noticias = ({ layout = true }: { layout?: boolean } = {}) => {
   const { isSuperAdmin, setorId } = useAuth();
   const { confirm, confirmDialog } = useConfirmDialog();
   const [noticias, setNoticias] = useState<Noticia[]>([]);
-  const [setores, setSetores] = useState<Setor[]>([]);
-  const [selectedSetorId, setSelectedSetorId] = useState<string>('global');
+  const [demutranSetorId, setDemutranSetorId] = useState<string>('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<Noticia | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -60,14 +52,14 @@ const Noticias = ({ layout = true }: { layout?: boolean } = {}) => {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const effectiveSetorId = isSuperAdmin ? selectedSetorId : (setorId || 'global');
+  const effectiveSetorId = demutranSetorId || setorId || '';
 
   const loadSetores = async () => {
     const { data, error } = await supabase.rpc('get_manageable_setores');
     if (!error) {
-      setSetores((data || []) as Setor[]);
-      if (isSuperAdmin && !selectedSetorId) {
-        setSelectedSetorId('global');
+      const demutranOnly = ((data || []) as Setor[]).filter((setor) => setor.slug === 'demutran');
+      if (demutranOnly[0]?.id) {
+        setDemutranSetorId(demutranOnly[0].id);
       }
     }
   };
@@ -80,13 +72,7 @@ const Noticias = ({ layout = true }: { layout?: boolean } = {}) => {
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (effectiveSetorId === 'global') {
-        if (!isSuperAdmin) {
-          query = query.eq('setor_id', setorId);
-        } else {
-          query = query.is('setor_id', null);
-        }
-      } else {
+      if (effectiveSetorId) {
         query = query.eq('setor_id', effectiveSetorId);
       }
 
@@ -160,7 +146,7 @@ const Noticias = ({ layout = true }: { layout?: boolean } = {}) => {
         imagem: imageUrl || null,
         ativo: formData.ativo,
         data: new Date().toISOString(),
-        setor_id: effectiveSetorId === 'global' ? null : effectiveSetorId,
+        setor_id: effectiveSetorId || null,
         updated_at: new Date().toISOString(),
       };
 
@@ -204,9 +190,6 @@ const Noticias = ({ layout = true }: { layout?: boolean } = {}) => {
       imagem: item.imagem || '',
       ativo: item.ativo,
     });
-    if (isSuperAdmin) {
-      setSelectedSetorId(item.setor_id || 'global');
-    }
     setImageFile(null);
     setIsDialogOpen(true);
   };
@@ -262,10 +245,6 @@ const Noticias = ({ layout = true }: { layout?: boolean } = {}) => {
   const columns = [
     { header: 'Titulo', accessor: 'titulo' as const },
     { header: 'Resumo', accessor: 'resumo' as const, className: 'max-w-md truncate' },
-    {
-      header: 'Escopo',
-      accessor: (item: Noticia) => setores.find((setor) => setor.id === item.setor_id)?.nome || 'Global',
-    },
   ];
 
   const content = (
@@ -286,29 +265,10 @@ const Noticias = ({ layout = true }: { layout?: boolean } = {}) => {
           />
         </div>
 
-        <div className="flex items-center gap-3">
-          {isSuperAdmin && (
-            <div className="w-full sm:w-48">
-              <Select value={selectedSetorId} onValueChange={setSelectedSetorId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Filtrar por escopo" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="global">Global</SelectItem>
-                  {setores.map((setor) => (
-                    <SelectItem key={setor.id} value={setor.id}>
-                      {setor.nome}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-          <Button onClick={() => setIsDialogOpen(true)} className="gap-2 shrink-0">
-            <Plus className="w-4 h-4" />
-            Nova Noticia
-          </Button>
-        </div>
+        <Button onClick={() => setIsDialogOpen(true)} className="gap-2 shrink-0">
+          <Plus className="w-4 h-4" />
+          Nova Noticia
+        </Button>
       </div>
 
       {loading ? (
@@ -335,25 +295,6 @@ const Noticias = ({ layout = true }: { layout?: boolean } = {}) => {
         confirmLabel={editingItem ? 'Atualizar' : 'Criar'}
       >
         <div className="space-y-3 py-2">
-          {isSuperAdmin && (
-            <div className="space-y-2">
-              <Label>Escopo do conteudo</Label>
-              <Select value={selectedSetorId} onValueChange={setSelectedSetorId}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="global">Global</SelectItem>
-                  {setores.map((setor) => (
-                    <SelectItem key={setor.id} value={setor.id}>
-                      {setor.nome}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-
           <div className="space-y-2">
             <Label htmlFor="titulo">Titulo *</Label>
             <Input

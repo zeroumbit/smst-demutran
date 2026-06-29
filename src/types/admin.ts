@@ -133,6 +133,12 @@ export interface DemutranVeiculoMunicipal {
   chassi: string;
   secretaria_responsavel: string;
   motorista_responsavel: string | null;
+  tipo: string | null;
+  ano: string | null;
+  modelo: string | null;
+  marca: string | null;
+  cor: string | null;
+  principal_local_atuacao: string | null;
   observacao: string | null;
   ativo: boolean;
   created_at?: string | null;

@@ -12,6 +12,7 @@ const Navbar = () => {
   const navItems = [
     { label: "Início", path: "/" },
     { label: "Demutran", path: "/demutran", newTab: true },
+    { label: "Fala Cidadao", path: "/fala-cidadao/nova-solicitacao" },
     { label: "Guarda Municipal", path: "/guarda-municipal" },
     {
       label: "Projetos",

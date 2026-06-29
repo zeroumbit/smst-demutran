@@ -8,13 +8,6 @@ import { ResponsiveDialog } from '@/components/ui/responsive-dialog';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { ImageUpload } from '@/components/ui/image-upload';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/lib/supabase';
 import { sanitizeFileName } from '@/lib/upload';
@@ -41,27 +34,27 @@ const Galeria = ({ layout = true }: { layout?: boolean } = {}) => {
   const { isSuperAdmin, setorId } = useAuth();
   const { confirm, confirmDialog } = useConfirmDialog();
   const [fotos, setFotos] = useState<Foto[]>([]);
-  const [setores, setSetores] = useState<Setor[]>([]);
-  const [selectedSetorId, setSelectedSetorId] = useState<string>('global');
+  const [demutranSetorId, setDemutranSetorId] = useState<string>('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [formData, setFormData] = useState({ url: '', titulo: '', descricao: '', categoria: '' });
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const effectiveSetorId = isSuperAdmin ? selectedSetorId : (setorId || 'global');
+  const effectiveSetorId = demutranSetorId || setorId || '';
 
   const loadSetores = async () => {
     const { data } = await supabase.rpc('get_manageable_setores');
-    setSetores((data || []) as Setor[]);
+    const demutranOnly = ((data || []) as Setor[]).filter((setor) => setor.slug === 'demutran');
+    if (demutranOnly[0]?.id) {
+      setDemutranSetorId(demutranOnly[0].id);
+    }
   };
 
   const loadFotos = async () => {
     setLoading(true);
     let query = supabase.from('galeria_fotos').select('*').order('created_at', { ascending: false });
 
-    if (effectiveSetorId === 'global') {
-      query = isSuperAdmin ? query.is('setor_id', null) : query.eq('setor_id', setorId);
-    } else {
+    if (effectiveSetorId) {
       query = query.eq('setor_id', effectiveSetorId);
     }
 
@@ -112,7 +105,7 @@ const Galeria = ({ layout = true }: { layout?: boolean } = {}) => {
         titulo: formData.titulo,
         descricao: formData.descricao,
         categoria: formData.categoria || null,
-        setor_id: effectiveSetorId === 'global' ? null : effectiveSetorId,
+        setor_id: effectiveSetorId || null,
         ativo: true,
         created_at: new Date().toISOString(),
       }]);
@@ -177,24 +170,6 @@ const Galeria = ({ layout = true }: { layout?: boolean } = {}) => {
         </Button>
       </div>
 
-      {isSuperAdmin && (
-        <div className="w-full sm:max-w-xs">
-          <Select value={selectedSetorId} onValueChange={setSelectedSetorId}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="global">Global</SelectItem>
-              {setores.map((setor) => (
-                <SelectItem key={setor.id} value={setor.id}>
-                  {setor.nome}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      )}
-
       {loading ? (
         <Card>
           <CardContent className="flex items-center justify-center py-12 text-muted-foreground">
@@ -242,25 +217,6 @@ const Galeria = ({ layout = true }: { layout?: boolean } = {}) => {
         confirmLabel="Adicionar"
       >
         <div className="space-y-3 py-2">
-          {isSuperAdmin && (
-            <div className="space-y-2">
-              <Label>Escopo do conteudo</Label>
-              <Select value={selectedSetorId} onValueChange={setSelectedSetorId}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="global">Global</SelectItem>
-                  {setores.map((setor) => (
-                    <SelectItem key={setor.id} value={setor.id}>
-                      {setor.nome}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-
           <div className="space-y-2">
             <Label htmlFor="titulo">Titulo *</Label>
             <Input id="titulo" value={formData.titulo} onChange={(e) => setFormData({ ...formData, titulo: e.target.value })} />

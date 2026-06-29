@@ -243,71 +243,70 @@ const PublicCredencialDemutran = () => {
 
       <section className="py-10 md:py-16 bg-background">
         <div className="mx-auto max-w-7xl px-4 sm:px-6">
-          <div className="space-y-6 md:space-y-8">
-            <Card className="border-primary/10 shadow-lg">
-              <CardHeader className="px-4 py-5 md:px-6 md:py-6">
-                <CardTitle className="flex items-center gap-2 text-lg md:text-2xl">
-                  <FileSearch className="h-5 w-5 md:h-6 md:w-6 text-primary" />
-                  Consultar solicitação
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-5 px-4 pb-5 md:px-6 md:pb-6">
-                <form onSubmit={handleConsultarStatus} className="flex flex-col gap-4 md:grid md:grid-cols-[1fr_1fr_auto]">
-                  <div className="space-y-1.5">
-                    <Label htmlFor="consulta-protocolo" className="text-sm font-semibold">Protocolo</Label>
-                    <Input
-                      id="consulta-protocolo"
-                      className="h-12 md:h-10 text-base"
-                      value={consultaForm.protocolo}
-                      onChange={(event) => setConsultaForm((current) => ({ ...current, protocolo: event.target.value }))}
-                      placeholder="Ex.: CRD-20260616000000-ABC123"
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="consulta-cpf" className="text-sm font-semibold">CPF</Label>
-                    <Input
-                      id="consulta-cpf"
-                      className="h-12 md:h-10 text-base"
-                      placeholder="000.000.000-00"
-                      maxLength={14}
-                      value={consultaForm.cpf}
-                      onChange={(event) => setConsultaForm((current) => ({ ...current, cpf: maskCpf(event.target.value) }))}
-                    />
-                  </div>
-                  <div className="flex items-end">
-                    <Button type="submit" className="h-12 w-full text-base font-semibold md:h-10 md:w-auto" disabled={consultaLoading}>
-                      {consultaLoading ? 'Consultando...' : 'Consultar'}
-                    </Button>
-                  </div>
-                </form>
-
-                {consultaError && <p className="text-sm text-destructive">{consultaError}</p>}
-
-                {consultaStatus && (
-                  <div className="grid gap-3 rounded-2xl border border-emerald-200 bg-emerald-50/50 p-4 md:grid-cols-2 md:p-5">
-                    <div>
-                      <p className="text-xs text-muted-foreground md:text-sm">Protocolo</p>
-                      <p className="text-sm font-semibold md:text-base">{consultaStatus.protocolo}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground md:text-sm">Status</p>
-                      <p className="text-sm font-semibold md:text-base">{statusLabels[consultaStatus.status] || consultaStatus.status}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground md:text-sm">Tipo</p>
-                      <p className="text-sm font-semibold md:text-base">{consultaStatus.tipo === 'pcd' ? 'PCD' : 'Idoso'}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground md:text-sm">Solicitado em</p>
-                      <p className="text-sm font-semibold md:text-base">{new Date(consultaStatus.created_at).toLocaleString('pt-BR')}</p>
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            <div className="flex flex-col gap-6 md:gap-8 lg:flex-row">
+          <div className="flex flex-col gap-6 md:gap-8 lg:flex-row">
             <div className="min-w-0 flex-1 space-y-6 md:space-y-8">
+              <Card className="border-primary/10 shadow-lg">
+                <CardHeader className="px-4 py-5 md:px-6 md:py-6">
+                  <CardTitle className="flex items-center gap-2 text-lg md:text-2xl">
+                    <FileSearch className="h-5 w-5 md:h-6 md:w-6 text-primary" />
+                    Consultar solicitação
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-5 px-4 pb-5 md:px-6 md:pb-6">
+                  <form onSubmit={handleConsultarStatus} className="flex flex-col gap-4 md:grid md:grid-cols-[1fr_1fr_auto]">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="consulta-protocolo" className="text-sm font-semibold">Protocolo</Label>
+                      <Input
+                        id="consulta-protocolo"
+                        className="h-12 md:h-10 text-base"
+                        value={consultaForm.protocolo}
+                        onChange={(event) => setConsultaForm((current) => ({ ...current, protocolo: event.target.value }))}
+                        placeholder="Ex.: CRD-20260616000000-ABC123"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="consulta-cpf" className="text-sm font-semibold">CPF</Label>
+                      <Input
+                        id="consulta-cpf"
+                        className="h-12 md:h-10 text-base"
+                        placeholder="000.000.000-00"
+                        maxLength={14}
+                        value={consultaForm.cpf}
+                        onChange={(event) => setConsultaForm((current) => ({ ...current, cpf: maskCpf(event.target.value) }))}
+                      />
+                    </div>
+                    <div className="flex items-end">
+                      <Button type="submit" className="h-12 w-full text-base font-semibold md:h-10 md:w-auto" disabled={consultaLoading}>
+                        {consultaLoading ? 'Consultando...' : 'Consultar'}
+                      </Button>
+                    </div>
+                  </form>
+
+                  {consultaError && <p className="text-sm text-destructive">{consultaError}</p>}
+
+                  {consultaStatus && (
+                    <div className="grid gap-3 rounded-2xl border border-emerald-200 bg-emerald-50/50 p-4 md:grid-cols-2 md:p-5">
+                      <div>
+                        <p className="text-xs text-muted-foreground md:text-sm">Protocolo</p>
+                        <p className="text-sm font-semibold md:text-base">{consultaStatus.protocolo}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground md:text-sm">Status</p>
+                        <p className="text-sm font-semibold md:text-base">{statusLabels[consultaStatus.status] || consultaStatus.status}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground md:text-sm">Tipo</p>
+                        <p className="text-sm font-semibold md:text-base">{consultaStatus.tipo === 'pcd' ? 'PCD' : 'Idoso'}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground md:text-sm">Solicitado em</p>
+                        <p className="text-sm font-semibold md:text-base">{new Date(consultaStatus.created_at).toLocaleString('pt-BR')}</p>
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
               <div className="rounded-xl border border-emerald-800/30 bg-emerald-900/10 p-5 md:p-6">
                 <div className="mb-3 flex items-center gap-2">
                   <Accessibility className="h-5 w-5 text-emerald-800" />
@@ -374,11 +373,11 @@ const PublicCredencialDemutran = () => {
                       </div>
                       <div className="space-y-1.5">
                         <Label htmlFor="rg" className="text-sm font-semibold">RG *</Label>
-                      <Input
-                        id="rg"
-                        className="h-12 md:h-10 text-base"
-                        placeholder="RG"
-                        maxLength={20}
+                        <Input
+                          id="rg"
+                          className="h-12 md:h-10 text-base"
+                          placeholder="Ex.: 12.345.678-9"
+                          maxLength={20}
                         value={formData.rg}
                         onChange={(event) => updateField('rg', event.target.value)}
                       />
@@ -693,7 +692,6 @@ const PublicCredencialDemutran = () => {
             </aside>
           </div>
         </div>
-      </div>
       </section>
 
     </DemutranPortalLayout>

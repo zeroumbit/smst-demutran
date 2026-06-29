@@ -323,7 +323,7 @@ const DemutranConcessionarios = () => {
   const { isSuperAdmin, setorId } = useAuth();
   const [items, setItems] = useState<DemutranConcessionario[]>([]);
   const [setores, setSetores] = useState<Setor[]>([]);
-  const [selectedSetorId, setSelectedSetorId] = useState('');
+  const [demutranSetorId, setDemutranSetorId] = useState('');
   const [accessMap, setAccessMap] = useState<Record<string, boolean>>({});
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
@@ -352,7 +352,7 @@ const DemutranConcessionarios = () => {
   const [selectedReportFormat, setSelectedReportFormat] = useState<'csv' | 'pdf'>('csv');
   const [selectedCustomReportFormat, setSelectedCustomReportFormat] = useState<'csv' | 'pdf'>('csv');
 
-  const effectiveSetorId = isSuperAdmin ? selectedSetorId : (setorId || '');
+  const effectiveSetorId = demutranSetorId || setorId || '';
 
   const loadSetores = async () => {
     const { data, error } = await supabase.rpc('get_manageable_setores');
@@ -364,8 +364,8 @@ const DemutranConcessionarios = () => {
     const demutranOnly = ((data || []) as Setor[]).filter((setor) => setor.slug === 'demutran');
     setSetores(demutranOnly);
 
-    if (!selectedSetorId && demutranOnly[0]?.id) {
-      setSelectedSetorId(setorId || demutranOnly[0].id);
+    if (demutranOnly[0]?.id) {
+      setDemutranSetorId(demutranOnly[0].id);
     }
   };
 
@@ -1064,20 +1064,6 @@ const DemutranConcessionarios = () => {
               </div>
 
               <div className="mt-3 hidden shrink-0 flex-row gap-2 sm:flex">
-                {isSuperAdmin && (
-                  <Select value={selectedSetorId} onValueChange={setSelectedSetorId}>
-                    <SelectTrigger className="w-[220px] rounded-[18px] border-white/20 bg-white/10 text-white">
-                      <SelectValue placeholder="Selecione o setor" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {setores.map((setor) => (
-                        <SelectItem key={setor.id} value={setor.id}>
-                          {setor.nome}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
                 <Button type="button" variant="secondary" className="gap-2 rounded-[18px] bg-white/20 text-white shadow-none hover:bg-white/30" onClick={() => setIsImportDialogOpen(true)}>
                   <Upload className="h-4 w-4" />
                   Importar
@@ -1102,20 +1088,6 @@ const DemutranConcessionarios = () => {
             </div>
 
             <div className="flex gap-2 sm:hidden">
-              {isSuperAdmin && (
-                <Select value={selectedSetorId} onValueChange={setSelectedSetorId}>
-                  <SelectTrigger className="h-12 flex-1 rounded-[18px] border-white/20 bg-white/10 text-white">
-                    <SelectValue placeholder="Setor" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {setores.map((setor) => (
-                      <SelectItem key={setor.id} value={setor.id}>
-                        {setor.nome}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
               <Button type="button" variant="secondary" className="h-12 flex-1 gap-2 rounded-[18px] bg-white/20 text-white shadow-none hover:bg-white/30" onClick={() => setIsImportDialogOpen(true)}>
                 <Upload className="h-4 w-4" />
                 Importar

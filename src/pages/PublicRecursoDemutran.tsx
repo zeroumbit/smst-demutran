@@ -18,7 +18,7 @@ import {
 import { supabase } from '@/lib/supabase';
 import { uploadDemutranAnexo } from '@/lib/demutranUploads';
 import { validateFileUpload, DOCUMENT_UPLOAD_RULES } from '@/lib/upload';
-import { isValidCpf, maskCpf } from '@/lib/masks';
+import { isValidCpf, isValidEmail, maskCpf, maskPhone } from '@/lib/masks';
 
 const initialForm = {
   tipo: 'defesa_previa',
@@ -273,42 +273,42 @@ const PublicRecursoDemutran = () => {
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="space-y-1.5">
-                      <Label htmlFor="autoInfracao" className="text-sm font-semibold">Auto de infração *</Label>
-                      <Input id="autoInfracao" className="h-12 md:h-10 text-base" maxLength={50} value={formData.autoInfracao} onChange={(event) => setFormData((current) => ({ ...current, autoInfracao: event.target.value }))} />
-                    </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="autoInfracao" className="text-sm font-semibold">Auto de infração *</Label>
+                        <Input id="autoInfracao" className="h-12 md:h-10 text-base" maxLength={50} placeholder="Ex.: AE-12345678" value={formData.autoInfracao} onChange={(event) => setFormData((current) => ({ ...current, autoInfracao: event.target.value }))} />
+                      </div>
                   </div>
 
                   <div className="space-y-1.5">
-                    <Label htmlFor="nomeCompleto" className="text-sm font-semibold">Nome completo *</Label>
-                    <Input id="nomeCompleto" className="h-12 md:h-10 text-base" maxLength={200} value={formData.nomeCompleto} onChange={(event) => setFormData((current) => ({ ...current, nomeCompleto: event.target.value }))} />
+                      <Label htmlFor="nomeCompleto" className="text-sm font-semibold">Nome completo *</Label>
+                      <Input id="nomeCompleto" className="h-12 md:h-10 text-base" maxLength={200} placeholder="Seu nome completo sem abreviacoes" value={formData.nomeCompleto} onChange={(event) => setFormData((current) => ({ ...current, nomeCompleto: event.target.value }))} />
                   </div>
 
                   <div className="grid gap-4 md:grid-cols-2">
                     <div className="space-y-1.5">
                       <Label htmlFor="cpf" className="text-sm font-semibold">CPF *</Label>
-                      <Input id="cpf" className="h-12 md:h-10 text-base" value={formData.cpf} onChange={(event) => setFormData((current) => ({ ...current, cpf: event.target.value }))} />
+                      <Input id="cpf" className="h-12 md:h-10 text-base" placeholder="000.000.000-00" maxLength={14} value={formData.cpf} onChange={(event) => setFormData((current) => ({ ...current, cpf: maskCpf(event.target.value) }))} />
                     </div>
                     <div className="space-y-1.5">
                       <Label htmlFor="placa" className="text-sm font-semibold">Placa do veiculo</Label>
-                      <Input id="placa" className="h-12 md:h-10 text-base" value={formData.placa} onChange={(event) => setFormData((current) => ({ ...current, placa: event.target.value.toUpperCase() }))} />
+                      <Input id="placa" className="h-12 md:h-10 text-base" placeholder="AAA1A11" maxLength={7} value={formData.placa} onChange={(event) => setFormData((current) => ({ ...current, placa: event.target.value.toUpperCase() }))} />
                     </div>
                   </div>
 
                   <div className="grid gap-4 md:grid-cols-2">
                     <div className="space-y-1.5">
                       <Label htmlFor="email" className="text-sm font-semibold">Email</Label>
-                      <Input id="email" className="h-12 md:h-10 text-base" type="email" value={formData.email} onChange={(event) => setFormData((current) => ({ ...current, email: event.target.value }))} />
+                      <Input id="email" className="h-12 md:h-10 text-base" type="email" placeholder="seu@email.com" value={formData.email} onChange={(event) => setFormData((current) => ({ ...current, email: event.target.value }))} />
                     </div>
                     <div className="space-y-1.5">
                       <Label htmlFor="telefone" className="text-sm font-semibold">Telefone</Label>
-                      <Input id="telefone" className="h-12 md:h-10 text-base" value={formData.telefone} onChange={(event) => setFormData((current) => ({ ...current, telefone: event.target.value }))} />
+                      <Input id="telefone" className="h-12 md:h-10 text-base" placeholder="(00) 00000-0000" maxLength={15} value={formData.telefone} onChange={(event) => setFormData((current) => ({ ...current, telefone: maskPhone(event.target.value) }))} />
                     </div>
                   </div>
 
                   <div className="space-y-1.5">
                     <Label htmlFor="observacao" className="text-sm font-semibold">Resumo do pedido</Label>
-                    <Textarea id="observacao" className="text-base" rows={4} maxLength={1000} value={formData.observacao} onChange={(event) => setFormData((current) => ({ ...current, observacao: event.target.value }))} />
+                      <Textarea id="observacao" className="text-base" rows={4} maxLength={1000} placeholder="Descreva sucintamente os motivos do recurso..." value={formData.observacao} onChange={(event) => setFormData((current) => ({ ...current, observacao: event.target.value }))} />
                   </div>
 
                   <div className="space-y-1.5">

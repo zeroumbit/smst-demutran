@@ -49,6 +49,12 @@ const initialForm = {
   chassi: '',
   secretaria_responsavel: '',
   motorista_responsavel: '',
+  tipo: '',
+  ano: '',
+  modelo: '',
+  marca: '',
+  cor: '',
+  principal_local_atuacao: '',
   observacao: '',
   ativo: true,
 };
@@ -120,6 +126,12 @@ const DemutranVeiculosMunicipais = () => {
       chassi: formData.chassi.trim().toUpperCase(),
       secretaria_responsavel: formData.secretaria_responsavel,
       motorista_responsavel: formData.motorista_responsavel.trim() || null,
+      tipo: formData.tipo.trim() || null,
+      ano: formData.ano.trim() || null,
+      modelo: formData.modelo.trim() || null,
+      marca: formData.marca.trim() || null,
+      cor: formData.cor.trim() || null,
+      principal_local_atuacao: formData.principal_local_atuacao.trim() || null,
       observacao: formData.observacao.trim() || null,
       ativo: formData.ativo,
       updated_at: new Date().toISOString(),
@@ -146,6 +158,12 @@ const DemutranVeiculosMunicipais = () => {
       chassi: item.chassi,
       secretaria_responsavel: item.secretaria_responsavel,
       motorista_responsavel: item.motorista_responsavel || '',
+      tipo: item.tipo || '',
+      ano: item.ano || '',
+      modelo: item.modelo || '',
+      marca: item.marca || '',
+      cor: item.cor || '',
+      principal_local_atuacao: item.principal_local_atuacao || '',
       observacao: item.observacao || '',
       ativo: item.ativo,
     });
@@ -172,7 +190,7 @@ const DemutranVeiculosMunicipais = () => {
 
   const handleDownloadModelo = () => {
     const wb = XLSX.utils.book_new();
-    const headers = ['Placa', 'Chassi', 'Secretaria Responsavel', 'Motorista Responsavel', 'Observacao'];
+    const headers = ['Placa', 'Chassi', 'Secretaria Responsavel', 'Motorista Responsavel', 'Tipo', 'Ano', 'Modelo', 'Marca', 'Cor', 'Principal Local Atuacao', 'Observacao'];
     const ws = XLSX.utils.aoa_to_sheet([headers, ['', '', '', '', '']]);
     XLSX.utils.book_append_sheet(wb, ws, 'Frota');
     XLSX.writeFile(wb, 'modelo-frota-municipal.xlsx');
@@ -225,6 +243,12 @@ const DemutranVeiculosMunicipais = () => {
           else if (header === 'chassi') columnMap.chassi = index;
           else if (header === 'secretaria_responsavel' || header === 'secretaria' || header === 'orgao') columnMap.secretaria_responsavel = index;
           else if (header === 'motorista_responsavel' || header === 'motorista') columnMap.motorista_responsavel = index;
+          else if (header === 'tipo') columnMap.tipo = index;
+          else if (header === 'ano') columnMap.ano = index;
+          else if (header === 'modelo') columnMap.modelo = index;
+          else if (header === 'marca') columnMap.marca = index;
+          else if (header === 'cor') columnMap.cor = index;
+          else if (header === 'principal_local_atuacao' || header === 'local_atuacao') columnMap.principal_local_atuacao = index;
           else if (header === 'observacao' || header === 'obs' || header === 'observacoes') columnMap.observacao = index;
           else if (header === 'ativo' || header === 'status' || header === 'situacao') columnMap.ativo = index;
         });
@@ -246,6 +270,30 @@ const DemutranVeiculosMunicipais = () => {
             ? String(row[columnMap.motorista_responsavel] || '').trim() || null
             : null;
 
+          const tipo = columnMap.tipo !== undefined
+            ? String(row[columnMap.tipo] || '').trim() || null
+            : null;
+
+          const ano = columnMap.ano !== undefined
+            ? String(row[columnMap.ano] || '').trim() || null
+            : null;
+
+          const modelo = columnMap.modelo !== undefined
+            ? String(row[columnMap.modelo] || '').trim() || null
+            : null;
+
+          const marca = columnMap.marca !== undefined
+            ? String(row[columnMap.marca] || '').trim() || null
+            : null;
+
+          const cor = columnMap.cor !== undefined
+            ? String(row[columnMap.cor] || '').trim() || null
+            : null;
+
+          const principalLocalAtuacao = columnMap.principal_local_atuacao !== undefined
+            ? String(row[columnMap.principal_local_atuacao] || '').trim() || null
+            : null;
+
           const observacao = columnMap.observacao !== undefined
             ? String(row[columnMap.observacao] || '').trim() || null
             : null;
@@ -262,6 +310,12 @@ const DemutranVeiculosMunicipais = () => {
             chassi,
             secretaria_responsavel: secretaria,
             motorista_responsavel: motorista,
+            tipo,
+            ano,
+            modelo,
+            marca,
+            cor,
+            principal_local_atuacao: principalLocalAtuacao,
             observacao,
             ativo,
             created_at: new Date().toISOString(),
@@ -310,7 +364,7 @@ const DemutranVeiculosMunicipais = () => {
       if (selectedStatus === 'inativos' && item.ativo) {
         return false;
       }
-      return `${item.placa} ${item.chassi} ${item.secretaria_responsavel} ${item.motorista_responsavel || ''}`
+      return `${item.placa} ${item.chassi} ${item.secretaria_responsavel} ${item.motorista_responsavel || ''} ${item.tipo || ''} ${item.ano || ''} ${item.modelo || ''} ${item.marca || ''} ${item.cor || ''} ${item.principal_local_atuacao || ''}`
         .toLowerCase()
         .includes(searchTerm.toLowerCase());
     });
@@ -338,7 +392,13 @@ const DemutranVeiculosMunicipais = () => {
   const columns = [
     { header: 'Placa', accessor: 'placa' as const },
     { header: 'Chassi', accessor: 'chassi' as const },
+    { header: 'Tipo', accessor: (item: DemutranVeiculoMunicipal) => item.tipo || '-' },
+    { header: 'Ano', accessor: (item: DemutranVeiculoMunicipal) => item.ano || '-' },
+    { header: 'Modelo', accessor: (item: DemutranVeiculoMunicipal) => item.modelo || '-' },
+    { header: 'Marca', accessor: (item: DemutranVeiculoMunicipal) => item.marca || '-' },
+    { header: 'Cor', accessor: (item: DemutranVeiculoMunicipal) => item.cor || '-' },
     { header: 'Secretaria', accessor: 'secretaria_responsavel' as const },
+    { header: 'Local Atuacao', accessor: (item: DemutranVeiculoMunicipal) => item.principal_local_atuacao || '-' },
     { header: 'Motorista', accessor: (item: DemutranVeiculoMunicipal) => item.motorista_responsavel || '-' },
     {
       header: 'Status',
@@ -365,7 +425,13 @@ const DemutranVeiculosMunicipais = () => {
     rows.map((item) => ({
       Placa: item.placa,
       Chassi: item.chassi,
+      Tipo: item.tipo || '-',
+      Ano: item.ano || '-',
+      Modelo: item.modelo || '-',
+      Marca: item.marca || '-',
+      Cor: item.cor || '-',
       Secretaria: item.secretaria_responsavel,
+      Local_atuacao: item.principal_local_atuacao || '-',
       Motorista: item.motorista_responsavel || '-',
       Status: item.ativo ? 'Ativo' : 'Inativo',
       Observacao: item.observacao || '-',
@@ -435,6 +501,30 @@ const DemutranVeiculosMunicipais = () => {
           <div className="col-span-2 rounded-xl bg-slate-50 px-3 py-2">
             <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">Chassi</p>
             <p className="mt-0.5 font-semibold text-slate-800">{item.chassi}</p>
+          </div>
+          <div className="rounded-xl bg-slate-50 px-3 py-2">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">Tipo</p>
+            <p className="mt-0.5 font-semibold text-slate-800">{item.tipo || '-'}</p>
+          </div>
+          <div className="rounded-xl bg-slate-50 px-3 py-2">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">Ano</p>
+            <p className="mt-0.5 font-semibold text-slate-800">{item.ano || '-'}</p>
+          </div>
+          <div className="rounded-xl bg-slate-50 px-3 py-2">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">Modelo</p>
+            <p className="mt-0.5 font-semibold text-slate-800">{item.modelo || '-'}</p>
+          </div>
+          <div className="rounded-xl bg-slate-50 px-3 py-2">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">Marca</p>
+            <p className="mt-0.5 font-semibold text-slate-800">{item.marca || '-'}</p>
+          </div>
+          <div className="rounded-xl bg-slate-50 px-3 py-2">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">Cor</p>
+            <p className="mt-0.5 font-semibold text-slate-800">{item.cor || '-'}</p>
+          </div>
+          <div className="col-span-2 rounded-xl bg-slate-50 px-3 py-2">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">Local de atuacao</p>
+            <p className="mt-0.5 font-semibold text-slate-800">{item.principal_local_atuacao || '-'}</p>
           </div>
           <div className="rounded-xl bg-slate-50 px-3 py-2">
             <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">Motorista</p>
@@ -749,9 +839,55 @@ const DemutranVeiculosMunicipais = () => {
               </Select>
             </div>
 
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div className="space-y-2">
+                <Label htmlFor="tipo">Tipo</Label>
+                <Select
+                  value={formData.tipo}
+                  onValueChange={(value) => setFormData((current) => ({ ...current, tipo: value }))}
+                >
+                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="carro">Carro</SelectItem>
+                    <SelectItem value="moto">Moto</SelectItem>
+                    <SelectItem value="caminhao">Caminhao</SelectItem>
+                    <SelectItem value="van">Van</SelectItem>
+                    <SelectItem value="onibus">Onibus</SelectItem>
+                    <SelectItem value="picape">Picape</SelectItem>
+                    <SelectItem value="utilitario">Utilitario</SelectItem>
+                    <SelectItem value="outro">Outro</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="ano">Ano</Label>
+                <Input id="ano" value={formData.ano} onChange={(event) => setFormData((current) => ({ ...current, ano: event.target.value }))} placeholder="Ex: 2022" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="cor">Cor</Label>
+                <Input id="cor" value={formData.cor} onChange={(event) => setFormData((current) => ({ ...current, cor: event.target.value }))} placeholder="Ex: Branco" />
+              </div>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="marca">Marca</Label>
+                <Input id="marca" value={formData.marca} onChange={(event) => setFormData((current) => ({ ...current, marca: event.target.value }))} placeholder="Ex: Ford" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="modelo">Modelo</Label>
+                <Input id="modelo" value={formData.modelo} onChange={(event) => setFormData((current) => ({ ...current, modelo: event.target.value }))} placeholder="Ex: Fiesta" />
+              </div>
+            </div>
+
             <div className="space-y-2">
-              <Label htmlFor="motorista">Motorista / responsavel atual</Label>
-              <Input id="motorista" value={formData.motorista_responsavel} onChange={(event) => setFormData((current) => ({ ...current, motorista_responsavel: event.target.value }))} placeholder="Nome do motorista responsavel" />
+              <Label htmlFor="motorista">Motorista(s)</Label>
+              <Input id="motorista" value={formData.motorista_responsavel} onChange={(event) => setFormData((current) => ({ ...current, motorista_responsavel: event.target.value }))} placeholder="Nome(s) do(s) motorista(s) responsavel(is)" />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="local_atuacao">Principal local de atuacao</Label>
+              <Input id="local_atuacao" value={formData.principal_local_atuacao} onChange={(event) => setFormData((current) => ({ ...current, principal_local_atuacao: event.target.value }))} placeholder="Ex: Centro, Zona Sul, vias principais..." />
             </div>
 
             <div className="space-y-2">
@@ -871,6 +1007,46 @@ function ViewDetailsModalContent({
             </span>
             <span className="text-[14px] font-bold text-slate-800">{item.chassi}</span>
           </div>
+          {(item.tipo || item.ano || item.modelo || item.marca || item.cor) && (
+            <div className="grid grid-cols-2 gap-3 py-3">
+              {item.tipo && (
+                <div>
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-400">Tipo</span>
+                  <p className="mt-0.5 text-[14px] font-semibold text-slate-800">{item.tipo}</p>
+                </div>
+              )}
+              {item.ano && (
+                <div>
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-400">Ano</span>
+                  <p className="mt-0.5 text-[14px] font-semibold text-slate-800">{item.ano}</p>
+                </div>
+              )}
+              {item.modelo && (
+                <div>
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-400">Modelo</span>
+                  <p className="mt-0.5 text-[14px] font-semibold text-slate-800">{item.modelo}</p>
+                </div>
+              )}
+              {item.marca && (
+                <div>
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-400">Marca</span>
+                  <p className="mt-0.5 text-[14px] font-semibold text-slate-800">{item.marca}</p>
+                </div>
+              )}
+              {item.cor && (
+                <div>
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-400">Cor</span>
+                  <p className="mt-0.5 text-[14px] font-semibold text-slate-800">{item.cor}</p>
+                </div>
+              )}
+            </div>
+          )}
+          {item.principal_local_atuacao && (
+            <div className="flex items-center justify-between py-3">
+              <span className="text-[12px] font-semibold uppercase tracking-[0.12em] text-slate-400">Local de atuacao</span>
+              <span className="text-[14px] font-semibold text-slate-800 text-right max-w-[60%]">{item.principal_local_atuacao}</span>
+            </div>
+          )}
           <div className="flex items-center justify-between py-3">
             <span className="flex items-center gap-2 text-[12px] font-semibold uppercase tracking-[0.12em] text-slate-400">
               <Building2 className="h-3.5 w-3.5" />

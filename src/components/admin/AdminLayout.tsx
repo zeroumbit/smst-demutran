@@ -1,5 +1,6 @@
 import { ReactNode, useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useTheme } from 'next-themes';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -26,8 +27,10 @@ import {
   ChevronRight,
   Search,
   Moon,
+  Sun,
   IdCard,
   Settings2,
+  MessageSquareText,
 } from 'lucide-react';
 
 interface AdminLayoutProps {
@@ -57,6 +60,7 @@ const defaultMenuItems: MenuItem[] = [
   { icon: Users, label: 'Guardas Municipais', path: '/admin/guardas-municipais', allowedPapeis: ['super_admin'] },
   { icon: Users, label: 'Usuarios', path: '/admin/usuarios', allowedPapeis: ['super_admin', 'gestor'] },
   { icon: UserCircle2, label: 'Perfil', path: '/admin/perfil', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
+  { icon: MessageSquareText, label: 'Fala Cidadao', path: '/admin/fala-cidadao', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
 ];
 
 const demutranMenuItems: MenuItem[] = [
@@ -73,6 +77,7 @@ const demutranMenuItems: MenuItem[] = [
   { icon: Users, label: 'Guardas Municipais', path: '/admin/guardas-municipais', allowedPapeis: ['super_admin'] },
   { icon: Users, label: 'Usuarios', path: '/admin/usuarios', allowedPapeis: ['super_admin', 'gestor'] },
   { icon: UserCircle2, label: 'Perfil', path: '/admin/perfil', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
+  { icon: MessageSquareText, label: 'Fala Cidadao', path: '/admin/fala-cidadao', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
 ];
 
 const moduloItemMap: Record<string, ModuloSistema> = {
@@ -134,6 +139,7 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
   const [isSearchingGlobal, setIsSearchingGlobal] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
+  const { theme, setTheme } = useTheme();
   const { profile, logout, isAuthenticated, isLoading, hasPapel, isSuperAdmin } = useAuth();
 
   useEffect(() => {
@@ -549,8 +555,11 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
               <span className="text-[11px] font-extrabold uppercase tracking-[0.16em] text-slate-500">Monitoramento ativo</span>
             </div>
 
-            <button className="hidden h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-600 shadow-[0_8px_22px_-18px_rgba(15,23,42,0.28)] lg:flex">
-              <Moon className="h-4 w-4" />
+            <button
+              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+              className="hidden h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-600 shadow-[0_8px_22px_-18px_rgba(15,23,42,0.28)] transition-colors hover:bg-slate-100 lg:flex dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+            >
+              {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </button>
 
             <NotificationDropdown userId={profile?.user_id} />
