@@ -11,6 +11,7 @@ import Footer from "@/components/layout/Footer";
 
 const mainItems = [
   { label: "Home", href: "/demutran" },
+  { label: "Fala Cidadão", href: "/fala-cidadao/nova-solicitacao" },
   { label: "Concessionario", href: "/demutran/concessionario" },
   { label: "Credenciais", href: "/demutran/credenciais" },
   { label: "Recursos", href: "/demutran/recursos" },
@@ -24,7 +25,11 @@ const utilityItems = [
 ];
 
 function isCurrent(pathname: string, href: string) {
-  return pathname === href || (href === '/demutran/concessionario' && pathname.startsWith('/demutran/concessionario'));
+  return (
+    pathname === href ||
+    (href === '/demutran/concessionario' && pathname.startsWith('/demutran/concessionario')) ||
+    (href === '/fala-cidadao/nova-solicitacao' && pathname.startsWith('/fala-cidadao'))
+  );
 }
 
 function DemutranPortalNav() {

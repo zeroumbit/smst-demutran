@@ -7,12 +7,14 @@ const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const location = useLocation();
 
-  const isActive = (path: string) => location.pathname === path;
+  const isActive = (path: string) =>
+    location.pathname === path ||
+    (path === "/fala-cidadao/nova-solicitacao" && location.pathname.startsWith("/fala-cidadao"));
 
   const navItems = [
     { label: "Início", path: "/" },
     { label: "Demutran", path: "/demutran", newTab: true },
-    { label: "Fala Cidadao", path: "/fala-cidadao/nova-solicitacao" },
+    { label: "Fala Cidadão", path: "/fala-cidadao/nova-solicitacao" },
     { label: "Guarda Municipal", path: "/guarda-municipal" },
     {
       label: "Projetos",
