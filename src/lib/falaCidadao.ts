@@ -44,7 +44,7 @@ export async function listFalaSecretarias() {
 export async function listFalaAssuntos(secretariaId?: string) {
   let query = supabase
     .from('fala_assuntos')
-    .select('id, secretaria_id, nome, ordem, ativo')
+    .select('id, secretaria_id, nome, ordem, ativo, prioridade_padrao')
     .eq('ativo', true)
     .order('ordem', { ascending: true });
 

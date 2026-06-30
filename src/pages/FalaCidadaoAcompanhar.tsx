@@ -83,7 +83,7 @@ const FalaCidadaoAcompanhar = () => {
                   </div>
 
                   <div className="grid gap-4 sm:grid-cols-2">
-                    <Info label="Secretaria" value={result.secretaria_nome} />
+                    <Info label="Departamento" value={result.secretaria_nome} />
                     <Info label="Assunto" value={result.assunto_nome || 'Nao informado'} />
                     <Info label="Prioridade" value={falaPrioridadeLabels[result.prioridade]} />
                     <Info label="Abertura" value={new Date(result.data_abertura).toLocaleString('pt-BR')} />

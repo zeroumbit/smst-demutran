@@ -16,6 +16,7 @@ export interface FalaAssunto {
   nome: string;
   ordem: number;
   ativo: boolean;
+  prioridade_padrao: FalaPrioridade;
 }
 
 export interface FalaDemandaPublica {

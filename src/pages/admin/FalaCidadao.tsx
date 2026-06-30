@@ -129,10 +129,10 @@ const FalaCidadaoAdmin = () => {
         <section className="rounded-[34px] bg-[linear-gradient(135deg,_#0f172a_0%,_#1e293b_45%,_#2563eb_100%)] px-5 py-6 text-white sm:px-6">
           <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
             <div>
-              <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-sky-100/70">Atendimento urbano</p>
+              <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-sky-100/70">Secretaria de Seguranca</p>
               <h1 className="mt-3 text-[34px] font-black tracking-[-0.08em]">Fala Cidadao</h1>
               <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-100">
-                Gerencie protocolos, responda cidadaos e acompanhe a rastreabilidade das demandas.
+                Gerencie protocolos, responda cidadaos e acompanhe a rastreabilidade das demandas dos orgaos vinculados a Secretaria de Seguranca.
               </p>
             </div>
             <Button variant="outline" className="border-white/20 bg-white/10 text-white hover:bg-white/20" onClick={() => void loadData()}>
@@ -278,9 +278,9 @@ const FalaCidadaoAdmin = () => {
                 </div>
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-2">
-                    <Label>Secretaria destino</Label>
+                    <Label>Departamento destino</Label>
                     <Select value={secretariaDestinoId} onValueChange={setSecretariaDestinoId}>
-                      <SelectTrigger><SelectValue placeholder="Selecione a secretaria" /></SelectTrigger>
+                      <SelectTrigger><SelectValue placeholder="Selecione o departamento" /></SelectTrigger>
                       <SelectContent>
                         {secretarias.filter((item) => item.id !== selected.secretaria_atual_id).map((secretaria) => (
                           <SelectItem key={secretaria.id} value={secretaria.id}>{secretaria.nome}</SelectItem>
@@ -291,7 +291,7 @@ const FalaCidadaoAdmin = () => {
                 </div>
                 <div className="space-y-2">
                   <Label>Justificativa</Label>
-                  <Textarea rows={3} value={justificativaTransferencia} onChange={(e) => setJustificativaTransferencia(e.target.value)} placeholder="Explique por que a demanda deve mudar de secretaria." />
+                  <Textarea rows={3} value={justificativaTransferencia} onChange={(e) => setJustificativaTransferencia(e.target.value)} placeholder="Explique por que a demanda deve mudar de departamento." />
                 </div>
                 <Button variant="outline" onClick={() => void handleTransfer()} disabled={savingTransfer || !secretariaDestinoId || !justificativaTransferencia.trim()}>
                   {savingTransfer ? 'Transferindo...' : 'Transferir demanda'}

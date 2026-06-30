@@ -7,7 +7,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/admin/ProtectedRoute";
 import { ConsentBar } from "@/components/shared/ConsentBar";
-import { ThemeProvider } from "next-themes";
+import { ThemeProvider } from "@/components/ThemeProvider";
 
 // Lazy load public pages
 const Index = React.lazy(() => import("./pages/Index"));
@@ -75,7 +75,7 @@ const SuspenseWrapper = ({ children }: { children: React.ReactNode }) => (
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
+    <ThemeProvider>
       <TooltipProvider>
         <Toaster />
         <Sonner />
@@ -269,7 +269,7 @@ const App = () => (
             } />
             <Route path="/admin/fala-cidadao" element={
               <SuspenseWrapper>
-                <ProtectedRoute allowedPapeis={['super_admin', 'gestor', 'admin_setor', 'tecnico']} requiredSetorSlug="fala-cidadao">
+                <ProtectedRoute allowedPapeis={['super_admin', 'gestor', 'admin_setor', 'tecnico']}>
                   <AdminFalaCidadao />
                 </ProtectedRoute>
               </SuspenseWrapper>
