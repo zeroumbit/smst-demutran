@@ -61,5 +61,9 @@
       "source": "/(.*)",
       "destination": "/index.html"
     }
-  ]
+  ],
+  "github": {
+    "silent": true,
+    "autoJobCancelation": true
+  }
 }
