@@ -1,21 +1,12 @@
 import { Mail, ShieldCheck, UserCircle2 } from 'lucide-react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
-import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/contexts/AuthContext';
-import { cn } from '@/lib/utils';
 
 const papelLabels: Record<string, string> = {
   super_admin: 'Super Admin',
   gestor: 'Gestor',
   admin_setor: 'Admin do Setor',
   tecnico: 'Tecnico',
-};
-
-const papelBadgeVariant: Record<string, string> = {
-  super_admin: 'bg-purple-100 text-purple-800 border-purple-200',
-  gestor: 'bg-blue-100 text-blue-800 border-blue-200',
-  admin_setor: 'bg-amber-100 text-amber-800 border-amber-200',
-  tecnico: 'bg-slate-100 text-slate-800 border-slate-200',
 };
 
 const Profile = () => {
@@ -68,37 +59,19 @@ const Profile = () => {
           </div>
         </section>
 
-        <div className="grid gap-6 md:grid-cols-2">
-          <div className="rounded-[26px] border border-slate-200/80 bg-white px-6 py-5 shadow-[0_4px_20px_-8px_rgba(15,23,42,0.08)]">
-            <div className="flex items-center gap-3">
-              <div className="rounded-[14px] bg-slate-900 p-2.5 text-white">
-                <ShieldCheck className="h-5 w-5" />
-              </div>
-              <div>
-                <p className="text-[13px] font-bold text-slate-900">Observacoes</p>
-                <p className="text-[12px] text-slate-500">Sobre este perfil</p>
-              </div>
+        <div className="rounded-[26px] border border-slate-200/80 bg-white px-6 py-5 shadow-[0_4px_20px_-8px_rgba(15,23,42,0.08)]">
+          <div className="flex items-center gap-3">
+            <div className="rounded-[14px] bg-slate-900 p-2.5 text-white">
+              <Mail className="h-5 w-5" />
             </div>
-            <div className="mt-4 space-y-3 text-[14px] leading-6 text-slate-600">
-              <p>Esta primeira versao apresenta os dados do proprio perfil administrativo carregados da base atual.</p>
-              <p>Se voce quiser, no proximo passo eu posso transformar esta tela em edicao de perfil com atualizacao de nome e demais dados permitidos.</p>
+            <div>
+              <p className="text-[13px] font-bold text-slate-900">Contato de acesso</p>
+              <p className="text-[12px] text-slate-500">E-mail vinculado</p>
             </div>
           </div>
-
-          <div className="rounded-[26px] border border-slate-200/80 bg-white px-6 py-5 shadow-[0_4px_20px_-8px_rgba(15,23,42,0.08)]">
-            <div className="flex items-center gap-3">
-              <div className="rounded-[14px] bg-slate-900 p-2.5 text-white">
-                <Mail className="h-5 w-5" />
-              </div>
-              <div>
-                <p className="text-[13px] font-bold text-slate-900">Contato de acesso</p>
-                <p className="text-[12px] text-slate-500">E-mail vinculado</p>
-              </div>
-            </div>
-            <div className="mt-4 text-[14px] leading-6 text-slate-600">
-              O acesso administrativo deste perfil esta vinculado ao e-mail{' '}
-              <strong className="text-slate-900">{profile?.email || 'smstcaninde@gmail.com'}</strong>.
-            </div>
+          <div className="mt-4 text-[14px] leading-6 text-slate-600">
+            O acesso administrativo deste perfil esta vinculado ao e-mail{' '}
+            <strong className="text-slate-900">{profile?.email || 'smstcaninde@gmail.com'}</strong>.
           </div>
         </div>
       </div>

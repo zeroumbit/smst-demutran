@@ -21,11 +21,8 @@ export async function provisionAdminUser(input: ProvisionAdminUserInput) {
     _setor_id: input.setorId,
     _papel: input.papel,
     _active: input.active,
+    _modulos: input.modulos?.length ? input.modulos : null,
   };
-
-  if (input.modulos?.length) {
-    payload._modulos = input.modulos;
-  }
 
   const { data, error } = await supabase.rpc('provision_admin_user', payload);
 

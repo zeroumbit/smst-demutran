@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import {
   AlertTriangle,
   BellRing,
@@ -78,6 +78,12 @@ type DashboardState = {
   recursosDeferidos: number;
   pendingCredenciais: number;
   frotaAtiva: number;
+  guardasAtivos: number;
+  operacoesAtivasIro: number;
+  candidaturasIro: number;
+  totalBancoHoras: number;
+  demandasFalaCidadaoCount: number;
+  distribuicaoGraduacoes: Array<{ label: string; total: number }>;
 };
 
 const initialState: DashboardState = {
@@ -94,6 +100,12 @@ const initialState: DashboardState = {
   recursosDeferidos: 0,
   pendingCredenciais: 0,
   frotaAtiva: 0,
+  guardasAtivos: 0,
+  operacoesAtivasIro: 0,
+  candidaturasIro: 0,
+  totalBancoHoras: 0,
+  demandasFalaCidadaoCount: 0,
+  distribuicaoGraduacoes: [],
 };
 
 const monthFormatter = new Intl.DateTimeFormat('pt-BR', { month: 'short' });
@@ -152,9 +164,46 @@ const chartConfig = {
 
 const Dashboard = () => {
   const { profile, isSuperAdmin, setorId, papel } = useAuth();
+  const { setorSlug: urlSetorSlug } = useParams<{ setorSlug?: string }>();
   const [state, setState] = useState<DashboardState>(initialState);
 
-  const isDemutranScope = isSuperAdmin || profile?.setor_slug === 'demutran';
+  const currentSetorSlug = urlSetorSlug || profile?.setor_slug;
+  const isDemutranScope = currentSetorSlug === 'demutran';
+  const isGuardaScope = currentSetorSlug === 'guarda-municipal';
+
+  const panelTitle = useMemo(() => {
+    if (isSuperAdmin && !urlSetorSlug) return 'Centro de Comando SMST';
+    if (isGuardaScope) return 'Painel de Gestão · Guarda Municipal';
+    if (isDemutranScope) return 'Painel de Gestão · DEMUTRAN';
+    if (papel === 'gestor') return `Painel de gestao · ${profile?.setor_nome || 'Setor'}`;
+    return `Painel operacional · ${profile?.setor_nome || 'Setor'}`;
+  }, [isSuperAdmin, urlSetorSlug, isGuardaScope, isDemutranScope, papel, profile?.setor_nome]);
+
+  const panelDescription = useMemo(() => {
+    if (isGuardaScope) {
+      return 'Leitura executiva para acompanhamento do efetivo ativo, graduações de carreira, escalas de Indenização de Reforço Operacional (IRO), banco de horas extras e demandas de ouvidoria da Guarda Municipal.';
+    }
+    if (isDemutranScope) {
+      return 'Leitura executiva para controle de veículos apreendidos, regularização fiscal, solicitações de credenciais de vagas especiais, recursos de multas de trânsito e permissionários concessionários.';
+    }
+    return 'Leitura executiva para controle de veiculos apreendidos, publicacao de decretos oficiais, controle de fardamentos e monitoramento de transito em Caninde.';
+  }, [isGuardaScope, isDemutranScope]);
+
+  const resolvedChartConfig = useMemo(() => {
+    if (isGuardaScope) {
+      return {
+        apreendidos: {
+          label: 'Escalas Confirmadas',
+          color: '#2563eb',
+        },
+        liberados: {
+          label: 'Escalas Realizadas',
+          color: '#10b981',
+        },
+      };
+    }
+    return chartConfig;
+  }, [isGuardaScope]);
 
   useEffect(() => {
     let mounted = true;
@@ -169,6 +218,7 @@ const Dashboard = () => {
         return query;
       };
 
+      // Carrega informações comuns de secretaria
       const [
         setoresResponse,
         perfisResponse,
@@ -176,14 +226,6 @@ const Dashboard = () => {
         eventosCountResponse,
         galeriaCountResponse,
         documentosCountResponse,
-        credenciaisCountResponse,
-        recursosCountResponse,
-        recursosTotalResponse,
-        veiculosAbertosResponse,
-        veiculosLiberadosResponse,
-        frotaResponse,
-        concessionariosResponse,
-        veiculosSeriesResponse,
       ] = await Promise.all([
         supabase.from('setores').select('id, nome, ativo').order('nome'),
         isSuperAdmin
@@ -195,47 +237,160 @@ const Dashboard = () => {
         scopedFilter(supabase.from('eventos').select('*', { count: 'exact', head: true }).eq('ativo', true)),
         scopedFilter(supabase.from('galeria_fotos').select('*', { count: 'exact', head: true }).eq('ativo', true)),
         scopedFilter(supabase.from('documentos').select('*', { count: 'exact', head: true }).eq('ativo', true)),
-        isDemutranScope
-          ? scopedFilter(
-              supabase.from('demutran_credenciais_solicitacoes').select('status', { count: 'exact', head: true }).in('status', ['pendente', 'em_analise']),
-            )
-          : Promise.resolve({ count: 0, error: null }),
-        isDemutranScope
-          ? scopedFilter(
-              supabase.from('demutran_recursos').select('status', { count: 'exact', head: true }).in('status', ['pendente', 'em_analise']),
-            )
-          : Promise.resolve({ count: 0, error: null }),
-        isDemutranScope
-          ? scopedFilter(
-              supabase.from('demutran_recursos').select('id', { count: 'exact', head: true }),
-            )
-          : Promise.resolve({ count: 0, error: null }),
-        isDemutranScope
-          ? scopedFilter(
-              supabase.from('veiculos_recolhidos').select('status', { count: 'exact', head: true }).neq('status', 'liberado'),
-            )
-          : Promise.resolve({ count: 0, error: null }),
-        isDemutranScope
-          ? scopedFilter(
-              supabase.from('veiculos_recolhidos').select('status', { count: 'exact', head: true }).eq('status', 'liberado'),
-            )
-          : Promise.resolve({ count: 0, error: null }),
-        isDemutranScope
-          ? scopedFilter(
-              supabase.from('demutran_veiculos_municipais').select('id', { count: 'exact', head: true }).eq('ativo', true),
-            )
-          : Promise.resolve({ count: 0, error: null }),
-        isDemutranScope
-          ? scopedFilter(
-              (supabase as any).from('demutran_concessionarios').select('categoria, ativo'),
-            )
-          : Promise.resolve({ data: [], error: null }),
-        isDemutranScope
-          ? scopedFilter(
-              supabase.from('veiculos_recolhidos').select('created_at, data_liberacao'),
-            )
-          : Promise.resolve({ data: [], error: null }),
       ]);
+
+      let targetSetorId = setorId;
+      if (!targetSetorId) {
+        const { data: setorData } = await supabase
+          .from('setores')
+          .select('id')
+          .eq('slug', 'guarda-municipal')
+          .maybeSingle();
+        if (setorData) targetSetorId = setorData.id;
+      }
+
+      // Inicialização de variáveis locais
+      let pendingCredenciais = 0;
+      let pendingRecursos = 0;
+      let totalRecursos = 0;
+      let recursosDeferidos = 0;
+      let apreendidos = 0;
+      let liberados = 0;
+      let frotaAtiva = 0;
+      let concessionariosRows: any[] = [];
+      let concessionarios: ConcessionarioBreakdown[] = [];
+
+      let guardasAtivos = 0;
+      let operacoesAtivasIro = 0;
+      let candidaturasIro = 0;
+      let totalBancoHoras = 0;
+      let demandasFalaCidadaoCount = 0;
+      let distribuicaoGraduacoes: Array<{ label: string; total: number }> = [];
+      let movementMap = buildLastSixMonths();
+
+      if (isDemutranScope) {
+        const [
+          credenciaisCountResponse,
+          recursosCountResponse,
+          recursosTotalResponse,
+          veiculosAbertosResponse,
+          veiculosLiberadosResponse,
+          frotaResponse,
+          concessionariosResponse,
+          veiculosSeriesResponse,
+        ] = await Promise.all([
+          scopedFilter(supabase.from('demutran_credenciais_solicitacoes').select('status', { count: 'exact', head: true }).in('status', ['pendente', 'em_analise'])),
+          scopedFilter(supabase.from('demutran_recursos').select('status', { count: 'exact', head: true }).in('status', ['pendente', 'em_analise'])),
+          scopedFilter(supabase.from('demutran_recursos').select('id', { count: 'exact', head: true })),
+          scopedFilter(supabase.from('veiculos_recolhidos').select('status', { count: 'exact', head: true }).neq('status', 'liberado')),
+          scopedFilter(supabase.from('veiculos_recolhidos').select('status', { count: 'exact', head: true }).eq('status', 'liberado')),
+          scopedFilter(supabase.from('demutran_veiculos_municipais').select('id', { count: 'exact', head: true }).eq('ativo', true)),
+          scopedFilter((supabase as any).from('demutran_concessionarios').select('categoria, ativo')),
+          scopedFilter(supabase.from('veiculos_recolhidos').select('created_at, data_liberacao')),
+        ]);
+
+        pendingCredenciais = credenciaisCountResponse.count || 0;
+        pendingRecursos = recursosCountResponse.count || 0;
+        totalRecursos = recursosTotalResponse.count || 0;
+        recursosDeferidos = Math.max(totalRecursos - pendingRecursos, 0);
+        apreendidos = veiculosAbertosResponse.count || 0;
+        liberados = veiculosLiberadosResponse.count || 0;
+        frotaAtiva = frotaResponse.count || 0;
+        concessionariosRows = ((concessionariosResponse.data || []) as any[]).filter(Boolean);
+        const concessionariosTotal = concessionariosRows.length;
+
+        const concessionariosMap = new Map<string, ConcessionarioBreakdown>([
+          ['mototaxi', { label: 'Moto-taxi', total: 0, ativos: 0 }],
+          ['taxi', { label: 'Taxi', total: 0, ativos: 0 }],
+          ['carro_horario', { label: 'Carro de horario', total: 0, ativos: 0 }],
+          ['fretista', { label: 'Fretista', total: 0, ativos: 0 }],
+        ]);
+        concessionariosRows.forEach((item) => {
+          const current = concessionariosMap.get(item.categoria);
+          if (!current) return;
+          current.total += 1;
+          if (item.ativo) current.ativos += 1;
+        });
+        concessionarios = Array.from(concessionariosMap.values()).filter((item) => item.total > 0);
+
+        const movementLookup = new Map(movementMap.map((item) => [item.key, item]));
+        (veiculosSeriesResponse.data || []).forEach((row: any) => {
+          if (row.created_at) {
+            const createdAt = new Date(row.created_at);
+            const key = `${createdAt.getFullYear()}-${String(createdAt.getMonth() + 1).padStart(2, '0')}`;
+            const target = movementLookup.get(key);
+            if (target) target.apreendidos += 1;
+          }
+          if (row.data_liberacao) {
+            const releasedAt = new Date(row.data_liberacao);
+            const key = `${releasedAt.getFullYear()}-${String(releasedAt.getMonth() + 1).padStart(2, '0')}`;
+            const target = movementLookup.get(key);
+            if (target) target.liberados += 1;
+          }
+        });
+      } else if (isGuardaScope) {
+        const { data: secData } = await supabase
+          .from('fala_secretarias')
+          .select('id')
+          .eq('sigla', 'GM')
+          .maybeSingle();
+        const secretariaGmId = secData?.id || null;
+
+        const [
+          guardasCountResponse,
+          iroOperacoesCountResponse,
+          iroCandidaturasCountResponse,
+          iroBancoHorasResponse,
+          falaDemandasCountResponse,
+          guardasGraduacoesResponse,
+          candidaturasSeriesResponse
+        ] = await Promise.all([
+          supabase.from('guardas_municipais').select('*', { count: 'exact', head: true }).eq('ativo', true),
+          supabase.from('iro_operacoes').select('*', { count: 'exact', head: true }).eq('ativo', true),
+          supabase.from('iro_candidaturas').select('*', { count: 'exact', head: true }).eq('status', 'confirmado'),
+          supabase.from('iro_banco_horas').select('horas_excedentes'),
+          secretariaGmId 
+            ? supabase.from('fala_demandas').select('*', { count: 'exact', head: true }).eq('secretaria_atual_id', secretariaGmId).in('status', ['recebido', 'analise'])
+            : Promise.resolve({ count: 0, error: null }),
+          supabase.from('guardas_municipais').select('id, guarda_municipal_graduacoes(nome)').eq('ativo', true),
+          supabase.from('iro_candidaturas').select('created_at, data_operacao, status')
+        ]);
+
+        guardasAtivos = guardasCountResponse.count || 0;
+        operacoesAtivasIro = iroOperacoesCountResponse.count || 0;
+        candidaturasIro = iroCandidaturasCountResponse.count || 0;
+        demandasFalaCidadaoCount = falaDemandasCountResponse.count || 0;
+
+        const horasExcedentesData = iroBancoHorasResponse.data || [];
+        totalBancoHoras = horasExcedentesData.reduce((acc: number, curr: any) => acc + Number(curr.horas_excedentes || 0), 0);
+
+        // Agrupamento por graduação
+        const gradMap = new Map<string, number>();
+        (guardasGraduacoesResponse.data || []).forEach((row: any) => {
+          const gradNome = row.guarda_municipal_graduacoes?.nome || 'Não definida';
+          gradMap.set(gradNome, (gradMap.get(gradNome) || 0) + 1);
+        });
+        distribuicaoGraduacoes = Array.from(gradMap.entries()).map(([label, total]) => ({
+          label,
+          total
+        }));
+
+        // Dados da série de escalas mensais
+        const movementLookup = new Map(movementMap.map((item) => [item.key, item]));
+        (candidaturasSeriesResponse.data || []).forEach((row: any) => {
+          if (row.data_operacao) {
+            const dataOp = new Date(row.data_operacao);
+            const key = `${dataOp.getFullYear()}-${String(dataOp.getMonth() + 1).padStart(2, '0')}`;
+            const target = movementLookup.get(key);
+            if (target) {
+              target.apreendidos += 1; // Representa escalas confirmadas
+              if (row.status === 'realizado') {
+                target.liberados += 1; // Representa escalas concluídas
+              }
+            }
+          }
+        });
+      }
 
       const setorRows = (setoresResponse.data || []) as Array<Pick<Setor, 'id' | 'nome' | 'ativo'>>;
       const perfis = (perfisResponse.data || []) as AdminProfileRow[];
@@ -248,30 +403,6 @@ const Dashboard = () => {
       const eventosAtivos = eventosCountResponse.count || 0;
       const galeriaAtiva = galeriaCountResponse.count || 0;
       const documentosAtivos = documentosCountResponse.count || 0;
-      const pendingCredenciais = credenciaisCountResponse.count || 0;
-      const pendingRecursos = recursosCountResponse.count || 0;
-      const totalRecursos = recursosTotalResponse.count || 0;
-      const recursosDeferidos = Math.max(totalRecursos - pendingRecursos, 0);
-      const apreendidos = veiculosAbertosResponse.count || 0;
-      const liberados = veiculosLiberadosResponse.count || 0;
-      const frotaAtiva = frotaResponse.count || 0;
-      const concessionariosRows = ((concessionariosResponse.data || []) as Array<{ categoria: string; ativo: boolean }>).filter(Boolean);
-      const concessionariosAtivos = concessionariosRows.filter((item) => item.ativo).length;
-      const concessionariosTotal = concessionariosRows.length;
-
-      const concessionariosMap = new Map<string, ConcessionarioBreakdown>([
-        ['mototaxi', { label: 'Moto-taxi', total: 0, ativos: 0 }],
-        ['taxi', { label: 'Taxi', total: 0, ativos: 0 }],
-        ['carro_horario', { label: 'Carro de horario', total: 0, ativos: 0 }],
-        ['fretista', { label: 'Fretista', total: 0, ativos: 0 }],
-      ]);
-      concessionariosRows.forEach((item) => {
-        const current = concessionariosMap.get(item.categoria);
-        if (!current) return;
-        current.total += 1;
-        if (item.ativo) current.ativos += 1;
-      });
-      const concessionarios = Array.from(concessionariosMap.values()).filter((item) => item.total > 0);
 
       const sectorsNeedingAttention = isSuperAdmin
         ? setorRows
@@ -288,11 +419,23 @@ const Dashboard = () => {
         : [];
 
       const alerts: string[] = [];
-      if (isSuperAdmin && sectorsNeedingAttention.length > 0) alerts.push(`${sectorsNeedingAttention.length} setor(es) exigem atencao imediata.`);
-      if (pendingCredenciais > 0) alerts.push(`${pendingCredenciais} solicitacao(oes) de credencial aguardando tratamento.`);
-      if (pendingRecursos > 0) alerts.push(`${pendingRecursos} recurso(s) em fila de analise.`);
-      if (apreendidos > 0) alerts.push(`${apreendidos} veiculo(s) ainda constam como apreendidos.`);
-      if (concessionariosTotal > 0) alerts.push(`${concessionariosAtivos} concessionario(s) ativos em acompanhamento no DEMUTRAN.`);
+      if (isSuperAdmin && !isGuardaScope && !isDemutranScope && sectorsNeedingAttention.length > 0) {
+        alerts.push(`${sectorsNeedingAttention.length} setor(es) exigem atencao imediata.`);
+      }
+
+      if (isGuardaScope) {
+        if (operacoesAtivasIro > 0) alerts.push(`${operacoesAtivasIro} operação(ões) de IRO ativa(s) no momento.`);
+        if (candidaturasIro > 0) alerts.push(`${candidaturasIro} escala(s) de reforço confirmada(s).`);
+        if (demandasFalaCidadaoCount > 0) alerts.push(`${demandasFalaCidadaoCount} solicitação(ões) de ouvidoria pendente(s).`);
+      } else {
+        if (pendingCredenciais > 0) alerts.push(`${pendingCredenciais} solicitacao(oes) de credencial aguardando tratamento.`);
+        if (pendingRecursos > 0) alerts.push(`${pendingRecursos} recurso(s) em fila de analise.`);
+        if (apreendidos > 0) alerts.push(`${apreendidos} veiculo(s) ainda constam como apreendidos.`);
+        if (concessionariosRows.length > 0) {
+          const concessionariosAtivos = concessionariosRows.filter((item) => item.ativo).length;
+          alerts.push(`${concessionariosAtivos} concessionario(s) ativos em acompanhamento no DEMUTRAN.`);
+        }
+      }
       if (!isSuperAdmin && activeProfiles.length <= 1) alerts.push('Seu setor opera com equipe administrativa reduzida.');
 
       const metrics: MetricCard[] = isSuperAdmin
@@ -300,58 +443,58 @@ const Dashboard = () => {
             { label: 'Setores ativos', value: String(activeSetores), helper: `${setorRows.length} setores cadastrados`, icon: Building2, tone: 'blue' },
             { label: 'Gestores ativos', value: String(activeGestores), helper: `${totalOperators} operadores administrativos`, icon: ShieldCheck, tone: 'green' },
             { label: 'Documentos publicados', value: String(documentosAtivos), helper: `${noticiasAtivas} noticias e ${eventosAtivos} eventos ativos`, icon: FileText, tone: 'amber' },
-            { label: 'Operacao DEMUTRAN', value: String(apreendidos + liberados + pendingCredenciais + pendingRecursos + concessionariosTotal), helper: 'Apreensoes, liberacoes, credenciais, recursos e concessionarios', icon: CarFront, tone: 'rose' },
+            { label: 'Operacao DEMUTRAN', value: String(apreendidos + liberados + pendingCredenciais + pendingRecursos + concessionariosRows.length), helper: 'Apreensoes, liberacoes, credenciais, recursos e concessionarios', icon: CarFront, tone: 'rose' },
           ]
         : [
             { label: 'Equipe ativa', value: String(activeProfiles.length), helper: 'Perfis administrativos em operacao', icon: Users, tone: 'blue' },
             { label: 'Conteudos ativos', value: String(noticiasAtivas + eventosAtivos + galeriaAtiva), helper: `${noticiasAtivas} noticias, ${eventosAtivos} eventos, ${galeriaAtiva} galerias`, icon: Newspaper, tone: 'green' },
-            { label: isDemutranScope ? 'Concessionarios ativos' : 'Documentos ativos', value: String(isDemutranScope ? concessionariosAtivos : documentosAtivos), helper: isDemutranScope ? `${concessionariosTotal} cadastros totais no modulo` : 'Materiais publicados no setor', icon: FileText, tone: 'amber' },
-            { label: isDemutranScope ? 'Fila operacional' : 'Ritmo do setor', value: String(isDemutranScope ? apreendidos + liberados + pendingCredenciais + pendingRecursos + concessionariosTotal : documentosAtivos + noticiasAtivas + eventosAtivos), helper: isDemutranScope ? 'Acompanhe atendimento, veiculos e concessionarios' : 'Leitura consolidada da operacao atual', icon: CarFront, tone: 'rose' },
+            { label: isDemutranScope ? 'Concessionarios ativos' : 'Documentos ativos', value: String(isDemutranScope ? concessionarios.filter(c => c.ativos > 0).reduce((acc, curr) => acc + curr.ativos, 0) : documentosAtivos), helper: isDemutranScope ? `${concessionariosRows.length} cadastros totais no modulo` : 'Materiais publicados no setor', icon: FileText, tone: 'amber' },
+            { label: isDemutranScope ? 'Fila operacional' : 'Ritmo do setor', value: String(isDemutranScope ? apreendidos + liberados + pendingCredenciais + pendingRecursos + concessionariosRows.length : documentosAtivos + noticiasAtivas + eventosAtivos), helper: isDemutranScope ? 'Acompanhe atendimento, veiculos e concessionarios' : 'Leitura consolidada da operacao atual', icon: CarFront, tone: 'rose' },
           ];
 
-      const serviceStatus: ServiceStatus[] = isDemutranScope
+      const serviceStatus: ServiceStatus[] = isGuardaScope
         ? [
-            { label: 'Veiculos apreendidos', value: apreendidos, tone: apreendidos > 0 ? 'warning' : 'success' },
-            { label: 'Veiculos liberados', value: liberados, tone: 'neutral' },
-            { label: 'Credenciais', value: pendingCredenciais, tone: pendingCredenciais > 0 ? 'warning' : 'success' },
-            { label: 'Recursos', value: pendingRecursos, tone: pendingRecursos > 0 ? 'warning' : 'success' },
-            { label: 'Frota municipal ativa', value: frotaAtiva, tone: 'neutral' },
-            { label: 'Concessionarios ativos', value: concessionariosAtivos, tone: concessionariosAtivos > 0 ? 'neutral' : 'warning' },
+            { label: 'Efetivo Ativo', value: guardasAtivos, tone: 'success' },
+            { label: 'Operações IRO', value: operacoesAtivasIro, tone: 'neutral' },
+            { label: 'Escalas IRO', value: candidaturasIro, tone: 'neutral' },
+            { label: 'Horas no Banco', value: totalBancoHoras, tone: totalBancoHoras > 100 ? 'warning' : 'neutral' },
           ]
-        : [
-            { label: 'Noticias ativas', value: noticiasAtivas, tone: 'neutral' },
-            { label: 'Eventos ativos', value: eventosAtivos, tone: 'neutral' },
-            { label: 'Galeria ativa', value: galeriaAtiva, tone: 'neutral' },
-            { label: 'Documentos ativos', value: documentosAtivos, tone: 'neutral' },
-          ];
-
-      const movementMap = buildLastSixMonths();
-      const movementLookup = new Map(movementMap.map((item) => [item.key, item]));
-      (veiculosSeriesResponse.data || []).forEach((row: any) => {
-        if (row.created_at) {
-          const createdAt = new Date(row.created_at);
-          const key = `${createdAt.getFullYear()}-${String(createdAt.getMonth() + 1).padStart(2, '0')}`;
-          const target = movementLookup.get(key);
-          if (target) target.apreendidos += 1;
-        }
-        if (row.data_liberacao) {
-          const releasedAt = new Date(row.data_liberacao);
-          const key = `${releasedAt.getFullYear()}-${String(releasedAt.getMonth() + 1).padStart(2, '0')}`;
-          const target = movementLookup.get(key);
-          if (target) target.liberados += 1;
-        }
-      });
+        : isDemutranScope
+          ? [
+              { label: 'Veiculos apreendidos', value: apreendidos, tone: apreendidos > 0 ? 'warning' : 'success' },
+              { label: 'Veiculos liberados', value: liberados, tone: 'neutral' },
+              { label: 'Credenciais', value: pendingCredenciais, tone: pendingCredenciais > 0 ? 'warning' : 'success' },
+              { label: 'Recursos', value: pendingRecursos, tone: pendingRecursos > 0 ? 'warning' : 'success' },
+              { label: 'Frota municipal ativa', value: frotaAtiva, tone: 'neutral' },
+              { label: 'Concessionarios ativos', value: concessionariosRows.filter(c => c.ativo).length, tone: concessionariosRows.filter(c => c.ativo).length > 0 ? 'neutral' : 'warning' },
+            ]
+          : [
+              { label: 'Noticias ativas', value: noticiasAtivas, tone: 'neutral' },
+              { label: 'Eventos ativos', value: eventosAtivos, tone: 'neutral' },
+              { label: 'Galeria ativa', value: galeriaAtiva, tone: 'neutral' },
+              { label: 'Documentos ativos', value: documentosAtivos, tone: 'neutral' },
+            ];
 
       const criticalCount = sectorsNeedingAttention.length;
       const healthyCount = Math.max(activeSetores - criticalCount, 0);
-      const sectorHealth = isSuperAdmin
+
+      const sectorHealth = isSuperAdmin && !urlSetorSlug
         ? [
             { name: 'criticos', value: criticalCount, fill: '#ef4444' },
             { name: 'regulares', value: healthyCount, fill: '#10b981' },
           ]
-        : [
-            { name: 'regulares', value: activeProfiles.length || 1, fill: '#10b981' },
-          ];
+        : isGuardaScope
+          ? distribuicaoGraduacoes.map((item, idx) => {
+              const colors = ['#2563eb', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
+              return {
+                name: item.label,
+                value: item.total,
+                fill: colors[idx % colors.length]
+              };
+            })
+          : [
+              { name: 'regulares', value: activeProfiles.length || 1, fill: '#10b981' },
+            ];
 
       if (!mounted) return;
       setState({
@@ -368,6 +511,12 @@ const Dashboard = () => {
         recursosDeferidos,
         pendingCredenciais,
         frotaAtiva,
+        guardasAtivos,
+        operacoesAtivasIro,
+        candidaturasIro,
+        totalBancoHoras,
+        demandasFalaCidadaoCount,
+        distribuicaoGraduacoes,
       });
     };
 
@@ -375,13 +524,10 @@ const Dashboard = () => {
     return () => {
       mounted = false;
     };
-  }, [isDemutranScope, isSuperAdmin, setorId]);
+  }, [isDemutranScope, isGuardaScope, isSuperAdmin, setorId, currentSetorSlug]);
 
-  const panelTitle = useMemo(() => {
-    if (isSuperAdmin) return 'Centro de Comando SMST';
-    if (papel === 'gestor') return `Painel de gestao · ${profile?.setor_nome || 'Setor'}`;
-    return `Painel operacional · ${profile?.setor_nome || 'Setor'}`;
-  }, [isSuperAdmin, papel, profile?.setor_nome]);
+
+
 
   return (
     <AdminLayout>
@@ -409,7 +555,7 @@ const Dashboard = () => {
                     {panelTitle}
                   </h1>
                   <p className="mt-3 max-w-3xl text-[14px] leading-7 text-slate-200/82">
-                    Leitura executiva para controle de veiculos apreendidos, publicacao de decretos oficiais, controle de fardamentos e monitoramento de transito em Caninde.
+                    {panelDescription}
                   </p>
                 </div>
 
@@ -443,13 +589,21 @@ const Dashboard = () => {
                   <span className={`h-2.5 w-2.5 rounded-full ${serviceToneDot[item.tone]}`} />
                 </div>
                 <p className="mt-3 text-[12px] leading-5 text-[#93a4be]">
-                  {item.label.toLowerCase().includes('apreendidos')
-                    ? 'Veiculos retidos no deposito municipal'
-                    : item.label.toLowerCase().includes('liberados')
-                      ? 'Liberados apos regularizacao fiscal'
-                      : item.label.toLowerCase().includes('credenciais')
-                        ? 'Vagas especiais idoso/deficiente'
-                        : 'Contestacoes de autuacoes'}
+                  {isGuardaScope
+                    ? item.label.toLowerCase().includes('efetivo')
+                      ? 'Guardas municipais ativos e cadastrados'
+                      : item.label.toLowerCase().includes('operações')
+                        ? 'Operações ativas de reforço (IRO)'
+                        : item.label.toLowerCase().includes('escalas')
+                          ? 'Candidaturas confirmadas para reforço'
+                          : 'Total acumulado de horas excedentes'
+                    : item.label.toLowerCase().includes('apreendidos')
+                      ? 'Veiculos retidos no deposito municipal'
+                      : item.label.toLowerCase().includes('liberados')
+                        ? 'Liberados apos regularizacao fiscal'
+                        : item.label.toLowerCase().includes('credenciais')
+                          ? 'Vagas especiais idoso/deficiente'
+                          : 'Contestacoes de autuacoes'}
                 </p>
               </div>
             ))}
@@ -506,30 +660,36 @@ const Dashboard = () => {
           <Card className="overflow-hidden rounded-[28px] border border-slate-200/80 bg-white shadow-[0_12px_32px_-22px_rgba(15,23,42,0.2)]">
             <CardHeader className="flex flex-row items-center justify-between space-y-0">
               <div>
-                <CardTitle className="font-heading text-[1.35rem] font-bold uppercase tracking-[-0.02em] text-slate-800">Fluxo mensal - Demutran</CardTitle>
-                <CardDescription className="mt-1 text-sm leading-6 text-[#89a0bf]">Veiculos recolhidos vs regularizados nos ultimos meses</CardDescription>
+                <CardTitle className="font-heading text-[1.35rem] font-bold uppercase tracking-[-0.02em] text-slate-800">
+                  {isGuardaScope ? 'Escalas Mensais - IRO' : 'Fluxo mensal - Demutran'}
+                </CardTitle>
+                <CardDescription className="mt-1 text-sm leading-6 text-[#89a0bf]">
+                  {isGuardaScope 
+                    ? 'Evolução de candidaturas confirmadas e escalas concluídas da Guarda nos últimos meses'
+                    : 'Veiculos recolhidos vs regularizados nos ultimos meses'}
+                </CardDescription>
               </div>
               <div className="flex items-center gap-4 text-xs font-medium text-[#6d819f]">
                 <div className="flex items-center gap-2">
-                  <span className="h-2.5 w-2.5 rounded-full bg-[#f97316]" />
-                  Apreendidos
+                  <span className="h-2.5 w-2.5 rounded-full bg-[#2563eb]" />
+                  {isGuardaScope ? 'Confirmadas' : 'Apreendidos'}
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="h-2.5 w-2.5 rounded-full bg-[#10b981]" />
-                  Liberados
+                  {isGuardaScope ? 'Realizadas' : 'Liberados'}
                 </div>
               </div>
             </CardHeader>
             <CardContent className="bg-[linear-gradient(180deg,_rgba(248,250,252,0.55)_0%,_rgba(255,255,255,1)_100%)]">
               <ChartContainer
                 className="h-[280px] w-full"
-                config={chartConfig}
+                config={resolvedChartConfig}
               >
                 <AreaChart data={state.vehicleMovement}>
                   <defs>
                     <linearGradient id="fillApreendidos" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="var(--color-apreendidos)" stopOpacity={0.25} />
-                      <stop offset="95%" stopColor="var(--color-apreendidos)" stopOpacity={0.01} />
+                      <stop offset="5%" stopColor={isGuardaScope ? '#2563eb' : 'var(--color-apreendidos)'} stopOpacity={0.25} />
+                      <stop offset="95%" stopColor={isGuardaScope ? '#2563eb' : 'var(--color-apreendidos)'} stopOpacity={0.01} />
                     </linearGradient>
                     <linearGradient id="fillLiberados" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="var(--color-liberados)" stopOpacity={0.22} />
@@ -540,7 +700,7 @@ const Dashboard = () => {
                   <XAxis dataKey="month" tickLine={false} axisLine={false} />
                   <YAxis tickLine={false} axisLine={false} allowDecimals={false} />
                   <ChartTooltip content={<ChartTooltipContent />} />
-                  <Area type="monotone" dataKey="apreendidos" stroke="var(--color-apreendidos)" fill="url(#fillApreendidos)" strokeWidth={2.5} />
+                  <Area type="monotone" dataKey="apreendidos" stroke={isGuardaScope ? '#2563eb' : 'var(--color-apreendidos)'} fill="url(#fillApreendidos)" strokeWidth={2.5} />
                   <Area type="monotone" dataKey="liberados" stroke="var(--color-liberados)" fill="url(#fillLiberados)" strokeWidth={2.5} />
                   <ChartLegend content={<ChartLegendContent />} />
                 </AreaChart>
@@ -607,14 +767,77 @@ const Dashboard = () => {
           </section>
         )}
 
+        {isGuardaScope && (
+          <section className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
+            <Card className="overflow-hidden rounded-[28px] border border-slate-200/80 bg-white shadow-[0_12px_32px_-22px_rgba(15,23,42,0.2)]">
+              <CardHeader>
+                <CardTitle className="font-heading text-[1.35rem] font-bold uppercase tracking-[-0.02em] text-slate-800">Efetivo por Graduação</CardTitle>
+                <CardDescription className="mt-1 text-sm leading-6 text-[#89a0bf]">
+                  Distribuição dos guardas ativos de acordo com suas graduações de carreira.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="grid gap-3">
+                {state.distribuicaoGraduacoes.map((item) => (
+                  <div key={item.label} className="rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-sm font-bold text-slate-900">{item.label}</p>
+                      <Badge variant="outline" className="rounded-full bg-white text-slate-700">{item.total} ativos</Badge>
+                    </div>
+                  </div>
+                ))}
+                {state.distribuicaoGraduacoes.length === 0 && (
+                  <p className="text-sm text-slate-500 text-center py-4">Nenhum guarda municipal ativo cadastrado.</p>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card className="overflow-hidden rounded-[28px] border border-slate-200/80 bg-white shadow-[0_12px_32px_-22px_rgba(15,23,42,0.2)]">
+              <CardHeader>
+                <CardTitle className="font-heading text-[1.35rem] font-bold uppercase tracking-[-0.02em] text-slate-800">IRO e Banco de Horas</CardTitle>
+                <CardDescription className="mt-1 text-sm leading-6 text-[#89a0bf]">
+                  Métricas consolidadas do módulo de Indenização de Reforço Operacional.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="grid gap-3 md:grid-cols-2">
+                <div className="rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-4">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">Operações IRO</p>
+                  <p className="mt-2 text-3xl font-extrabold tracking-[-0.05em] text-blue-600">{state.operacoesAtivasIro}</p>
+                  <p className="mt-2 text-sm leading-6 text-slate-500">Operações ativas de reforço cadastradas</p>
+                </div>
+                <div className="rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-4">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">Escalas Confirmadas</p>
+                  <p className="mt-2 text-3xl font-extrabold tracking-[-0.05em] text-emerald-600">{state.candidaturasIro}</p>
+                  <p className="mt-2 text-sm leading-6 text-slate-500">Total de candidaturas de reforço confirmadas</p>
+                </div>
+                <div className="rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-4">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">Banco de Horas</p>
+                  <p className="mt-2 text-3xl font-extrabold tracking-[-0.05em] text-amber-600">{state.totalBancoHoras}h</p>
+                  <p className="mt-2 text-sm leading-6 text-slate-500">Total de horas extras registradas no banco</p>
+                </div>
+                <div className="rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-4">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">Demandas Ouvidoria</p>
+                  <p className="mt-2 text-3xl font-extrabold tracking-[-0.05em] text-rose-600">{state.demandasFalaCidadaoCount}</p>
+                  <p className="mt-2 text-sm leading-6 text-slate-500">Solicitações Ouvidoria (Fala Cidadão) pendentes</p>
+                </div>
+              </CardContent>
+            </Card>
+          </section>
+        )}
+
         {(isSuperAdmin || papel === 'gestor') && (
           <section className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
             <Card className="overflow-hidden rounded-[28px] border border-slate-200/80 bg-white shadow-[0_12px_32px_-22px_rgba(15,23,42,0.2)]">
               <CardHeader className="flex flex-row items-center justify-between space-y-0">
                 <div>
-                  <CardTitle className="font-heading text-[1.35rem] font-bold uppercase tracking-[-0.02em] text-slate-800">Distribuicao operacional</CardTitle>
+                  <CardTitle className="font-heading text-[1.35rem] font-bold uppercase tracking-[-0.02em] text-slate-800">
+                    {isGuardaScope ? 'Efetivo por Graduação' : 'Distribuicao operacional'}
+                  </CardTitle>
                   <CardDescription className="mt-1 text-sm leading-6 text-[#89a0bf]">
-                    {isSuperAdmin ? 'Niveis de preenchimento de gestao por setor' : 'Leitura consolidada do contexto atual do seu setor'}
+                    {isGuardaScope 
+                      ? 'Distribuição proporcional do efetivo ativo entre as graduações da Guarda'
+                      : isSuperAdmin 
+                        ? 'Niveis de preenchimento de gestao por setor' 
+                        : 'Leitura consolidada do contexto atual do seu setor'}
                   </CardDescription>
                 </div>
                 <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-3 text-emerald-600">
@@ -622,7 +845,7 @@ const Dashboard = () => {
                 </div>
               </CardHeader>
               <CardContent className="space-y-4 bg-[linear-gradient(180deg,_rgba(248,250,252,0.55)_0%,_rgba(255,255,255,1)_100%)]">
-                <ChartContainer className="mx-auto h-[240px] max-w-[280px]" config={chartConfig}>
+                <ChartContainer className="mx-auto h-[240px] max-w-[280px]" config={resolvedChartConfig}>
                   <PieChart>
                     <ChartTooltip content={<ChartTooltipContent hideLabel />} />
                     <Pie data={state.sectorHealth} dataKey="value" nameKey="name" innerRadius={70} outerRadius={96} paddingAngle={4}>
@@ -636,31 +859,53 @@ const Dashboard = () => {
 
                 <div className="grid gap-3">
                   <div className="grid grid-cols-3 gap-3 border-t border-slate-200 pt-5">
-                    <div className="text-center">
-                      <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-[#8ea0bd]">Setores criticos</p>
-                      <p className="mt-2 text-[2rem] font-extrabold tracking-[-0.05em] text-[#ef4444]">{state.sectorsNeedingAttention.length}</p>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-[#8ea0bd]">Gestores ativos</p>
-                      <p className="mt-2 text-[2rem] font-extrabold tracking-[-0.05em] text-[#10b981]">
-                        {isSuperAdmin ? Math.max(state.sectorHealth.find((item) => item.name === 'regulares')?.value || 0, 0) : 1}
-                      </p>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-[#8ea0bd]">Indice conformidade</p>
-                      <p className="mt-2 text-[2rem] font-extrabold tracking-[-0.05em] text-[#2563eb]">
-                        {isSuperAdmin
-                          ? `${Math.round((((state.sectorHealth.find((item) => item.name === 'regulares')?.value || 0) / Math.max((state.sectorHealth.find((item) => item.name === 'regulares')?.value || 0) + state.sectorsNeedingAttention.length, 1)) * 100))}%`
-                          : '100%'}
-                      </p>
-                    </div>
+                    {isGuardaScope ? (
+                      <>
+                        <div className="text-center">
+                          <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-[#8ea0bd]">Total de Guardas</p>
+                          <p className="mt-2 text-[2rem] font-extrabold tracking-[-0.05em] text-[#2563eb]">{state.guardasAtivos || 0}</p>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-[#8ea0bd]">Graduações</p>
+                          <p className="mt-2 text-[2rem] font-extrabold tracking-[-0.05em] text-[#10b981]">{state.distribuicaoGraduacoes?.length || 0}</p>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-[#8ea0bd]">Média p/ Grad.</p>
+                          <p className="mt-2 text-[2rem] font-extrabold tracking-[-0.05em] text-[#8b5cf6]">
+                            {state.distribuicaoGraduacoes?.length 
+                              ? Math.round((state.guardasAtivos || 0) / state.distribuicaoGraduacoes.length) 
+                              : 0}
+                          </p>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="text-center">
+                          <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-[#8ea0bd]">Setores criticos</p>
+                          <p className="mt-2 text-[2rem] font-extrabold tracking-[-0.05em] text-[#ef4444]">{state.sectorsNeedingAttention.length}</p>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-[#8ea0bd]">Gestores ativos</p>
+                          <p className="mt-2 text-[2rem] font-extrabold tracking-[-0.05em] text-[#10b981]">
+                            {isSuperAdmin ? Math.max(state.sectorHealth.find((item) => item.name === 'regulares')?.value || 0, 0) : 1}
+                          </p>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-[#8ea0bd]">Indice conformidade</p>
+                          <p className="mt-2 text-[2rem] font-extrabold tracking-[-0.05em] text-[#2563eb]">
+                            {isSuperAdmin
+                              ? `${Math.round((((state.sectorHealth.find((item) => item.name === 'regulares')?.value || 0) / Math.max((state.sectorHealth.find((item) => item.name === 'regulares')?.value || 0) + state.sectorsNeedingAttention.length, 1)) * 100))}%`
+                              : '100%'}
+                          </p>
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
               </CardContent>
             </Card>
           </section>
         )}
-
 
       </div>
     </AdminLayout>

@@ -7,7 +7,9 @@ export type ModuloSistema =
   | 'recursos'
   | 'frota'
   | 'documentos'
-  | 'midias';
+  | 'midias'
+  | 'iros'
+  | 'guardas';
 
 export const MODULOS_DEMUTRAN: { value: ModuloSistema; label: string }[] = [
   { value: 'veiculos', label: 'Veículos' },
@@ -18,6 +20,17 @@ export const MODULOS_DEMUTRAN: { value: ModuloSistema; label: string }[] = [
   { value: 'documentos', label: 'Documentos' },
   { value: 'midias', label: 'Mídias' },
 ];
+
+export const MODULOS_GUARDA: { value: ModuloSistema; label: string }[] = [
+  { value: 'iros', label: 'IROs' },
+  { value: 'guardas', label: 'Guardas' },
+  { value: 'midias', label: 'Mídias' },
+];
+
+export const MODULOS_POR_SETOR: Record<string, { value: ModuloSistema; label: string }[]> = {
+  demutran: MODULOS_DEMUTRAN,
+  'guarda-municipal': MODULOS_GUARDA,
+};
 
 export interface AdminProfile {
   user_id: string;
@@ -58,11 +71,123 @@ export interface GuardaMunicipal {
   id: string;
   matricula: string;
   nome: string;
+  cpf?: string | null;
   graduacao_id: string;
   graduacao_nome?: string | null;
   ativo: boolean;
   created_at?: string | null;
   updated_at?: string | null;
+}
+
+export type IROTipo =
+  | 'patrulhamento_preventivo'
+  | 'perturbacao_ordem'
+  | 'seguranca_escolar'
+  | 'transito'
+  | 'apoio_pm'
+  | 'protecao_patrimonial'
+  | 'mediacao_conflitos'
+  | 'outros';
+
+export type IROStatus = 'pendente' | 'em_andamento' | 'concluido';
+
+export interface GuardaMunicipalIRO {
+  id: string;
+  setor_id: string;
+  protocolo: string;
+  guarda_id: string | null;
+  guarda_nome?: string | null;
+  data_ocorrencia: string;
+  tipo: IROTipo;
+  local: string;
+  bairro: string;
+  descricao: string;
+  medidas_tomadas: string;
+  status: IROStatus;
+  created_at?: string | null;
+  updated_at?: string | null;
+  created_by?: string | null;
+}
+
+// ---- Módulo IRO v2 (Operational Resources Integration) ----
+
+export interface IROOperacao {
+  id: string;
+  nome: string;
+  descricao: string | null;
+  horario_previsto: string;
+  data_inicio: string;
+  data_fim: string;
+  vagas_por_dia: number;
+  horas_por_dia: number;
+  tempo_solicitacao: 'imediato' | '1h' | '6h' | '8h' | '12h' | '24h' | '48h';
+  setor_id: string;
+  ativo: boolean;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface IROCandidatura {
+  id: string;
+  operacao_id: string;
+  usuario_id: string;
+  usuario_nome?: string;
+  data_operacao: string;
+  horas_trabalhadas: number;
+  status: 'pendente' | 'confirmado' | 'cancelado' | 'realizado';
+  adicionado_manual: boolean;
+  observacao: string | null;
+  created_at: string;
+  updated_at: string;
+  operacao_nome?: string;
+}
+
+export interface IROHoraManual {
+  id: string;
+  usuario_id: string;
+  usuario_nome?: string;
+  quantidade_horas: number;
+  data_referencia: string;
+  justificativa: string | null;
+  gestor_id: string | null;
+  operacao_id: string | null;
+  setor_id: string;
+  created_at: string;
+  operacao_nome?: string;
+}
+
+export interface IROBancoHoras {
+  id: string;
+  usuario_id: string;
+  usuario_nome?: string;
+  horas_excedentes: number;
+  origem: string | null;
+  descricao: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface IRONotificacao {
+  id: string;
+  usuario_id: string;
+  usuario_nome?: string;
+  titulo: string;
+  mensagem: string;
+  tipo: 'info' | 'sucesso' | 'alerta' | 'erro' | 'manual';
+  lida: boolean;
+  link: string | null;
+  created_at: string;
+}
+
+export interface IROValorGraduacao {
+  id: string;
+  graduacao_id: string;
+  graduacao_nome?: string | null;
+  valor_hora: number;
+  ativo: boolean;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface AdminProfileRow {

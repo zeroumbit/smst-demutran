@@ -1,6 +1,6 @@
 import { ChangeEvent, useEffect, useMemo, useState } from 'react';
 import * as XLSX from 'xlsx';
-import { Car, CheckCircle2, CircleDollarSign, Copy, Download, Eye, FileSpreadsheet, Plus, Printer, Search, SlidersHorizontal, Upload, Warehouse, X } from 'lucide-react';
+import { Car, CheckCircle2, CircleDollarSign, Copy, Download, Eye, FileSpreadsheet, Loader2, Plus, Printer, Search, SlidersHorizontal, Upload, Warehouse, X } from 'lucide-react';
 import { useConfirmDialog } from '@/components/ui/use-confirm-dialog';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { DataTable } from '@/components/admin/DataTable';
@@ -345,6 +345,9 @@ const DemutranLiberacao = () => {
   const [editandoObservacao, setEditandoObservacao] = useState(false);
   const [observacaoText, setObservacaoText] = useState('');
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
+  const [importResult, setImportResult] = useState<{ count: number; skipped: number } | null>(null);
+  const [taxaDiariaInput, setTaxaDiariaInput] = useState('');
   const [logradouroSuggestions, setLogradouroSuggestions] = useState<LogradouroSuggestion[]>([]);
   const [loadingLogradouros, setLoadingLogradouros] = useState(false);
 
@@ -433,16 +436,31 @@ const DemutranLiberacao = () => {
     }
 
     setLoading(true);
-    const { data, error } = await supabase
-      .from('veiculos_recolhidos')
-      .select('*')
-      .eq('setor_id', effectiveSetorId)
-      .order('data_recolhimento', { ascending: false });
+    const PAGE_SIZE = 900;
+    let allData: VeiculoRecolhido[] = [];
+    let fetchError: any = null;
 
-    if (error) {
-      toast({ title: 'Erro ao carregar veiculos', description: error.message, variant: 'destructive' });
+    for (let page = 0; ; page++) {
+      const { data, error } = await supabase
+        .from('veiculos_recolhidos')
+        .select('*')
+        .eq('setor_id', effectiveSetorId)
+        .order('data_recolhimento', { ascending: false })
+        .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
+
+      if (error) {
+        fetchError = error;
+        break;
+      }
+      if (!data || data.length === 0) break;
+      allData = allData.concat(data as VeiculoRecolhido[]);
+      if (data.length < PAGE_SIZE) break;
+    }
+
+    if (fetchError) {
+      toast({ title: 'Erro ao carregar veiculos', description: fetchError.message, variant: 'destructive' });
     } else {
-      setVeiculos((data || []) as VeiculoRecolhido[]);
+      setVeiculos(allData);
     }
 
     setLoading(false);
@@ -718,7 +736,7 @@ const DemutranLiberacao = () => {
   const closeTaxaDialog = () => {
     setTaxaItem(null);
     setTaxaMode('single');
-    setTaxaForm(emptyTaxaForm);
+    setTaxaDiariaInput('');
     setIsTaxaDialogOpen(false);
   };
 
@@ -852,7 +870,7 @@ const DemutranLiberacao = () => {
   };
 
   const handleSubmitTaxa = async () => {
-    const taxa = Number(String(taxaForm.taxa_diaria).replace(',', '.'));
+    const taxa = Number(taxaDiariaInput.replace(',', '.'));
 
     if (Number.isNaN(taxa) || taxa < 0) {
       toast({ title: 'Valor invalido', description: 'Informe um valor diario valido.', variant: 'destructive' });
@@ -965,9 +983,7 @@ const DemutranLiberacao = () => {
   const openTaxaDialog = (item?: VeiculoRecolhido) => {
     setTaxaItem(item || null);
     setTaxaMode(item ? 'single' : 'all');
-    setTaxaForm({
-      taxa_diaria: item ? String(getTaxaDiariaValue(item)).replace('.', ',') : '',
-    });
+    setTaxaDiariaInput(item ? String(getTaxaDiariaValue(item)).replace('.', ',') : '');
     setIsTaxaDialogOpen(true);
   };
 
@@ -994,6 +1010,8 @@ const DemutranLiberacao = () => {
       toast({ title: 'Setor nao selecionado', description: 'Selecione o setor do DEMUTRAN antes de importar.', variant: 'destructive' });
       return;
     }
+
+    setIsImporting(true);
 
     try {
       const buffer = await file.arrayBuffer();
@@ -1120,26 +1138,30 @@ const DemutranLiberacao = () => {
         return;
       }
 
-      const { error } = await supabase.from('veiculos_recolhidos').insert(payload);
-      if (error) {
-        throw error;
+      const CHUNK_SIZE = 200;
+      let totalInseridos = 0;
+      for (let i = 0; i < payload.length; i += CHUNK_SIZE) {
+        const chunk = payload.slice(i, i + CHUNK_SIZE);
+        const { data: inserted, error: chunkError } = await supabase
+          .from('veiculos_recolhidos')
+          .insert(chunk)
+          .select('id');
+        if (chunkError) throw chunkError;
+        totalInseridos += inserted?.length ?? chunk.length;
       }
 
-      toast({
-        title: 'Cadastro em massa concluido',
-        description: skippedRows.length
-          ? `${payload.length} veiculo(s) importados. ${skippedRows.length} linha(s) foram ignoradas por falta de descricao ou data.`
-          : `${payload.length} veiculo(s) foram importados para o patio.`,
-      });
-      loadVeiculos();
       setIsImportDialogOpen(false);
+      setImportResult({ count: totalInseridos, skipped: skippedRows.length });
+      loadVeiculos();
     } catch (error: any) {
+      setIsImportDialogOpen(false);
       toast({
         title: 'Erro ao importar planilha',
         description: error.message || 'Nao foi possivel processar a planilha.',
         variant: 'destructive',
       });
-      setIsImportDialogOpen(false);
+    } finally {
+      setIsImporting(false);
     }
   };
 
@@ -2209,10 +2231,9 @@ const DemutranLiberacao = () => {
               <Label htmlFor="taxa_diaria">Taxa diaria (R$) *</Label>
               <Input
                 id="taxa_diaria"
-                inputMode="decimal"
                 placeholder="Ex.: 25,00"
-                value={taxaForm.taxa_diaria}
-                onChange={(e) => setTaxaForm({ taxa_diaria: e.target.value })}
+                value={taxaDiariaInput}
+                onChange={(e) => setTaxaDiariaInput(e.target.value)}
               />
             </div>
             <p className="text-sm text-muted-foreground">
@@ -2367,38 +2388,77 @@ const DemutranLiberacao = () => {
         open={isImportDialogOpen}
         onOpenChange={setIsImportDialogOpen}
         title="Cadastro em massa"
-        description="Baixe o modelo da planilha, preencha os dados e faca o upload."
+        description="Selecione o arquivo preenchido para importar os veiculos."
       >
         <div className="space-y-6 py-4">
-          <div className="rounded-xl border border-dashed border-slate-200 p-6 text-center">
-            <p className="text-sm font-medium text-slate-700">1. Baixe o modelo da planilha</p>
-            <p className="mt-1 text-xs text-slate-500">Preencha os dados no arquivo modelo e depois importe abaixo.</p>
-            <Button type="button" variant="outline" className="mt-4 gap-2" onClick={handleDownloadModelo}>
-              <Download className="h-4 w-4" />
-              Baixar modelo
-            </Button>
-          </div>
-
-          <div className="rounded-xl border border-dashed border-slate-200 p-6 text-center">
-            <p className="text-sm font-medium text-slate-700">2. Selecione o arquivo preenchido</p>
-            <p className="mt-1 text-xs text-slate-500">Formatos aceitos: .xlsx, .xls, .csv</p>
-            <label className="mt-4 inline-flex cursor-pointer">
+          <div className="rounded-xl border-2 border-brand-200 bg-brand-50/40 p-8 text-center">
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-brand-100">
+              <Upload className="h-7 w-7 text-brand-600" />
+            </div>
+            <p className="text-base font-semibold text-slate-800">Selecione o arquivo preenchido</p>
+            <p className="mt-1 text-sm text-slate-500">Formatos aceitos: .xlsx, .xls, .csv</p>
+            <label className="mt-5 inline-flex cursor-pointer">
               <input
                 type="file"
                 className="hidden"
                 accept=".xlsx,.xls,.csv"
                 onChange={handleMassUpload}
+                disabled={isImporting}
               />
-              <Button type="button" variant="default" className="gap-2" asChild>
+              <Button type="button" variant="default" className="h-11 gap-2 rounded-xl px-6 text-sm font-semibold shadow-lg shadow-brand-200/50" disabled={isImporting} asChild>
                 <span>
-                  <Upload className="h-4 w-4" />
-                  Selecionar arquivo
+                  {isImporting ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Upload className="h-4 w-4" />
+                  )}
+                  {isImporting ? 'Importando...' : 'Escolher arquivo'}
                 </span>
               </Button>
             </label>
+            {isImporting && (
+              <p className="mt-3 text-xs text-brand-600 animate-pulse">Processando planilha, aguarde...</p>
+            )}
+          </div>
+
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-5 text-center">
+            <p className="text-sm font-medium text-slate-600">Nao tem o modelo ainda?</p>
+            <p className="mt-0.5 text-xs text-slate-400">Baixe o modelo, preencha e depois volte aqui para importar.</p>
+            <Button type="button" variant="outline" size="sm" className="mt-3 gap-2" onClick={handleDownloadModelo}>
+              <Download className="h-4 w-4" />
+              Baixar modelo
+            </Button>
           </div>
         </div>
       </ResponsiveDialog>
+
+      <AlertDialog open={importResult !== null} onOpenChange={() => setImportResult(null)}>
+        <AlertDialogContent className="max-w-md">
+          <AlertDialogHeader>
+            <div className="mx-auto mb-2 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100">
+              <CheckCircle2 className="h-7 w-7 text-emerald-600" />
+            </div>
+            <AlertDialogTitle className="text-center text-lg">
+              Importacao concluida com sucesso!
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-center">
+              <p className="text-sm text-slate-600">
+                {importResult?.count} veiculo(s) foram importados para o patio.
+              </p>
+              {importResult && importResult.skipped > 0 && (
+                <p className="mt-1 text-xs text-amber-600">
+                  {importResult.skipped} linha(s) foram ignoradas por falta de descricao ou data.
+                </p>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="justify-center sm:justify-center">
+            <Button onClick={() => setImportResult(null)} className="rounded-xl px-8">
+              OK, entendi
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AdminLayout>
   );
 };

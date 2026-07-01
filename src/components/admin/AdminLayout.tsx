@@ -7,12 +7,12 @@ import { Badge } from '@/components/ui/badge';
 import { NotificationDropdown } from '@/components/admin/NotificationDropdown';
 import type { ModuloSistema } from '@/types/admin';
 import { supabase } from '@/lib/supabase';
+import type { ComponentType } from 'react';
+import guardaLogo from '@/guarda.png';
 import {
   Newspaper,
   Calendar,
-  Image,
   Users,
-  LayoutDashboard,
   LogOut,
   Menu,
   X,
@@ -25,20 +25,41 @@ import {
   UserCircle2,
   ChevronDown,
   ChevronRight,
+  ChevronLeft,
   Search,
   Moon,
   Sun,
   IdCard,
   Settings2,
   MessageSquareText,
+  BarChart3,
+  Shield,
 } from 'lucide-react';
+
+const HouseIcon: ComponentType<{ className?: string }> = ({ className }) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="24"
+    height="24"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+  >
+    <path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8" />
+    <path d="M3 10a2 2 0 0 1 .709-1.528l7-6a2 2 0 0 1 2.582 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+  </svg>
+);
 
 interface AdminLayoutProps {
   children: ReactNode;
 }
 
 type MenuItem = {
-  icon: typeof LayoutDashboard;
+  icon: ComponentType<{ className?: string }>;
   label: string;
   path?: string;
   disabled?: boolean;
@@ -47,37 +68,51 @@ type MenuItem = {
 };
 
 const defaultMenuItems: MenuItem[] = [
-  { icon: LayoutDashboard, label: 'Dashboard', path: '/admin/dashboard', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
-  { icon: CarFront, label: 'Veiculos', path: '/admin/demutran/veiculos', allowedPapeis: ['super_admin', 'gestor', 'admin_setor'] },
-  { icon: IdCard, label: 'Concessionarios', path: '/admin/demutran/concessionarios', allowedPapeis: ['super_admin', 'gestor', 'admin_setor'] },
-  { icon: Accessibility, label: 'Credenciais', path: '/admin/demutran/credenciais', allowedPapeis: ['super_admin', 'gestor', 'admin_setor'] },
-  { icon: FileWarning, label: 'Recursos', path: '/admin/demutran/recursos', allowedPapeis: ['super_admin', 'gestor', 'admin_setor'] },
-  { icon: CarFront, label: 'Frota Municipal', path: '/admin/demutran/frota', allowedPapeis: ['super_admin', 'gestor', 'admin_setor'] },
-  { icon: FileText, label: 'Documentos', path: '/admin/documentos', allowedPapeis: ['super_admin', 'gestor', 'admin_setor'] },
+  { icon: HouseIcon, label: 'Dashboard', path: '/admin/dashboard', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
+  { icon: MessageSquareText, label: 'Fala Cidadao', path: '/admin/fala-cidadao', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
+  { icon: BarChart3, label: 'Relatorios', path: '/admin/relatorios', allowedPapeis: ['super_admin'] },
+  { icon: CarFront, label: 'Veiculos', path: '/admin/demutran/veiculos', allowedPapeis: ['gestor', 'admin_setor'] },
+  { icon: IdCard, label: 'Concessionarios', path: '/admin/demutran/concessionarios', allowedPapeis: ['gestor', 'admin_setor'] },
+  { icon: Accessibility, label: 'Credenciais', path: '/admin/demutran/credenciais', allowedPapeis: ['gestor', 'admin_setor'] },
+  { icon: FileWarning, label: 'Recursos', path: '/admin/demutran/recursos', allowedPapeis: ['gestor', 'admin_setor'] },
+  { icon: CarFront, label: 'Frota Municipal', path: '/admin/demutran/frota', allowedPapeis: ['gestor', 'admin_setor'] },
+  { icon: FileText, label: 'Documentos', path: '/admin/documentos', allowedPapeis: ['gestor', 'admin_setor'] },
   { icon: Building2, label: 'Setores', path: '/admin/setores', allowedPapeis: ['super_admin'] },
-  { icon: ImageIcon, label: 'Midias', path: '/admin/midias', allowedPapeis: ['super_admin', 'gestor', 'admin_setor'] },
-  { icon: Settings2, label: 'Configuracoes', path: '/admin/configuracoes', allowedPapeis: ['super_admin', 'gestor'] },
-  { icon: Users, label: 'Guardas Municipais', path: '/admin/guardas-municipais', allowedPapeis: ['super_admin'] },
+  { icon: Shield, label: 'Guardas', path: '/admin/guardas/guarda-municipal', allowedPapeis: ['super_admin'] },
+  { icon: ImageIcon, label: 'Midias', path: '/admin/midias', allowedPapeis: ['gestor', 'admin_setor'] },
+  { icon: Settings2, label: 'Configuracoes', path: '/admin/configuracoes-demutran', allowedPapeis: ['gestor'] },
+  { icon: Settings2, label: 'Config. Guarda', path: '/admin/configuracoes-guarda-municipal', allowedPapeis: ['super_admin'] },
   { icon: Users, label: 'Usuarios', path: '/admin/usuarios', allowedPapeis: ['super_admin', 'gestor'] },
   { icon: UserCircle2, label: 'Perfil', path: '/admin/perfil', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
-  { icon: MessageSquareText, label: 'Fala Cidadao', path: '/admin/fala-cidadao', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
 ];
 
 const demutranMenuItems: MenuItem[] = [
-  { icon: LayoutDashboard, label: 'Dashboard', path: '/admin/demutran/dashboard', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
-  { icon: CarFront, label: 'Veiculos', path: '/admin/demutran/veiculos', allowedPapeis: ['super_admin', 'gestor', 'admin_setor'] },
-  { icon: IdCard, label: 'Concessionarios', path: '/admin/demutran/concessionarios', allowedPapeis: ['super_admin', 'gestor', 'admin_setor'] },
-  { icon: Accessibility, label: 'Credenciais', path: '/admin/demutran/credenciais', allowedPapeis: ['super_admin', 'gestor', 'admin_setor'] },
-  { icon: FileWarning, label: 'Recursos', path: '/admin/demutran/recursos', allowedPapeis: ['super_admin', 'gestor', 'admin_setor'] },
-  { icon: CarFront, label: 'Frota Municipal', path: '/admin/demutran/frota', allowedPapeis: ['super_admin', 'gestor', 'admin_setor'] },
-  { icon: FileText, label: 'Documentos', path: '/admin/demutran/documentos', allowedPapeis: ['super_admin', 'gestor', 'admin_setor'] },
+  { icon: HouseIcon, label: 'Dashboard', path: '/admin/dashboard/demutran', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
+  { icon: MessageSquareText, label: 'Fala Cidadao', path: '/admin/fala-cidadao/demutran', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
+  { icon: BarChart3, label: 'Relatorios', path: '/admin/relatorios', allowedPapeis: ['super_admin'] },
+  { icon: CarFront, label: 'Veiculos', path: '/admin/demutran/veiculos', allowedPapeis: ['gestor', 'admin_setor'] },
+  { icon: IdCard, label: 'Concessionarios', path: '/admin/demutran/concessionarios', allowedPapeis: ['gestor', 'admin_setor'] },
+  { icon: Accessibility, label: 'Credenciais', path: '/admin/demutran/credenciais', allowedPapeis: ['gestor', 'admin_setor'] },
+  { icon: FileWarning, label: 'Recursos', path: '/admin/demutran/recursos', allowedPapeis: ['gestor', 'admin_setor'] },
+  { icon: CarFront, label: 'Frota Municipal', path: '/admin/demutran/frota', allowedPapeis: ['gestor', 'admin_setor'] },
+  { icon: FileText, label: 'Documentos', path: '/admin/documentos/demutran', allowedPapeis: ['gestor', 'admin_setor'] },
   { icon: Building2, label: 'Setores', path: '/admin/setores', allowedPapeis: ['super_admin'] },
-  { icon: ImageIcon, label: 'Midias', path: '/admin/demutran/midias', allowedPapeis: ['super_admin', 'gestor', 'admin_setor'] },
-  { icon: Settings2, label: 'Configuracoes', path: '/admin/configuracoes', allowedPapeis: ['super_admin', 'gestor'] },
-  { icon: Users, label: 'Guardas Municipais', path: '/admin/guardas-municipais', allowedPapeis: ['super_admin'] },
-  { icon: Users, label: 'Usuarios', path: '/admin/usuarios', allowedPapeis: ['super_admin', 'gestor'] },
-  { icon: UserCircle2, label: 'Perfil', path: '/admin/perfil', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
-  { icon: MessageSquareText, label: 'Fala Cidadao', path: '/admin/fala-cidadao', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
+  { icon: ImageIcon, label: 'Midias', path: '/admin/midias/demutran', allowedPapeis: ['gestor', 'admin_setor'] },
+  { icon: Settings2, label: 'Configuracoes', path: '/admin/configuracoes-demutran', allowedPapeis: ['gestor'] },
+  { icon: Users, label: 'Usuarios', path: '/admin/usuarios/demutran', allowedPapeis: ['super_admin', 'gestor'] },
+  { icon: UserCircle2, label: 'Perfil', path: '/admin/perfil/demutran', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
+];
+
+const guardaMenuItems: MenuItem[] = [
+  { icon: HouseIcon, label: 'Dashboard', path: '/admin/dashboard/guarda-municipal', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
+  { icon: MessageSquareText, label: 'Fala Cidadao', path: '/admin/fala-cidadao/guarda-municipal', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
+  { icon: FileWarning, label: 'IROs', path: '/admin/iros/guarda-municipal', allowedPapeis: ['gestor', 'admin_setor', 'tecnico'] },
+  { icon: Shield, label: 'Guardas', path: '/admin/guardas/guarda-municipal', allowedPapeis: ['super_admin', 'gestor', 'admin_setor'] },
+  { icon: ImageIcon, label: 'Midias', path: '/admin/midias/guarda-municipal', allowedPapeis: ['gestor', 'admin_setor'] },
+  { icon: Users, label: 'Equipe', path: '/admin/equipe/guarda-municipal', allowedPapeis: ['gestor', 'admin_setor'] },
+  { icon: Settings2, label: 'Configuracoes', path: '/admin/configuracoes-guarda-municipal', allowedPapeis: ['super_admin', 'gestor', 'admin_setor'] },
+  { icon: Users, label: 'Usuarios', path: '/admin/usuarios/guarda-municipal', allowedPapeis: ['super_admin', 'gestor'] },
+  { icon: UserCircle2, label: 'Perfil', path: '/admin/perfil/guarda-municipal', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
 ];
 
 const moduloItemMap: Record<string, ModuloSistema> = {
@@ -132,6 +167,7 @@ const moduloIconMap: Record<string, React.ComponentType<{ className?: string }>>
 
 export const AdminLayout = ({ children }: AdminLayoutProps) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [expandedMenus, setExpandedMenus] = useState<Record<string, boolean>>({});
   const [searchQuery, setSearchQuery] = useState('');
   const [showSearchResults, setShowSearchResults] = useState(false);
@@ -200,14 +236,38 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
     }
   }, [isAuthenticated, isLoading, navigate, location.pathname]);
 
-  const isDemutranContext =
-    location.pathname.startsWith('/admin/demutran') ||
-    (!isSuperAdmin && profile?.setor_slug === 'demutran');
+  const sectorContext = useMemo(() => {
+    if (isSuperAdmin) return null;
+    const slug = profile?.setor_slug;
+    const segments = location.pathname.split('/');
+    if (slug === 'guarda-municipal' || segments.includes('guarda-municipal')) return 'guarda-municipal';
+    if (slug === 'demutran' || segments.includes('demutran')) return 'demutran';
+    return null;
+  }, [isSuperAdmin, profile?.setor_slug, location.pathname]);
+
+  const sectorLogo = useMemo(() => {
+    if (isSuperAdmin) return '/images/logo.png';
+    if (sectorContext === 'guarda-municipal') return guardaLogo;
+    return '/images/demutran.png';
+  }, [isSuperAdmin, sectorContext]);
+
+  const sectorLabel = useMemo(() => {
+    if (isSuperAdmin) return 'SMST';
+    if (sectorContext === 'guarda-municipal') return 'Guarda';
+    return 'Demutran';
+  }, [isSuperAdmin, sectorContext]);
+
+  const sectorBadge = useMemo(() => {
+    if (isSuperAdmin) return 'Super Admin';
+    return null;
+  }, [isSuperAdmin]);
 
   const visibleMenuItems = useMemo(() => {
-    const sourceMenuItems = isDemutranContext
-      ? demutranMenuItems
-      : defaultMenuItems;
+    const sourceMenuItems = sectorContext === 'guarda-municipal'
+      ? guardaMenuItems
+      : sectorContext === 'demutran'
+        ? demutranMenuItems
+        : defaultMenuItems;
 
     const userModulos = profile?.modulos;
     const hasModulosRestricted = !isSuperAdmin && userModulos && userModulos.length > 0;
@@ -219,10 +279,23 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
         }
       }
 
-      if (item.path === '/admin/configuracoes') {
+      if (item.path?.startsWith('/admin/guarda-municipal/')) {
+        if (profile?.setor_slug && profile.setor_slug !== 'guarda-municipal' && !isSuperAdmin) {
+          return null;
+        }
+      }
+
+      if (item.path === '/admin/configuracoes-demutran') {
         if (!isSuperAdmin && (!profile?.setor_slug || profile.setor_slug !== 'demutran')) {
           return null;
         }
+      }
+
+      if (item.path === '/admin/configuracoes-guarda-municipal') {
+        if (!isSuperAdmin && (!profile?.setor_slug || profile.setor_slug !== 'guarda-municipal')) {
+          return null;
+        }
+        if (isSuperAdmin) return item;
       }
 
       if (item.children) {
@@ -254,7 +327,7 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
     return sourceMenuItems
       .map(filterItem)
       .filter(Boolean) as MenuItem[];
-  }, [hasPapel, isDemutranContext, isSuperAdmin, profile?.setor_slug, profile?.papel, profile?.modulos]);
+  }, [hasPapel, sectorContext, isSuperAdmin, profile?.setor_slug, profile?.papel, profile?.modulos]);
 
   useEffect(() => {
     const autoExpand: Record<string, boolean> = {};
@@ -318,6 +391,7 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
 
     walk(filterByPapel(defaultMenuItems));
     walk(filterByPapel(demutranMenuItems));
+    walk(filterByPapel(guardaMenuItems));
     return flat;
   }, [hasPapel, isSuperAdmin, profile?.papel, profile?.modulos]);
 
@@ -343,13 +417,13 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
       isActive && !hasChildren
         ? 'bg-brand-50 text-brand-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.65)]'
         : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
-    } ${isSubItem ? 'ml-6 px-3 py-2.5 text-[13px]' : ''}`;
+    } ${isSubItem ? 'ml-6 px-3 py-2.5 text-[13px]' : ''} ${!isSubItem && sidebarCollapsed ? 'lg:justify-center lg:px-0 lg:mx-2' : ''}`;
 
     if (item.disabled) {
       return (
-        <div key={item.label} className={`flex items-center px-4 py-3 text-sm font-medium rounded-2xl text-slate-300 cursor-not-allowed ${isSubItem ? 'ml-6' : ''}`}>
-          <Icon className="mr-3 h-5 w-5 shrink-0" />
-          <span className="flex items-center">
+        <div key={item.label} className={`flex items-center px-4 py-3 text-sm font-medium rounded-2xl text-slate-300 cursor-not-allowed ${isSubItem ? 'ml-6' : ''} ${sidebarCollapsed && !isSubItem ? 'lg:justify-center lg:px-0 lg:mx-2' : ''}`}>
+          <Icon className={`${sidebarCollapsed && !isSubItem ? 'lg:mx-auto' : 'mr-3'} h-5 w-5 shrink-0`} />
+          <span className={`flex items-center ${sidebarCollapsed ? 'lg:hidden' : ''}`}>
             {item.label}
             <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-brand-600">
               em breve
@@ -360,6 +434,13 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
     }
 
     if (hasChildren) {
+      if (sidebarCollapsed) {
+        return (
+          <div key={item.label} className={`${baseClasses} cursor-default`}>
+            <Icon className="lg:mx-auto h-5 w-5 shrink-0 text-slate-400" />
+          </div>
+        );
+      }
       return (
         <div key={item.label}>
           <button
@@ -386,44 +467,53 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
         onClick={() => setSidebarOpen(false)}
         className={baseClasses}
       >
-        <Icon className={`mr-3 h-5 w-5 shrink-0 ${isActive ? 'text-brand-600' : 'text-slate-400 group-hover:text-brand-500'}`} />
-        {item.label}
+        <Icon className={`${sidebarCollapsed ? 'lg:mx-auto' : 'mr-3'} h-5 w-5 shrink-0 ${isActive ? 'text-brand-600' : 'text-slate-400 group-hover:text-brand-500'}`} />
+        <span className={`${sidebarCollapsed ? 'lg:hidden' : ''}`}>{item.label}</span>
       </Link>
     );
   };
 
   const sidebarContent = (
     <div className="flex flex-grow flex-col overflow-y-auto pt-4">
-      <div className="mb-6 flex items-center border-b border-slate-200 px-6 pb-6">
+      <div className={`mb-6 flex items-center border-b border-slate-200 pb-6 ${sidebarCollapsed ? 'justify-center px-0' : 'px-6'}`}>
         <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_10px_25px_-18px_rgba(15,23,42,0.22)]">
-          <img src="/images/demutran.png" alt="Logo do Demutran" className="h-full w-full object-contain p-1.5" />
+          <img
+            src={sectorLogo as string}
+            alt={sectorLabel}
+            className="h-full w-full object-contain p-1.5"
+          />
         </div>
-        <div className="ml-4">
+        <div className={`ml-4 ${sidebarCollapsed ? 'lg:hidden' : ''}`}>
           <span className="block whitespace-nowrap text-[1.65rem] font-bold tracking-[-0.04em] text-slate-900">
-            Demutran
+            {sectorLabel}
           </span>
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-extrabold uppercase tracking-[0.2em] text-brand-600">
-              {profile?.nome ? profile.nome.split(' ')[0] : 'Caninde'}
-            </span>
-            {isSuperAdmin && (
-              <Badge className="rounded-full bg-amber-50 text-amber-700 border-amber-200 text-[10px] font-bold px-2 py-0">
-                Super Admin
-              </Badge>
-            )}
-          </div>
+          {sectorBadge && (
+            <Badge className="rounded-full bg-amber-50 text-amber-700 border-amber-200 text-[10px] font-bold px-2 py-0">
+              {sectorBadge}
+            </Badge>
+          )}
         </div>
       </div>
 
       <nav className="flex-1 space-y-1 px-3">
         {visibleMenuItems.map((item) => renderNavItem(item))}
       </nav>
+
+      <div className="border-t border-slate-200 p-3">
+        <button
+          onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+          className="flex w-full items-center justify-center rounded-xl p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors"
+          title={sidebarCollapsed ? 'Expandir menu' : 'Recolher menu'}
+        >
+          {sidebarCollapsed ? <ChevronRight className="h-5 w-5" /> : <ChevronLeft className="h-5 w-5" />}
+        </button>
+      </div>
     </div>
   );
 
   return (
     <div className="min-h-screen bg-[#f6f8fc]">
-      <aside className="hidden border-r border-slate-200 bg-white lg:fixed lg:inset-y-0 lg:flex lg:w-[285px] lg:flex-col">
+      <aside className={`hidden border-r border-slate-200 bg-white lg:fixed lg:inset-y-0 lg:flex lg:flex-col ${sidebarCollapsed ? 'lg:w-[72px]' : 'lg:w-[285px]'}`}>
         {sidebarContent}
       </aside>
 
@@ -448,7 +538,7 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
         </div>
       )}
 
-      <div className="flex flex-1 flex-col lg:pl-[285px]">
+      <div className={`flex flex-1 flex-col ${sidebarCollapsed ? 'lg:pl-[72px]' : 'lg:pl-[285px]'}`}>
         <header className="sticky top-0 z-10 flex h-20 items-center justify-between border-b border-slate-200 bg-white/95 px-4 backdrop-blur-md lg:px-6">
           <button
             type="button"
@@ -564,7 +654,7 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
 
             <NotificationDropdown userId={profile?.user_id} />
 
-            {profile?.setor_nome && !isDemutranContext && (
+            {profile?.setor_nome && !sectorContext && (
               <div className="hidden md:flex items-center gap-2">
                 <Badge className="rounded-full border-slate-200 bg-white text-slate-600" variant="outline">{profile.setor_nome}</Badge>
               </div>

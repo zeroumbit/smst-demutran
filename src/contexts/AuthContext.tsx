@@ -50,6 +50,11 @@ async function fetchUserProfile(): Promise<AdminProfile | null> {
   }
 }
 
+export function getDashboardUrl(profile: AdminProfile | null): string {
+  if (!profile?.setor_slug || profile.papel === 'super_admin') return '/admin/dashboard';
+  return `/admin/dashboard/${profile.setor_slug}`;
+}
+
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<AdminProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -142,6 +147,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       description: 'Bem-vindo ao painel administrativo.',
     });
 
+    navigate(getDashboardUrl(profile));
     return true;
   };
 

@@ -1,5 +1,5 @@
 import { Navigate } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth, getDashboardUrl } from '@/contexts/AuthContext';
 import type { PapelUsuario } from '@/types/admin';
 
 interface ProtectedRouteProps {
@@ -39,17 +39,17 @@ export const ProtectedRoute = ({
       : hasPapel(...allowedPapeis) || (profile?.papel === 'tecnico' && !!profile?.modulos?.length);
 
     if (!isAllowed) {
-      return <Navigate to="/admin/dashboard" replace />;
+      return <Navigate to={getDashboardUrl(profile)} replace />;
     }
   }
 
   if (requiredSetorSlug) {
     if (isSuperAdmin && !allowSuperAdmin) {
-      return <Navigate to="/admin/dashboard" replace />;
+      return <Navigate to={getDashboardUrl(profile)} replace />;
     }
 
     if (!isSuperAdmin && profile?.setor_slug !== requiredSetorSlug) {
-      return <Navigate to="/admin/dashboard" replace />;
+      return <Navigate to={getDashboardUrl(profile)} replace />;
     }
   }
 

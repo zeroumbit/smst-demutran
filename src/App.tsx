@@ -61,7 +61,10 @@ const AdminDemutranConteudos = React.lazy(() => import("./pages/admin/DemutranCo
 const AdminProfile = React.lazy(() => import("./pages/admin/Profile"));
 const AdminConfiguracoes = React.lazy(() => import("./pages/admin/Configuracoes"));
 const AdminGuardasMunicipais = React.lazy(() => import("./pages/admin/GuardasMunicipais"));
+const AdminGuardaMunicipalIros = React.lazy(() => import("./pages/admin/GuardaMunicipalIros"));
+const AdminConfiguracoesGuarda = React.lazy(() => import("./pages/admin/ConfiguracoesGuarda"));
 const AdminFalaCidadao = React.lazy(() => import("./pages/admin/FalaCidadao"));
+const AdminRelatorios = React.lazy(() => import("./pages/admin/Relatorios"));
 
 const queryClient = new QueryClient();
 
@@ -225,6 +228,13 @@ const App = () => (
                 </ProtectedRoute>
               </SuspenseWrapper>
             } />
+            <Route path="/admin/dashboard/:setorSlug" element={
+              <SuspenseWrapper>
+                <ProtectedRoute allowedPapeis={['super_admin', 'gestor', 'admin_setor', 'tecnico']}>
+                  <Dashboard />
+                </ProtectedRoute>
+              </SuspenseWrapper>
+            } />
             <Route path="/admin/perfil" element={
               <SuspenseWrapper>
                 <ProtectedRoute allowedPapeis={['super_admin', 'gestor', 'admin_setor', 'tecnico']}>
@@ -232,9 +242,16 @@ const App = () => (
                 </ProtectedRoute>
               </SuspenseWrapper>
             } />
-            <Route path="/admin/configuracoes" element={
+            <Route path="/admin/perfil/:setorSlug" element={
               <SuspenseWrapper>
-                <ProtectedRoute allowedPapeis={['super_admin', 'gestor']} requiredSetorSlug="demutran">
+                <ProtectedRoute allowedPapeis={['super_admin', 'gestor', 'admin_setor', 'tecnico']}>
+                  <AdminProfile />
+                </ProtectedRoute>
+              </SuspenseWrapper>
+            } />
+            <Route path="/admin/configuracoes-demutran" element={
+              <SuspenseWrapper>
+                <ProtectedRoute allowedPapeis={['gestor']} requiredSetorSlug="demutran">
                   <AdminConfiguracoes />
                 </ProtectedRoute>
               </SuspenseWrapper>
@@ -260,9 +277,16 @@ const App = () => (
                 </ProtectedRoute>
               </SuspenseWrapper>
             } />
+            <Route path="/admin/usuarios/:setorSlug" element={
+              <SuspenseWrapper>
+                <ProtectedRoute allowedPapeis={['super_admin', 'gestor']}>
+                  <AdminUsuarios />
+                </ProtectedRoute>
+              </SuspenseWrapper>
+            } />
             <Route path="/admin/guardas-municipais" element={
               <SuspenseWrapper>
-                <ProtectedRoute allowedPapeis={['super_admin']}>
+                <ProtectedRoute allowedPapeis={['super_admin']} allowSuperAdmin={false}>
                   <AdminGuardasMunicipais />
                 </ProtectedRoute>
               </SuspenseWrapper>
@@ -274,71 +298,129 @@ const App = () => (
                 </ProtectedRoute>
               </SuspenseWrapper>
             } />
+            <Route path="/admin/fala-cidadao/:setorSlug" element={
+              <SuspenseWrapper>
+                <ProtectedRoute allowedPapeis={['super_admin', 'gestor', 'admin_setor', 'tecnico']}>
+                  <AdminFalaCidadao />
+                </ProtectedRoute>
+              </SuspenseWrapper>
+            } />
+            <Route path="/admin/relatorios" element={
+              <SuspenseWrapper>
+                <ProtectedRoute allowedPapeis={['super_admin']}>
+                  <AdminRelatorios />
+                </ProtectedRoute>
+              </SuspenseWrapper>
+            } />
             <Route path="/admin/demutran/liberacao" element={<Navigate to="/admin/demutran/veiculos" replace />} />
-            <Route path="/admin/demutran/dashboard" element={<Navigate to="/admin/dashboard" replace />} />
-            <Route path="/admin/demutran/documentos" element={<Navigate to="/admin/documentos" replace />} />
-            <Route path="/admin/demutran/usuarios" element={<Navigate to="/admin/usuarios" replace />} />
+            <Route path="/admin/demutran/dashboard" element={<Navigate to="/admin/dashboard/demutran" replace />} />
+            <Route path="/admin/demutran/documentos" element={<Navigate to="/admin/documentos/demutran" replace />} />
+            <Route path="/admin/demutran/usuarios" element={<Navigate to="/admin/usuarios/demutran" replace />} />
             <Route path="/admin/demutran/banners" element={<Navigate to="/admin/banners" replace />} />
             <Route path="/admin/midias" element={
               <SuspenseWrapper>
-                <ProtectedRoute allowedPapeis={['super_admin', 'gestor', 'admin_setor']}>
+                <ProtectedRoute allowedPapeis={['super_admin', 'gestor', 'admin_setor']} allowSuperAdmin={false}>
                   <AdminMidias />
+                </ProtectedRoute>
+              </SuspenseWrapper>
+            } />
+            <Route path="/admin/midias/:setorSlug" element={
+              <SuspenseWrapper>
+                <ProtectedRoute allowedPapeis={['super_admin', 'gestor', 'admin_setor']} allowSuperAdmin={false}>
+                  <AdminMidias />
+                </ProtectedRoute>
+              </SuspenseWrapper>
+            } />
+            <Route path="/admin/documentos/:setorSlug" element={
+              <SuspenseWrapper>
+                <ProtectedRoute allowedPapeis={['super_admin', 'gestor', 'admin_setor']} allowSuperAdmin={false}>
+                  <AdminDocumentos />
+                </ProtectedRoute>
+              </SuspenseWrapper>
+            } />
+            <Route path="/admin/equipe/:setorSlug" element={
+              <SuspenseWrapper>
+                <ProtectedRoute allowedPapeis={['super_admin', 'gestor', 'admin_setor']}>
+                  <AdminEquipe />
                 </ProtectedRoute>
               </SuspenseWrapper>
             } />
             <Route path="/admin/demutran/midias" element={
               <SuspenseWrapper>
-                <ProtectedRoute allowedPapeis={['super_admin', 'gestor', 'admin_setor']} requiredSetorSlug="demutran">
+                <ProtectedRoute allowedPapeis={['super_admin', 'gestor', 'admin_setor']} requiredSetorSlug="demutran" allowSuperAdmin={false}>
                   <AdminMidias />
                 </ProtectedRoute>
               </SuspenseWrapper>
             } />
             <Route path="/admin/demutran/midias/banners" element={
               <SuspenseWrapper>
-                <ProtectedRoute allowedPapeis={['super_admin', 'gestor', 'admin_setor']} requiredSetorSlug="demutran">
+                <ProtectedRoute allowedPapeis={['super_admin', 'gestor', 'admin_setor']} requiredSetorSlug="demutran" allowSuperAdmin={false}>
                   <AdminBanners />
                 </ProtectedRoute>
               </SuspenseWrapper>
             } />
             <Route path="/admin/demutran/veiculos" element={
               <SuspenseWrapper>
-                <ProtectedRoute allowedPapeis={['super_admin', 'gestor', 'admin_setor']} requiredSetorSlug="demutran">
+                <ProtectedRoute allowedPapeis={['super_admin', 'gestor', 'admin_setor']} requiredSetorSlug="demutran" allowSuperAdmin={false}>
                   <AdminDemutranLiberacao />
                 </ProtectedRoute>
               </SuspenseWrapper>
             } />
             <Route path="/admin/demutran/concessionarios" element={
               <SuspenseWrapper>
-                <ProtectedRoute allowedPapeis={['super_admin', 'gestor', 'admin_setor']} requiredSetorSlug="demutran">
+                <ProtectedRoute allowedPapeis={['super_admin', 'gestor', 'admin_setor']} requiredSetorSlug="demutran" allowSuperAdmin={false}>
                   <AdminDemutranConcessionarios />
                 </ProtectedRoute>
               </SuspenseWrapper>
             } />
             <Route path="/admin/demutran/frota" element={
               <SuspenseWrapper>
-                <ProtectedRoute allowedPapeis={['super_admin', 'gestor', 'admin_setor']} requiredSetorSlug="demutran">
+                <ProtectedRoute allowedPapeis={['super_admin', 'gestor', 'admin_setor']} requiredSetorSlug="demutran" allowSuperAdmin={false}>
                   <AdminDemutranVeiculosMunicipais />
                 </ProtectedRoute>
               </SuspenseWrapper>
             } />
             <Route path="/admin/demutran/credenciais" element={
               <SuspenseWrapper>
-                <ProtectedRoute allowedPapeis={['super_admin', 'gestor', 'admin_setor']} requiredSetorSlug="demutran">
+                <ProtectedRoute allowedPapeis={['super_admin', 'gestor', 'admin_setor']} requiredSetorSlug="demutran" allowSuperAdmin={false}>
                   <AdminDemutranCredenciais />
                 </ProtectedRoute>
               </SuspenseWrapper>
             } />
             <Route path="/admin/demutran/recursos" element={
               <SuspenseWrapper>
-                <ProtectedRoute allowedPapeis={['super_admin', 'gestor', 'admin_setor']} requiredSetorSlug="demutran">
+                <ProtectedRoute allowedPapeis={['super_admin', 'gestor', 'admin_setor']} requiredSetorSlug="demutran" allowSuperAdmin={false}>
                   <AdminDemutranRecursos />
                 </ProtectedRoute>
               </SuspenseWrapper>
             } />
             <Route path="/admin/demutran/midias/conteudos" element={
               <SuspenseWrapper>
-                <ProtectedRoute allowedPapeis={['super_admin', 'gestor', 'admin_setor']} requiredSetorSlug="demutran">
+                <ProtectedRoute allowedPapeis={['super_admin', 'gestor', 'admin_setor']} requiredSetorSlug="demutran" allowSuperAdmin={false}>
                   <AdminDemutranConteudos />
+                </ProtectedRoute>
+              </SuspenseWrapper>
+            } />
+            <Route path="/admin/guarda-municipal/iros" element={<Navigate to="/admin/iros/guarda-municipal" replace />} />
+            <Route path="/admin/guarda-municipal/guardas" element={<Navigate to="/admin/guardas/guarda-municipal" replace />} />
+            <Route path="/admin/iros/guarda-municipal" element={
+              <SuspenseWrapper>
+                <ProtectedRoute allowedPapeis={['gestor', 'admin_setor', 'tecnico']} requiredSetorSlug="guarda-municipal">
+                  <AdminGuardaMunicipalIros />
+                </ProtectedRoute>
+              </SuspenseWrapper>
+            } />
+            <Route path="/admin/guardas/guarda-municipal" element={
+              <SuspenseWrapper>
+                <ProtectedRoute allowedPapeis={['super_admin', 'gestor', 'admin_setor']}>
+                  <AdminGuardasMunicipais />
+                </ProtectedRoute>
+              </SuspenseWrapper>
+            } />
+            <Route path="/admin/configuracoes-guarda-municipal" element={
+              <SuspenseWrapper>
+                <ProtectedRoute allowedPapeis={['super_admin', 'gestor', 'admin_setor']}>
+                  <AdminConfiguracoesGuarda />
                 </ProtectedRoute>
               </SuspenseWrapper>
             } />
@@ -372,7 +454,7 @@ const App = () => (
             } />
             <Route path="/admin/documentos" element={
               <SuspenseWrapper>
-                <ProtectedRoute allowedPapeis={['super_admin', 'gestor', 'admin_setor']}>
+                <ProtectedRoute allowedPapeis={['super_admin', 'gestor', 'admin_setor']} allowSuperAdmin={false}>
                   <AdminDocumentos />
                 </ProtectedRoute>
               </SuspenseWrapper>

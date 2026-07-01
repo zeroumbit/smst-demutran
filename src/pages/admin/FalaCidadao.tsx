@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ArrowRightLeft, ClipboardList, Clock3, MessageCircleReply, RefreshCcw, ShieldCheck } from 'lucide-react';
+import { useParams } from 'react-router-dom';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -13,9 +14,16 @@ import { toast } from '@/hooks/use-toast';
 import { atualizarStatusFalaDemanda, falaStatusLabels, listAdminFalaDemandas, listAdminFalaHistorico, listAdminFalaTransferencias, listFalaSecretarias, transferirFalaDemanda } from '@/lib/falaCidadao';
 import type { FalaDemandaAdmin, FalaHistoricoStatus, FalaSecretaria, FalaStatus, FalaTransferencia } from '@/types/fala-cidadao';
 
+const SECTOR_LABEL: Record<string, string> = {
+  demutran: 'Demutran',
+  'guarda-municipal': 'Guarda Municipal',
+};
+
 const adminStatusOptions: FalaStatus[] = ['recebido', 'analise', 'execucao', 'concluido', 'arquivado', 'transferido'];
 
 const FalaCidadaoAdmin = () => {
+  const { setorSlug } = useParams<{ setorSlug?: string }>();
+  const setorLabel = setorSlug ? SECTOR_LABEL[setorSlug] ?? setorSlug : '';
   const [items, setItems] = useState<FalaDemandaAdmin[]>([]);
   const [secretarias, setSecretarias] = useState<FalaSecretaria[]>([]);
   const [loading, setLoading] = useState(true);
@@ -129,10 +137,12 @@ const FalaCidadaoAdmin = () => {
         <section className="rounded-[34px] bg-[linear-gradient(135deg,_#0f172a_0%,_#1e293b_45%,_#2563eb_100%)] px-5 py-6 text-white sm:px-6">
           <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
             <div>
-              <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-sky-100/70">Secretaria de Seguranca</p>
+              {setorLabel && (
+                <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-sky-100/70">{setorLabel}</p>
+              )}
               <h1 className="mt-3 text-[34px] font-black tracking-[-0.08em]">Fala Cidadao</h1>
               <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-100">
-                Gerencie protocolos, responda cidadaos e acompanhe a rastreabilidade das demandas dos orgaos vinculados a Secretaria de Seguranca.
+                Gerencie protocolos, responda cidadaos e acompanhe a rastreabilidade das demandas{setorLabel ? ` do(a) ${setorLabel}` : ''}.
               </p>
             </div>
             <Button variant="outline" className="border-white/20 bg-white/10 text-white hover:bg-white/20" onClick={() => void loadData()}>

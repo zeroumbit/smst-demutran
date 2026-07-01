@@ -22,24 +22,24 @@ import { provisionAdminUser } from '@/lib/adminProvision';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 import type { AdminProfileRow, ModuloSistema, PapelUsuario, Setor } from '@/types/admin';
-import { MODULOS_DEMUTRAN } from '@/types/admin';
+import { MODULOS_POR_SETOR } from '@/types/admin';
 
 const papelOptions: Array<{ value: PapelUsuario; label: string }> = [
   { value: 'gestor', label: 'Gestor de Setor' },
-  { value: 'tecnico', label: 'Tecnico' },
+  { value: 'tecnico', label: 'Administrativo' },
 ];
 
 const papelFilterOptions: Array<{ value: PapelUsuario; label: string }> = [
-  { value: 'super_admin', label: 'Super Admin' },
+  { value: 'todos', label: 'Todos' },
   { value: 'gestor', label: 'Gestor de Setor' },
-  { value: 'tecnico', label: 'Tecnico' },
+  { value: 'tecnico', label: 'Administrativo' },
 ];
 
 const papelLabels: Record<PapelUsuario, string> = {
   super_admin: 'Super Admin',
   gestor: 'Gestor de Setor',
   admin_setor: 'Gestor de Setor',
-  tecnico: 'Tecnico',
+  tecnico: 'Administrativo',
 };
 
 const papelBadgeVariant: Record<PapelUsuario, string> = {
@@ -363,6 +363,16 @@ const UsuariosPage = () => {
   const createPapelOptions = useMemo(
     () => isSuperAdmin ? papelOptions : papelOptions.filter((o) => o.value !== 'gestor'),
     [isSuperAdmin],
+  );
+
+  const targetSetorSlug = useMemo(() => {
+    const setorId = isSuperAdmin ? createSetorId : currentSetorId;
+    return setores.find((s) => s.id === setorId)?.slug || '';
+  }, [isSuperAdmin, createSetorId, currentSetorId, setores]);
+
+  const availableModulos = useMemo(
+    () => MODULOS_POR_SETOR[targetSetorSlug] || MODULOS_POR_SETOR['demutran'] || [],
+    [targetSetorSlug],
   );
 
   function renderMobileCard(item: AdminProfileRow) {
@@ -701,7 +711,7 @@ const UsuariosPage = () => {
               <div className="space-y-2">
                 <Label>Modulos de acesso</Label>
                 <div className="grid grid-cols-2 gap-2">
-                  {MODULOS_DEMUTRAN.map((modulo) => {
+                  {availableModulos.map((modulo) => {
                     const isSelected = selectedModulos.includes(modulo.value);
                     return (
                       <button
@@ -826,7 +836,7 @@ const UsuariosPage = () => {
               <div className="space-y-2">
                 <Label>Modulos de acesso</Label>
                 <div className="grid grid-cols-2 gap-2">
-                  {MODULOS_DEMUTRAN.map((modulo) => {
+                  {availableModulos.map((modulo) => {
                     const isSelected = editModulos.includes(modulo.value);
                     return (
                       <button
