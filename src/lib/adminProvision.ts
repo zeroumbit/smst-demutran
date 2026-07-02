@@ -10,6 +10,7 @@ export interface ProvisionAdminUserInput {
   papel: PapelUsuario;
   active: boolean;
   modulos?: ModuloSistema[];
+  graduacaoId?: string | null;
 }
 
 export async function provisionAdminUser(input: ProvisionAdminUserInput) {
@@ -22,6 +23,7 @@ export async function provisionAdminUser(input: ProvisionAdminUserInput) {
     _papel: input.papel,
     _active: input.active,
     _modulos: input.modulos?.length ? input.modulos : null,
+    _graduacao_id: input.graduacaoId || null,
   };
 
   const { data, error } = await supabase.rpc('provision_admin_user', payload);
@@ -37,6 +39,7 @@ export async function provisionAdminUser(input: ProvisionAdminUserInput) {
         papel: input.papel,
         active: input.active,
         modulos: input.modulos,
+        graduacaoId: input.graduacaoId || null,
       },
     });
 

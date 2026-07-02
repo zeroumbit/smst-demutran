@@ -824,20 +824,16 @@ const Dashboard = () => {
           </section>
         )}
 
-        {(isSuperAdmin || papel === 'gestor') && (
+        {isGuardaScope && (
           <section className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
             <Card className="overflow-hidden rounded-[28px] border border-slate-200/80 bg-white shadow-[0_12px_32px_-22px_rgba(15,23,42,0.2)]">
               <CardHeader className="flex flex-row items-center justify-between space-y-0">
                 <div>
                   <CardTitle className="font-heading text-[1.35rem] font-bold uppercase tracking-[-0.02em] text-slate-800">
-                    {isGuardaScope ? 'Efetivo por Graduação' : 'Distribuicao operacional'}
+                    Efetivo por Graduação
                   </CardTitle>
                   <CardDescription className="mt-1 text-sm leading-6 text-[#89a0bf]">
-                    {isGuardaScope 
-                      ? 'Distribuição proporcional do efetivo ativo entre as graduações da Guarda'
-                      : isSuperAdmin 
-                        ? 'Niveis de preenchimento de gestao por setor' 
-                        : 'Leitura consolidada do contexto atual do seu setor'}
+                    Distribuição proporcional do efetivo ativo entre as graduações da Guarda
                   </CardDescription>
                 </div>
                 <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-3 text-emerald-600">
@@ -859,47 +855,22 @@ const Dashboard = () => {
 
                 <div className="grid gap-3">
                   <div className="grid grid-cols-3 gap-3 border-t border-slate-200 pt-5">
-                    {isGuardaScope ? (
-                      <>
-                        <div className="text-center">
-                          <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-[#8ea0bd]">Total de Guardas</p>
-                          <p className="mt-2 text-[2rem] font-extrabold tracking-[-0.05em] text-[#2563eb]">{state.guardasAtivos || 0}</p>
-                        </div>
-                        <div className="text-center">
-                          <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-[#8ea0bd]">Graduações</p>
-                          <p className="mt-2 text-[2rem] font-extrabold tracking-[-0.05em] text-[#10b981]">{state.distribuicaoGraduacoes?.length || 0}</p>
-                        </div>
-                        <div className="text-center">
-                          <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-[#8ea0bd]">Média p/ Grad.</p>
-                          <p className="mt-2 text-[2rem] font-extrabold tracking-[-0.05em] text-[#8b5cf6]">
-                            {state.distribuicaoGraduacoes?.length 
-                              ? Math.round((state.guardasAtivos || 0) / state.distribuicaoGraduacoes.length) 
-                              : 0}
-                          </p>
-                        </div>
-                      </>
-                    ) : (
-                      <>
-                        <div className="text-center">
-                          <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-[#8ea0bd]">Setores criticos</p>
-                          <p className="mt-2 text-[2rem] font-extrabold tracking-[-0.05em] text-[#ef4444]">{state.sectorsNeedingAttention.length}</p>
-                        </div>
-                        <div className="text-center">
-                          <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-[#8ea0bd]">Gestores ativos</p>
-                          <p className="mt-2 text-[2rem] font-extrabold tracking-[-0.05em] text-[#10b981]">
-                            {isSuperAdmin ? Math.max(state.sectorHealth.find((item) => item.name === 'regulares')?.value || 0, 0) : 1}
-                          </p>
-                        </div>
-                        <div className="text-center">
-                          <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-[#8ea0bd]">Indice conformidade</p>
-                          <p className="mt-2 text-[2rem] font-extrabold tracking-[-0.05em] text-[#2563eb]">
-                            {isSuperAdmin
-                              ? `${Math.round((((state.sectorHealth.find((item) => item.name === 'regulares')?.value || 0) / Math.max((state.sectorHealth.find((item) => item.name === 'regulares')?.value || 0) + state.sectorsNeedingAttention.length, 1)) * 100))}%`
-                              : '100%'}
-                          </p>
-                        </div>
-                      </>
-                    )}
+                    <div className="text-center">
+                      <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-[#8ea0bd]">Total de Guardas</p>
+                      <p className="mt-2 text-[2rem] font-extrabold tracking-[-0.05em] text-[#2563eb]">{state.guardasAtivos || 0}</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-[#8ea0bd]">Graduações</p>
+                      <p className="mt-2 text-[2rem] font-extrabold tracking-[-0.05em] text-[#10b981]">{state.distribuicaoGraduacoes?.length || 0}</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-[#8ea0bd]">Média p/ Grad.</p>
+                      <p className="mt-2 text-[2rem] font-extrabold tracking-[-0.05em] text-[#8b5cf6]">
+                        {state.distribuicaoGraduacoes?.length 
+                          ? Math.round((state.guardasAtivos || 0) / state.distribuicaoGraduacoes.length) 
+                          : 0}
+                      </p>
+                    </div>
                   </div>
                 </div>
               </CardContent>

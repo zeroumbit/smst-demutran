@@ -63,6 +63,10 @@ const AdminConfiguracoes = React.lazy(() => import("./pages/admin/Configuracoes"
 const AdminGuardasMunicipais = React.lazy(() => import("./pages/admin/GuardasMunicipais"));
 const AdminGuardaMunicipalIros = React.lazy(() => import("./pages/admin/GuardaMunicipalIros"));
 const AdminConfiguracoesGuarda = React.lazy(() => import("./pages/admin/ConfiguracoesGuarda"));
+const GuardaDashboard = React.lazy(() => import("./pages/admin/guarda/Dashboard"));
+const GuardaIros = React.lazy(() => import("./pages/admin/guarda/Iros"));
+const GuardaIrosHistorico = React.lazy(() => import("./pages/admin/guarda/IrosHistorico"));
+const GuardaPerfil = React.lazy(() => import("./pages/admin/guarda/Perfil"));
 const AdminFalaCidadao = React.lazy(() => import("./pages/admin/FalaCidadao"));
 const AdminRelatorios = React.lazy(() => import("./pages/admin/Relatorios"));
 
@@ -477,6 +481,36 @@ const App = () => (
               <SuspenseWrapper>
                 <ProtectedRoute allowedPapeis={['super_admin']}>
                   <AdminContatos />
+                </ProtectedRoute>
+              </SuspenseWrapper>
+            } />
+
+            {/* Guarda Municipal - Perfil Routes */}
+            <Route path="/admin/perfil-guardas/guarda-municipal/dashboard" element={
+              <SuspenseWrapper>
+                <ProtectedRoute requireGuarda>
+                  <GuardaDashboard />
+                </ProtectedRoute>
+              </SuspenseWrapper>
+            } />
+            <Route path="/admin/perfil-guardas/guarda-municipal/iros" element={
+              <SuspenseWrapper>
+                <ProtectedRoute requireGuarda>
+                  <GuardaIros />
+                </ProtectedRoute>
+              </SuspenseWrapper>
+            } />
+            <Route path="/admin/perfil-guardas/guarda-municipal/iros/historico" element={
+              <SuspenseWrapper>
+                <ProtectedRoute requireGuarda>
+                  <GuardaIrosHistorico />
+                </ProtectedRoute>
+              </SuspenseWrapper>
+            } />
+            <Route path="/admin/perfil-guardas/guarda-municipal/perfil" element={
+              <SuspenseWrapper>
+                <ProtectedRoute requireGuarda>
+                  <GuardaPerfil />
                 </ProtectedRoute>
               </SuspenseWrapper>
             } />

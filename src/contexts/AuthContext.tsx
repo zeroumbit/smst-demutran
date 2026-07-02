@@ -3,10 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/lib/supabase';
 import type { AdminProfile, PapelUsuario } from '@/types/admin';
+import { maskCpf } from '@/lib/masks';
 
 interface AuthContextType {
   user: AdminProfile | null;
   login: (email: string, password: string) => Promise<boolean>;
+  loginGuarda: (cpf: string, senha: string) => Promise<boolean>;
   logout: () => Promise<void>;
   isAuthenticated: boolean;
   isLoading: boolean;
@@ -15,6 +17,7 @@ interface AuthContextType {
   setorId: string | null;
   isAdmin: boolean;
   isSuperAdmin: boolean;
+  isGuarda: boolean;
   canAccessAdmin: boolean;
   hasPapel: (...papeis: PapelUsuario[]) => boolean;
   canManageSector: (targetSetorId?: string | null) => boolean;
@@ -29,21 +32,45 @@ async function fetchUserProfile(): Promise<AdminProfile | null> {
 
     if (error) {
       console.error('Erro ao carregar perfil administrativo:', error.message);
-      return null;
     }
 
-    if (!data) {
-      return null;
+    if (data) {
+      const profile = data as AdminProfile;
+      const { data: userData } = await supabase.auth.getUser();
+      if (userData?.user?.app_metadata?.modulos) {
+        profile.modulos = userData.user.app_metadata.modulos;
+      }
+      return profile;
     }
 
-    const profile = data as AdminProfile;
-
-    const { data: userData } = await supabase.auth.getUser();
-    if (userData?.user?.app_metadata?.modulos) {
-      profile.modulos = userData.user.app_metadata.modulos;
+    const { data: isGuarda } = await supabase.rpc('is_guarda');
+    if (isGuarda) {
+      const { data: userData } = await supabase.auth.getUser();
+      const email = userData?.user?.email || '';
+      let guardaNome = 'Guarda Municipal';
+      try {
+        const { data: guardaPerfil } = await supabase.rpc('buscar_guarda_por_usuario', { p_usuario_id: userData?.user?.id || '' });
+        if (guardaPerfil) {
+          guardaNome = (guardaPerfil as any).nome || guardaNome;
+        }
+      } catch {
+        // silent
+      }
+      return {
+        user_id: userData?.user?.id || '',
+        email,
+        name: guardaNome,
+        papel: null,
+        perfil_id: null,
+        setor_id: null,
+        setor_nome: 'Guarda Municipal',
+        setor_slug: 'guarda-municipal',
+        ativo: true,
+        legacy_admin: false,
+      };
     }
 
-    return profile;
+    return null;
   } catch (error) {
     console.error('Erro inesperado ao carregar perfil administrativo:', error);
     return null;
@@ -151,6 +178,95 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return true;
   };
 
+  const loginGuarda = async (cpf: string, senha: string): Promise<boolean> => {
+    const cpfLimpo = cpf.replace(/\D/g, '');
+
+    const { data, error } = await supabase.rpc('autenticar_guarda', {
+      p_cpf: cpfLimpo,
+      p_senha: senha,
+    });
+
+    if (error || !data) {
+      toast({
+        title: 'Erro ao fazer login',
+        description: 'CPF ou senha inválidos.',
+        variant: 'destructive',
+      });
+      return false;
+    }
+
+    const resultado = data as {
+      sucesso: boolean;
+      mensagem?: string;
+      primeiro_acesso: boolean;
+      guarda_id: string;
+      matricula: string;
+      nome: string;
+      usuario_id: string | null;
+      email_auth: string | null;
+    };
+
+    if (!resultado.sucesso) {
+      toast({
+        title: 'Erro ao fazer login',
+        description: resultado.mensagem || 'CPF ou senha inválidos.',
+        variant: 'destructive',
+      });
+      return false;
+    }
+
+    if (resultado.usuario_id && resultado.email_auth) {
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: resultado.email_auth,
+        password: senha,
+      });
+
+      if (signInError) {
+        toast({
+          title: 'Erro ao autenticar',
+          description: 'Conta de guarda precisa ser recriada. Contate o administrador.',
+          variant: 'destructive',
+        });
+        return false;
+      }
+
+      setUser({
+        user_id: resultado.usuario_id,
+        email: resultado.email_auth,
+        name: resultado.nome,
+        papel: null,
+        perfil_id: null,
+        setor_id: null,
+        setor_nome: 'Guarda Municipal',
+        setor_slug: 'guarda-municipal',
+        ativo: true,
+        legacy_admin: false,
+      });
+
+      if (resultado.primeiro_acesso) {
+        toast({
+          title: 'Primeiro acesso!',
+          description: 'Recomendamos alterar sua senha.',
+        });
+      } else {
+        toast({
+          title: 'Login realizado!',
+          description: `Bem-vindo, ${resultado.nome.split(' ')[0]}!`,
+        });
+      }
+
+      navigate('/admin/perfil-guardas/guarda-municipal/dashboard');
+      return true;
+    }
+
+    toast({
+      title: 'Conta não vinculada',
+      description: 'Sua conta de guarda ainda não foi vinculada ao sistema. Contate o administrador.',
+      variant: 'destructive',
+    });
+    return false;
+  };
+
   const logout = async () => {
     const { error } = await supabase.auth.signOut();
     if (error) {
@@ -168,7 +284,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const papel = user?.papel ?? null;
   const isSuperAdmin = papel === 'super_admin' || !!user?.legacy_admin;
   const isAdmin = isSuperAdmin || papel === 'gestor' || papel === 'admin_setor';
-  const canAccessAdmin = !!user && (isAdmin || papel === 'tecnico');
+  const isGuarda = !!user && !papel && !user?.legacy_admin;
+  const canAccessAdmin = !!user && (isAdmin || papel === 'tecnico') && !isGuarda;
 
   const hasPapel = (...papeis: PapelUsuario[]) => {
     if (!user?.papel) {
@@ -199,6 +316,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       value={{
         user,
         login,
+        loginGuarda,
         logout,
         isAuthenticated: !!user,
         isLoading,
@@ -207,6 +325,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setorId: user?.setor_id ?? null,
         isAdmin,
         isSuperAdmin,
+        isGuarda,
         canAccessAdmin,
         hasPapel,
         canManageSector,

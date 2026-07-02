@@ -7,6 +7,7 @@ interface ProtectedRouteProps {
   allowedPapeis?: PapelUsuario[];
   requiredSetorSlug?: string;
   allowSuperAdmin?: boolean;
+  requireGuarda?: boolean;
 }
 
 export const ProtectedRoute = ({
@@ -14,8 +15,9 @@ export const ProtectedRoute = ({
   allowedPapeis,
   requiredSetorSlug,
   allowSuperAdmin = true,
+  requireGuarda,
 }: ProtectedRouteProps) => {
-  const { isAuthenticated, isLoading, canAccessAdmin, hasPapel, isSuperAdmin, profile } = useAuth();
+  const { isAuthenticated, isLoading, canAccessAdmin, hasPapel, isSuperAdmin, profile, isGuarda } = useAuth();
 
   if (isLoading) {
     return (
@@ -27,6 +29,13 @@ export const ProtectedRoute = ({
 
   if (!isAuthenticated) {
     return <Navigate to="/admin/login" replace />;
+  }
+
+  if (requireGuarda) {
+    if (!isGuarda) {
+      return <Navigate to={getDashboardUrl(profile)} replace />;
+    }
+    return <>{children}</>;
   }
 
   if (!canAccessAdmin) {
