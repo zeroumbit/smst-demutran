@@ -63,6 +63,8 @@ const fmtDateBR = (d: string | null | undefined): string => {
   return `${day}/${m}/${y}`;
 };
 
+const todayStr = () => new Date().toISOString().slice(0, 10);
+
 const BASE_IROS = '/admin/iros/guarda-municipal';
 
 const GuardaMunicipalIros = () => {
@@ -295,6 +297,19 @@ const GuardaMunicipalIros = () => {
       toast({ title: 'Campos obrigatórios', description: 'Preencha nome e horário previsto.', variant: 'destructive' });
       return;
     }
+    const hoje = todayStr();
+    if (operacaoForm.data_inicio < hoje) {
+      toast({ title: 'Data inválida', description: 'A data de início não pode ser no passado.', variant: 'destructive' });
+      return;
+    }
+    if (operacaoForm.data_fim < hoje) {
+      toast({ title: 'Data inválida', description: 'A data de fim não pode ser no passado.', variant: 'destructive' });
+      return;
+    }
+    if (operacaoForm.data_fim < operacaoForm.data_inicio) {
+      toast({ title: 'Data inválida', description: 'A data de fim deve ser posterior ou igual à data de início.', variant: 'destructive' });
+      return;
+    }
     const payload = { setor_id: setorId, nome: operacaoForm.nome, descricao: operacaoForm.descricao || null, horario_previsto: operacaoForm.horario_previsto, data_inicio: operacaoForm.data_inicio, data_fim: operacaoForm.data_fim, vagas_por_dia: operacaoForm.vagas_por_dia, horas_por_dia: operacaoForm.horas_por_dia, tempo_solicitacao: operacaoForm.tempo_solicitacao };
     if (editingOperacao) {
       const { data: updated, error } = await supabase.from('iro_operacoes').update(payload).eq('id', editingOperacao.id).select();
@@ -337,6 +352,11 @@ const GuardaMunicipalIros = () => {
   const handleCandidatar = async () => {
     if (!candidaturaData.operacao_id || !candidaturaData.data_operacao) {
       toast({ title: 'Selecione operação e data', variant: 'destructive' }); return;
+    }
+    const op = operacoes.find((o) => o.id === candidaturaData.operacao_id);
+    if (op && op.data_fim < todayStr()) {
+      toast({ title: 'Prazo encerrado', description: 'O período desta operação já se encerrou.', variant: 'destructive' });
+      return;
     }
     const { data, error } = await supabase.rpc('candidatar_se_iro', { p_operacao_id: candidaturaData.operacao_id, p_usuario_id: user?.user_id, p_data: candidaturaData.data_operacao });
     if (error) { toast({ title: 'Erro', description: error.message, variant: 'destructive' }); return; }
@@ -710,11 +730,11 @@ const GuardaMunicipalIros = () => {
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Label>Data início</Label>
-                <Input type="date" value={operacaoForm.data_inicio} onChange={(e) => setOperacaoForm((f) => ({ ...f, data_inicio: e.target.value }))} />
+                <Input type="date" min={todayStr()} value={operacaoForm.data_inicio} onChange={(e) => setOperacaoForm((f) => ({ ...f, data_inicio: e.target.value }))} />
               </div>
               <div className="space-y-2">
                 <Label>Data fim</Label>
-                <Input type="date" value={operacaoForm.data_fim} onChange={(e) => setOperacaoForm((f) => ({ ...f, data_fim: e.target.value }))} />
+                <Input type="date" min={todayStr()} value={operacaoForm.data_fim} onChange={(e) => setOperacaoForm((f) => ({ ...f, data_fim: e.target.value }))} />
               </div>
             </div>
             <div className="grid gap-4 md:grid-cols-2">

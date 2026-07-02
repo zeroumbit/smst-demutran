@@ -87,6 +87,10 @@ const GuardaIros = () => {
 
   const handleCandidatar = async () => {
     if (!selectedOperacao || !candidaturaData.data_operacao || !user?.id) return;
+    if (selectedOperacao.data_fim < new Date().toISOString().slice(0, 10)) {
+      toast({ title: 'Prazo encerrado', description: 'O período desta operação já se encerrou.', variant: 'destructive' });
+      return;
+    }
     const { data, error } = await supabase.rpc('candidatar_se_iro', {
       p_operacao_id: selectedOperacao.id,
       p_usuario_id: user.id,
