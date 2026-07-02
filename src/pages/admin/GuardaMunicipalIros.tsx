@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Calendar, Check, ChevronRight, Clock, Eye, EyeOff, Hourglass, Plus, RefreshCcw, Search, ShieldCheck, Users, X } from 'lucide-react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { Badge } from '@/components/ui/badge';
@@ -54,12 +55,21 @@ const operacaoFormInitial = {
   vagas_por_dia: 1, horas_por_dia: 8, tempo_solicitacao: 'imediato',
 };
 
+const BASE_IROS = '/admin/iros/guarda-municipal';
+
 const GuardaMunicipalIros = () => {
   const { setorId, profile, user } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
   const [loading, setLoading] = useState(true);
   const [section, setSection] = useState<Section>('operacoes');
   const podeVerTudo = profile?.papel === 'gestor' || profile?.papel === 'super_admin' || profile?.papel === 'admin_setor';
   const canManageOperacoes = podeVerTudo || (profile?.papel === 'tecnico' && profile?.modulos?.includes('iros'));
+
+  const subPath = location.pathname.replace(BASE_IROS, '').replace(/\/+$/, '');
+  const isNovaOperacao = subPath === '/nova-operacao';
+  const isEditandoOperacao = subPath.endsWith('/editar');
+  const editOperacaoId = isEditandoOperacao ? subPath.split('/').filter(Boolean).at(-2) : null;
 
   const [operacoes, setOperacoes] = useState<IROOperacao[]>([]);
   const [candidaturas, setCandidaturas] = useState<IROCandidatura[]>([]);
@@ -114,6 +124,28 @@ const GuardaMunicipalIros = () => {
   };
 
   useEffect(() => { void loadData(); }, [setorId]);
+
+  useEffect(() => {
+    if (!canManageOperacoes) return;
+    if (isNovaOperacao) {
+      setEditingOperacao(null);
+      setOperacaoForm({ ...operacaoFormInitial, data_inicio: new Date().toISOString().slice(0, 10), data_fim: new Date().toISOString().slice(0, 10) });
+      setOperacaoDialogOpen(true);
+    } else if (isEditandoOperacao && editOperacaoId) {
+      const op = operacoes.find((o) => o.id === editOperacaoId);
+      if (op) {
+        setEditingOperacao(op);
+        setOperacaoForm({
+          nome: op.nome, descricao: op.descricao || '',
+          horario_previsto: op.horario_previsto.slice(0, 5),
+          data_inicio: op.data_inicio, data_fim: op.data_fim,
+          vagas_por_dia: op.vagas_por_dia, horas_por_dia: op.horas_por_dia,
+          tempo_solicitacao: op.tempo_solicitacao,
+        });
+        setOperacaoDialogOpen(true);
+      }
+    }
+  }, [location.pathname, operacoes, canManageOperacoes]);
 
   const usuarioMap = useMemo(() => {
     const m = new Map<string, string>();
@@ -203,12 +235,11 @@ const GuardaMunicipalIros = () => {
     setEditingOperacao(null);
     setOperacaoForm(operacaoFormInitial);
     setOperacaoDialogOpen(false);
+    navigate(BASE_IROS);
   };
 
   const openCreateOperacao = () => {
-    setEditingOperacao(null);
-    setOperacaoForm({ ...operacaoFormInitial, data_inicio: new Date().toISOString().slice(0, 10), data_fim: new Date().toISOString().slice(0, 10) });
-    setOperacaoDialogOpen(true);
+    navigate(`${BASE_IROS}/nova-operacao`);
   };
 
   const openEditOperacao = (item: IROOperacao) => {

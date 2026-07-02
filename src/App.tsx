@@ -407,7 +407,7 @@ const App = () => (
             } />
             <Route path="/admin/guarda-municipal/iros" element={<Navigate to="/admin/iros/guarda-municipal" replace />} />
             <Route path="/admin/guarda-municipal/guardas" element={<Navigate to="/admin/guardas/guarda-municipal" replace />} />
-            <Route path="/admin/iros/guarda-municipal" element={
+            <Route path="/admin/iros/guarda-municipal/*" element={
               <SuspenseWrapper>
                 <ProtectedRoute allowedPapeis={['gestor', 'admin_setor', 'tecnico']} requiredSetorSlug="guarda-municipal">
                   <AdminGuardaMunicipalIros />
