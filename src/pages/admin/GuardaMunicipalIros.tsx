@@ -289,8 +289,9 @@ const GuardaMunicipalIros = () => {
     }
     const payload = { setor_id: setorId, nome: operacaoForm.nome, descricao: operacaoForm.descricao || null, horario_previsto: operacaoForm.horario_previsto, data_inicio: operacaoForm.data_inicio, data_fim: operacaoForm.data_fim, vagas_por_dia: operacaoForm.vagas_por_dia, horas_por_dia: operacaoForm.horas_por_dia, tempo_solicitacao: operacaoForm.tempo_solicitacao };
     if (editingOperacao) {
-      const { error } = await supabase.from('iro_operacoes').update(payload).eq('id', editingOperacao.id);
+      const { data: updated, error } = await supabase.from('iro_operacoes').update(payload).eq('id', editingOperacao.id).select();
       if (error) { toast({ title: 'Erro', description: error.message, variant: 'destructive' }); return; }
+      if (!updated || updated.length === 0) { toast({ title: 'Erro', description: 'Nenhuma linha foi alterada. Verifique suas permissões.', variant: 'destructive' }); return; }
       toast({ title: 'Operação atualizada' });
     } else {
       const { error } = await supabase.from('iro_operacoes').insert({ ...payload, created_by: profile?.perfil_id || null });
@@ -298,7 +299,7 @@ const GuardaMunicipalIros = () => {
       toast({ title: 'Operação criada' });
     }
     resetOperacaoDialog();
-    void loadData();
+    await loadData();
   };
 
   const handleToggleAtiva = async (item: IROOperacao) => {

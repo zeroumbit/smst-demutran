@@ -107,7 +107,7 @@ const guardaMenuItems: MenuItem[] = [
   { icon: HouseIcon, label: 'Dashboard', path: '/admin/dashboard/guarda-municipal', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
   { icon: MessageSquareText, label: 'Fala Cidadao', path: '/admin/fala-cidadao/guarda-municipal', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
   { icon: FileWarning, label: 'IROs', path: '/admin/iros/guarda-municipal', allowedPapeis: ['gestor', 'admin_setor', 'tecnico'] },
-  { icon: Shield, label: 'Guardas', path: '/admin/guardas/guarda-municipal', allowedPapeis: ['super_admin', 'gestor', 'admin_setor'] },
+  { icon: Shield, label: 'Guardas', path: '/admin/guardas/guarda-municipal', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
   { icon: ImageIcon, label: 'Midias', path: '/admin/midias/guarda-municipal', allowedPapeis: ['gestor', 'admin_setor'] },
   { icon: Users, label: 'Equipe', path: '/admin/equipe/guarda-municipal', allowedPapeis: ['gestor', 'admin_setor'] },
   { icon: Settings2, label: 'Configuracoes', path: '/admin/configuracoes-guarda-municipal', allowedPapeis: ['super_admin', 'gestor', 'admin_setor'] },
