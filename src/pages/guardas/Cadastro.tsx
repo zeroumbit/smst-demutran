@@ -113,17 +113,15 @@ const CadastroGuarda = () => {
         </CardHeader>
         <CardContent>
           <div className="mb-6">
-            <div className="flex items-center gap-2">
-              <div className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold ${validado ? 'bg-emerald-100 text-emerald-700' : 'bg-brand-100 text-brand-700'}`}>1</div>
-              <div className="flex-1">
-                <p className={`text-sm font-semibold ${validado ? 'text-emerald-700' : 'text-brand-700'}`}>Etapa 1 — Validar dados</p>
-                <p className="text-xs text-slate-500">Informe CPF e matrícula</p>
+            <div className="flex items-start gap-2">
+              <div className="flex flex-col items-center gap-1 min-w-0 flex-1">
+                <div className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold ${validado ? 'bg-emerald-100 text-emerald-700' : 'bg-brand-100 text-brand-700'}`}>1</div>
+                <p className={`text-xs font-semibold text-center leading-tight ${validado ? 'text-emerald-700' : 'text-brand-700'}`}>Validar dados</p>
               </div>
-              <div className={`h-0.5 flex-1 ${validado ? 'bg-emerald-400' : 'bg-slate-200'}`} />
-              <div className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold ${validado ? 'bg-brand-100 text-brand-700' : 'bg-slate-100 text-slate-400'}`}>2</div>
-              <div className="flex-1">
-                <p className={`text-sm font-semibold ${validado ? 'text-brand-700' : 'text-slate-400'}`}>Etapa 2 — Criar conta</p>
-                <p className="text-xs text-slate-400">E-mail, senha e confirmação</p>
+              <div className={`h-0.5 flex-1 mt-4 ${validado ? 'bg-emerald-400' : 'bg-slate-200'}`} />
+              <div className="flex flex-col items-center gap-1 min-w-0 flex-1">
+                <div className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold ${validado ? 'bg-brand-100 text-brand-700' : 'bg-slate-100 text-slate-400'}`}>2</div>
+                <p className={`text-xs font-semibold text-center leading-tight ${validado ? 'text-brand-700' : 'text-slate-400'}`}>Criar conta</p>
               </div>
             </div>
           </div>
@@ -153,9 +151,9 @@ const CadastroGuarda = () => {
               </>
             ) : (
               <>
-                <div className="rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-emerald-700 flex items-center gap-2">
+                <div className="rounded-xl bg-green-50 border border-green-200 px-4 py-3 text-sm text-green-700 flex items-center gap-2">
                   <Check className="h-4 w-4 shrink-0" />
-                  <span>Dados confirmados — <strong>{guardaNome}</strong> · {guardaGrad}</span>
+                  Você já está no sistema, e pode criar sua conta
                 </div>
 
                 <div className="space-y-2">
