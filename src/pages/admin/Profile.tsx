@@ -32,7 +32,7 @@ const Profile = () => {
               </div>
             </div>
 
-            <div className={`grid grid-cols-2 gap-3 ${profile?.papel === 'super_admin' ? 'sm:grid-cols-3' : 'sm:grid-cols-4'}`}>
+            <div className={`grid grid-cols-2 gap-3 ${profile?.papel === 'super_admin' ? 'sm:grid-cols-3' : 'sm:grid-cols-3'}`}>
               <ProfileCard
                 label="Nome"
                 value={profile?.name || '-'}
@@ -50,11 +50,6 @@ const Profile = () => {
                   icon={ShieldCheck}
                 />
               )}
-              <ProfileCard
-                label="E-mail"
-                value={profile?.email || '-'}
-                icon={Mail}
-              />
             </div>
           </div>
         </section>

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Calendar, Check, ChevronRight, Clock, Eye, EyeOff, Hourglass, Plus, RefreshCcw, Search, ShieldCheck, Users, X } from 'lucide-react';
+import { AlertTriangle, Calendar, Check, ChevronRight, Clock, Eye, EyeOff, Hourglass, Plus, RefreshCcw, Search, ShieldCheck, Trash2, Users, X } from 'lucide-react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -87,6 +87,10 @@ const GuardaMunicipalIros = () => {
   const [operacaoForm, setOperacaoForm] = useState(operacaoFormInitial);
   const [editingOperacao, setEditingOperacao] = useState<IROOperacao | null>(null);
 
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [operacaoToDelete, setOperacaoToDelete] = useState<IROOperacao | null>(null);
+  const [deleteConfirmChecked, setDeleteConfirmChecked] = useState(false);
+
   const [candidaturaData, setCandidaturaData] = useState({ operacao_id: '', data_operacao: new Date().toISOString().slice(0, 10) });
 
   const loadData = async () => {
@@ -108,7 +112,12 @@ const GuardaMunicipalIros = () => {
         supabase.from('perfis_usuarios').select('user_id, nome, sobrenome').eq('ativo', true),
       ]);
 
-      setOperacoes((opRes.data || []) as IROOperacao[]);
+      const operacoesData = (opRes.data || []) as IROOperacao[];
+      setOperacoes(operacoesData);
+      if (selectedOperacao) {
+        const updated = operacoesData.find((o) => o.id === selectedOperacao.id);
+        if (updated) setSelectedOperacao(updated);
+      }
       setCandidaturas((candRes.data || []).map((c: any) => ({ ...c, operacao_nome: c.iro_operacoes?.nome || '' })));
       setBancoHoras((bhRes.data || []) as IROBancoHoras[]);
       setNotificacoes((notifRes.data || []) as IRONotificacao[]);
@@ -134,6 +143,11 @@ const GuardaMunicipalIros = () => {
     } else if (isEditandoOperacao && editOperacaoId) {
       const op = operacoes.find((o) => o.id === editOperacaoId);
       if (op) {
+        if (operacoesComConfirmados.has(op.id)) {
+          toast({ title: 'Operação bloqueada', description: 'Já existem candidaturas confirmadas. Não é possível editar.', variant: 'destructive' });
+          navigate(BASE_IROS);
+          return;
+        }
         setEditingOperacao(op);
         setOperacaoForm({
           nome: op.nome, descricao: op.descricao || '',
@@ -146,6 +160,16 @@ const GuardaMunicipalIros = () => {
       }
     }
   }, [location.pathname, operacoes, canManageOperacoes]);
+
+  const operacoesComConfirmados = useMemo(() => {
+    const set = new Set<string>();
+    for (const c of candidaturas) {
+      if (c.status === 'confirmado' || c.status === 'realizado') {
+        set.add(c.operacao_id);
+      }
+    }
+    return set;
+  }, [candidaturas]);
 
   const usuarioMap = useMemo(() => {
     const m = new Map<string, string>();
@@ -243,6 +267,10 @@ const GuardaMunicipalIros = () => {
   };
 
   const openEditOperacao = (item: IROOperacao) => {
+    if (operacoesComConfirmados.has(item.id)) {
+      toast({ title: 'Operação bloqueada', description: 'Já existem candidaturas confirmadas. Não é possível editar.', variant: 'destructive' });
+      return;
+    }
     setEditingOperacao(item);
     setOperacaoForm({
       nome: item.nome, descricao: item.descricao || '',
@@ -277,6 +305,23 @@ const GuardaMunicipalIros = () => {
     const { error } = await supabase.from('iro_operacoes').update({ ativo: !item.ativo }).eq('id', item.id);
     if (error) { toast({ title: 'Erro', description: error.message, variant: 'destructive' }); return; }
     toast({ title: item.ativo ? 'Operação desativada' : 'Operação ativada' });
+    void loadData();
+  };
+
+  const openDeleteConfirm = (item: IROOperacao) => {
+    setOperacaoToDelete(item);
+    setDeleteConfirmChecked(false);
+    setDeleteConfirmOpen(true);
+  };
+
+  const handleDeleteOperacao = async () => {
+    if (!operacaoToDelete) return;
+    const { error } = await supabase.from('iro_operacoes').delete().eq('id', operacaoToDelete.id);
+    if (error) { toast({ title: 'Erro', description: error.message, variant: 'destructive' }); return; }
+    toast({ title: 'Operação excluída permanentemente' });
+    setDeleteConfirmOpen(false);
+    setOperacaoToDelete(null);
+    setDeleteConfirmChecked(false);
     void loadData();
   };
 
@@ -358,9 +403,20 @@ const GuardaMunicipalIros = () => {
             </Button>
             {canManageOperacoes && (
               <>
-                <Button size="sm" variant="outline" onClick={() => openEditOperacao(item)}>Editar</Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => openEditOperacao(item)}
+                  disabled={operacoesComConfirmados.has(item.id)}
+                  title={operacoesComConfirmados.has(item.id) ? 'Já existem candidaturas confirmadas para esta operação' : 'Editar'}
+                >
+                  {operacoesComConfirmados.has(item.id) ? 'Bloqueado' : 'Editar'}
+                </Button>
                 <Button size="sm" variant="outline" onClick={() => void handleToggleAtiva(item)}>
                   {item.ativo ? <X className="h-4 w-4" /> : <Check className="h-4 w-4" />}
+                </Button>
+                <Button size="sm" variant="outline" className="text-red-600 border-red-200 hover:bg-red-50" onClick={() => openDeleteConfirm(item)}>
+                  <Trash2 className="h-4 w-4" />
                 </Button>
               </>
             )}
@@ -667,6 +723,69 @@ const GuardaMunicipalIros = () => {
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={resetOperacaoDialog}>Cancelar</Button>
               <Button onClick={() => void handleSaveOperacao()}>{editingOperacao ? 'Salvar' : 'Criar Operação'}</Button>
+            </div>
+          </div>
+        </ResponsiveDialog>
+
+        <ResponsiveDialog
+          open={deleteConfirmOpen}
+          onOpenChange={(open) => { if (!open) { setDeleteConfirmOpen(false); setOperacaoToDelete(null); setDeleteConfirmChecked(false); } }}
+          title="Excluir operação"
+          description="Esta ação é irreversível."
+        >
+          <div className="space-y-6 py-2">
+            <div className="flex items-start gap-4 rounded-2xl border border-red-200 bg-red-50 p-4">
+              <div className="rounded-xl bg-red-100 p-2.5 text-red-600 shrink-0">
+                <AlertTriangle className="h-5 w-5" />
+              </div>
+              <div className="space-y-1 text-sm">
+                <p className="font-bold text-red-800">Você está prestes a excluir permanentemente a operação:</p>
+                <p className="font-semibold text-red-700">"{operacaoToDelete?.nome}"</p>
+              </div>
+            </div>
+
+            <div className="space-y-3 rounded-2xl border border-amber-200 bg-amber-50 p-4">
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-amber-800">Avisos importantes</p>
+              <ul className="space-y-2 text-sm text-amber-900">
+                <li className="flex items-start gap-2">
+                  <span className="mt-1 block h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500" />
+                  Todas as candidaturas vinculadas a esta operação serão <strong>excluídas permanentemente</strong>.
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="mt-1 block h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500" />
+                  Os registros de banco de horas relacionados serão <strong>desvinculados</strong>.
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="mt-1 block h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500" />
+                  Esta operação não poderá ser recuperada após a exclusão.
+                </li>
+              </ul>
+            </div>
+
+            <label className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-white p-4 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={deleteConfirmChecked}
+                onChange={(e) => setDeleteConfirmChecked(e.target.checked)}
+                className="mt-0.5 h-4 w-4 shrink-0 accent-red-600"
+              />
+              <span className="text-sm leading-5 text-slate-700">
+                Eu entendi as consequências e desejo <strong>excluir permanentemente</strong> esta operação.
+              </span>
+            </label>
+
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => { setDeleteConfirmOpen(false); setOperacaoToDelete(null); setDeleteConfirmChecked(false); }}>
+                Cancelar
+              </Button>
+              <Button
+                disabled={!deleteConfirmChecked}
+                className={deleteConfirmChecked ? 'bg-red-600 hover:bg-red-700 text-white' : ''}
+                onClick={() => void handleDeleteOperacao()}
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Confirmar Exclusão
+              </Button>
             </div>
           </div>
         </ResponsiveDialog>

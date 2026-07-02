@@ -46,8 +46,25 @@ Deno.serve(async (req) => {
       .maybeSingle();
 
     const isSuperAdmin = requesterProfile?.papel === 'super_admin';
-    if (!isSuperAdmin) {
-      return jsonResponse(403, { error: 'Only super admins can provision guard users.' });
+    const isGestor = requesterProfile?.papel === 'gestor';
+
+    // Buscar o setor_id de guarda-municipal
+    const { data: sectorData } = await adminClient
+      .from('setores')
+      .select('id')
+      .eq('slug', 'guarda-municipal')
+      .limit(1)
+      .maybeSingle();
+    const guardSectorId = sectorData?.id;
+
+    const isGuardTecnico = requesterProfile?.papel === 'tecnico' && 
+                           guardSectorId && 
+                           requesterProfile?.setor_id === guardSectorId;
+
+    const isAuthorized = isSuperAdmin || isGestor || isGuardTecnico;
+
+    if (!isAuthorized) {
+      return jsonResponse(403, { error: 'Only super admins, gestores, or técnicos from the guards sector can provision guard users.' });
     }
 
     const { guarda_id, matricula, nome, senha } = await req.json() as {

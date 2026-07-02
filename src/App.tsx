@@ -416,7 +416,7 @@ const App = () => (
             } />
             <Route path="/admin/guardas/guarda-municipal" element={
               <SuspenseWrapper>
-                <ProtectedRoute allowedPapeis={['super_admin', 'gestor', 'admin_setor']}>
+                <ProtectedRoute allowedPapeis={['super_admin', 'gestor', 'admin_setor', 'tecnico']}>
                   <AdminGuardasMunicipais />
                 </ProtectedRoute>
               </SuspenseWrapper>

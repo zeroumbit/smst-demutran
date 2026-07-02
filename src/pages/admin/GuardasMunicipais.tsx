@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ClipboardList, Copy, Eye, EyeOff, GraduationCap, Pencil, Plus, RefreshCcw, Search, Shield, Trash2, KeyRound } from 'lucide-react';
+import { ClipboardList, Copy, Eye, EyeOff, GraduationCap, Loader2, Pencil, Plus, RefreshCcw, Search, Shield, Trash2, KeyRound } from 'lucide-react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -32,6 +32,7 @@ const GuardasMunicipaisPage = () => {
   const [search, setSearch] = useState('');
   const [senhasVisiveis, setSenhasVisiveis] = useState<Record<string, boolean>>({});
   const [regeneratingId, setRegeneratingId] = useState<string | null>(null);
+  const [syncLoading, setSyncLoading] = useState(false);
 
   const [guardaDialogOpen, setGuardaDialogOpen] = useState(false);
   const [graduacaoDialogOpen, setGraduacaoDialogOpen] = useState(false);
@@ -45,7 +46,7 @@ const GuardasMunicipaisPage = () => {
     const [{ data: graduacoesData, error: graduacoesError }, { data: guardasData, error: guardasError }] =
       await Promise.all([
         supabase.from('guarda_municipal_graduacoes').select('id, nome, ordem, ativo, created_at, updated_at').order('ordem', { ascending: true }).order('nome', { ascending: true }),
-        supabase.from('guardas_municipais').select('id, matricula, nome, cpf, senha_provisoria, email, telefone, primeira_vez_acesso, data_criacao_senha, graduacao_id, ativo, created_at, updated_at').order('nome', { ascending: true }),
+        supabase.from('guardas_municipais').select('id, matricula, nome, cpf, senha, email, telefone, primeira_vez_acesso, data_criacao_senha, graduacao_id, ativo, created_at, updated_at').order('nome', { ascending: true }),
       ]);
 
     if (graduacoesError || guardasError) {
@@ -57,12 +58,13 @@ const GuardasMunicipaisPage = () => {
     const graduacoesList = (graduacoesData || []) as GuardaMunicipalGraduacao[];
     const graduacaoMap = new Map(graduacoesList.map((item) => [item.id, item.nome]));
     setGraduacoes(graduacoesList);
-    setGuardas(
-      ((guardasData || []) as GuardaMunicipal[]).map((item) => ({
-        ...item,
-        graduacao_nome: graduacaoMap.get(item.graduacao_id) ?? null,
-      })),
+    const guardasDedup = Object.values(
+      ((guardasData || []) as GuardaMunicipal[]).reduce((acc, item) => {
+        acc[item.id] = { ...item, graduacao_nome: graduacaoMap.get(item.graduacao_id) ?? null };
+        return acc;
+      }, {} as Record<string, GuardaMunicipal & { graduacao_nome: string | null }>)
     );
+    setGuardas(guardasDedup as GuardaMunicipal[]);
     setLoading(false);
   };
 
@@ -92,7 +94,8 @@ const GuardasMunicipaisPage = () => {
       return;
     }
     const cpfLimpo = guardaForm.cpf.replace(/\D/g, '') || null;
-    const payload: Record<string, any> = { matricula: guardaForm.matricula.trim(), nome: guardaForm.nome.trim(), graduacao_id: guardaForm.graduacao_id, cpf: cpfLimpo };
+    const matriculaLimpa = guardaForm.matricula.trim().replace(/^0+/, '');
+    const payload: Record<string, any> = { matricula: matriculaLimpa, nome: guardaForm.nome.trim(), graduacao_id: guardaForm.graduacao_id, cpf: cpfLimpo };
 
     let novaSenha = '';
     if (!editingGuarda) {
@@ -123,7 +126,7 @@ const GuardasMunicipaisPage = () => {
               headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${accessToken}` },
               body: JSON.stringify({
                 guarda_id: inserted.id,
-                matricula: guardaForm.matricula.trim(),
+                matricula: matriculaLimpa,
                 nome: guardaForm.nome.trim(),
                 senha: novaSenha,
               }),
@@ -183,6 +186,35 @@ const GuardasMunicipaisPage = () => {
     void loadData();
   };
 
+  const handleSyncAll = async () => {
+    const confirmed = await confirm({
+      title: 'Sincronizar todos os guardas',
+      description: 'Isso criará contas de acesso (auth) para todos os guardas que ainda não possuem. A senha usada será a atual de cada guarda.',
+    });
+    if (!confirmed) return;
+    setSyncLoading(true);
+    const { data, error } = await supabase.rpc('provision_all_guardas_auth');
+    if (error) {
+      toast({ title: 'Erro ao sincronizar', description: error.message, variant: 'destructive' });
+      setSyncLoading(false);
+      return;
+    }
+    const results = (data || []) as { guarda_id: string; matricula: string; status: string; mensagem: string }[];
+    const criados = results.filter((r) => r.status === 'criado').length;
+    const erros = results.filter((r) => r.status === 'erro').length;
+    const semPendentes = results.some((r) => r.status === 'sem_pendentes');
+    if (semPendentes) {
+      toast({ title: 'Todos os guardas já estão sincronizados' });
+    } else if (erros > 0) {
+      toast({ title: `${criados} sincronizado(s), ${erros} erro(s)`, description: 'Verifique o console para detalhes.', variant: 'destructive' });
+      results.filter((r) => r.status === 'erro').forEach((r) => console.error('Erro ao sincronizar guarda:', r));
+    } else {
+      toast({ title: `${criados} guarda(s) sincronizado(s) com sucesso!` });
+    }
+    setSyncLoading(false);
+    void loadData();
+  };
+
   const handleCopiarSenha = async (senha: string) => {
     try {
       await navigator.clipboard.writeText(senha);
@@ -224,10 +256,16 @@ const GuardasMunicipaisPage = () => {
                 Gerencie os guardas cadastrados e mantenha as graduações sempre atualizadas.
               </p>
             </div>
-            <Button variant="outline" className="border-white/20 bg-white/10 text-white hover:bg-white/20" onClick={() => void loadData()}>
-              <RefreshCcw className="mr-2 h-4 w-4" />
-              Atualizar
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" className="border-white/20 bg-white/10 text-white hover:bg-white/20" onClick={() => void handleSyncAll()} disabled={syncLoading}>
+                {syncLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <KeyRound className="mr-2 h-4 w-4" />}
+                {syncLoading ? 'Sincronizando...' : 'Sincronizar tudo'}
+              </Button>
+              <Button variant="outline" className="border-white/20 bg-white/10 text-white hover:bg-white/20" onClick={() => void loadData()}>
+                <RefreshCcw className="mr-2 h-4 w-4" />
+                Atualizar
+              </Button>
+            </div>
           </div>
           <div className="mt-6 grid gap-3 sm:grid-cols-2">
             <StatCard label="Total de Guardas" value={String(guardas.length)} icon={ClipboardList} />
@@ -288,11 +326,11 @@ const GuardasMunicipaisPage = () => {
                     {item.cpf && (
                       <p className="text-xs font-medium text-slate-500">CPF: {maskCpf(item.cpf)}</p>
                     )}
-                    {item.senha_provisoria && (
+                    {item.senha && (
                       <div className="mt-1 flex items-center gap-2">
                         <span className="text-xs font-medium text-slate-400">Senha:</span>
                         <code className="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-mono font-bold text-slate-700">
-                          {senhasVisiveis[item.id] ? item.senha_provisoria : '••••••••••'}
+                          {senhasVisiveis[item.id] ? item.senha : '••••••••••'}
                         </code>
                         <button
                           onClick={() => toggleSenhaVisivel(item.id)}
@@ -302,7 +340,7 @@ const GuardasMunicipaisPage = () => {
                           {senhasVisiveis[item.id] ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
                         </button>
                         <button
-                          onClick={() => void handleCopiarSenha(item.senha_provisoria!)}
+                          onClick={() => void handleCopiarSenha(item.senha!)}
                           className="rounded-md p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
                           title="Copiar"
                         >

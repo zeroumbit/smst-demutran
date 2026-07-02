@@ -51,7 +51,7 @@ export const GuardsLayout = ({ children }: GuardsLayoutProps) => {
               Guarda Municipal
             </span>
             {profile?.name && (
-              <span className="text-xs text-slate-500">{profile.name}</span>
+              <span className="text-xs text-slate-500">{profile.name.split(' ')[0]}</span>
             )}
           </div>
         </div>
