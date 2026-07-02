@@ -336,6 +336,9 @@ const Dashboard = () => {
           .maybeSingle();
         const secretariaGmId = secData?.id || null;
 
+        const isTecnico = papel === 'tecnico';
+        const usuarioFilter = isTecnico ? (q: any) => q.eq('usuario_id', profile?.user_id) : (q: any) => q;
+
         const [
           guardasCountResponse,
           iroOperacoesCountResponse,
@@ -347,13 +350,13 @@ const Dashboard = () => {
         ] = await Promise.all([
           supabase.from('guardas_municipais').select('*', { count: 'exact', head: true }).eq('ativo', true),
           supabase.from('iro_operacoes').select('*', { count: 'exact', head: true }).eq('ativo', true),
-          supabase.from('iro_candidaturas').select('*', { count: 'exact', head: true }).eq('status', 'confirmado'),
-          supabase.from('iro_banco_horas').select('horas_excedentes'),
+          usuarioFilter(supabase.from('iro_candidaturas').select('*', { count: 'exact', head: true }).eq('status', 'confirmado')),
+          usuarioFilter(supabase.from('iro_banco_horas').select('horas_excedentes')),
           secretariaGmId 
             ? supabase.from('fala_demandas').select('*', { count: 'exact', head: true }).eq('secretaria_atual_id', secretariaGmId).in('status', ['recebido', 'analise'])
             : Promise.resolve({ count: 0, error: null }),
           supabase.from('guardas_municipais').select('id, guarda_municipal_graduacoes(nome)').eq('ativo', true),
-          supabase.from('iro_candidaturas').select('created_at, data_operacao, status')
+          usuarioFilter(supabase.from('iro_candidaturas').select('created_at, data_operacao, status'))
         ]);
 
         guardasAtivos = guardasCountResponse.count || 0;
