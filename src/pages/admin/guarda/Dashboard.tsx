@@ -42,7 +42,15 @@ const GuardaDashboard = () => {
         setGuardaNome((guardaData as any).nome || '');
       }
 
-      const setorId = profile?.setor_id;
+      let setorId = profile?.setor_id;
+      if (!setorId) {
+        const { data: sData } = await supabase
+          .from('setores')
+          .select('id')
+          .eq('slug', 'guarda-municipal')
+          .maybeSingle();
+        if (sData) setorId = sData.id;
+      }
 
       const [opRes, candRes, bancoRes] = await Promise.all([
         setorId
@@ -61,7 +69,9 @@ const GuardaDashboard = () => {
           .maybeSingle(),
       ]);
 
-      setOperacoes((opRes.data || []) as IROOperacao[]);
+      const hojeStr = new Date().toISOString().slice(0, 10);
+      const validOps = (opRes.data || []).filter((op: any) => op.ativo && op.data_fim >= hojeStr) as IROOperacao[];
+      setOperacoes(validOps);
 
       const lista = (candRes.data || []).map((c: any) => ({
         ...c,
@@ -83,7 +93,7 @@ const GuardaDashboard = () => {
     }
   };
 
-  useEffect(() => { void loadData(); }, [user?.user_id]);
+  useEffect(() => { void loadData(); }, [user?.user_id, profile?.setor_id]);
 
   const stats = useMemo(() => [
     { label: 'Total no mês', value: `${resumo.total_horas_mes}h`, icon: Calendar, color: 'text-blue-600 bg-blue-50' },

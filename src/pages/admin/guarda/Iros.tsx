@@ -48,16 +48,28 @@ const GuardaIros = () => {
   const [candidaturaParaCancelar, setCandidaturaParaCancelar] = useState<IROCandidatura | null>(null);
 
   const loadData = async () => {
-    if (!user?.user_id || !profile?.setor_id) { setLoading(false); return; }
+    if (!user?.user_id) { setLoading(false); return; }
     setLoading(true);
 
     try {
+      let setorId = profile?.setor_id;
+      if (!setorId) {
+        const { data: sData } = await supabase
+          .from('setores')
+          .select('id')
+          .eq('slug', 'guarda-municipal')
+          .maybeSingle();
+        if (sData) setorId = sData.id;
+      }
+
       const [opRes, candRes] = await Promise.all([
-        supabase.from('iro_operacoes').select('*').eq('setor_id', profile.setor_id).eq('ativo', true).order('data_inicio', { ascending: false }),
+        supabase.from('iro_operacoes').select('*').eq('setor_id', setorId || '').eq('ativo', true).order('data_inicio', { ascending: false }),
         supabase.from('iro_candidaturas').select('*, iro_operacoes!inner(nome)').eq('usuario_id', user.user_id).order('created_at', { ascending: false }),
       ]);
 
-      setOperacoes((opRes.data || []) as IROOperacao[]);
+      const hojeStr = new Date().toISOString().slice(0, 10);
+      const validOps = (opRes.data || []).filter((op: any) => op.ativo && op.data_fim >= hojeStr) as IROOperacao[];
+      setOperacoes(validOps);
       const lista = (candRes.data || []).map((c: any) => ({ ...c, operacao_nome: c.iro_operacoes?.nome || '' }));
       setMinhasCandidaturas(lista);
 
