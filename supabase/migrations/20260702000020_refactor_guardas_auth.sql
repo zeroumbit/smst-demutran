@@ -46,11 +46,11 @@ BEGIN
   LIMIT 1;
 
   IF v_guarda.id IS NULL THEN
-    RETURN jsonb_build_object('valido', false, 'mensagem', 'O CPF e a matrícula informados não conferem com o cadastro da Guarda Municipal. Procure o gestor da Guarda Municipal.');
+    RETURN jsonb_build_object('status', 'nao_encontrado', 'mensagem', 'O CPF e a matrícula informados não conferem com o cadastro da Guarda Municipal. Procure o gestor da Guarda Municipal.');
   END IF;
 
   IF v_guarda.ativo = false THEN
-    RETURN jsonb_build_object('valido', false, 'mensagem', 'Este Guarda Municipal está inativo. Procure o gestor da Guarda Municipal.');
+    RETURN jsonb_build_object('status', 'nao_encontrado', 'mensagem', 'Este Guarda Municipal está inativo. Procure o gestor da Guarda Municipal.');
   END IF;
 
   SELECT EXISTS(
@@ -58,7 +58,7 @@ BEGIN
   ) INTO v_ja_possui_conta;
 
   IF v_ja_possui_conta THEN
-    RETURN jsonb_build_object('valido', false, 'mensagem', 'Este Guarda Municipal já possui uma conta cadastrada.');
+    RETURN jsonb_build_object('status', 'ja_possui_conta', 'mensagem', 'Este Guarda Municipal já possui uma conta cadastrada.');
   END IF;
 
   SELECT nome INTO v_graduacao_nome
@@ -66,7 +66,7 @@ BEGIN
   WHERE id = v_guarda.graduacao_id;
 
   RETURN jsonb_build_object(
-    'valido', true,
+    'status', 'ok',
     'guarda_id', v_guarda.id,
     'nome', v_guarda.nome,
     'matricula', v_guarda.matricula,
