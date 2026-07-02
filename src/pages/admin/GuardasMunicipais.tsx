@@ -168,6 +168,22 @@ const GuardasMunicipaisPage = () => {
         </section>
 
         <Card className="rounded-[24px] border-slate-200">
+          <CardContent className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between px-5 py-5">
+            <div className="flex-1">
+              <h2 className="text-lg font-bold text-slate-900">Acesso dos Guardas</h2>
+              <p className="mt-1 text-sm text-slate-500">
+                Copie o link abaixo e envie para os guardas criarem suas contas.
+              </p>
+              <Input value={cadastroLink} readOnly className="mt-3 font-mono text-sm" />
+            </div>
+            <Button onClick={handleCopiarLink} className="shrink-0">
+              <Copy className="mr-2 h-4 w-4" />
+              Copiar link
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card className="rounded-[24px] border-slate-200">
           <CardContent className="space-y-4 px-5 py-5">
             <div className="flex flex-wrap items-center gap-3">
               {(['guardas', 'graduacoes'] as Section[]).map((s) => (
@@ -273,27 +289,6 @@ const GuardasMunicipaisPage = () => {
             ) : null}
           </div>
         )}
-
-        <Card className="rounded-[24px] border-slate-200">
-          <CardContent className="space-y-4 px-5 py-5">
-            <div>
-              <h2 className="text-lg font-bold text-slate-900">Acesso dos Guardas</h2>
-              <p className="mt-1 text-sm text-slate-500">
-                Copie o link abaixo e envie aos guardas para que eles mesmos criem sua conta de acesso.
-              </p>
-            </div>
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-              <div className="flex-1">
-                <Label>Link de cadastro</Label>
-                <Input value={cadastroLink} readOnly className="mt-1.5 font-mono text-sm" />
-              </div>
-              <Button onClick={handleCopiarLink}>
-                <Copy className="mr-2 h-4 w-4" />
-                Copiar link
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
 
         <ResponsiveDialog
           open={guardaDialogOpen}
