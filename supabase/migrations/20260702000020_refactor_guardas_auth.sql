@@ -15,7 +15,57 @@ DROP FUNCTION IF EXISTS public.autenticar_guarda(text, text);
 DROP FUNCTION IF EXISTS public.alterar_senha_guarda(uuid, text, text);
 DROP FUNCTION IF EXISTS public.provision_all_guardas_auth();
 
--- 3. Keep is_guarda() and buscar_guarda_por_usuario() for profile detection
+-- 3. Recreate profile-detection functions (may not exist if old migrations weren't applied)
+CREATE OR REPLACE FUNCTION public.is_guarda() RETURNS boolean
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path TO 'public'
+STABLE
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.guardas_usuarios
+    WHERE usuario_id = auth.uid()
+  );
+$$;
+
+CREATE OR REPLACE FUNCTION public.buscar_guarda_por_usuario(
+  p_usuario_id uuid
+) RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'public'
+AS $$
+DECLARE
+  v_guarda record;
+BEGIN
+  SELECT gm.id, gm.matricula, gm.nome, gm.cpf, gm.graduacao_id,
+         gm.email, gm.telefone,
+         ggn.nome as graduacao_nome
+  INTO v_guarda
+  FROM public.guardas_municipais gm
+  JOIN public.guardas_usuarios gu ON gu.guarda_id = gm.id
+  LEFT JOIN public.guarda_municipal_graduacoes ggn ON ggn.id = gm.graduacao_id
+  WHERE gu.usuario_id = p_usuario_id;
+
+  IF v_guarda.id IS NULL THEN
+    RETURN NULL;
+  END IF;
+
+  RETURN jsonb_build_object(
+    'id', v_guarda.id,
+    'matricula', v_guarda.matricula,
+    'nome', v_guarda.nome,
+    'cpf', v_guarda.cpf,
+    'graduacao_id', v_guarda.graduacao_id,
+    'graduacao_nome', v_guarda.graduacao_nome,
+    'email', v_guarda.email,
+    'telefone', v_guarda.telefone
+  );
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.is_guarda() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.buscar_guarda_por_usuario(uuid) TO authenticated;
 
 -- 4. Clear old guardas_usuarios vinculações from the previous auth system
 -- The old system auto-provisioned auth accounts for all guardas. These
