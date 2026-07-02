@@ -47,11 +47,18 @@ async function fetchUserProfile(): Promise<AdminProfile | null> {
       const { data: userData } = await supabase.auth.getUser();
       const email = userData?.user?.email || '';
       let guardaNome = 'Guarda Municipal';
+      let guardaSetorId: string | null = null;
       try {
         const { data: guardaPerfil } = await supabase.rpc('buscar_guarda_por_usuario', { p_usuario_id: userData?.user?.id || '' });
         if (guardaPerfil) {
           guardaNome = (guardaPerfil as any).nome || guardaNome;
         }
+      } catch {
+        // silent
+      }
+      try {
+        const { data: sid } = await supabase.rpc('get_guarda_municipal_setor_id');
+        if (sid) guardaSetorId = sid as string;
       } catch {
         // silent
       }
@@ -61,7 +68,7 @@ async function fetchUserProfile(): Promise<AdminProfile | null> {
         name: guardaNome,
         papel: null,
         perfil_id: null,
-        setor_id: null,
+        setor_id: guardaSetorId,
         setor_nome: 'Guarda Municipal',
         setor_slug: 'guarda-municipal',
         ativo: true,

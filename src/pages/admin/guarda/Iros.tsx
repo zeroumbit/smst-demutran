@@ -48,7 +48,7 @@ const GuardaIros = () => {
   const [candidaturaParaCancelar, setCandidaturaParaCancelar] = useState<IROCandidatura | null>(null);
 
   const loadData = async () => {
-    if (!user?.id || !profile?.setor_id) return;
+    if (!user?.user_id || !profile?.setor_id) { setLoading(false); return; }
     setLoading(true);
 
     try {
@@ -83,7 +83,7 @@ const GuardaIros = () => {
     }
   };
 
-  useEffect(() => { void loadData(); }, [user?.id, profile?.setor_id]);
+  useEffect(() => { void loadData(); }, [user?.user_id, profile?.setor_id]);
 
   const filteredOperacoes = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -99,7 +99,7 @@ const GuardaIros = () => {
   );
 
   const handleCandidatar = async () => {
-    if (!selectedOperacao || !candidaturaData.data_operacao || !user?.id) return;
+    if (!selectedOperacao || !candidaturaData.data_operacao || !user?.user_id) return;
     if (selectedOperacao.data_fim < new Date().toISOString().slice(0, 10)) {
       toast({ title: 'Prazo encerrado', description: 'O período desta operação já se encerrou.', variant: 'destructive' });
       return;

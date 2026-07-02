@@ -19,6 +19,13 @@ const STATUS_VARIANT: Record<string, string> = {
   realizado: 'bg-emerald-50 text-emerald-700 border-emerald-200',
 };
 
+const fmtDateBR = (d: string | null | undefined): string => {
+  if (!d) return '';
+  const [y, m, day] = d.split('-');
+  if (!y || !m || !day) return d;
+  return `${day}/${m}/${y}`;
+};
+
 const GuardaIrosHistorico = () => {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
@@ -28,18 +35,18 @@ const GuardaIrosHistorico = () => {
   const [anoFilter, setAnoFilter] = useState('todos');
 
   const loadData = async () => {
-    if (!user?.id) return;
+    if (!user?.user_id) { setLoading(false); return; }
     setLoading(true);
     const { data } = await supabase
       .from('iro_candidaturas')
       .select('*, iro_operacoes!inner(nome)')
-      .eq('usuario_id', user.id)
+      .eq('usuario_id', user.user_id)
       .order('data_operacao', { ascending: false });
     setCandidaturas((data || []).map((c: any) => ({ ...c, operacao_nome: c.iro_operacoes?.nome || '' })));
     setLoading(false);
   };
 
-  useEffect(() => { void loadData(); }, [user?.id]);
+  useEffect(() => { void loadData(); }, [user?.user_id]);
 
   const meses = useMemo(() => {
     const set = new Set<string>();
@@ -128,7 +135,7 @@ const GuardaIrosHistorico = () => {
                 <div>
                   <p className="text-sm font-semibold text-slate-800">{c.operacao_nome}</p>
                   <p className="text-xs text-slate-500">
-                    {new Date(c.data_operacao).toLocaleDateString('pt-BR')} &middot; {c.horas_trabalhadas}h
+                    {fmtDateBR(c.data_operacao)} &middot; {c.horas_trabalhadas}h
                   </p>
                 </div>
                 <Badge variant="outline" className={cn('rounded-full text-[11px] font-bold px-3 py-1', STATUS_VARIANT[c.status])}>

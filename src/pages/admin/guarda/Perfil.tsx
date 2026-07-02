@@ -29,9 +29,9 @@ const GuardaPerfil = () => {
   const [mudandoSenha, setMudandoSenha] = useState(false);
 
   const loadData = async () => {
-    if (!user?.id) return;
+    if (!user?.user_id) { setLoading(true); return; }
     setLoading(true);
-    const { data } = await supabase.rpc('buscar_guarda_por_usuario', { p_usuario_id: user.id });
+    const { data } = await supabase.rpc('buscar_guarda_por_usuario', { p_usuario_id: user.user_id });
     if (data) {
       const g = data as GuardaPerfil;
       setGuarda(g);
@@ -42,7 +42,7 @@ const GuardaPerfil = () => {
     setLoading(false);
   };
 
-  useEffect(() => { void loadData(); }, [user?.id]);
+  useEffect(() => { void loadData(); }, [user?.user_id]);
 
   const handleSalvarDados = async () => {
     if (!guarda) return;

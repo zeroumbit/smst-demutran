@@ -11,6 +11,13 @@ interface ResumoGuarda {
   banco_horas: number;
 }
 
+const fmtDateBR = (d: string | null | undefined): string => {
+  if (!d) return '';
+  const [y, m, day] = d.split('-');
+  if (!y || !m || !day) return d;
+  return `${day}/${m}/${y}`;
+};
+
 const GuardaDashboard = () => {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
@@ -19,7 +26,7 @@ const GuardaDashboard = () => {
   const [guardaNome, setGuardaNome] = useState('');
 
   const loadData = async () => {
-    if (!user?.id) return;
+    if (!user?.user_id) { setLoading(false); return; }
     setLoading(true);
 
     try {
@@ -67,7 +74,7 @@ const GuardaDashboard = () => {
     }
   };
 
-  useEffect(() => { void loadData(); }, [user?.id]);
+  useEffect(() => { void loadData(); }, [user?.user_id]);
 
   const stats = useMemo(() => [
     { label: 'Total no mês', value: `${resumo.total_horas_mes}h`, icon: Calendar, color: 'text-blue-600 bg-blue-50' },
@@ -131,7 +138,7 @@ const GuardaDashboard = () => {
                     <div key={c.id} className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
                       <div>
                         <p className="text-sm font-semibold text-slate-800">{c.operacao_nome}</p>
-                        <p className="text-xs text-slate-500">{new Date(c.data_operacao).toLocaleDateString('pt-BR')}</p>
+                        <p className="text-xs text-slate-500">{fmtDateBR(c.data_operacao)}</p>
                       </div>
                       <span className="text-sm font-bold text-slate-700">{c.horas_trabalhadas}h</span>
                     </div>
