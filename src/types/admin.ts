@@ -76,13 +76,8 @@ export interface GuardaMunicipal {
   cpf?: string | null;
   graduacao_id: string;
   graduacao_nome?: string | null;
-  senha?: string | null;
-  senha_provisoria?: string | null;
   email?: string | null;
   telefone?: string | null;
-  primeira_vez_acesso?: boolean;
-  data_criacao_senha?: string | null;
-  data_ultimo_acesso?: string | null;
   ativo: boolean;
   created_at?: string | null;
   updated_at?: string | null;
@@ -97,9 +92,6 @@ export interface GuardaPerfil {
   graduacao_nome: string | null;
   email: string | null;
   telefone: string | null;
-  primeira_vez_acesso: boolean;
-  data_criacao_senha: string | null;
-  data_ultimo_acesso: string | null;
 }
 
 export interface GuardaUsuarioVinculo {

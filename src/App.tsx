@@ -67,6 +67,7 @@ const GuardaDashboard = React.lazy(() => import("./pages/admin/guarda/Dashboard"
 const GuardaIros = React.lazy(() => import("./pages/admin/guarda/Iros"));
 const GuardaIrosHistorico = React.lazy(() => import("./pages/admin/guarda/IrosHistorico"));
 const GuardaPerfil = React.lazy(() => import("./pages/admin/guarda/Perfil"));
+const GuardaCadastro = React.lazy(() => import("./pages/guardas/Cadastro"));
 const AdminFalaCidadao = React.lazy(() => import("./pages/admin/FalaCidadao"));
 const AdminRelatorios = React.lazy(() => import("./pages/admin/Relatorios"));
 
@@ -216,6 +217,13 @@ const App = () => (
             <Route path="/politica-de-privacidade" element={
               <SuspenseWrapper>
                 <PoliticaDePrivacidade />
+              </SuspenseWrapper>
+            } />
+
+            {/* Guarda Self-Registration */}
+            <Route path="/guardas/cadastro" element={
+              <SuspenseWrapper>
+                <GuardaCadastro />
               </SuspenseWrapper>
             } />
 

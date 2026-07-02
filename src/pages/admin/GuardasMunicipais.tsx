@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ClipboardList, Copy, Eye, EyeOff, GraduationCap, Loader2, Pencil, Plus, RefreshCcw, Search, Shield, Trash2, KeyRound } from 'lucide-react';
+import { ClipboardList, Copy, GraduationCap, Pencil, Plus, RefreshCcw, Search, Shield, Trash2 } from 'lucide-react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -13,15 +13,6 @@ import { supabase } from '@/lib/supabase';
 import { cn } from '@/lib/utils';
 import { maskCpf } from '@/lib/masks';
 import type { GuardaMunicipal, GuardaMunicipalGraduacao } from '@/types/admin';
-
-const gerarSenhaGuarda = (): string => {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%&*';
-  let senha = '';
-  for (let i = 0; i < 10; i++) {
-    senha += chars[Math.floor(Math.random() * chars.length)];
-  }
-  return senha;
-};
 
 type Section = 'guardas' | 'graduacoes';
 
@@ -39,9 +30,6 @@ const GuardasMunicipaisPage = () => {
   const [graduacoes, setGraduacoes] = useState<GuardaMunicipalGraduacao[]>([]);
 
   const [search, setSearch] = useState('');
-  const [senhasVisiveis, setSenhasVisiveis] = useState<Record<string, boolean>>({});
-  const [regeneratingId, setRegeneratingId] = useState<string | null>(null);
-  const [syncLoading, setSyncLoading] = useState(false);
 
   const [guardaDialogOpen, setGuardaDialogOpen] = useState(false);
   const [graduacaoDialogOpen, setGraduacaoDialogOpen] = useState(false);
@@ -55,7 +43,7 @@ const GuardasMunicipaisPage = () => {
     const [{ data: graduacoesData, error: graduacoesError }, { data: guardasData, error: guardasError }] =
       await Promise.all([
         supabase.from('guarda_municipal_graduacoes').select('id, nome, ordem, ativo, created_at, updated_at').order('ordem', { ascending: true }).order('nome', { ascending: true }),
-        supabase.from('guardas_municipais').select('id, matricula, nome, cpf, senha, senha_provisoria, email, telefone, primeira_vez_acesso, data_criacao_senha, graduacao_id, ativo, created_at, updated_at').order('nome', { ascending: true }),
+        supabase.from('guardas_municipais').select('id, matricula, nome, cpf, email, telefone, graduacao_id, ativo, created_at, updated_at').order('nome', { ascending: true }),
       ]);
 
     if (graduacoesError || guardasError) {
@@ -106,45 +94,14 @@ const GuardasMunicipaisPage = () => {
     const matriculaLimpa = guardaForm.matricula.trim().replace(/^0+/, '');
     const payload: Record<string, any> = { matricula: matriculaLimpa, nome: guardaForm.nome.trim(), graduacao_id: guardaForm.graduacao_id, cpf: cpfLimpo };
 
-    let novaSenha = '';
-    if (!editingGuarda) {
-      const { data: senhaData } = await supabase.rpc('gerar_senha_unica_guarda');
-      novaSenha = senhaData || gerarSenhaGuarda();
-      payload.senha = novaSenha;
-      payload.primeira_vez_acesso = true;
-      payload.data_criacao_senha = new Date().toISOString();
-    }
-
     if (editingGuarda) {
       const { error } = await supabase.from('guardas_municipais').update(payload).eq('id', editingGuarda.id);
       if (error) { toast({ title: 'Erro ao atualizar guarda', description: error.message, variant: 'destructive' }); return; }
       toast({ title: 'Guarda atualizado' });
     } else {
-      const { data: inserted, error } = await supabase.from('guardas_municipais').insert(payload).select('id').single();
+      const { error } = await supabase.from('guardas_municipais').insert(payload);
       if (error) { toast({ title: 'Erro ao cadastrar guarda', description: error.message, variant: 'destructive' }); return; }
       toast({ title: 'Guarda cadastrado' });
-
-      if (novaSenha && inserted) {
-        try {
-          const functionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/provision-guarda-user`;
-          const session = await supabase.auth.getSession();
-          const accessToken = session?.data?.session?.access_token;
-          if (accessToken) {
-            await fetch(functionUrl, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${accessToken}` },
-              body: JSON.stringify({
-                guarda_id: inserted.id,
-                matricula: matriculaLimpa,
-                nome: guardaForm.nome.trim(),
-                senha: novaSenha,
-              }),
-            });
-          }
-        } catch {
-          console.warn('Não foi possível criar usuário auth do guarda. Crie manualmente.');
-        }
-      }
     }
 
     resetGuardaDialog(); void loadData();
@@ -159,82 +116,6 @@ const GuardasMunicipaisPage = () => {
     if (error) { toast({ title: editingGraduacao ? 'Erro ao atualizar graduação' : 'Erro ao cadastrar graduação', description: error.message, variant: 'destructive' }); return; }
     toast({ title: editingGraduacao ? 'Graduação atualizada' : 'Graduação cadastrada' });
     resetGraduacaoDialog(); void loadData();
-  };
-
-  const handleRegenerarSenha = async (item: GuardaMunicipal) => {
-    const confirmed = await confirm({ title: 'Regenerar senha', description: `Deseja gerar uma nova senha para ${item.nome}? A senha antiga será substituída.` });
-    if (!confirmed) return;
-    setRegeneratingId(item.id);
-    const { data: senhaData } = await supabase.rpc('gerar_senha_unica_guarda');
-    const novaSenha = senhaData || gerarSenhaGuarda();
-    const { error } = await supabase.from('guardas_municipais').update({ senha: novaSenha, primeira_vez_acesso: true, data_criacao_senha: new Date().toISOString() }).eq('id', item.id);
-    if (error) { toast({ title: 'Erro ao regenerar senha', description: error.message, variant: 'destructive' }); setRegeneratingId(null); return; }
-
-    const session = await supabase.auth.getSession();
-    const accessToken = session?.data?.session?.access_token;
-    if (accessToken) {
-      const updUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/update-guarda-password`;
-      const updRes = await fetch(updUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${accessToken}` },
-        body: JSON.stringify({ guarda_id: item.id, nova_senha: novaSenha }),
-      });
-      const updResult = await updRes.json();
-      if (!updResult.success && updResult.error?.includes('não possui usuário auth')) {
-        const provUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/provision-guarda-user`;
-        await fetch(provUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${accessToken}` },
-          body: JSON.stringify({ guarda_id: item.id, matricula: item.matricula, nome: item.nome, senha: novaSenha }),
-        });
-      }
-    }
-
-    toast({ title: 'Senha regenerada com sucesso' });
-    setRegeneratingId(null);
-    void loadData();
-  };
-
-  const handleSyncAll = async () => {
-    const confirmed = await confirm({
-      title: 'Sincronizar todos os guardas',
-      description: 'Isso criará contas de acesso (auth) para todos os guardas que ainda não possuem. A senha usada será a atual de cada guarda.',
-    });
-    if (!confirmed) return;
-    setSyncLoading(true);
-    const { data, error } = await supabase.rpc('provision_all_guardas_auth');
-    if (error) {
-      toast({ title: 'Erro ao sincronizar', description: error.message, variant: 'destructive' });
-      setSyncLoading(false);
-      return;
-    }
-    const results = (data || []) as { guarda_id: string; matricula: string; status: string; mensagem: string }[];
-    const criados = results.filter((r) => r.status === 'criado').length;
-    const erros = results.filter((r) => r.status === 'erro').length;
-    const semPendentes = results.some((r) => r.status === 'sem_pendentes');
-    if (semPendentes) {
-      toast({ title: 'Todos os guardas já estão sincronizados' });
-    } else if (erros > 0) {
-      toast({ title: `${criados} sincronizado(s), ${erros} erro(s)`, description: 'Verifique o console para detalhes.', variant: 'destructive' });
-      results.filter((r) => r.status === 'erro').forEach((r) => console.error('Erro ao sincronizar guarda:', r));
-    } else {
-      toast({ title: `${criados} guarda(s) sincronizado(s) com sucesso!` });
-    }
-    setSyncLoading(false);
-    void loadData();
-  };
-
-  const handleCopiarSenha = async (senha: string) => {
-    try {
-      await navigator.clipboard.writeText(senha);
-      toast({ title: 'Senha copiada!' });
-    } catch {
-      toast({ title: 'Erro ao copiar', variant: 'destructive' });
-    }
-  };
-
-  const toggleSenhaVisivel = (id: string) => {
-    setSenhasVisiveis((prev) => ({ ...prev, [id]: !prev[id] }));
   };
 
   const handleDeleteGuarda = async (item: GuardaMunicipal) => {
@@ -253,6 +134,14 @@ const GuardasMunicipaisPage = () => {
     toast({ title: 'Graduação excluída' }); void loadData();
   };
 
+  const handleCopiarLink = () => {
+    const link = `${window.location.origin}/guardas/cadastro`;
+    navigator.clipboard.writeText(link);
+    toast({ title: 'Link copiado!', description: 'Envie este link para os guardas realizarem o cadastro de acesso.' });
+  };
+
+  const cadastroLink = `${window.location.origin}/guardas/cadastro`;
+
   return (
     <AdminLayout>
       <div className="space-y-6">
@@ -266,10 +155,6 @@ const GuardasMunicipaisPage = () => {
               </p>
             </div>
             <div className="flex gap-2">
-              <Button variant="outline" className="border-white/20 bg-white/10 text-white hover:bg-white/20" onClick={() => void handleSyncAll()} disabled={syncLoading}>
-                {syncLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <KeyRound className="mr-2 h-4 w-4" />}
-                {syncLoading ? 'Sincronizando...' : 'Sincronizar tudo'}
-              </Button>
               <Button variant="outline" className="border-white/20 bg-white/10 text-white hover:bg-white/20" onClick={() => void loadData()}>
                 <RefreshCcw className="mr-2 h-4 w-4" />
                 Atualizar
@@ -335,37 +220,8 @@ const GuardasMunicipaisPage = () => {
                     {item.cpf && (
                       <p className="text-xs font-medium text-slate-500">CPF: {maskCpf(item.cpf)}</p>
                     )}
-                    {item.senha_provisoria && (
-                      <div className="mt-1 flex items-center gap-2">
-                        <span className="text-xs font-medium text-slate-400">Senha:</span>
-                        <code className="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-mono font-bold text-slate-700">
-                          {senhasVisiveis[item.id] ? item.senha_provisoria : '••••••••••'}
-                        </code>
-                        <button
-                          onClick={() => toggleSenhaVisivel(item.id)}
-                          className="rounded-md p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
-                          title={senhasVisiveis[item.id] ? 'Ocultar' : 'Mostrar'}
-                        >
-                          {senhasVisiveis[item.id] ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-                        </button>
-                        <button
-                          onClick={() => void handleCopiarSenha(item.senha_provisoria!)}
-                          className="rounded-md p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
-                          title="Copiar"
-                        >
-                          <Copy className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                    )}
-                    {item.senha && !item.senha_provisoria && (
-                      <p className="mt-1 text-xs text-slate-400">Senha já alterada pelo guarda</p>
-                    )}
                   </div>
                   <div className="flex items-center gap-2">
-                    <Button variant="outline" size="sm" onClick={() => void handleRegenerarSenha(item)} disabled={regeneratingId === item.id}>
-                      <KeyRound className="mr-1.5 h-4 w-4" />
-                      {regeneratingId === item.id ? '...' : 'Reg. Senha'}
-                    </Button>
                     <Button variant="outline" size="sm" onClick={() => openEditGuarda(item)}>
                       <Pencil className="mr-1.5 h-4 w-4" />
                       Editar
@@ -417,6 +273,27 @@ const GuardasMunicipaisPage = () => {
             ) : null}
           </div>
         )}
+
+        <Card className="rounded-[24px] border-slate-200">
+          <CardContent className="space-y-4 px-5 py-5">
+            <div>
+              <h2 className="text-lg font-bold text-slate-900">Acesso dos Guardas</h2>
+              <p className="mt-1 text-sm text-slate-500">
+                Copie o link abaixo e envie aos guardas para que eles mesmos criem sua conta de acesso.
+              </p>
+            </div>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+              <div className="flex-1">
+                <Label>Link de cadastro</Label>
+                <Input value={cadastroLink} readOnly className="mt-1.5 font-mono text-sm" />
+              </div>
+              <Button onClick={handleCopiarLink}>
+                <Copy className="mr-2 h-4 w-4" />
+                Copiar link
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
 
         <ResponsiveDialog
           open={guardaDialogOpen}

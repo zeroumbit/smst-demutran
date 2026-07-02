@@ -70,6 +70,10 @@ const GuardaPerfil = () => {
       toast({ title: 'Nova senha e confirmação não conferem', variant: 'destructive' });
       return;
     }
+    if (novaSenha.length < 6) {
+      toast({ title: 'Senha curta', description: 'A senha deve ter no mínimo 6 caracteres.', variant: 'destructive' });
+      return;
+    }
     if (novaSenha.length > 10) {
       toast({ title: 'A senha deve ter no máximo 10 caracteres', variant: 'destructive' });
       return;
@@ -80,45 +84,12 @@ const GuardaPerfil = () => {
     }
     setMudandoSenha(true);
 
-    const { data, error } = await supabase.rpc('alterar_senha_guarda', {
-      p_guarda_id: guarda.id,
-      p_senha_atual: senhaAtual,
-      p_nova_senha: novaSenha,
-    });
+    const { error } = await supabase.auth.updateUser({ password: novaSenha });
 
     if (error) {
-      toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+      toast({ title: 'Erro ao alterar senha', description: error.message, variant: 'destructive' });
       setMudandoSenha(false);
       return;
-    }
-
-    const r = data as { sucesso: boolean; mensagem: string };
-    if (!r.sucesso) {
-      toast({ title: r.mensagem, variant: 'destructive' });
-      setMudandoSenha(false);
-      return;
-    }
-
-    const functionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/update-guarda-password`;
-    const session = await supabase.auth.getSession();
-    const accessToken = session?.data?.session?.access_token;
-
-    if (accessToken) {
-      try {
-        await fetch(functionUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${accessToken}`,
-          },
-          body: JSON.stringify({
-            guarda_id: guarda.id,
-            nova_senha: novaSenha,
-          }),
-        });
-      } catch {
-        console.warn('Não foi possível sincronizar a senha com o sistema de autenticação.');
-      }
     }
 
     toast({ title: 'Senha alterada com sucesso' });
