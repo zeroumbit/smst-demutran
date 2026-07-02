@@ -54,7 +54,7 @@ const GuardaIros = () => {
     try {
       const [opRes, candRes] = await Promise.all([
         supabase.from('iro_operacoes').select('*').eq('setor_id', profile.setor_id).eq('ativo', true).order('data_inicio', { ascending: false }),
-        supabase.from('iro_candidaturas').select('*, iro_operacoes!inner(nome)').eq('usuario_id', user.id).order('created_at', { ascending: false }),
+        supabase.from('iro_candidaturas').select('*, iro_operacoes!inner(nome)').eq('usuario_id', user.user_id).order('created_at', { ascending: false }),
       ]);
 
       setOperacoes((opRes.data || []) as IROOperacao[]);
@@ -69,7 +69,7 @@ const GuardaIros = () => {
         .filter((c: any) => ['confirmado', 'realizado'].includes(c.status) && c.data_operacao >= firstDay && c.data_operacao <= lastDay)
         .reduce((acc: number, c: any) => acc + Number(c.horas_trabalhadas || 0), 0);
 
-      const { data: banco } = await supabase.from('iro_banco_horas').select('horas_excedentes').eq('usuario_id', user.id).maybeSingle();
+      const { data: banco } = await supabase.from('iro_banco_horas').select('horas_excedentes').eq('usuario_id', user.user_id).maybeSingle();
 
       setResumo({
         total_horas_mes: horasMes,
@@ -106,7 +106,7 @@ const GuardaIros = () => {
     }
     const { data, error } = await supabase.rpc('candidatar_se_iro', {
       p_operacao_id: selectedOperacao.id,
-      p_usuario_id: user.id,
+      p_usuario_id: user.user_id,
       p_data: candidaturaData.data_operacao,
     });
     if (error) {
