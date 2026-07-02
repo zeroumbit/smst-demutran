@@ -407,6 +407,7 @@ const GuardaMunicipalIros = () => {
         <div className="flex flex-col items-start gap-3 lg:items-end shrink-0">
           <div className="text-xs text-slate-500">{TEMPO_SOLICITACAO_LABEL[item.tempo_solicitacao] || item.tempo_solicitacao}</div>
           <div className="flex gap-2">
+            {canManageOperacoes && <Switch checked={item.ativo} onCheckedChange={() => void handleToggleAtiva(item)} />}
             <Button size="sm" variant="outline" onClick={() => void openOperacaoDetails(item)}>
               <Eye className="h-4 w-4" />
             </Button>
@@ -421,7 +422,6 @@ const GuardaMunicipalIros = () => {
                   >
                     <Pencil className="h-4 w-4" />
                   </Button>
-                <Switch checked={item.ativo} onCheckedChange={() => void handleToggleAtiva(item)} />
                 <Button size="sm" variant="outline" className="text-red-600 border-red-200 hover:bg-red-50" onClick={() => openDeleteConfirm(item)}>
                   <Trash2 className="h-4 w-4" />
                 </Button>
