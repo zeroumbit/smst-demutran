@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { ResponsiveDialog } from '@/components/ui/responsive-dialog';
-import { Calendar, Clock, Hourglass, Search, ChevronRight, History, RefreshCcw } from 'lucide-react';
+import { Calendar, Clock, Hourglass, Search, ChevronRight, History, RefreshCcw, AlertTriangle, Gavel } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
 import type { IROOperacao, IROCandidatura } from '@/types/admin';
@@ -19,6 +19,16 @@ const fmtDateBR = (d: string | null | undefined): string => {
   const [y, m, day] = d.split('-');
   if (!y || !m || !day) return d;
   return `${day}/${m}/${y}`;
+};
+
+const TEMPO_SOLICITACAO_LABEL: Record<string, string> = {
+  imediato: 'Imediato', '1h': '1 hora', '6h': '6 horas', '8h': '8 horas',
+  '12h': '12 horas', '24h': '24 horas', '48h': '48 horas',
+};
+
+const horasDaSolicitacao = (t: string): number => {
+  if (t === 'imediato') return 0;
+  return parseInt(t) || 0;
 };
 
 const GuardaIros = () => {
@@ -33,6 +43,9 @@ const GuardaIros = () => {
 
   const [selectedOperacao, setSelectedOperacao] = useState<IROOperacao | null>(null);
   const [candidaturaData, setCandidaturaData] = useState({ data_operacao: new Date().toISOString().slice(0, 10) });
+
+  const [leiDialogAberta, setLeiDialogAberta] = useState(false);
+  const [candidaturaParaCancelar, setCandidaturaParaCancelar] = useState<IROCandidatura | null>(null);
 
   const loadData = async () => {
     if (!user?.id || !profile?.setor_id) return;
@@ -101,21 +114,45 @@ const GuardaIros = () => {
       return;
     }
     const r = data as { sucesso: boolean; mensagem: string; total_mes?: number };
-    toast({
-      title: r.sucesso ? 'Candidatura realizada!' : 'Atenção',
-      description: r.sucesso ? (r.total_mes ? `Total no mês: ${r.total_mes}h` : undefined) : r.mensagem,
-      variant: r.sucesso ? 'default' : 'destructive',
-    });
+    if (r.sucesso && horasDaSolicitacao(selectedOperacao.tempo_solicitacao) >= 48) {
+      toast({
+        title: 'Candidatura realizada!',
+        description: 'Atenção: esta operação segue a Lei nº 2.739/2025 — desistência deve ser comunicada ao chefe imediato com 24h de antecedência.',
+        variant: 'default',
+      });
+    } else {
+      toast({
+        title: r.sucesso ? 'Candidatura realizada!' : 'Atenção',
+        description: r.sucesso ? (r.total_mes ? `Total no mês: ${r.total_mes}h` : undefined) : r.mensagem,
+        variant: r.sucesso ? 'default' : 'destructive',
+      });
+    }
     setSelectedOperacao(null);
     void loadData();
   };
 
   const handleCancelar = async (item: IROCandidatura) => {
+    const op = operacoes.find((o) => o.id === item.operacao_id);
+    if (op && horasDaSolicitacao(op.tempo_solicitacao) >= 48) {
+      setCandidaturaParaCancelar(item);
+      setLeiDialogAberta(true);
+      return;
+    }
     const { error } = await supabase.from('iro_candidaturas').update({ status: 'cancelado' }).eq('id', item.id);
     if (error) {
       toast({ title: 'Erro', description: error.message, variant: 'destructive' });
       return;
     }
+    toast({ title: 'Candidatura cancelada' });
+    void loadData();
+  };
+
+  const confirmarCancelamento = async () => {
+    if (!candidaturaParaCancelar) return;
+    const { error } = await supabase.from('iro_candidaturas').update({ status: 'cancelado' }).eq('id', candidaturaParaCancelar.id);
+    setLeiDialogAberta(false);
+    setCandidaturaParaCancelar(null);
+    if (error) { toast({ title: 'Erro', description: error.message, variant: 'destructive' }); return; }
     toast({ title: 'Candidatura cancelada' });
     void loadData();
   };
@@ -244,6 +281,12 @@ const GuardaIros = () => {
         >
           {selectedOperacao && (
             <div className="space-y-4 py-2">
+              {horasDaSolicitacao(selectedOperacao.tempo_solicitacao) >= 48 && (
+                <div className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+                  <Gavel className="mt-0.5 h-4 w-4 shrink-0" />
+                  <p>Esta operação segue a <strong>Lei nº 2.739/2025</strong>. Desistência deve ser comunicada ao chefe imediato com 24h de antecedência.</p>
+                </div>
+              )}
               <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
                 <p><strong>Horário:</strong> {selectedOperacao.horario_previsto.slice(0, 5)}</p>
                 <p><strong>Horas por dia:</strong> {selectedOperacao.horas_por_dia}h</p>
@@ -260,6 +303,54 @@ const GuardaIros = () => {
               </div>
             </div>
           )}
+        </ResponsiveDialog>
+
+        <ResponsiveDialog
+          open={leiDialogAberta}
+          onOpenChange={(open) => { if (!open) { setLeiDialogAberta(false); setCandidaturaParaCancelar(null); } }}
+          title="Atenção — Lei nº 2.739/2025"
+          description="Regras para desistência de operações IRO"
+        >
+          <div className="space-y-4 py-2 text-sm text-slate-700">
+            <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4">
+              <Gavel className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
+              <div className="space-y-2">
+                <p className="font-semibold text-amber-800">Art. 7º, §1º — Prazo para desistência</p>
+                <p>
+                  Após a publicação da escala, a desistência só será aceita se comunicada ao chefe imediato
+                  com <strong>24 horas de antecedência</strong> da operação.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 p-4">
+              <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-red-600" />
+              <div className="space-y-1">
+                <p className="font-semibold text-red-800">Consequência</p>
+                <p>
+                  Se não comunicar com 24h de antecedência, o guarda ficará <strong>60 dias sem poder
+                  participar da escala especial IRO</strong> (Art. 2º, §7º).
+                </p>
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+              <p className="font-semibold mb-1">Fluxo correto:</p>
+              <ol className="list-decimal list-inside space-y-1 text-slate-600">
+                <li>Comunique ao <strong>chefe imediato</strong> sua desistência</li>
+                <li>Confirme o cancelamento no sistema</li>
+              </ol>
+            </div>
+
+            <div className="flex justify-end gap-3 pt-2">
+              <Button variant="outline" onClick={() => { setLeiDialogAberta(false); setCandidaturaParaCancelar(null); }}>
+                Revisar
+              </Button>
+              <Button variant="destructive" onClick={() => void confirmarCancelamento()}>
+                Confirmar cancelamento
+              </Button>
+            </div>
+          </div>
         </ResponsiveDialog>
       </div>
     </GuardsLayout>
