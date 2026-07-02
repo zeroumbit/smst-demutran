@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { AlertTriangle, Calendar, Check, ChevronRight, Clock, Eye, EyeOff, Hourglass, Plus, RefreshCcw, Search, ShieldCheck, Trash2, Users, X } from 'lucide-react';
+import { AlertTriangle, Calendar, Check, Clock, Eye, EyeOff, Hourglass, Pencil, Plus, RefreshCcw, Search, ShieldCheck, Trash2, Users, X } from 'lucide-react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -408,19 +408,19 @@ const GuardaMunicipalIros = () => {
           <div className="text-xs text-slate-500">{TEMPO_SOLICITACAO_LABEL[item.tempo_solicitacao] || item.tempo_solicitacao}</div>
           <div className="flex gap-2">
             <Button size="sm" variant="outline" onClick={() => void openOperacaoDetails(item)}>
-              Ver detalhes <ChevronRight className="ml-1 h-4 w-4" />
+              <Eye className="h-4 w-4" />
             </Button>
             {canManageOperacoes && (
               <>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => openEditOperacao(item)}
-                  disabled={operacoesComConfirmados.has(item.id)}
-                  title={operacoesComConfirmados.has(item.id) ? 'Já existem candidaturas confirmadas para esta operação' : 'Editar'}
-                >
-                  {operacoesComConfirmados.has(item.id) ? 'Bloqueado' : 'Editar'}
-                </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => openEditOperacao(item)}
+                    disabled={operacoesComConfirmados.has(item.id)}
+                    title={operacoesComConfirmados.has(item.id) ? 'Já existem candidaturas confirmadas para esta operação' : 'Editar'}
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </Button>
                 <Switch checked={item.ativo} onCheckedChange={() => void handleToggleAtiva(item)} />
                 <Button size="sm" variant="outline" className="text-red-600 border-red-200 hover:bg-red-50" onClick={() => openDeleteConfirm(item)}>
                   <Trash2 className="h-4 w-4" />
