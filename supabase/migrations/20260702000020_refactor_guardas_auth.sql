@@ -37,11 +37,12 @@ SET search_path TO 'public'
 AS $$
 DECLARE
   v_guarda public.guardas_municipais%ROWTYPE;
+  v_graduacao_nome text;
   v_ja_possui_conta boolean;
 BEGIN
-  SELECT * INTO v_guarda
-  FROM public.guardas_municipais
-  WHERE cpf = p_cpf AND matricula = p_matricula
+  SELECT gm.* INTO v_guarda
+  FROM public.guardas_municipais gm
+  WHERE gm.cpf = p_cpf AND gm.matricula = p_matricula
   LIMIT 1;
 
   IF v_guarda.id IS NULL THEN
@@ -60,12 +61,17 @@ BEGIN
     RETURN jsonb_build_object('valido', false, 'mensagem', 'Este Guarda Municipal já possui uma conta cadastrada.');
   END IF;
 
+  SELECT nome INTO v_graduacao_nome
+  FROM public.guarda_municipal_graduacoes
+  WHERE id = v_guarda.graduacao_id;
+
   RETURN jsonb_build_object(
     'valido', true,
     'guarda_id', v_guarda.id,
     'nome', v_guarda.nome,
     'matricula', v_guarda.matricula,
-    'graduacao_id', v_guarda.graduacao_id
+    'graduacao_id', v_guarda.graduacao_id,
+    'graduacao_nome', v_graduacao_nome
   );
 END;
 $$;
@@ -77,7 +83,8 @@ CREATE OR REPLACE FUNCTION public.criar_acesso_guarda(
   p_guarda_id uuid,
   p_email text,
   p_senha text,
-  p_nome text DEFAULT NULL
+  p_nome text DEFAULT NULL,
+  p_apelido text DEFAULT NULL
 )
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -87,7 +94,10 @@ AS $$
 DECLARE
   v_new_user_id uuid;
   v_ja_possui boolean;
+  v_nome_exibir text;
 BEGIN
+  v_nome_exibir := COALESCE(NULLIF(trim(p_apelido), ''), NULLIF(trim(p_nome), ''), 'Guarda Municipal');
+
   SELECT EXISTS(
     SELECT 1 FROM public.guardas_usuarios WHERE guarda_id = p_guarda_id
   ) INTO v_ja_possui;
@@ -116,7 +126,7 @@ BEGIN
     extensions.crypt(p_senha, extensions.gen_salt('bf')),
     now(), now(),
     jsonb_build_object('provider', 'email', 'providers', jsonb_build_array('email')),
-    jsonb_build_object('name', COALESCE(p_nome, 'Guarda Municipal'), 'tipo', 'guarda_municipal'),
+    jsonb_build_object('name', v_nome_exibir, 'full_name', p_nome, 'tipo', 'guarda_municipal'),
     now(), now(),
     '', '', '', '',
     'authenticated', 'authenticated'
@@ -144,7 +154,7 @@ BEGIN
 END;
 $$;
 
-GRANT EXECUTE ON FUNCTION public.criar_acesso_guarda(uuid, text, text, text) TO anon;
+GRANT EXECUTE ON FUNCTION public.criar_acesso_guarda(uuid, text, text, text, text) TO anon;
 
 -- 7. RPC: Temporary password reset for existing guards (CPF-based, transition only)
 CREATE OR REPLACE FUNCTION public.redefinir_senha_guarda(

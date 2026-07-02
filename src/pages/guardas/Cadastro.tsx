@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from '@/hooks/use-toast';
 import { maskCpf } from '@/lib/masks';
-import { Eye, EyeOff, Loader2, Shield, ShieldCheck, User, Mail, Lock } from 'lucide-react';
+import { Eye, EyeOff, Loader2, Shield, ShieldCheck, User, Mail, Lock, GraduationCap } from 'lucide-react';
 import guardaLogo from '@/guarda.png';
 
 const CadastroGuarda = () => {
@@ -20,14 +20,13 @@ const CadastroGuarda = () => {
   const [matricula, setMatricula] = useState('');
   const [guardaId, setGuardaId] = useState<string | null>(null);
   const [guardaNome, setGuardaNome] = useState('');
+  const [guardaGrad, setGuardaGrad] = useState('');
 
-  const [nome, setNome] = useState('');
   const [apelido, setApelido] = useState('');
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
   const [confirmarSenha, setConfirmarSenha] = useState('');
   const [showSenha, setShowSenha] = useState(false);
-  const [graduacaoNome, setGraduacaoNome] = useState('');
 
   const [erroCpf, setErroCpf] = useState('');
   const [erroMatricula, setErroMatricula] = useState('');
@@ -64,7 +63,7 @@ const CadastroGuarda = () => {
       return;
     }
 
-    const result = data as { valido: boolean; mensagem?: string; guarda_id?: string; nome?: string; matricula?: string; graduacao_id?: string };
+    const result = data as { valido: boolean; mensagem?: string; guarda_id?: string; nome?: string; matricula?: string; graduacao_id?: string; graduacao_nome?: string };
 
     if (!result.valido) {
       toast({ title: 'Dados não conferem', description: result.mensagem || 'Erro ao validar seus dados.', variant: 'destructive' });
@@ -73,7 +72,7 @@ const CadastroGuarda = () => {
 
     setGuardaId(result.guarda_id || null);
     setGuardaNome(result.nome || '');
-    setNome(result.nome || '');
+    setGuardaGrad(result.graduacao_nome || '');
     setPasso('cadastro');
   };
 
@@ -81,7 +80,7 @@ const CadastroGuarda = () => {
     e.preventDefault();
     if (!guardaId) return;
 
-    if (!nome.trim() || !email.trim() || !senha || !confirmarSenha) {
+    if (!email.trim() || !senha || !confirmarSenha) {
       toast({ title: 'Campos obrigatórios', description: 'Preencha todos os campos.', variant: 'destructive' });
       return;
     }
@@ -102,7 +101,8 @@ const CadastroGuarda = () => {
       p_guarda_id: guardaId,
       p_email: email.trim(),
       p_senha: senha,
-      p_nome: nome.trim(),
+      p_nome: guardaNome,
+      p_apelido: apelido.trim() || null,
     });
 
     setRegistering(false);
@@ -154,7 +154,7 @@ const CadastroGuarda = () => {
           <CardDescription className="text-sm">
             {passo === 'validacao'
               ? 'Informe seu CPF e matrícula para iniciar o cadastro.'
-              : `Olá, ${guardaNome.split(' ')[0]}! Defina seu e-mail e senha de acesso.`}
+              : `Confirme seus dados e defina seu e-mail e senha de acesso.`}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -203,18 +203,42 @@ const CadastroGuarda = () => {
             </form>
           ) : (
             <form onSubmit={handleCadastrar} className="space-y-4">
-              <div className="rounded-xl bg-slate-50 p-3 text-sm">
-                <p className="text-slate-500">CPF: <span className="font-medium text-slate-800">{maskCpf(cpf)}</span></p>
-                <p className="text-slate-500">Matrícula: <span className="font-medium text-slate-800">{matricula}</span></p>
+              <div className="rounded-xl bg-slate-50 p-4 text-sm space-y-2">
+                <div className="flex items-center gap-2">
+                  <User className="h-4 w-4 text-slate-400" />
+                  <span className="text-slate-500">Nome:</span>
+                  <span className="font-medium text-slate-800">{guardaNome}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <GraduationCap className="h-4 w-4 text-slate-400" />
+                  <span className="text-slate-500">Graduação:</span>
+                  <span className="font-medium text-slate-800">{guardaGrad}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Shield className="h-4 w-4 text-slate-400" />
+                  <span className="text-slate-500">CPF:</span>
+                  <span className="font-medium text-slate-800">{maskCpf(cpf)}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Shield className="h-4 w-4 text-slate-400" />
+                  <span className="text-slate-500">Matrícula:</span>
+                  <span className="font-medium text-slate-800">{matricula}</span>
+                </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="nome">Nome completo</Label>
-                <Input id="nome" value={nome} onChange={(e) => setNome(e.target.value)} required className="h-11" />
+                <Label htmlFor="apelido">Como deseja ser chamado</Label>
+                <Input
+                  id="apelido"
+                  value={apelido}
+                  onChange={(e) => setApelido(e.target.value)}
+                  placeholder={guardaNome.split(' ')[0]}
+                  required
+                  className="h-11"
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="email">E-mail</Label>
                 <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="seu.email@exemplo.com" required className="h-11" />
-                <Mail className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="senha">Senha</Label>
