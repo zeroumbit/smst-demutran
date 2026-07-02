@@ -58,7 +58,7 @@ const GuardaMunicipalIros = () => {
   const { setorId, profile, user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [section, setSection] = useState<Section>('operacoes');
-  const isGestor = profile?.papel === 'gestor' || profile?.papel === 'super_admin' || profile?.papel === 'admin_setor';
+  const isGestor = profile?.papel === 'gestor' || profile?.papel === 'super_admin' || profile?.papel === 'admin_setor' || (profile?.papel === 'tecnico' && profile?.modulos?.includes('iros'));
 
   const [operacoes, setOperacoes] = useState<IROOperacao[]>([]);
   const [candidaturas, setCandidaturas] = useState<IROCandidatura[]>([]);
