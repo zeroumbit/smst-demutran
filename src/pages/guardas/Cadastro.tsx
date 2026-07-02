@@ -131,84 +131,97 @@ const CadastroGuarda = () => {
           </div>
 
           {passo === 'digitar' ? (
-            <div className="space-y-4">
-              <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-5">
+              <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="cpf">CPF</Label>
-                  <Input id="cpf" value={cpf} onChange={(e) => { setCpf(maskCpf(e.target.value)); setErroValidacao(''); setJaPossuiConta(false); }} placeholder="000.000.000-00" required disabled={validando} className="h-11" />
+                  <Label htmlFor="cpf" className="text-sm font-semibold text-slate-700">CPF</Label>
+                  <Input id="cpf" value={cpf} onChange={(e) => { setCpf(maskCpf(e.target.value)); setErroValidacao(''); setJaPossuiConta(false); }} placeholder="000.000.000-00" required disabled={validando} className="h-12 rounded-xl border-slate-300 bg-white px-4 text-base shadow-sm focus-visible:ring-2 focus-visible:ring-brand-500" />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="matricula">Matrícula</Label>
-                  <Input id="matricula" value={matricula} onChange={(e) => { setMatricula(e.target.value); setErroValidacao(''); setJaPossuiConta(false); }} placeholder="Ex.: 3180" required disabled={validando} className="h-11" />
+                  <Label htmlFor="matricula" className="text-sm font-semibold text-slate-700">Matrícula</Label>
+                  <Input id="matricula" value={matricula} onChange={(e) => { setMatricula(e.target.value); setErroValidacao(''); setJaPossuiConta(false); }} placeholder="Ex.: 3180" required disabled={validando} className="h-12 rounded-xl border-slate-300 bg-white px-4 text-base shadow-sm focus-visible:ring-2 focus-visible:ring-brand-500" />
                 </div>
               </div>
 
               {erroValidacao && (
-                <div className="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+                <div className="rounded-xl bg-red-50 border border-red-200 px-5 py-4 text-sm text-red-700 flex items-center gap-3 shadow-sm">
+                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-red-200">
+                    <span className="text-xs font-bold text-red-700">!</span>
+                  </div>
                   {erroValidacao}
                 </div>
               )}
 
               {jaPossuiConta && (
-                <div className="rounded-xl bg-green-50 border border-green-200 px-4 py-3 text-sm text-green-700 flex items-center gap-2">
-                  <Check className="h-4 w-4 shrink-0" />
+                <div className="rounded-xl bg-emerald-50 border border-emerald-200 px-5 py-4 text-sm text-emerald-700 flex items-center gap-3 shadow-sm">
+                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-emerald-200">
+                    <Check className="h-4 w-4 text-emerald-700" />
+                  </div>
                   Este Guarda Municipal já possui uma conta cadastrada.
                 </div>
               )}
 
-              <div className="flex justify-end">
-                <Button
-                  type="button"
-                  onClick={() => void handleContinuar()}
-                  disabled={!podeContinuar || validando}
-                  className={!podeContinuar ? 'bg-slate-300 text-slate-500 cursor-not-allowed hover:bg-slate-300' : ''}
-                >
-                  {validando ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                  {validando ? 'Consultando...' : 'CONTINUAR'}
-                </Button>
-              </div>
+              <Button
+                type="button"
+                onClick={() => void handleContinuar()}
+                disabled={!podeContinuar || validando}
+                className={`w-full h-12 rounded-xl text-base font-bold shadow-sm transition-all ${
+                  !podeContinuar
+                    ? 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none'
+                    : 'bg-brand-600 text-white hover:bg-brand-700 active:scale-[0.98]'
+                }`}
+              >
+                {validando ? (
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                ) : (
+                  <Shield className="mr-2 h-5 w-5" />
+                )}
+                {validando ? 'Consultando...' : 'CONTINUAR'}
+              </Button>
             </div>
           ) : (
-            <form onSubmit={handleCriarConta} className="space-y-4">
-              <div className="rounded-xl bg-green-50 border border-green-200 px-4 py-3 text-sm text-green-700 flex items-center gap-2">
-                <Check className="h-4 w-4 shrink-0" />
+            <form onSubmit={handleCriarConta} className="space-y-5">
+              <div className="rounded-xl bg-emerald-50 border border-emerald-200 px-5 py-4 text-sm text-emerald-700 flex items-center gap-3 shadow-sm">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-200">
+                  <Check className="h-4 w-4 text-emerald-700" />
+                </div>
                 Você já está no sistema, e pode criar sua conta
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="apelido">Como deseja ser chamado</Label>
-                <Input id="apelido" value={apelido} onChange={(e) => setApelido(e.target.value)} placeholder={guardaNome.split(' ')[0]} required disabled={registering} className="h-11" />
+                <Label htmlFor="apelido" className="text-sm font-semibold text-slate-700">Como deseja ser chamado</Label>
+                <Input id="apelido" value={apelido} onChange={(e) => setApelido(e.target.value)} placeholder={guardaNome.split(' ')[0]} required disabled={registering} className="h-12 rounded-xl border-slate-300 bg-white px-4 text-base shadow-sm focus-visible:ring-2 focus-visible:ring-brand-500" />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="email">E-mail</Label>
-                <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="seu.email@exemplo.com" required disabled={registering} className="h-11" />
+                <Label htmlFor="email" className="text-sm font-semibold text-slate-700">E-mail</Label>
+                <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="seu.email@exemplo.com" required disabled={registering} className="h-12 rounded-xl border-slate-300 bg-white px-4 text-base shadow-sm focus-visible:ring-2 focus-visible:ring-brand-500" />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="senha">Senha</Label>
+                <Label htmlFor="senha" className="text-sm font-semibold text-slate-700">Senha</Label>
                 <div className="relative">
-                  <Input id="senha" type={showSenha ? 'text' : 'password'} value={senha} onChange={(e) => setSenha(e.target.value)} placeholder="Mínimo 6 caracteres" required minLength={6} disabled={registering} className="h-11 pr-10" />
-                  <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" onClick={() => setShowSenha(!showSenha)}>
-                    {showSenha ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  <Input id="senha" type={showSenha ? 'text' : 'password'} value={senha} onChange={(e) => setSenha(e.target.value)} placeholder="Mínimo 6 caracteres" required minLength={6} disabled={registering} className="h-12 rounded-xl border-slate-300 bg-white px-4 pr-12 text-base shadow-sm focus-visible:ring-2 focus-visible:ring-brand-500" />
+                  <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600" onClick={() => setShowSenha(!showSenha)}>
+                    {showSenha ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                   </button>
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="confirmarSenha">Confirmar senha</Label>
-                <Input id="confirmarSenha" type="password" value={confirmarSenha} onChange={(e) => setConfirmarSenha(e.target.value)} placeholder="Repita a senha" required disabled={registering} className="h-11" />
+                <Label htmlFor="confirmarSenha" className="text-sm font-semibold text-slate-700">Confirmar senha</Label>
+                <Input id="confirmarSenha" type="password" value={confirmarSenha} onChange={(e) => setConfirmarSenha(e.target.value)} placeholder="Repita a senha" required disabled={registering} className="h-12 rounded-xl border-slate-300 bg-white px-4 text-base shadow-sm focus-visible:ring-2 focus-visible:ring-brand-500" />
                 {confirmarSenha && senha !== confirmarSenha && (
-                  <p className="text-xs text-red-500">As senhas não conferem</p>
+                  <p className="text-xs text-red-500 mt-1">As senhas não conferem</p>
                 )}
               </div>
 
-              <div className="flex justify-end gap-2 pt-2">
-                <Button type="button" variant="outline" onClick={() => { setPasso('digitar'); setErroValidacao(''); }}>
+              <div className="flex justify-end gap-3 pt-2">
+                <Button type="button" variant="outline" className="h-12 rounded-xl px-6" onClick={() => { setPasso('digitar'); setErroValidacao(''); }}>
                   Voltar
                 </Button>
-                <Button type="submit" disabled={registering}>
-                  {registering ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Lock className="mr-2 h-4 w-4" />}
+                <Button type="submit" disabled={registering} className="h-12 rounded-xl px-8 shadow-sm">
+                  {registering ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Lock className="mr-2 h-5 w-5" />}
                   {registering ? 'Criando conta...' : 'Criar conta'}
                 </Button>
               </div>
