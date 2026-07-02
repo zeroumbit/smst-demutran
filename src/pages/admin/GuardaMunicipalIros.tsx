@@ -63,8 +63,8 @@ const GuardaMunicipalIros = () => {
   const location = useLocation();
   const [loading, setLoading] = useState(true);
   const [section, setSection] = useState<Section>('operacoes');
-  const podeVerTudo = profile?.papel === 'gestor' || profile?.papel === 'super_admin' || profile?.papel === 'admin_setor';
-  const canManageOperacoes = podeVerTudo || (profile?.papel === 'tecnico' && profile?.modulos?.includes('iros'));
+  const podeVerTudo = profile?.papel === 'gestor' || profile?.papel === 'super_admin' || profile?.papel === 'admin_setor' || (profile?.papel === 'tecnico' && profile?.modulos?.includes('iros'));
+  const canManageOperacoes = podeVerTudo;
 
   const subPath = location.pathname.replace(BASE_IROS, '').replace(/\/+$/, '');
   const isNovaOperacao = subPath === '/nova-operacao';
@@ -98,13 +98,13 @@ const GuardaMunicipalIros = () => {
         baseFilter(supabase.from('iro_operacoes').select('*').order('data_inicio', { ascending: false })),
         podeVerTudo
           ? supabase.from('iro_candidaturas').select('*, iro_operacoes!inner(nome)').order('created_at', { ascending: false })
-          : supabase.from('iro_candidaturas').select('*, iro_operacoes!inner(nome)').eq('usuario_id', user!.id).order('created_at', { ascending: false }),
+          : supabase.from('iro_candidaturas').select('*, iro_operacoes!inner(nome)').eq('usuario_id', user!.user_id).order('created_at', { ascending: false }),
         podeVerTudo
           ? supabase.from('iro_banco_horas').select('*').order('created_at', { ascending: false })
-          : supabase.from('iro_banco_horas').select('*').eq('usuario_id', user!.id).order('created_at', { ascending: false }),
+          : supabase.from('iro_banco_horas').select('*').eq('usuario_id', user!.user_id).order('created_at', { ascending: false }),
         podeVerTudo
           ? supabase.from('iro_notificacoes').select('*').order('created_at', { ascending: false })
-          : supabase.from('iro_notificacoes').select('*').eq('usuario_id', user!.id).order('created_at', { ascending: false }),
+          : supabase.from('iro_notificacoes').select('*').eq('usuario_id', user!.user_id).order('created_at', { ascending: false }),
         supabase.from('perfis_usuarios').select('user_id, nome, sobrenome').eq('ativo', true),
       ]);
 
@@ -153,22 +153,22 @@ const GuardaMunicipalIros = () => {
     return m;
   }, [usuarios]);
 
-  const minhasCandidaturas = useMemo(() => candidaturas.filter((c) => c.usuario_id === user?.id), [candidaturas, user?.id]);
-  const minhasNotificacoes = useMemo(() => notificacoes.filter((n) => n.usuario_id === user?.id), [notificacoes, user?.id]);
+  const minhasCandidaturas = useMemo(() => candidaturas.filter((c) => c.usuario_id === user?.user_id), [candidaturas, user?.user_id]);
+  const minhasNotificacoes = useMemo(() => notificacoes.filter((n) => n.usuario_id === user?.user_id), [notificacoes, user?.user_id]);
   const notifNaoLidas = useMemo(() => minhasNotificacoes.filter((n) => !n.lida).length, [minhasNotificacoes]);
-  const meuBancoHoras = useMemo(() => bancoHoras.find((b) => b.usuario_id === user?.id), [bancoHoras, user?.id]);
+  const meuBancoHoras = useMemo(() => bancoHoras.find((b) => b.usuario_id === user?.user_id), [bancoHoras, user?.user_id]);
 
   const horasMes = useMemo(() => {
     const now = new Date();
     let total = 0;
     for (const c of candidaturas) {
-      if (c.usuario_id === user?.id && ['confirmado', 'realizado'].includes(c.status)) {
+      if (c.usuario_id === user?.user_id && ['confirmado', 'realizado'].includes(c.status)) {
         const d = new Date(c.data_operacao);
         if (d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()) total += c.horas_trabalhadas;
       }
     }
     return total;
-  }, [candidaturas, user?.id]);
+  }, [candidaturas, user?.user_id]);
 
   const stats = useMemo(() => ({
     operacoesAtivas: operacoes.filter((o) => o.ativo).length,
@@ -200,7 +200,7 @@ const GuardaMunicipalIros = () => {
       if (statusFilter !== 'todas' && c.status !== statusFilter) return false;
       return true;
     });
-  }, [candidaturas, minhasCandidaturas, search, statusFilter, isGestor, usuarioMap]);
+  }, [candidaturas, minhasCandidaturas, search, statusFilter, podeVerTudo, usuarioMap]);
 
   const filteredBancoHoras = useMemo(() => {
     const list = podeVerTudo ? bancoHoras : (meuBancoHoras ? [meuBancoHoras] : []);
@@ -209,7 +209,7 @@ const GuardaMunicipalIros = () => {
       if (term && !(usuarioMap.get(b.usuario_id) || '').toLowerCase().includes(term)) return false;
       return true;
     });
-  }, [bancoHoras, meuBancoHoras, search, isGestor, usuarioMap]);
+  }, [bancoHoras, meuBancoHoras, search, podeVerTudo, usuarioMap]);
 
   const filteredNotificacoes = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -284,7 +284,7 @@ const GuardaMunicipalIros = () => {
     if (!candidaturaData.operacao_id || !candidaturaData.data_operacao) {
       toast({ title: 'Selecione operação e data', variant: 'destructive' }); return;
     }
-    const { data, error } = await supabase.rpc('candidatar_se_iro', { p_operacao_id: candidaturaData.operacao_id, p_usuario_id: user?.id, p_data: candidaturaData.data_operacao });
+    const { data, error } = await supabase.rpc('candidatar_se_iro', { p_operacao_id: candidaturaData.operacao_id, p_usuario_id: user?.user_id, p_data: candidaturaData.data_operacao });
     if (error) { toast({ title: 'Erro', description: error.message, variant: 'destructive' }); return; }
     const r = data as { sucesso: boolean; mensagem: string; total_mes?: number };
     if (r.sucesso) {
@@ -384,7 +384,7 @@ const GuardaMunicipalIros = () => {
             {usuarioMap.get(item.usuario_id) || '—'} &middot; {new Date(item.data_operacao).toLocaleDateString('pt-BR')} &middot; {item.horas_trabalhadas}h
           </p>
         </div>
-        {item.usuario_id === user?.id && item.status !== 'cancelado' && (
+        {item.usuario_id === user?.user_id && item.status !== 'cancelado' && (
           <Button size="sm" variant="outline" className="text-red-600 border-red-200 hover:bg-red-50" onClick={() => void handleCancelarCandidatura(item)}>
             Cancelar
           </Button>
@@ -600,7 +600,7 @@ const GuardaMunicipalIros = () => {
                           </Badge>
                           <span className="text-slate-500">{new Date(c.data_operacao).toLocaleDateString('pt-BR')} • {c.horas_trabalhadas}h</span>
                         </div>
-                        {c.usuario_id === user?.id && c.status !== 'cancelado' && (
+                        {c.usuario_id === user?.user_id && c.status !== 'cancelado' && (
                           <Button size="sm" variant="outline" className="text-red-600 border-red-200 h-7 text-xs" onClick={() => void handleCancelarCandidatura(c)}>
                             Cancelar
                           </Button>
