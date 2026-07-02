@@ -55,7 +55,7 @@ const GuardasMunicipaisPage = () => {
     const [{ data: graduacoesData, error: graduacoesError }, { data: guardasData, error: guardasError }] =
       await Promise.all([
         supabase.from('guarda_municipal_graduacoes').select('id, nome, ordem, ativo, created_at, updated_at').order('ordem', { ascending: true }).order('nome', { ascending: true }),
-        supabase.from('guardas_municipais').select('id, matricula, nome, cpf, senha, email, telefone, primeira_vez_acesso, data_criacao_senha, graduacao_id, ativo, created_at, updated_at').order('nome', { ascending: true }),
+        supabase.from('guardas_municipais').select('id, matricula, nome, cpf, senha, senha_provisoria, email, telefone, primeira_vez_acesso, data_criacao_senha, graduacao_id, ativo, created_at, updated_at').order('nome', { ascending: true }),
       ]);
 
     if (graduacoesError || guardasError) {
@@ -335,11 +335,11 @@ const GuardasMunicipaisPage = () => {
                     {item.cpf && (
                       <p className="text-xs font-medium text-slate-500">CPF: {maskCpf(item.cpf)}</p>
                     )}
-                    {item.senha && (
+                    {item.senha_provisoria && (
                       <div className="mt-1 flex items-center gap-2">
                         <span className="text-xs font-medium text-slate-400">Senha:</span>
                         <code className="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-mono font-bold text-slate-700">
-                          {senhasVisiveis[item.id] ? item.senha : '••••••••••'}
+                          {senhasVisiveis[item.id] ? item.senha_provisoria : '••••••••••'}
                         </code>
                         <button
                           onClick={() => toggleSenhaVisivel(item.id)}
@@ -349,13 +349,16 @@ const GuardasMunicipaisPage = () => {
                           {senhasVisiveis[item.id] ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
                         </button>
                         <button
-                          onClick={() => void handleCopiarSenha(item.senha!)}
+                          onClick={() => void handleCopiarSenha(item.senha_provisoria!)}
                           className="rounded-md p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
                           title="Copiar"
                         >
                           <Copy className="h-3.5 w-3.5" />
                         </button>
                       </div>
+                    )}
+                    {item.senha && !item.senha_provisoria && (
+                      <p className="mt-1 text-xs text-slate-400">Senha já alterada pelo guarda</p>
                     )}
                   </div>
                   <div className="flex items-center gap-2">
