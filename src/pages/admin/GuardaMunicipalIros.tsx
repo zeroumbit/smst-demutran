@@ -8,6 +8,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ResponsiveDialog } from '@/components/ui/responsive-dialog';
+import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/lib/supabase';
@@ -420,9 +421,7 @@ const GuardaMunicipalIros = () => {
                 >
                   {operacoesComConfirmados.has(item.id) ? 'Bloqueado' : 'Editar'}
                 </Button>
-                <Button size="sm" variant="outline" onClick={() => void handleToggleAtiva(item)}>
-                  {item.ativo ? <X className="h-4 w-4" /> : <Check className="h-4 w-4" />}
-                </Button>
+                <Switch checked={item.ativo} onCheckedChange={() => void handleToggleAtiva(item)} />
                 <Button size="sm" variant="outline" className="text-red-600 border-red-200 hover:bg-red-50" onClick={() => openDeleteConfirm(item)}>
                   <Trash2 className="h-4 w-4" />
                 </Button>
