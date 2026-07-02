@@ -173,7 +173,7 @@ const CadastroGuarda = () => {
                 disabled={!podeContinuar || validando}
                 className={`w-full h-12 rounded-xl text-base font-bold shadow-sm transition-all ${
                   !podeContinuar
-                    ? 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none'
+                    ? 'bg-slate-300 text-slate-500 cursor-not-allowed shadow-none'
                     : 'bg-primary text-primary-foreground hover:bg-primary/90 active:scale-[0.98]'
                 }`}
               >

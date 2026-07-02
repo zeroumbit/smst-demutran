@@ -17,7 +17,13 @@ DROP FUNCTION IF EXISTS public.provision_all_guardas_auth();
 
 -- 3. Keep is_guarda() and buscar_guarda_por_usuario() for profile detection
 
--- 4. Remove auth columns from guardas_municipais (functional data only)
+-- 4. Clear old guardas_usuarios vinculações from the previous auth system
+-- The old system auto-provisioned auth accounts for all guardas. These
+-- vinculações are no longer valid since the old auth system was removed.
+-- Guardas must now self-register via the new private link flow.
+DELETE FROM public.guardas_usuarios;
+
+-- 5. Remove auth columns from guardas_municipais (functional data only)
 ALTER TABLE public.guardas_municipais
   DROP COLUMN IF EXISTS senha,
   DROP COLUMN IF EXISTS senha_provisoria,
