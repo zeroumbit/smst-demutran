@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from '@/hooks/use-toast';
 import { maskCpf } from '@/lib/masks';
-import { Eye, EyeOff, Loader2, Shield, Lock, LogIn, Check } from 'lucide-react';
+import { Eye, EyeOff, Loader2, Shield, Lock, Check } from 'lucide-react';
 import guardaLogo from '@/guarda.png';
 
 const CadastroGuarda = () => {
@@ -119,13 +119,13 @@ const CadastroGuarda = () => {
           <div className="mb-6">
             <div className="flex items-start gap-2">
               <div className="flex flex-col items-center gap-1 min-w-0 flex-1">
-                <div className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold ${passo === 'cadastro' ? 'bg-emerald-100 text-emerald-700' : 'bg-brand-100 text-brand-700'}`}>1</div>
-                <p className={`text-xs font-semibold text-center leading-tight ${passo === 'cadastro' ? 'text-emerald-700' : 'text-brand-700'}`}>Seus dados</p>
+                <div className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold ${passo === 'cadastro' ? 'bg-emerald-100 text-emerald-700' : 'bg-primary/10 text-primary'}`}>1</div>
+                <p className={`text-xs font-semibold text-center leading-tight ${passo === 'cadastro' ? 'text-emerald-700' : 'text-primary'}`}>Seus dados</p>
               </div>
               <div className={`h-0.5 flex-1 mt-4 ${passo === 'cadastro' ? 'bg-emerald-400' : 'bg-slate-200'}`} />
               <div className="flex flex-col items-center gap-1 min-w-0 flex-1">
-                <div className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold ${passo === 'cadastro' ? 'bg-brand-100 text-brand-700' : 'bg-slate-100 text-slate-400'}`}>2</div>
-                <p className={`text-xs font-semibold text-center leading-tight ${passo === 'cadastro' ? 'text-brand-700' : 'text-slate-400'}`}>Criar conta</p>
+                <div className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold ${passo === 'cadastro' ? 'bg-primary/10 text-primary' : 'bg-slate-100 text-slate-400'}`}>2</div>
+                <p className={`text-xs font-semibold text-center leading-tight ${passo === 'cadastro' ? 'text-primary' : 'text-slate-400'}`}>Criar conta</p>
               </div>
             </div>
           </div>
@@ -135,11 +135,11 @@ const CadastroGuarda = () => {
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="cpf" className="text-sm font-semibold text-slate-700">CPF</Label>
-                  <Input id="cpf" value={cpf} onChange={(e) => { setCpf(maskCpf(e.target.value)); setErroValidacao(''); setJaPossuiConta(false); }} placeholder="000.000.000-00" required disabled={validando} className="h-12 rounded-xl border-slate-300 bg-white px-4 text-base shadow-sm focus-visible:ring-2 focus-visible:ring-brand-500" />
+                  <Input id="cpf" value={cpf} onChange={(e) => { setCpf(maskCpf(e.target.value)); setErroValidacao(''); setJaPossuiConta(false); }} placeholder="000.000.000-00" required disabled={validando} className="h-12 rounded-xl border-slate-300 bg-white px-4 text-base shadow-sm focus-visible:ring-2 focus-visible:ring-primary" />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="matricula" className="text-sm font-semibold text-slate-700">Matrícula</Label>
-                  <Input id="matricula" value={matricula} onChange={(e) => { setMatricula(e.target.value); setErroValidacao(''); setJaPossuiConta(false); }} placeholder="Ex.: 3180" required disabled={validando} className="h-12 rounded-xl border-slate-300 bg-white px-4 text-base shadow-sm focus-visible:ring-2 focus-visible:ring-brand-500" />
+                  <Input id="matricula" value={matricula} onChange={(e) => { setMatricula(e.target.value); setErroValidacao(''); setJaPossuiConta(false); }} placeholder="Ex.: 3180" required disabled={validando} className="h-12 rounded-xl border-slate-300 bg-white px-4 text-base shadow-sm focus-visible:ring-2 focus-visible:ring-primary" />
                 </div>
               </div>
 
@@ -168,7 +168,7 @@ const CadastroGuarda = () => {
                 className={`w-full h-12 rounded-xl text-base font-bold shadow-sm transition-all ${
                   !podeContinuar
                     ? 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none'
-                    : 'bg-brand-600 text-white hover:bg-brand-700 active:scale-[0.98]'
+                    : 'bg-primary text-primary-foreground hover:bg-primary/90 active:scale-[0.98]'
                 }`}
               >
                 {validando ? (
@@ -190,18 +190,18 @@ const CadastroGuarda = () => {
 
               <div className="space-y-2">
                 <Label htmlFor="apelido" className="text-sm font-semibold text-slate-700">Como deseja ser chamado</Label>
-                <Input id="apelido" value={apelido} onChange={(e) => setApelido(e.target.value)} placeholder={guardaNome.split(' ')[0]} required disabled={registering} className="h-12 rounded-xl border-slate-300 bg-white px-4 text-base shadow-sm focus-visible:ring-2 focus-visible:ring-brand-500" />
+                <Input id="apelido" value={apelido} onChange={(e) => setApelido(e.target.value)} placeholder={guardaNome.split(' ')[0]} required disabled={registering} className="h-12 rounded-xl border-slate-300 bg-white px-4 text-base shadow-sm focus-visible:ring-2 focus-visible:ring-primary" />
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="email" className="text-sm font-semibold text-slate-700">E-mail</Label>
-                <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="seu.email@exemplo.com" required disabled={registering} className="h-12 rounded-xl border-slate-300 bg-white px-4 text-base shadow-sm focus-visible:ring-2 focus-visible:ring-brand-500" />
+                <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="seu.email@exemplo.com" required disabled={registering} className="h-12 rounded-xl border-slate-300 bg-white px-4 text-base shadow-sm focus-visible:ring-2 focus-visible:ring-primary" />
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="senha" className="text-sm font-semibold text-slate-700">Senha</Label>
                 <div className="relative">
-                  <Input id="senha" type={showSenha ? 'text' : 'password'} value={senha} onChange={(e) => setSenha(e.target.value)} placeholder="Mínimo 6 caracteres" required minLength={6} disabled={registering} className="h-12 rounded-xl border-slate-300 bg-white px-4 pr-12 text-base shadow-sm focus-visible:ring-2 focus-visible:ring-brand-500" />
+                  <Input id="senha" type={showSenha ? 'text' : 'password'} value={senha} onChange={(e) => setSenha(e.target.value)} placeholder="Mínimo 6 caracteres" required minLength={6} disabled={registering} className="h-12 rounded-xl border-slate-300 bg-white px-4 pr-12 text-base shadow-sm focus-visible:ring-2 focus-visible:ring-primary" />
                   <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600" onClick={() => setShowSenha(!showSenha)}>
                     {showSenha ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                   </button>
@@ -210,7 +210,7 @@ const CadastroGuarda = () => {
 
               <div className="space-y-2">
                 <Label htmlFor="confirmarSenha" className="text-sm font-semibold text-slate-700">Confirmar senha</Label>
-                <Input id="confirmarSenha" type="password" value={confirmarSenha} onChange={(e) => setConfirmarSenha(e.target.value)} placeholder="Repita a senha" required disabled={registering} className="h-12 rounded-xl border-slate-300 bg-white px-4 text-base shadow-sm focus-visible:ring-2 focus-visible:ring-brand-500" />
+                <Input id="confirmarSenha" type="password" value={confirmarSenha} onChange={(e) => setConfirmarSenha(e.target.value)} placeholder="Repita a senha" required disabled={registering} className="h-12 rounded-xl border-slate-300 bg-white px-4 text-base shadow-sm focus-visible:ring-2 focus-visible:ring-primary" />
                 {confirmarSenha && senha !== confirmarSenha && (
                   <p className="text-xs text-red-500 mt-1">As senhas não conferem</p>
                 )}
@@ -229,7 +229,7 @@ const CadastroGuarda = () => {
           )}
 
           <p className="text-center text-xs text-slate-400 pt-4">
-            Já possui conta? <a href="/admin/login" className="text-brand-600 hover:underline">Faça login</a>
+            Já possui conta? <a href="/admin/login" className="text-primary hover:underline">Faça login</a>
           </p>
         </CardContent>
       </Card>
