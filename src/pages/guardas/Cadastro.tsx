@@ -52,22 +52,28 @@ const CadastroGuarda = () => {
 
     if (error) { setErroValidacao(error.message); return; }
 
-    const result = data as { status: string; mensagem?: string; guarda_id?: string; nome?: string; graduacao_nome?: string };
+    const result = data as Record<string, unknown>;
 
-    if (result.status === 'nao_encontrado') {
-      setErroValidacao(result.mensagem || 'Dados não encontrados.');
+    if (!result) { setErroValidacao('Erro ao validar dados.'); return; }
+
+    const status = result.status as string | undefined;
+    const valido = result.valido as boolean | undefined;
+
+    // Handle old format (valido: true/false) and new format (status)
+    if (status === 'nao_encontrado' || (status === undefined && valido === false)) {
+      setErroValidacao((result.mensagem as string) || 'Dados não encontrados.');
       return;
     }
 
-    if (result.status === 'ja_possui_conta') {
+    if (status === 'ja_possui_conta') {
       setJaPossuiConta(true);
       return;
     }
 
-    if (result.status === 'ok') {
-      setGuardaId(result.guarda_id || null);
-      setGuardaNome(result.nome || '');
-      setGuardaGrad(result.graduacao_nome || '');
+    if (status === 'ok' || (status === undefined && valido === true)) {
+      setGuardaId((result.guarda_id as string) || null);
+      setGuardaNome((result.nome as string) || '');
+      setGuardaGrad((result.graduacao_nome as string) || '');
       setPasso('cadastro');
     }
   };
