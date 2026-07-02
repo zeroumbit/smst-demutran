@@ -186,18 +186,62 @@ $$;
 
 GRANT EXECUTE ON FUNCTION public.redefinir_senha_guarda(text, text) TO anon;
 
--- 8. Update RLS: guardas_usuarios — allow guarda to read own link
+-- 8. Update RLS policies for guardas_municipais and guardas_usuarios
+DROP POLICY IF EXISTS "Guardas can manage guardas municipais" ON public.guardas_municipais;
+DROP POLICY IF EXISTS "Gestores and Super admins can manage guardas_usuarios" ON public.guardas_usuarios;
 DROP POLICY IF EXISTS "guardas_usuarios_policy" ON public.guardas_usuarios;
+
+CREATE POLICY "Guardas can manage guardas municipais"
+ON public.guardas_municipais
+FOR ALL
+TO authenticated
+USING (
+  public.is_super_admin()
+  OR public.is_admin_of_setor(public.get_guarda_municipal_setor_id())
+  OR EXISTS (
+    SELECT 1 FROM public.perfis_usuarios pu
+    WHERE pu.user_id = auth.uid()
+      AND pu.ativo = true
+      AND pu.papel = 'tecnico'::public.papel_usuario
+      AND pu.setor_id = public.get_guarda_municipal_setor_id()
+  )
+)
+WITH CHECK (
+  public.is_super_admin()
+  OR public.is_admin_of_setor(public.get_guarda_municipal_setor_id())
+  OR EXISTS (
+    SELECT 1 FROM public.perfis_usuarios pu
+    WHERE pu.user_id = auth.uid()
+      AND pu.ativo = true
+      AND pu.papel = 'tecnico'::public.papel_usuario
+      AND pu.setor_id = public.get_guarda_municipal_setor_id()
+  )
+);
+
 CREATE POLICY "guardas_usuarios_policy"
 ON public.guardas_usuarios
 FOR ALL
 TO authenticated
 USING (
   public.is_super_admin()
-  OR public.is_admin_of_setor((SELECT setor_id FROM public.guardas_municipais WHERE id = guarda_id))
+  OR public.is_admin_of_setor(public.get_guarda_municipal_setor_id())
+  OR EXISTS (
+    SELECT 1 FROM public.perfis_usuarios pu
+    WHERE pu.user_id = auth.uid()
+      AND pu.ativo = true
+      AND pu.papel = 'tecnico'::public.papel_usuario
+      AND pu.setor_id = public.get_guarda_municipal_setor_id()
+  )
   OR usuario_id = auth.uid()
 )
 WITH CHECK (
   public.is_super_admin()
-  OR public.is_admin_of_setor((SELECT setor_id FROM public.guardas_municipais WHERE id = guarda_id))
+  OR public.is_admin_of_setor(public.get_guarda_municipal_setor_id())
+  OR EXISTS (
+    SELECT 1 FROM public.perfis_usuarios pu
+    WHERE pu.user_id = auth.uid()
+      AND pu.ativo = true
+      AND pu.papel = 'tecnico'::public.papel_usuario
+      AND pu.setor_id = public.get_guarda_municipal_setor_id()
+  )
 );
