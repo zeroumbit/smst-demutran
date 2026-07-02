@@ -74,6 +74,10 @@ const GuardaPerfil = () => {
       toast({ title: 'A senha deve ter no máximo 10 caracteres', variant: 'destructive' });
       return;
     }
+    if (!/[A-Z]/.test(novaSenha) || !/[a-z]/.test(novaSenha) || !/[0-9]/.test(novaSenha) || !/[!@#$%&*]/.test(novaSenha)) {
+      toast({ title: 'Senha fraca', description: 'Use ao menos uma letra maiúscula, uma minúscula, um número e um caractere especial (!@#$%&*)', variant: 'destructive' });
+      return;
+    }
     setMudandoSenha(true);
 
     const { data, error } = await supabase.rpc('alterar_senha_guarda', {

@@ -14,6 +14,15 @@ import { cn } from '@/lib/utils';
 import { maskCpf } from '@/lib/masks';
 import type { GuardaMunicipal, GuardaMunicipalGraduacao } from '@/types/admin';
 
+const gerarSenhaGuarda = (): string => {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%&*';
+  let senha = '';
+  for (let i = 0; i < 10; i++) {
+    senha += chars[Math.floor(Math.random() * chars.length)];
+  }
+  return senha;
+};
+
 type Section = 'guardas' | 'graduacoes';
 
 const guardaInitialForm = { matricula: '', nome: '', graduacao_id: '', cpf: '' };
@@ -100,7 +109,7 @@ const GuardasMunicipaisPage = () => {
     let novaSenha = '';
     if (!editingGuarda) {
       const { data: senhaData } = await supabase.rpc('gerar_senha_unica_guarda');
-      novaSenha = senhaData || Math.random().toString(36).slice(2, 12);
+      novaSenha = senhaData || gerarSenhaGuarda();
       payload.senha = novaSenha;
       payload.primeira_vez_acesso = true;
       payload.data_criacao_senha = new Date().toISOString();
@@ -157,7 +166,7 @@ const GuardasMunicipaisPage = () => {
     if (!confirmed) return;
     setRegeneratingId(item.id);
     const { data: senhaData } = await supabase.rpc('gerar_senha_unica_guarda');
-    const novaSenha = senhaData || Math.random().toString(36).slice(2, 12);
+    const novaSenha = senhaData || gerarSenhaGuarda();
     const { error } = await supabase.from('guardas_municipais').update({ senha: novaSenha, primeira_vez_acesso: true, data_criacao_senha: new Date().toISOString() }).eq('id', item.id);
     if (error) { toast({ title: 'Erro ao regenerar senha', description: error.message, variant: 'destructive' }); setRegeneratingId(null); return; }
 
