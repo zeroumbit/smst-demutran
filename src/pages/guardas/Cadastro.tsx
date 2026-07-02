@@ -127,78 +127,40 @@ const CadastroGuarda = () => {
               </div>
             </div>
           </div>
+
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="cpf">CPF</Label>
-                <Input
-                  id="cpf"
-                  value={cpf}
-                  onChange={(e) => { setCpf(maskCpf(e.target.value)); setValidado(false); setErroValidacao(''); }}
-                  placeholder="000.000.000-00"
-                  required
-                  disabled={registering || validado}
-                  className="h-11"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="matricula">Matrícula</Label>
-                <Input
-                  id="matricula"
-                  value={matricula}
-                  onChange={(e) => { setMatricula(e.target.value); setValidado(false); setErroValidacao(''); }}
-                  placeholder="Ex.: 3180"
-                  required
-                  disabled={registering || validado}
-                  className="h-11"
-                />
-              </div>
-            </div>
-
-            {erroValidacao && (
-              <div className="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
-                {erroValidacao}
-              </div>
-            )}
-
             {!validado ? (
-              <Button type="button" variant="outline" className="w-full" onClick={() => void validarCpfMatricula()} disabled={validando}>
-                {validando ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Shield className="mr-2 h-4 w-4" />}
-                {validando ? 'Validando...' : 'Validar CPF e matrícula'}
-              </Button>
-            ) : (
-              <div className="rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-emerald-700 flex items-center gap-2">
-                <Check className="h-4 w-4 shrink-0" />
-                Dados confirmados — agora crie sua conta abaixo
-              </div>
-            )}
-
-            {validado && (
               <>
-                <div className="rounded-xl bg-slate-50 p-4 text-sm space-y-2">
-                  <div className="flex items-center gap-2">
-                    <User className="h-4 w-4 text-slate-400" />
-                    <span className="text-slate-500">Nome:</span>
-                    <span className="font-medium text-slate-800">{guardaNome}</span>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="cpf">CPF</Label>
+                    <Input id="cpf" value={cpf} onChange={(e) => { setCpf(maskCpf(e.target.value)); setErroValidacao(''); }} placeholder="000.000.000-00" required disabled={registering} className="h-11" />
                   </div>
-                  <div className="flex items-center gap-2">
-                    <GraduationCap className="h-4 w-4 text-slate-400" />
-                    <span className="text-slate-500">Graduação:</span>
-                    <span className="font-medium text-slate-800">{guardaGrad}</span>
+                  <div className="space-y-2">
+                    <Label htmlFor="matricula">Matrícula</Label>
+                    <Input id="matricula" value={matricula} onChange={(e) => { setMatricula(e.target.value); setErroValidacao(''); }} placeholder="Ex.: 3180" required disabled={registering} className="h-11" />
                   </div>
+                </div>
+                {erroValidacao && (
+                  <div className="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">{erroValidacao}</div>
+                )}
+                <div className="flex justify-end">
+                  <Button type="button" onClick={() => void validarCpfMatricula()} disabled={validando}>
+                    {validando ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Shield className="mr-2 h-4 w-4" />}
+                    {validando ? 'Validando...' : 'Validar CPF e matrícula'}
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-emerald-700 flex items-center gap-2">
+                  <Check className="h-4 w-4 shrink-0" />
+                  <span>Dados confirmados — <strong>{guardaNome}</strong> · {guardaGrad}</span>
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="apelido">Como deseja ser chamado</Label>
-                  <Input
-                    id="apelido"
-                    value={apelido}
-                    onChange={(e) => setApelido(e.target.value)}
-                    placeholder={guardaNome.split(' ')[0]}
-                    required
-                    disabled={registering}
-                    className="h-11"
-                  />
+                  <Input id="apelido" value={apelido} onChange={(e) => setApelido(e.target.value)} placeholder={guardaNome.split(' ')[0]} required disabled={registering} className="h-11" />
                 </div>
 
                 <div className="space-y-2">
@@ -209,17 +171,7 @@ const CadastroGuarda = () => {
                 <div className="space-y-2">
                   <Label htmlFor="senha">Senha</Label>
                   <div className="relative">
-                    <Input
-                      id="senha"
-                      type={showSenha ? 'text' : 'password'}
-                      value={senha}
-                      onChange={(e) => setSenha(e.target.value)}
-                      placeholder="Mínimo 6 caracteres"
-                      required
-                      minLength={6}
-                      disabled={registering}
-                      className="h-11 pr-10"
-                    />
+                    <Input id="senha" type={showSenha ? 'text' : 'password'} value={senha} onChange={(e) => setSenha(e.target.value)} placeholder="Mínimo 6 caracteres" required minLength={6} disabled={registering} className="h-11 pr-10" />
                     <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" onClick={() => setShowSenha(!showSenha)}>
                       {showSenha ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>
@@ -228,29 +180,25 @@ const CadastroGuarda = () => {
 
                 <div className="space-y-2">
                   <Label htmlFor="confirmarSenha">Confirmar senha</Label>
-                  <Input
-                    id="confirmarSenha"
-                    type="password"
-                    value={confirmarSenha}
-                    onChange={(e) => setConfirmarSenha(e.target.value)}
-                    placeholder="Repita a senha"
-                    required
-                    disabled={registering}
-                    className="h-11"
-                  />
+                  <Input id="confirmarSenha" type="password" value={confirmarSenha} onChange={(e) => setConfirmarSenha(e.target.value)} placeholder="Repita a senha" required disabled={registering} className="h-11" />
                   {confirmarSenha && senha !== confirmarSenha && (
                     <p className="text-xs text-red-500">As senhas não conferem</p>
                   )}
                 </div>
 
-                <Button type="submit" className="w-full h-11" disabled={registering}>
-                  {registering ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Lock className="mr-2 h-4 w-4" />}
-                  {registering ? 'Criando conta...' : 'Criar conta'}
-                </Button>
+                <div className="flex justify-end gap-2 pt-2">
+                  <Button type="button" variant="outline" onClick={() => { setValidado(false); setErroValidacao(''); }}>
+                    Voltar
+                  </Button>
+                  <Button type="submit" disabled={registering}>
+                    {registering ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Lock className="mr-2 h-4 w-4" />}
+                    {registering ? 'Criando conta...' : 'Criar conta'}
+                  </Button>
+                </div>
               </>
             )}
 
-            <p className="text-center text-xs text-slate-400">
+            <p className="text-center text-xs text-slate-400 pt-2">
               Já possui conta? <a href="/admin/login" className="text-brand-600 hover:underline">Faça login</a>
             </p>
           </form>
