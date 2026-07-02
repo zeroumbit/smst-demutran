@@ -14,6 +14,13 @@ import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
 import type { IROOperacao, IROCandidatura } from '@/types/admin';
 
+const fmtDateBR = (d: string | null | undefined): string => {
+  if (!d) return '';
+  const [y, m, day] = d.split('-');
+  if (!y || !m || !day) return d;
+  return `${day}/${m}/${y}`;
+};
+
 const GuardaIros = () => {
   const navigate = useNavigate();
   const { user, profile } = useAuth();
@@ -180,7 +187,7 @@ const GuardaIros = () => {
                       <h3 className="mt-2 text-base font-bold text-slate-900">{op.nome}</h3>
                       {op.descricao && <p className="text-sm text-slate-500 mt-0.5">{op.descricao}</p>}
                       <div className="mt-2 flex flex-wrap gap-3 text-xs text-slate-500">
-                        <span className="flex items-center gap-1"><Calendar className="h-3.5 w-3.5" />{new Date(op.data_inicio).toLocaleDateString('pt-BR')} - {new Date(op.data_fim).toLocaleDateString('pt-BR')}</span>
+                        <span className="flex items-center gap-1"><Calendar className="h-3.5 w-3.5" />{fmtDateBR(op.data_inicio)} - {fmtDateBR(op.data_fim)}</span>
                         <span className="flex items-center gap-1"><Clock className="h-3.5 w-3.5" />{op.horario_previsto.slice(0, 5)}</span>
                         <span className="flex items-center gap-1"><Hourglass className="h-3.5 w-3.5" />{op.horas_por_dia}h/dia</span>
                       </div>
@@ -208,7 +215,7 @@ const GuardaIros = () => {
                   <div>
                     <p className="text-sm font-semibold text-slate-800">{c.operacao_nome}</p>
                     <p className="text-xs text-slate-500">
-                      {new Date(c.data_operacao).toLocaleDateString('pt-BR')} &middot; {c.horas_trabalhadas}h &middot;
+                      {fmtDateBR(c.data_operacao)} &middot; {c.horas_trabalhadas}h &middot;
                       <Badge variant="outline" className={cn('ml-1.5 rounded-full text-[10px] font-bold px-2 py-0', c.status === 'confirmado' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200')}>
                         {c.status}
                       </Badge>
@@ -237,7 +244,7 @@ const GuardaIros = () => {
                 <p><strong>Horário:</strong> {selectedOperacao.horario_previsto.slice(0, 5)}</p>
                 <p><strong>Horas por dia:</strong> {selectedOperacao.horas_por_dia}h</p>
                 <p><strong>Vagas:</strong> {selectedOperacao.vagas_por_dia}/dia</p>
-                <p><strong>Período:</strong> {new Date(selectedOperacao.data_inicio).toLocaleDateString('pt-BR')} - {new Date(selectedOperacao.data_fim).toLocaleDateString('pt-BR')}</p>
+                <p><strong>Período:</strong> {fmtDateBR(selectedOperacao.data_inicio)} - {fmtDateBR(selectedOperacao.data_fim)}</p>
               </div>
               <div className="space-y-2">
                 <Label>Data para candidatura</Label>

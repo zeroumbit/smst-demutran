@@ -55,6 +55,13 @@ const operacaoFormInitial = {
   vagas_por_dia: 1, horas_por_dia: 8, tempo_solicitacao: 'imediato',
 };
 
+const fmtDateBR = (d: string | null | undefined): string => {
+  if (!d) return '';
+  const [y, m, day] = d.split('-');
+  if (!y || !m || !day) return d;
+  return `${day}/${m}/${y}`;
+};
+
 const BASE_IROS = '/admin/iros/guarda-municipal';
 
 const GuardaMunicipalIros = () => {
@@ -391,7 +398,7 @@ const GuardaMunicipalIros = () => {
             {item.descricao && <p className="text-sm text-slate-600 mt-1">{item.descricao}</p>}
           </div>
           <div className="flex flex-wrap gap-3 text-sm text-slate-500">
-            <span className="flex items-center gap-1"><Calendar className="h-3.5 w-3.5" />{new Date(item.data_inicio).toLocaleDateString('pt-BR')} - {new Date(item.data_fim).toLocaleDateString('pt-BR')}</span>
+            <span className="flex items-center gap-1"><Calendar className="h-3.5 w-3.5" />{fmtDateBR(item.data_inicio)} - {fmtDateBR(item.data_fim)}</span>
             <span className="flex items-center gap-1"><Clock className="h-3.5 w-3.5" />{item.horario_previsto.slice(0, 5)}</span>
             <span className="flex items-center gap-1"><Hourglass className="h-3.5 w-3.5" />{item.horas_por_dia}h/dia</span>
           </div>
@@ -438,7 +445,7 @@ const GuardaMunicipalIros = () => {
         <div className="flex-1 min-w-0">
           <p className="font-semibold text-slate-900">{item.operacao_nome}</p>
           <p className="text-sm text-slate-500 mt-0.5">
-            {usuarioMap.get(item.usuario_id) || '—'} &middot; {new Date(item.data_operacao).toLocaleDateString('pt-BR')} &middot; {item.horas_trabalhadas}h
+            {usuarioMap.get(item.usuario_id) || '—'} &middot; {fmtDateBR(item.data_operacao)} &middot; {item.horas_trabalhadas}h
           </p>
         </div>
         {item.usuario_id === user?.user_id && item.status !== 'cancelado' && (
@@ -595,7 +602,7 @@ const GuardaMunicipalIros = () => {
           open={Boolean(selectedOperacao)}
           onOpenChange={(open) => { if (!open) { setSelectedOperacao(null); setOperacaoCandidaturas([]); } }}
           title={selectedOperacao?.nome || 'Detalhes da operação'}
-          description={selectedOperacao ? `${new Date(selectedOperacao.data_inicio).toLocaleDateString('pt-BR')} - ${new Date(selectedOperacao.data_fim).toLocaleDateString('pt-BR')} • ${selectedOperacao.vagas_por_dia} vaga(s)/dia` : ''}
+          description={selectedOperacao ? `${fmtDateBR(selectedOperacao.data_inicio)} - ${fmtDateBR(selectedOperacao.data_fim)} • ${selectedOperacao.vagas_por_dia} vaga(s)/dia` : ''}
         >
           {selectedOperacao && (
             <div className="space-y-6 py-2">
@@ -655,7 +662,7 @@ const GuardaMunicipalIros = () => {
                           <Badge variant="outline" className={cn('rounded-full text-[10px] font-bold px-2 py-0', STATUS_CANDIDATURA_VARIANT[c.status])}>
                             {c.status}
                           </Badge>
-                          <span className="text-slate-500">{new Date(c.data_operacao).toLocaleDateString('pt-BR')} • {c.horas_trabalhadas}h</span>
+                          <span className="text-slate-500">{fmtDateBR(c.data_operacao)} • {c.horas_trabalhadas}h</span>
                         </div>
                         {c.usuario_id === user?.user_id && c.status !== 'cancelado' && (
                           <Button size="sm" variant="outline" className="text-red-600 border-red-200 h-7 text-xs" onClick={() => void handleCancelarCandidatura(c)}>
