@@ -46,6 +46,8 @@ export interface AdminProfile {
   ativo: boolean;
   legacy_admin: boolean;
   modulos?: ModuloSistema[];
+  graduacao_id?: string | null;
+  graduacao_nome?: string | null;
 }
 
 export interface Setor {
@@ -74,9 +76,37 @@ export interface GuardaMunicipal {
   cpf?: string | null;
   graduacao_id: string;
   graduacao_nome?: string | null;
+  senha?: string | null;
+  senha_provisoria?: string | null;
+  email?: string | null;
+  telefone?: string | null;
+  primeira_vez_acesso?: boolean;
+  data_criacao_senha?: string | null;
+  data_ultimo_acesso?: string | null;
   ativo: boolean;
   created_at?: string | null;
   updated_at?: string | null;
+}
+
+export interface GuardaPerfil {
+  id: string;
+  matricula: string;
+  nome: string;
+  cpf: string | null;
+  graduacao_id: string;
+  graduacao_nome: string | null;
+  email: string | null;
+  telefone: string | null;
+  primeira_vez_acesso: boolean;
+  data_criacao_senha: string | null;
+  data_ultimo_acesso: string | null;
+}
+
+export interface GuardaUsuarioVinculo {
+  id: string;
+  guarda_id: string;
+  usuario_id: string;
+  created_at: string;
 }
 
 export type IROTipo =
@@ -204,6 +234,8 @@ export interface AdminProfileRow {
   ativo: boolean;
   modulos?: string[] | null;
   created_at?: string | null;
+  graduacao_id?: string | null;
+  graduacao_nome?: string | null;
 }
 
 export interface VeiculoRecolhido {

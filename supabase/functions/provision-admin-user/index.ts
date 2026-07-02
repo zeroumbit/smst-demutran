@@ -11,6 +11,7 @@ type ProvisionRequest = {
   papel: PapelUsuario;
   active: boolean;
   modulos?: string[];
+  graduacaoId?: string | null;
 };
 
 const corsHeaders = {
@@ -157,6 +158,7 @@ Deno.serve(async (req) => {
         nome: firstName,
         sobrenome: lastName,
         ativo: active,
+        graduacao_id: payload.graduacaoId || null,
       })
       .select('*')
       .single();

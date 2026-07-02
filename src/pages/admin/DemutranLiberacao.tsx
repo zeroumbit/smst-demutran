@@ -323,6 +323,9 @@ const DemutranLiberacao = () => {
   const [isCpfDialogOpen, setIsCpfDialogOpen] = useState(false);
   const [cpfEditItem, setCpfEditItem] = useState<VeiculoRecolhido | null>(null);
   const [cpfEditValue, setCpfEditValue] = useState('');
+  const [cpfEditName, setCpfEditName] = useState('');
+  const [cpfEditLogradouro, setCpfEditLogradouro] = useState('');
+  const [cpfEditBairro, setCpfEditBairro] = useState('');
   const [cpfEditJustificativa, setCpfEditJustificativa] = useState('');
   const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
   const [reportTipo, setReportTipo] = useState<string>('todos');
@@ -632,7 +635,7 @@ const DemutranLiberacao = () => {
   const filteredLogradouroSuggestions = useMemo(() => {
     const termo = apreensaoForm.logradouro.trim().toLowerCase();
     if (!termo) {
-      return logradouroSuggestions.slice(0, 40);
+      return [];
     }
 
     return logradouroSuggestions
@@ -939,6 +942,9 @@ const DemutranLiberacao = () => {
   const openCpfDialog = (item: VeiculoRecolhido) => {
     setCpfEditItem(item);
     setCpfEditValue(item.proprietario_cpf_cnpj || '');
+    setCpfEditName(item.proprietario_nome === 'Nao informado' ? '' : (item.proprietario_nome || ''));
+    setCpfEditLogradouro(item.logradouro || '');
+    setCpfEditBairro(item.bairro_apreensao || '');
     setCpfEditJustificativa('');
     setIsCpfDialogOpen(true);
   };
@@ -946,6 +952,9 @@ const DemutranLiberacao = () => {
   const closeCpfDialog = () => {
     setCpfEditItem(null);
     setCpfEditValue('');
+    setCpfEditName('');
+    setCpfEditLogradouro('');
+    setCpfEditBairro('');
     setCpfEditJustificativa('');
     setIsCpfDialogOpen(false);
   };
@@ -953,29 +962,38 @@ const DemutranLiberacao = () => {
   const handleSubmitCpf = async () => {
     if (!cpfEditItem) return;
 
-    if (!cpfEditJustificativa.trim()) {
-      toast({ title: 'Justificativa obrigatoria', description: 'Informe o motivo da alteracao do CPF/CNPJ.', variant: 'destructive' });
-      return;
-    }
-
     const cpfNumeros = cpfEditValue.replace(/\D/g, '');
-    if (cpfNumeros.length !== 11 && cpfNumeros.length !== 14) {
+    if (cpfEditValue && cpfNumeros.length !== 11 && cpfNumeros.length !== 14) {
       toast({ title: 'CPF/CNPJ invalido', description: 'Informe um CPF (11 digitos) ou CNPJ (14 digitos) valido.', variant: 'destructive' });
       return;
     }
 
-    const { error } = await supabase.rpc('atualizar_cpf_veiculo_recolhido', {
-      _veiculo_id: cpfEditItem.id,
-      _cpf_cnpj: cpfEditValue,
-      _justificativa: cpfEditJustificativa.trim(),
-    });
+    let novaObservacao = cpfEditItem.observacao;
+    if (cpfEditJustificativa.trim()) {
+      const timestamp = new Date().toLocaleString('pt-BR');
+      const logText = `[Dados Proprietario] ${timestamp} - ${cpfEditJustificativa.trim()}`;
+      novaObservacao = novaObservacao ? `${novaObservacao}\n${logText}` : logText;
+    }
+
+    const { error } = await supabase
+      .from('veiculos_recolhidos')
+      .update({
+        proprietario_nome: cpfEditName.trim() || 'Nao informado',
+        proprietario_cpf_cnpj: cpfNumeros ? cpfEditValue : null,
+        logradouro: cpfEditLogradouro.trim() || null,
+        bairro_apreensao: cpfEditBairro.trim() || null,
+        observacao: novaObservacao,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', cpfEditItem.id)
+      .eq('setor_id', effectiveSetorId);
 
     if (error) {
-      toast({ title: 'Erro ao atualizar CPF', description: error.message, variant: 'destructive' });
+      toast({ title: 'Erro ao atualizar dados', description: error.message, variant: 'destructive' });
       return;
     }
 
-    toast({ title: 'CPF/CNPJ atualizado', description: 'O CPF/CNPJ do proprietario foi salvo com sucesso.' });
+    toast({ title: 'Dados atualizados', description: 'Os dados do proprietario foram salvos com sucesso.' });
     closeCpfDialog();
     loadVeiculos();
   };
@@ -1200,7 +1218,7 @@ const DemutranLiberacao = () => {
         <div className="flex items-center justify-end gap-2">
           <Button type="button" variant="outline" size="sm" className="gap-2" onClick={() => openCpfDialog(item)}>
             <Search className="h-4 w-4" />
-            CPF
+            Proprietario
           </Button>
           <Button type="button" variant="outline" size="sm" className="gap-2" onClick={() => openTaxaDialog(item)}>
             <CircleDollarSign className="h-4 w-4" />
@@ -1351,7 +1369,7 @@ const DemutranLiberacao = () => {
           <div className="flex items-center justify-between">
             <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Proprietario</p>
             <Button type="button" variant="link" size="sm" className="h-auto p-0 text-xs" onClick={() => openCpfDialog(item)}>
-              {item.proprietario_cpf_cnpj ? 'Editar CPF' : 'Adicionar CPF'}
+              {item.proprietario_cpf_cnpj || item.proprietario_nome !== 'Nao informado' ? 'Editar dados' : 'Adicionar dados'}
             </Button>
           </div>
           <p className="mt-1 text-[15px] font-semibold tracking-[-0.02em] text-slate-900">
@@ -2118,7 +2136,7 @@ const DemutranLiberacao = () => {
                                 openCpfDialog(detalhesItem);
                               }}
                             >
-                              {detalhesItem.proprietario_cpf_cnpj ? 'Editar' : 'Adicionar'}
+                              Editar dados
                             </Button>
                           ),
                         },
@@ -2348,13 +2366,22 @@ const DemutranLiberacao = () => {
         <ResponsiveDialog
           open={isCpfDialogOpen}
           onOpenChange={setIsCpfDialogOpen}
-          title="Editar CPF/CNPJ do proprietario"
+          title="Editar dados do proprietario"
           description={cpfEditItem ? `${cpfEditItem.placa} • ${cpfEditItem.descricao_veiculo}` : ''}
           onCancel={closeCpfDialog}
           onConfirm={handleSubmitCpf}
-          confirmLabel="Salvar CPF"
+          confirmLabel="Salvar dados"
         >
-          <div className="space-y-3 py-2">
+          <div className="space-y-3 py-2 max-h-[70vh] overflow-y-auto px-1">
+            <div className="space-y-2">
+              <Label htmlFor="edit_nome">Nome</Label>
+              <Input
+                id="edit_nome"
+                placeholder="Nome do proprietario"
+                value={cpfEditName}
+                onChange={(e) => setCpfEditName(e.target.value)}
+              />
+            </div>
             <div className="space-y-2">
               <Label htmlFor="cpf_cnpj">CPF/CNPJ</Label>
               <Input
@@ -2365,19 +2392,38 @@ const DemutranLiberacao = () => {
                 onChange={(e) => setCpfEditValue(maskCpf(e.target.value))}
               />
             </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label htmlFor="edit_logradouro">Endereço (logradouro)</Label>
+                <Input
+                  id="edit_logradouro"
+                  placeholder="Nome da rua"
+                  value={cpfEditLogradouro}
+                  onChange={(e) => setCpfEditLogradouro(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit_bairro">Bairro / Distrito</Label>
+                <Input
+                  id="edit_bairro"
+                  placeholder="Bairro"
+                  value={cpfEditBairro}
+                  onChange={(e) => setCpfEditBairro(e.target.value)}
+                />
+              </div>
+            </div>
             <div className="space-y-2">
-              <Label htmlFor="cpf_justificativa">Justificativa *</Label>
+              <Label htmlFor="cpf_justificativa">Justificativa (Opcional)</Label>
               <Textarea
                 id="cpf_justificativa"
-                rows={3}
-                placeholder="Informe o motivo da alteracao do CPF/CNPJ (ex.: proprietario compareceu ao DEMUTRAN com documento)"
+                rows={2}
+                placeholder="Informe o motivo da alteracao se necessario"
                 value={cpfEditJustificativa}
                 onChange={(e) => setCpfEditJustificativa(e.target.value)}
               />
             </div>
             <p className="text-sm text-muted-foreground">
-              A justificativa sera registrada no historico do veiculo. O CPF/CNPJ permite que o proprietario
-              consulte a situacao do veiculo online usando o protocolo da apreensao.
+              A justificativa sera registrada no historico de observacoes do veiculo.
             </p>
           </div>
         </ResponsiveDialog>

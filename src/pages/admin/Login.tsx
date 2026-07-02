@@ -4,21 +4,41 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Eye, EyeOff, Loader2 } from 'lucide-react';
+import { Eye, EyeOff, Loader2, Shield } from 'lucide-react';
 
 const Login = () => {
-  const [email, setEmail] = useState('');
+  const [loginInput, setLoginInput] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const { login } = useAuth();
+  const [tipoLogin, setTipoLogin] = useState<'email' | 'cpf'>('email');
+  const { login, loginGuarda } = useAuth();
+
+  const isCPF = (value: string) => {
+    const digits = value.replace(/\D/g, '');
+    return digits.length === 11;
+  };
+
+  const handleInputChange = (value: string) => {
+    setLoginInput(value);
+    if (isCPF(value)) {
+      setTipoLogin('cpf');
+    } else {
+      setTipoLogin('email');
+    }
+  };
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    if (!loginInput || !password) return;
     setIsLoading(true);
 
     try {
-      await login(email, password);
+      if (tipoLogin === 'cpf') {
+        await loginGuarda(loginInput, password);
+      } else {
+        await login(loginInput, password);
+      }
     } catch (error) {
       console.error('Erro inesperado no login:', error);
     } finally {
@@ -58,19 +78,31 @@ const Login = () => {
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-sm font-medium">
-                E-mail
+              <Label htmlFor="login" className="text-sm font-medium">
+                {tipoLogin === 'cpf' ? 'CPF' : 'E-mail'}
               </Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="seu.email@caninde.ce.gov.br"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                disabled={isLoading}
-                className="h-11"
-              />
+              <div className="relative">
+                <Input
+                  id="login"
+                  type={tipoLogin === 'cpf' ? 'text' : 'email'}
+                  placeholder={tipoLogin === 'cpf' ? '000.000.000-00' : 'seu.email@caninde.ce.gov.br'}
+                  value={loginInput}
+                  onChange={(e) => handleInputChange(e.target.value)}
+                  required
+                  disabled={isLoading}
+                  className="h-11"
+                />
+                {tipoLogin === 'cpf' && (
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                    <Shield className="h-4 w-4 text-brand-500" />
+                  </div>
+                )}
+              </div>
+              <p className="text-xs text-slate-400">
+                {tipoLogin === 'cpf'
+                  ? 'Identificado como CPF de guarda municipal'
+                  : 'Digite seu email ou CPF para login'}
+              </p>
             </div>
 
             <div className="space-y-2">
@@ -113,8 +145,6 @@ const Login = () => {
                 'Entrar'
               )}
             </Button>
-
-
           </form>
         </CardContent>
       </Card>

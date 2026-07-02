@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Building2, Check, CheckCircle, Eye, EyeOff, IdCard, Plus, Search, SlidersHorizontal, Users, X } from 'lucide-react';
+import { Building2, Check, CheckCircle, Eye, EyeOff, GraduationCap, IdCard, Plus, Search, SlidersHorizontal, Users, X } from 'lucide-react';
 import { useConfirmDialog } from '@/components/ui/use-confirm-dialog';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { DataTable } from '@/components/admin/DataTable';
@@ -21,7 +21,7 @@ import { supabase } from '@/lib/supabase';
 import { provisionAdminUser } from '@/lib/adminProvision';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
-import type { AdminProfileRow, ModuloSistema, PapelUsuario, Setor } from '@/types/admin';
+import type { AdminProfileRow, GuardaMunicipalGraduacao, ModuloSistema, PapelUsuario, Setor } from '@/types/admin';
 import { MODULOS_POR_SETOR } from '@/types/admin';
 
 const papelOptions: Array<{ value: PapelUsuario; label: string }> = [
@@ -62,6 +62,7 @@ const UsuariosPage = () => {
   const { isSuperAdmin, setorId: currentSetorId, profile } = useAuth();
   const { confirm, confirmDialog } = useConfirmDialog();
   const [setores, setSetores] = useState<Setor[]>([]);
+  const [graduacoes, setGraduacoes] = useState<GuardaMunicipalGraduacao[]>([]);
   const [usuarios, setUsuarios] = useState<AdminProfileRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -75,12 +76,14 @@ const UsuariosPage = () => {
   const [formData, setFormData] = useState(initialForm);
   const [showPassword, setShowPassword] = useState(false);
   const [selectedModulos, setSelectedModulos] = useState<ModuloSistema[]>([]);
+  const [selectedGraduacaoId, setSelectedGraduacaoId] = useState('');
   const [editingItem, setEditingItem] = useState<AdminProfileRow | null>(null);
   const [editNome, setEditNome] = useState('');
   const [editSobrenome, setEditSobrenome] = useState('');
   const [editPapel, setEditPapel] = useState<PapelUsuario>('admin_setor');
   const [editSetorId, setEditSetorId] = useState('');
   const [editModulos, setEditModulos] = useState<ModuloSistema[]>([]);
+  const [editGraduacaoId, setEditGraduacaoId] = useState('');
 
   const loadSetores = async () => {
     const { data, error } = await supabase.rpc('get_manageable_setores');
@@ -88,6 +91,15 @@ const UsuariosPage = () => {
     if (!error) {
       setSetores((data || []) as Setor[]);
     }
+  };
+
+  const loadGraduacoes = async () => {
+    const { data } = await supabase
+      .from('guarda_municipal_graduacoes')
+      .select('id, nome, ordem, ativo')
+      .eq('ativo', true)
+      .order('ordem', { ascending: true });
+    setGraduacoes((data || []) as GuardaMunicipalGraduacao[]);
   };
 
   const loadUsuarios = async (setorIdToLoad?: string) => {
@@ -115,6 +127,7 @@ const UsuariosPage = () => {
 
   useEffect(() => {
     loadSetores();
+    loadGraduacoes();
   }, []);
 
   useEffect(() => {
@@ -149,6 +162,7 @@ const UsuariosPage = () => {
   const handleClose = () => {
     setFormData(initialForm);
     setSelectedModulos([]);
+    setSelectedGraduacaoId('');
     setIsDialogOpen(false);
   };
 
@@ -192,6 +206,7 @@ const UsuariosPage = () => {
         papel: formData.papel,
         active: formData.active,
         modulos: isSuperAdmin ? undefined : selectedModulos,
+        graduacaoId: selectedGraduacaoId || undefined,
       });
 
       toast({
@@ -261,6 +276,7 @@ const UsuariosPage = () => {
     setEditPapel(item.papel);
     setEditSetorId(item.setor_id || '');
     setEditModulos((item.modulos as ModuloSistema[]) || []);
+    setEditGraduacaoId(item.graduacao_id || '');
     setIsEditDialogOpen(true);
   };
 
@@ -279,6 +295,7 @@ const UsuariosPage = () => {
         _sobrenome: editSobrenome.trim(),
         _papel: editPapel,
         _setor_id: editSetorId || null,
+        _graduacao_id: editGraduacaoId || null,
       });
 
       if (error) throw error;
@@ -331,6 +348,17 @@ const UsuariosPage = () => {
       ),
     },
     { header: 'Setor', accessor: (item: AdminProfileRow) => item.setor_nome || 'Sem setor' },
+    {
+      header: 'Graduação',
+      accessor: (item: AdminProfileRow) => item.graduacao_nome ? (
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-3 py-0.5 text-xs font-bold text-amber-700">
+          <GraduationCap className="h-3 w-3" />
+          {item.graduacao_nome}
+        </span>
+      ) : (
+        <span className="text-xs text-slate-400">—</span>
+      ),
+    },
     {
       header: 'Status',
       accessor: (item: AdminProfileRow) => (
@@ -405,6 +433,23 @@ const UsuariosPage = () => {
           <div className="rounded-xl bg-slate-50 px-3 py-2">
             <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">Setor</p>
             <p className="mt-0.5 font-semibold text-slate-800">{item.setor_nome || 'Sem setor'}</p>
+          </div>
+          <div className="rounded-xl bg-slate-50 px-3 py-2">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">Graduação</p>
+            <p className="mt-0.5 font-semibold text-slate-800">
+              {item.graduacao_nome ? (
+                <span className="inline-flex items-center gap-1 text-amber-700">
+                  <GraduationCap className="h-3.5 w-3.5" />
+                  {item.graduacao_nome}
+                </span>
+              ) : '—'}
+            </p>
+          </div>
+          <div className="rounded-xl bg-slate-50 px-3 py-2">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">Status</p>
+            <Badge variant="outline" className={cn('mt-0.5 rounded-full px-2 py-0.5 text-[11px] font-bold', item.ativo ? 'bg-emerald-100 text-emerald-800 border-emerald-200' : 'bg-slate-100 text-slate-800 border-slate-200')}>
+              {item.ativo ? 'Ativo' : 'Inativo'}
+            </Badge>
           </div>
         </div>
 
@@ -707,6 +752,22 @@ const UsuariosPage = () => {
               </Select>
             </div>
 
+            <div className="space-y-2">
+              <Label>Graduação na Guarda (opcional)</Label>
+              <p className="text-xs text-muted-foreground">Se vinculada, o usuário também poderá atuar como guarda municipal no módulo IRO.</p>
+              <Select value={selectedGraduacaoId} onValueChange={(v) => setSelectedGraduacaoId(v === '__none__' ? '' : v)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Nenhuma graduação" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">Nenhuma</SelectItem>
+                  {graduacoes.map((g) => (
+                    <SelectItem key={g.id} value={g.id}>{g.nome}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
             {!isSuperAdmin && (
               <div className="space-y-2">
                 <Label>Modulos de acesso</Label>
@@ -830,6 +891,22 @@ const UsuariosPage = () => {
                   {setores.find((s) => s.id === currentSetorId)?.nome || 'Setor atual'}
                 </div>
               )}
+            </div>
+
+            <div className="space-y-2">
+              <Label>Graduação na Guarda (opcional)</Label>
+              <p className="text-xs text-muted-foreground">Permite atuar como guarda municipal no módulo IRO.</p>
+              <Select value={editGraduacaoId} onValueChange={(v) => setEditGraduacaoId(v === '__none__' ? '' : v)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Nenhuma graduação" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">Nenhuma</SelectItem>
+                  {graduacoes.map((g) => (
+                    <SelectItem key={g.id} value={g.id}>{g.nome}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             {editPapel !== 'super_admin' && (
