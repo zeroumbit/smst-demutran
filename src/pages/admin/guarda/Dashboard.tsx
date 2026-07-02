@@ -3,7 +3,7 @@ import { GuardsLayout } from '@/components/admin/GuardsLayout';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
-import { Clock, Calendar, Hourglass, Banknote, RefreshCcw } from 'lucide-react';
+import { Calendar, Hourglass, Banknote, RefreshCcw } from 'lucide-react';
 
 interface ResumoGuarda {
   total_horas_mes: number;
@@ -21,7 +21,7 @@ const fmtDateBR = (d: string | null | undefined): string => {
 const GuardaDashboard = () => {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
-  const [resumo, setResumo] = useState<ResumoGuarda>({ total_horas_mes: 0, horas_disponiveis: 72, banco_horas: 0 });
+  const [resumo, setResumo] = useState<ResumoGuarda>({ total_horas_mes: 0, horas_disponiveis: 0, banco_horas: 0 });
   const [ultimasCandidaturas, setUltimasCandidaturas] = useState<any[]>([]);
   const [guardaNome, setGuardaNome] = useState('');
 
@@ -64,7 +64,7 @@ const GuardaDashboard = () => {
 
       setResumo({
         total_horas_mes: totalHoras,
-        horas_disponiveis: Math.max(0, 72 - totalHoras),
+        horas_disponiveis: 0,
         banco_horas: banco ? Number((banco as any).horas_excedentes) : 0,
       });
     } catch {
@@ -78,7 +78,6 @@ const GuardaDashboard = () => {
 
   const stats = useMemo(() => [
     { label: 'Total no mês', value: `${resumo.total_horas_mes}h`, icon: Calendar, color: 'text-blue-600 bg-blue-50' },
-    { label: 'Horas disponíveis', value: `${resumo.horas_disponiveis}h`, icon: Clock, color: 'text-emerald-600 bg-emerald-50' },
     { label: 'Banco de horas', value: `${resumo.banco_horas}h`, icon: Hourglass, color: 'text-amber-600 bg-amber-50' },
     { label: 'Valor acumulado', value: 'R$ 0,00', icon: Banknote, color: 'text-purple-600 bg-purple-50' },
   ], [resumo]);

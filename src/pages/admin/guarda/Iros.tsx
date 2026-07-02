@@ -39,7 +39,7 @@ const GuardaIros = () => {
 
   const [operacoes, setOperacoes] = useState<IROOperacao[]>([]);
   const [minhasCandidaturas, setMinhasCandidaturas] = useState<IROCandidatura[]>([]);
-  const [resumo, setResumo] = useState({ total_horas_mes: 0, horas_disponiveis: 72, banco_horas: 0 });
+  const [resumo, setResumo] = useState({ total_horas_mes: 0, horas_disponiveis: 0, banco_horas: 0 });
 
   const [selectedOperacao, setSelectedOperacao] = useState<IROOperacao | null>(null);
   const [candidaturaData, setCandidaturaData] = useState({ data_operacao: new Date().toISOString().slice(0, 10) });
@@ -73,7 +73,7 @@ const GuardaIros = () => {
 
       setResumo({
         total_horas_mes: horasMes,
-        horas_disponiveis: Math.max(0, 72 - horasMes),
+        horas_disponiveis: 0,
         banco_horas: banco ? Number((banco as any).horas_excedentes) : 0,
       });
     } catch {
@@ -188,10 +188,6 @@ const GuardaIros = () => {
           <div className="rounded-2xl border border-slate-200 bg-white p-4">
             <p className="text-xs font-bold uppercase tracking-[0.1em] text-slate-500">Total no mês</p>
             <p className="mt-1 text-2xl font-black text-slate-900">{resumo.total_horas_mes}h</p>
-          </div>
-          <div className="rounded-2xl border border-slate-200 bg-white p-4">
-            <p className="text-xs font-bold uppercase tracking-[0.1em] text-slate-500">Disponível</p>
-            <p className="mt-1 text-2xl font-black text-emerald-600">{resumo.horas_disponiveis}h</p>
           </div>
           <div className="rounded-2xl border border-slate-200 bg-white p-4">
             <p className="text-xs font-bold uppercase tracking-[0.1em] text-slate-500">Banco de horas</p>
