@@ -58,7 +58,8 @@ const GuardaMunicipalIros = () => {
   const { setorId, profile, user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [section, setSection] = useState<Section>('operacoes');
-  const isGestor = profile?.papel === 'gestor' || profile?.papel === 'super_admin' || profile?.papel === 'admin_setor' || (profile?.papel === 'tecnico' && profile?.modulos?.includes('iros'));
+  const podeVerTudo = profile?.papel === 'gestor' || profile?.papel === 'super_admin' || profile?.papel === 'admin_setor';
+  const canManageOperacoes = podeVerTudo || (profile?.papel === 'tecnico' && profile?.modulos?.includes('iros'));
 
   const [operacoes, setOperacoes] = useState<IROOperacao[]>([]);
   const [candidaturas, setCandidaturas] = useState<IROCandidatura[]>([]);
@@ -85,9 +86,15 @@ const GuardaMunicipalIros = () => {
 
       const [opRes, candRes, bhRes, notifRes, userRes] = await Promise.all([
         baseFilter(supabase.from('iro_operacoes').select('*').order('data_inicio', { ascending: false })),
-        supabase.from('iro_candidaturas').select('*, iro_operacoes!inner(nome)').order('created_at', { ascending: false }),
-        supabase.from('iro_banco_horas').select('*').order('created_at', { ascending: false }),
-        supabase.from('iro_notificacoes').select('*').order('created_at', { ascending: false }),
+        podeVerTudo
+          ? supabase.from('iro_candidaturas').select('*, iro_operacoes!inner(nome)').order('created_at', { ascending: false })
+          : supabase.from('iro_candidaturas').select('*, iro_operacoes!inner(nome)').eq('usuario_id', user!.id).order('created_at', { ascending: false }),
+        podeVerTudo
+          ? supabase.from('iro_banco_horas').select('*').order('created_at', { ascending: false })
+          : supabase.from('iro_banco_horas').select('*').eq('usuario_id', user!.id).order('created_at', { ascending: false }),
+        podeVerTudo
+          ? supabase.from('iro_notificacoes').select('*').order('created_at', { ascending: false })
+          : supabase.from('iro_notificacoes').select('*').eq('usuario_id', user!.id).order('created_at', { ascending: false }),
         supabase.from('perfis_usuarios').select('user_id, nome, sobrenome').eq('ativo', true),
       ]);
 
@@ -155,7 +162,7 @@ const GuardaMunicipalIros = () => {
 
   const filteredCandidaturas = useMemo(() => {
     const term = search.trim().toLowerCase();
-    const list = isGestor ? candidaturas : minhasCandidaturas;
+    const list = podeVerTudo ? candidaturas : minhasCandidaturas;
     return list.filter((c) => {
       if (term && !`${c.operacao_nome} ${usuarioMap.get(c.usuario_id) || ''}`.toLowerCase().includes(term)) return false;
       if (statusFilter !== 'todas' && c.status !== statusFilter) return false;
@@ -164,7 +171,7 @@ const GuardaMunicipalIros = () => {
   }, [candidaturas, minhasCandidaturas, search, statusFilter, isGestor, usuarioMap]);
 
   const filteredBancoHoras = useMemo(() => {
-    const list = isGestor ? bancoHoras : (meuBancoHoras ? [meuBancoHoras] : []);
+    const list = podeVerTudo ? bancoHoras : (meuBancoHoras ? [meuBancoHoras] : []);
     const term = search.trim().toLowerCase();
     return list.filter((b) => {
       if (term && !(usuarioMap.get(b.usuario_id) || '').toLowerCase().includes(term)) return false;
@@ -318,7 +325,7 @@ const GuardaMunicipalIros = () => {
             <Button size="sm" variant="outline" onClick={() => void openOperacaoDetails(item)}>
               Ver detalhes <ChevronRight className="ml-1 h-4 w-4" />
             </Button>
-            {isGestor && (
+            {canManageOperacoes && (
               <>
                 <Button size="sm" variant="outline" onClick={() => openEditOperacao(item)}>Editar</Button>
                 <Button size="sm" variant="outline" onClick={() => void handleToggleAtiva(item)}>
@@ -483,7 +490,7 @@ const GuardaMunicipalIros = () => {
           </div>
 
           <div className="flex gap-2">
-            {section === 'operacoes' && isGestor && (
+            {section === 'operacoes' && canManageOperacoes && (
               <Button onClick={openCreateOperacao}><Plus className="mr-2 h-4 w-4" />Nova Operação</Button>
             )}
             {section === 'notificacoes' && notifNaoLidas > 0 && (
