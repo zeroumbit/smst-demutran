@@ -42,7 +42,22 @@ async function fetchUserProfile(): Promise<AdminProfile | null> {
       return profile;
     }
 
-    const { data: isGuarda } = await supabase.rpc('is_guarda');
+    let isGuarda = false;
+    try {
+      const { data: r } = await supabase.rpc('is_guarda');
+      isGuarda = !!r;
+    } catch {
+      try {
+        const { data: gu } = await supabase
+          .from('guardas_usuarios')
+          .select('id')
+          .eq('usuario_id', (await supabase.auth.getUser()).data?.user?.id || '')
+          .maybeSingle();
+        isGuarda = !!gu;
+      } catch {
+        // silent
+      }
+    }
     if (isGuarda) {
       const { data: userData } = await supabase.auth.getUser();
       const email = userData?.user?.email || '';
@@ -54,13 +69,38 @@ async function fetchUserProfile(): Promise<AdminProfile | null> {
           guardaNome = (guardaPerfil as any).nome || guardaNome;
         }
       } catch {
-        // silent
+        try {
+          const { data: gu } = await supabase
+            .from('guardas_usuarios')
+            .select('guarda_id')
+            .eq('usuario_id', userData?.user?.id || '')
+            .maybeSingle();
+          if (gu?.guarda_id) {
+            const { data: gm } = await supabase
+              .from('guardas_municipais')
+              .select('nome')
+              .eq('id', gu.guarda_id)
+              .single();
+            if (gm) guardaNome = (gm as any).nome || guardaNome;
+          }
+        } catch {
+          // silent
+        }
       }
       try {
         const { data: sid } = await supabase.rpc('get_guarda_municipal_setor_id');
         if (sid) guardaSetorId = sid as string;
       } catch {
-        // silent
+        try {
+          const { data: setorData } = await supabase
+            .from('setores')
+            .select('id')
+            .eq('slug', 'guarda-municipal')
+            .maybeSingle();
+          if (setorData) guardaSetorId = (setorData as any).id;
+        } catch {
+          // silent
+        }
       }
       return {
         user_id: userData?.user?.id || '',
