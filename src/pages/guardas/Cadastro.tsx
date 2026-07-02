@@ -7,96 +7,84 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from '@/hooks/use-toast';
 import { maskCpf } from '@/lib/masks';
-import { Eye, EyeOff, Loader2, Shield, ShieldCheck, User, Mail, Lock, GraduationCap } from 'lucide-react';
+import { Eye, EyeOff, Loader2, Shield, ShieldCheck, User, Mail, Lock, GraduationCap, Check } from 'lucide-react';
 import guardaLogo from '@/guarda.png';
 
 const CadastroGuarda = () => {
   const navigate = useNavigate();
-  const [passo, setPasso] = useState<'validacao' | 'cadastro' | 'sucesso'>('validacao');
-  const [validating, setValidating] = useState(false);
   const [registering, setRegistering] = useState(false);
 
   const [cpf, setCpf] = useState('');
   const [matricula, setMatricula] = useState('');
-  const [guardaId, setGuardaId] = useState<string | null>(null);
-  const [guardaNome, setGuardaNome] = useState('');
-  const [guardaGrad, setGuardaGrad] = useState('');
-
   const [apelido, setApelido] = useState('');
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
   const [confirmarSenha, setConfirmarSenha] = useState('');
   const [showSenha, setShowSenha] = useState(false);
 
-  const [erroCpf, setErroCpf] = useState('');
-  const [erroMatricula, setErroMatricula] = useState('');
+  const [validado, setValidado] = useState(false);
+  const [guardaId, setGuardaId] = useState<string | null>(null);
+  const [guardaNome, setGuardaNome] = useState('');
+  const [guardaGrad, setGuardaGrad] = useState('');
+  const [validando, setValidando] = useState(false);
+  const [erroValidacao, setErroValidacao] = useState('');
 
   useEffect(() => {
     document.title = 'Cadastro de Acesso - Guarda Municipal';
   }, []);
 
-  const handleValidar = async (e: FormEvent) => {
-    e.preventDefault();
-    setErroCpf('');
-    setErroMatricula('');
-
+  const validarCpfMatricula = async () => {
+    setErroValidacao('');
     const cpfLimpo = cpf.replace(/\D/g, '');
-    if (cpfLimpo.length !== 11) {
-      setErroCpf('CPF inválido.');
-      return;
-    }
-    if (!matricula.trim()) {
-      setErroMatricula('Informe a matrícula.');
-      return;
-    }
+    if (cpfLimpo.length !== 11) { setErroValidacao('CPF inválido.'); return false; }
+    if (!matricula.trim()) { setErroValidacao('Informe a matrícula.'); return false; }
 
-    setValidating(true);
+    setValidando(true);
     const { data, error } = await supabase.rpc('validar_dados_guarda', {
       p_cpf: cpfLimpo,
       p_matricula: matricula.trim(),
     });
+    setValidando(false);
 
-    setValidating(false);
+    if (error) { setErroValidacao(error.message); return false; }
 
-    if (error) {
-      toast({ title: 'Erro ao validar', description: error.message, variant: 'destructive' });
-      return;
-    }
-
-    const result = data as { valido: boolean; mensagem?: string; guarda_id?: string; nome?: string; matricula?: string; graduacao_id?: string; graduacao_nome?: string };
+    const result = data as { valido: boolean; mensagem?: string; guarda_id?: string; nome?: string; graduacao_nome?: string };
 
     if (!result.valido) {
-      toast({ title: 'Dados não conferem', description: result.mensagem || 'Erro ao validar seus dados.', variant: 'destructive' });
-      return;
+      setErroValidacao(result.mensagem || 'Dados não conferem.');
+      return false;
     }
 
     setGuardaId(result.guarda_id || null);
     setGuardaNome(result.nome || '');
     setGuardaGrad(result.graduacao_nome || '');
-    setPasso('cadastro');
+    setValidado(true);
+    return true;
   };
 
-  const handleCadastrar = async (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!guardaId) return;
 
-    if (!email.trim() || !senha || !confirmarSenha) {
-      toast({ title: 'Campos obrigatórios', description: 'Preencha todos os campos.', variant: 'destructive' });
-      return;
+    if (!validado) {
+      const ok = await validarCpfMatricula();
+      if (!ok) return;
     }
 
+    if (!guardaId) return;
+    if (!email.trim() || !senha || !confirmarSenha) {
+      toast({ title: 'Campos obrigatórios', description: 'Preencha e-mail, senha e confirmação.', variant: 'destructive' });
+      return;
+    }
     if (senha.length < 6) {
       toast({ title: 'Senha curta', description: 'A senha deve ter no mínimo 6 caracteres.', variant: 'destructive' });
       return;
     }
-
     if (senha !== confirmarSenha) {
-      toast({ title: 'Senhas não conferem', description: 'A nova senha e a confirmação devem ser iguais.', variant: 'destructive' });
+      toast({ title: 'Senhas não conferem', variant: 'destructive' });
       return;
     }
 
     setRegistering(true);
-
     const { error } = await supabase.rpc('criar_acesso_guarda', {
       p_guarda_id: guardaId,
       p_email: email.trim(),
@@ -104,42 +92,12 @@ const CadastroGuarda = () => {
       p_nome: guardaNome,
       p_apelido: apelido.trim() || null,
     });
-
     setRegistering(false);
 
-    if (error) {
-      toast({ title: 'Erro ao criar conta', description: error.message, variant: 'destructive' });
-      return;
-    }
+    if (error) { toast({ title: 'Erro ao criar conta', description: error.message, variant: 'destructive' }); return; }
 
-    setPasso('sucesso');
+    navigate('/admin/login', { state: { contaCriada: true } });
   };
-
-  if (passo === 'sucesso') {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-[#f6f8fc] p-4">
-        <Card className="w-full max-w-md rounded-3xl border-slate-200 shadow-lg">
-          <CardHeader className="text-center">
-            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100">
-              <ShieldCheck className="h-8 w-8 text-emerald-600" />
-            </div>
-            <CardTitle className="text-2xl font-bold text-slate-900">Conta criada!</CardTitle>
-            <CardDescription className="text-sm">
-              Sua conta de acesso foi criada com sucesso, {guardaNome.split(' ')[0]}.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <p className="text-center text-sm text-slate-600">
-              Agora você pode fazer login no sistema usando seu e-mail e a senha que definiu.
-            </p>
-            <Button className="w-full" onClick={() => navigate('/admin/login')}>
-              Ir para o login
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-[#f6f8fc] p-4">
@@ -148,137 +106,154 @@ const CadastroGuarda = () => {
           <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl border border-slate-200 bg-white">
             <img src={guardaLogo} alt="Guarda Municipal" className="h-full w-full object-contain p-2" />
           </div>
-          <CardTitle className="text-2xl font-bold text-slate-900">
-            {passo === 'validacao' ? 'Ativar Acesso' : 'Criar Conta'}
-          </CardTitle>
+          <CardTitle className="text-2xl font-bold text-slate-900">Ativar Acesso</CardTitle>
           <CardDescription className="text-sm">
-            {passo === 'validacao'
-              ? 'Informe seu CPF e matrícula para iniciar o cadastro.'
-              : `Confirme seus dados e defina seu e-mail e senha de acesso.`}
+            São duas etapas: primeiro valide seus dados, depois crie sua conta.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {passo === 'validacao' ? (
-            <form onSubmit={handleValidar} className="space-y-4">
+          <div className="mb-6">
+            <div className="flex items-center gap-2">
+              <div className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold ${validado ? 'bg-emerald-100 text-emerald-700' : 'bg-brand-100 text-brand-700'}`}>1</div>
+              <div className="flex-1">
+                <p className={`text-sm font-semibold ${validado ? 'text-emerald-700' : 'text-brand-700'}`}>Etapa 1 — Validar dados</p>
+                <p className="text-xs text-slate-500">Informe CPF e matrícula</p>
+              </div>
+              <div className={`h-0.5 flex-1 ${validado ? 'bg-emerald-400' : 'bg-slate-200'}`} />
+              <div className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold ${validado ? 'bg-brand-100 text-brand-700' : 'bg-slate-100 text-slate-400'}`}>2</div>
+              <div className="flex-1">
+                <p className={`text-sm font-semibold ${validado ? 'text-brand-700' : 'text-slate-400'}`}>Etapa 2 — Criar conta</p>
+                <p className="text-xs text-slate-400">E-mail, senha e confirmação</p>
+              </div>
+            </div>
+          </div>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="cpf">CPF</Label>
-                <div className="relative">
-                  <Input
-                    id="cpf"
-                    value={cpf}
-                    onChange={(e) => { setCpf(maskCpf(e.target.value)); setErroCpf(''); }}
-                    placeholder="000.000.000-00"
-                    required
-                    disabled={validating}
-                    className="h-11"
-                  />
-                  {cpf.replace(/\D/g, '').length >= 11 && (
-                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                      <User className="h-4 w-4 text-brand-500" />
-                    </div>
-                  )}
-                </div>
-                {erroCpf && <p className="text-xs text-red-500">{erroCpf}</p>}
+                <Input
+                  id="cpf"
+                  value={cpf}
+                  onChange={(e) => { setCpf(maskCpf(e.target.value)); setValidado(false); setErroValidacao(''); }}
+                  placeholder="000.000.000-00"
+                  required
+                  disabled={registering || validado}
+                  className="h-11"
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="matricula">Matrícula</Label>
                 <Input
                   id="matricula"
                   value={matricula}
-                  onChange={(e) => { setMatricula(e.target.value); setErroMatricula(''); }}
+                  onChange={(e) => { setMatricula(e.target.value); setValidado(false); setErroValidacao(''); }}
                   placeholder="Ex.: 3180"
                   required
-                  disabled={validating}
+                  disabled={registering || validado}
                   className="h-11"
                 />
-                {erroMatricula && <p className="text-xs text-red-500">{erroMatricula}</p>}
               </div>
-              <Button type="submit" className="w-full h-11" disabled={validating}>
-                {validating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Shield className="mr-2 h-4 w-4" />}
-                {validating ? 'Validando...' : 'Validar dados'}
+            </div>
+
+            {erroValidacao && (
+              <div className="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+                {erroValidacao}
+              </div>
+            )}
+
+            {!validado ? (
+              <Button type="button" variant="outline" className="w-full" onClick={() => void validarCpfMatricula()} disabled={validando}>
+                {validando ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Shield className="mr-2 h-4 w-4" />}
+                {validando ? 'Validando...' : 'Validar CPF e matrícula'}
               </Button>
-              <p className="text-center text-xs text-slate-400">
-                Já possui conta? <a href="/admin/login" className="text-brand-600 hover:underline">Faça login</a>
-              </p>
-            </form>
-          ) : (
-            <form onSubmit={handleCadastrar} className="space-y-4">
-              <div className="rounded-xl bg-slate-50 p-4 text-sm space-y-2">
-                <div className="flex items-center gap-2">
-                  <User className="h-4 w-4 text-slate-400" />
-                  <span className="text-slate-500">Nome:</span>
-                  <span className="font-medium text-slate-800">{guardaNome}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <GraduationCap className="h-4 w-4 text-slate-400" />
-                  <span className="text-slate-500">Graduação:</span>
-                  <span className="font-medium text-slate-800">{guardaGrad}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Shield className="h-4 w-4 text-slate-400" />
-                  <span className="text-slate-500">CPF:</span>
-                  <span className="font-medium text-slate-800">{maskCpf(cpf)}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Shield className="h-4 w-4 text-slate-400" />
-                  <span className="text-slate-500">Matrícula:</span>
-                  <span className="font-medium text-slate-800">{matricula}</span>
-                </div>
+            ) : (
+              <div className="rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-emerald-700 flex items-center gap-2">
+                <Check className="h-4 w-4 shrink-0" />
+                Dados confirmados — agora crie sua conta abaixo
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="apelido">Como deseja ser chamado</Label>
-                <Input
-                  id="apelido"
-                  value={apelido}
-                  onChange={(e) => setApelido(e.target.value)}
-                  placeholder={guardaNome.split(' ')[0]}
-                  required
-                  className="h-11"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="email">E-mail</Label>
-                <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="seu.email@exemplo.com" required className="h-11" />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="senha">Senha</Label>
-                <div className="relative">
+            )}
+
+            {validado && (
+              <>
+                <div className="rounded-xl bg-slate-50 p-4 text-sm space-y-2">
+                  <div className="flex items-center gap-2">
+                    <User className="h-4 w-4 text-slate-400" />
+                    <span className="text-slate-500">Nome:</span>
+                    <span className="font-medium text-slate-800">{guardaNome}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <GraduationCap className="h-4 w-4 text-slate-400" />
+                    <span className="text-slate-500">Graduação:</span>
+                    <span className="font-medium text-slate-800">{guardaGrad}</span>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="apelido">Como deseja ser chamado</Label>
                   <Input
-                    id="senha"
-                    type={showSenha ? 'text' : 'password'}
-                    value={senha}
-                    onChange={(e) => setSenha(e.target.value)}
-                    placeholder="Mínimo 6 caracteres"
+                    id="apelido"
+                    value={apelido}
+                    onChange={(e) => setApelido(e.target.value)}
+                    placeholder={guardaNome.split(' ')[0]}
                     required
-                    minLength={6}
-                    className="h-11 pr-10"
+                    disabled={registering}
+                    className="h-11"
                   />
-                  <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" onClick={() => setShowSenha(!showSenha)}>
-                    {showSenha ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
                 </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="confirmarSenha">Confirmar senha</Label>
-                <Input
-                  id="confirmarSenha"
-                  type="password"
-                  value={confirmarSenha}
-                  onChange={(e) => setConfirmarSenha(e.target.value)}
-                  placeholder="Repita a senha"
-                  required
-                  className="h-11"
-                />
-                {confirmarSenha && senha !== confirmarSenha && (
-                  <p className="text-xs text-red-500">As senhas não conferem</p>
-                )}
-              </div>
-              <Button type="submit" className="w-full h-11" disabled={registering}>
-                {registering ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Lock className="mr-2 h-4 w-4" />}
-                {registering ? 'Criando conta...' : 'Criar conta'}
-              </Button>
-            </form>
-          )}
+
+                <div className="space-y-2">
+                  <Label htmlFor="email">E-mail</Label>
+                  <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="seu.email@exemplo.com" required disabled={registering} className="h-11" />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="senha">Senha</Label>
+                  <div className="relative">
+                    <Input
+                      id="senha"
+                      type={showSenha ? 'text' : 'password'}
+                      value={senha}
+                      onChange={(e) => setSenha(e.target.value)}
+                      placeholder="Mínimo 6 caracteres"
+                      required
+                      minLength={6}
+                      disabled={registering}
+                      className="h-11 pr-10"
+                    />
+                    <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" onClick={() => setShowSenha(!showSenha)}>
+                      {showSenha ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="confirmarSenha">Confirmar senha</Label>
+                  <Input
+                    id="confirmarSenha"
+                    type="password"
+                    value={confirmarSenha}
+                    onChange={(e) => setConfirmarSenha(e.target.value)}
+                    placeholder="Repita a senha"
+                    required
+                    disabled={registering}
+                    className="h-11"
+                  />
+                  {confirmarSenha && senha !== confirmarSenha && (
+                    <p className="text-xs text-red-500">As senhas não conferem</p>
+                  )}
+                </div>
+
+                <Button type="submit" className="w-full h-11" disabled={registering}>
+                  {registering ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Lock className="mr-2 h-4 w-4" />}
+                  {registering ? 'Criando conta...' : 'Criar conta'}
+                </Button>
+              </>
+            )}
+
+            <p className="text-center text-xs text-slate-400">
+              Já possui conta? <a href="/admin/login" className="text-brand-600 hover:underline">Faça login</a>
+            </p>
+          </form>
         </CardContent>
       </Card>
     </div>
