@@ -219,7 +219,7 @@ const GuardaDashboard = () => {
                         </div>
                       </div>
                       <Button size="sm" variant="outline" className="mt-2 w-full rounded-[18px] text-[13px] font-semibold sm:mt-0 sm:w-auto sm:shrink-0 sm:ml-3" onClick={() => navigate('/admin/perfil-guardas/guarda-municipal/iros')}>
-                        Candidatar
+                        VER DETALHES
                       </Button>
                     </div>
                   ))}

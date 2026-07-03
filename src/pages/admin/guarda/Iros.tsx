@@ -305,7 +305,7 @@ const GuardaIros = () => {
                     <span className="flex items-center gap-1.5"><Hourglass className="h-3.5 w-3.5 shrink-0" />{op.horas_por_dia}h/dia</span>
                   </div>
                   <Button size="sm" className="mt-3 w-full rounded-xl text-[13px] font-semibold" onClick={() => { setSelectedOperacao(op); setCandidaturaData({ data_operacao: new Date().toISOString().slice(0, 10) }); }}>
-                    Candidatar-se
+                    VER DETALHES
                   </Button>
                 </article>
               ))}
