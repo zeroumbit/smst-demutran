@@ -7,12 +7,13 @@ import {
   FileWarning,
   UserCircle,
   LogOut,
-  ChevronLeft,
+  Shield,
 } from 'lucide-react';
 import guardaLogo from '@/guarda.png';
 
 interface GuardsLayoutProps {
   children: ReactNode;
+  hideBack?: boolean;
 }
 
 type NavItem = {
@@ -26,6 +27,12 @@ const navItems: NavItem[] = [
   { icon: FileWarning, label: 'IROs', path: '/admin/perfil-guardas/guarda-municipal/iros' },
   { icon: UserCircle, label: 'Perfil', path: '/admin/perfil-guardas/guarda-municipal/perfil' },
 ];
+
+const GuardaLogo = () => (
+  <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+    <img src={guardaLogo} alt="Guarda" className="h-full w-full object-contain p-1" />
+  </div>
+);
 
 export const GuardsLayout = ({ children }: GuardsLayoutProps) => {
   const location = useLocation();
@@ -41,22 +48,21 @@ export const GuardsLayout = ({ children }: GuardsLayoutProps) => {
 
   return (
     <div className="min-h-screen bg-[#f6f8fc]">
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-slate-200 bg-white lg:flex">
-        <div className="flex items-center gap-3 border-b border-slate-200 px-5 py-5">
-          <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-2xl border border-slate-200 bg-white">
-            <img src={guardaLogo} alt="Guarda" className="h-full w-full object-contain p-1.5" />
-          </div>
+      {/* ─── Desktop sidebar ─── */}
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-slate-200 bg-white/95 backdrop-blur-xl lg:flex">
+        <div className="flex items-center gap-3 border-b border-slate-200/80 px-5 py-5">
+          <GuardaLogo />
           <div>
             <span className="block text-lg font-bold tracking-[-0.04em] text-slate-900">
               Guarda Municipal
             </span>
             {profile?.name && (
-              <span className="text-xs text-slate-500">{profile.name.split(' ')[0]}</span>
+              <span className="text-xs font-medium text-slate-400">{profile.name.split(' ')[0]}</span>
             )}
           </div>
         </div>
 
-        <nav className="flex-1 space-y-1 px-3 py-4">
+        <nav className="flex-1 space-y-1 px-3 py-5">
           {navItems.map((item) => {
             const Icon = item.icon;
             const active = isActive(item.path);
@@ -77,7 +83,7 @@ export const GuardsLayout = ({ children }: GuardsLayoutProps) => {
           })}
         </nav>
 
-        <div className="border-t border-slate-200 p-3">
+        <div className="border-t border-slate-200/80 p-3">
           <Button
             variant="ghost"
             className="w-full justify-start gap-3 rounded-2xl text-slate-500 hover:bg-red-50 hover:text-red-600"
@@ -89,30 +95,51 @@ export const GuardsLayout = ({ children }: GuardsLayoutProps) => {
         </div>
       </aside>
 
-      <div className="lg:pl-64">
-        <header className="sticky top-0 z-10 flex h-16 items-center justify-between border-b border-slate-200 bg-white/95 px-4 backdrop-blur-md lg:px-6">
-          <button
-            onClick={() => navigate(-1)}
-            className="flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700"
-          >
-            <ChevronLeft className="h-4 w-4" />
-            Voltar
-          </button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleLogout}
-            className="gap-2 rounded-xl border-slate-200 lg:hidden"
-          >
-            <LogOut className="h-4 w-4" />
-            Sair
-          </Button>
-        </header>
-
-        <main className="p-4 lg:p-8">
+      {/* ─── Main content ─── */}
+      <div className="flex min-h-screen flex-col lg:pl-64">
+        <main className="flex-1 p-4 pb-24 lg:p-8 lg:pb-8">
           {children}
         </main>
       </div>
+
+      {/* ─── Mobile bottom tab bar ─── */}
+      <nav className="fixed bottom-0 left-0 right-0 z-50 flex items-center border-t border-slate-200/80 bg-white/95 backdrop-blur-xl shadow-[0_-2px_20px_-8px_rgba(15,23,42,0.12)] lg:hidden pb-[env(safe-area-inset-bottom)]">
+        {navItems.map((item) => {
+          const Icon = item.icon;
+          const active = isActive(item.path);
+          return (
+            <Link
+              key={item.path}
+              to={item.path}
+              className="flex flex-1 flex-col items-center gap-0.5 py-2 transition-colors"
+            >
+              <div className={`flex items-center justify-center rounded-xl p-1.5 transition-colors ${
+                active ? 'bg-brand-50' : ''
+              }`}>
+                <Icon className={`h-5 w-5 ${
+                  active ? 'text-brand-600' : 'text-slate-400'
+                }`} />
+              </div>
+              <span className={`text-[10px] font-bold tracking-tight ${
+                active ? 'text-brand-600' : 'text-slate-400'
+              }`}>
+                {item.label}
+              </span>
+            </Link>
+          );
+        })}
+
+        {/* Logout button on mobile */}
+        <button
+          onClick={handleLogout}
+          className="flex flex-1 flex-col items-center gap-0.5 py-2 transition-colors"
+        >
+          <div className="flex items-center justify-center rounded-xl p-1.5">
+            <LogOut className="h-5 w-5 text-slate-400" />
+          </div>
+          <span className="text-[10px] font-bold tracking-tight text-slate-400">Sair</span>
+        </button>
+      </nav>
     </div>
   );
 };
