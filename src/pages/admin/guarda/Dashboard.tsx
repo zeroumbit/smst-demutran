@@ -6,9 +6,43 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
-import { Calendar, Hourglass, Banknote, ChevronRight, Clock, FileWarning, TrendingUp } from 'lucide-react';
+import { Calendar, Hourglass, Banknote, ChevronRight, Clock, FileWarning, TrendingUp, X, Sparkles, AlertTriangle } from 'lucide-react';
 import type { IROOperacao } from '@/types/admin';
 import { cn } from '@/lib/utils';
+
+const LIMITE_IRO_MES = 72;
+const BANNER_STORAGE_KEY = 'iro-banner-dismiss';
+
+const bannerPodeExibir = (): boolean => {
+  try {
+    const raw = localStorage.getItem(BANNER_STORAGE_KEY);
+    if (!raw) return true;
+    const { date, count } = JSON.parse(raw);
+    const hoje = new Date().toISOString().slice(0, 10);
+    if (date !== hoje) return true;
+    return count < 2;
+  } catch {
+    return true;
+  }
+};
+
+const bannerRegistrarDismiss = (): void => {
+  try {
+    const raw = localStorage.getItem(BANNER_STORAGE_KEY);
+    const hoje = new Date().toISOString().slice(0, 10);
+    if (!raw) {
+      localStorage.setItem(BANNER_STORAGE_KEY, JSON.stringify({ date: hoje, count: 1 }));
+      return;
+    }
+    const { date, count } = JSON.parse(raw);
+    localStorage.setItem(BANNER_STORAGE_KEY, JSON.stringify({
+      date: hoje,
+      count: date === hoje ? count + 1 : 1,
+    }));
+  } catch {
+    // silent
+  }
+};
 
 interface ResumoGuarda {
   total_horas_mes: number;
@@ -34,6 +68,7 @@ const GuardaDashboard = () => {
   const [ultimasCandidaturas, setUltimasCandidaturas] = useState<any[]>([]);
   const [operacoes, setOperacoes] = useState<IROOperacao[]>([]);
   const [guardaNome, setGuardaNome] = useState('');
+  const [bannerVisible, setBannerVisible] = useState(() => bannerPodeExibir());
 
   const loadData = async () => {
     if (!user?.user_id) { setLoading(false); return; }
@@ -183,6 +218,46 @@ const GuardaDashboard = () => {
             })}
           </div>
         </section>
+
+        {!loading && bannerVisible && resumo.total_horas_mes < LIMITE_IRO_MES && (
+          <div className={cn(
+            'relative rounded-[26px] border p-5 pr-12 shadow-sm',
+            resumo.total_horas_mes === 0
+              ? 'bg-gradient-to-br from-emerald-50 to-green-50 border-emerald-200'
+              : 'bg-gradient-to-br from-amber-50 to-yellow-50 border-amber-200',
+          )}>
+            <button
+              onClick={() => { setBannerVisible(false); bannerRegistrarDismiss(); }}
+              className="absolute right-4 top-4 rounded-full p-1 transition-colors hover:bg-black/5"
+            >
+              <X className="h-4 w-4 text-slate-400" />
+            </button>
+            <div className="flex items-start gap-3">
+              {resumo.total_horas_mes === 0 ? (
+                <Sparkles className="mt-0.5 h-6 w-6 shrink-0 text-emerald-500" />
+              ) : (
+                <AlertTriangle className="mt-0.5 h-6 w-6 shrink-0 text-amber-500" />
+              )}
+              <div className="space-y-1">
+                <p className={cn(
+                  'text-sm font-bold leading-5',
+                  resumo.total_horas_mes === 0 ? 'text-emerald-800' : 'text-amber-800',
+                )}>
+                  {guardaNome?.split(' ')[0] || 'Guarda'}, {resumo.total_horas_mes === 0
+                    ? `esse mês você não fez nenhuma hora IRO, ainda pode fazer ${LIMITE_IRO_MES}h.`
+                    : `você já fez ${resumo.total_horas_mes}h IRO, você ainda pode fazer ${LIMITE_IRO_MES - resumo.total_horas_mes}h IRO.`
+                  }
+                </p>
+                <p className={cn(
+                  'text-xs',
+                  resumo.total_horas_mes === 0 ? 'text-emerald-600' : 'text-amber-600',
+                )}>
+                  Limite mensal de {LIMITE_IRO_MES}h de IRO.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {loading ? (
           <div className="rounded-[22px] border border-slate-200 bg-white p-8 text-center text-muted-foreground">Carregando...</div>
