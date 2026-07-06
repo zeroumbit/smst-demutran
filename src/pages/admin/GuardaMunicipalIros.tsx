@@ -14,9 +14,10 @@ import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
+import { gerarRelatorioOperacao, gerarRelatorioMensal } from '@/lib/relatorio-iro';
 import type { IROOperacao, IROCandidatura, IROHoraManual, IROBancoHoras, IRONotificacao } from '@/types/admin';
 
-type Section = 'operacoes' | 'candidaturas' | 'banco-horas' | 'notificacoes';
+type Section = 'operacoes' | 'candidaturas' | 'banco-horas' | 'notificacoes' | 'relatorios';
 
 const TEMPO_SOLICITACAO_LABEL: Record<string, string> = {
   imediato: 'Imediato', '1h': '1 hora', '6h': '6 horas', '8h': '8 horas',
@@ -47,6 +48,7 @@ const sectionLabels: Record<Section, string> = {
   candidaturas: 'Candidaturas',
   'banco-horas': 'Banco de Horas',
   notificacoes: 'Notificações',
+  relatorios: 'Relatórios',
 };
 
 const operacaoFormInitial = {
@@ -103,6 +105,11 @@ const GuardaMunicipalIros = () => {
   const [deleteConfirmChecked, setDeleteConfirmChecked] = useState(false);
 
   const [candidaturaData, setCandidaturaData] = useState({ operacao_id: '', data_operacao: new Date().toISOString().slice(0, 10) });
+
+  const [relatorioTipo, setRelatorioTipo] = useState<'operacao' | 'mensal'>('operacao');
+  const [relatorioOperacaoId, setRelatorioOperacaoId] = useState('');
+  const [relatorioMes, setRelatorioMes] = useState(new Date().toISOString().slice(0, 7));
+  const [relatorioFormato, setRelatorioFormato] = useState<'pdf' | 'xlsx'>('pdf');
 
   const loadData = async () => {
     setLoading(true);
@@ -426,6 +433,7 @@ const GuardaMunicipalIros = () => {
     if (section === 'operacoes') return [{ value: 'todas', label: 'Todas' }, { value: 'ativas', label: 'Ativas' }, { value: 'inativas', label: 'Inativas' }];
     if (section === 'candidaturas') return [{ value: 'todas', label: 'Todos' }, { value: 'confirmado', label: 'Confirmado' }, { value: 'realizado', label: 'Realizado' }, { value: 'cancelado', label: 'Cancelado' }];
     if (section === 'notificacoes') return [{ value: 'todas', label: 'Todas' }, { value: 'lidas', label: 'Lidas' }, { value: 'nao-lidas', label: 'Não lidas' }];
+    if (section === 'relatorios') return [];
     return [{ value: 'todas', label: 'Todos' }];
   }, [section]);
 
@@ -556,6 +564,118 @@ const GuardaMunicipalIros = () => {
     if (section === 'notificacoes') {
       return filteredNotificacoes.length ? filteredNotificacoes.map(renderNotificacaoCard) : <EmptyBox text="Nenhuma notificação." />;
     }
+    if (section === 'relatorios') {
+      const linhasPorOperacao = (operacaoId: string) => {
+        const cands = candidaturas.filter((c) => c.operacao_id === operacaoId && ['confirmado', 'realizado'].includes(c.status));
+        return cands.map((c) => ({
+          guarda: usuarioMap.get(c.usuario_id) || '—',
+          horas: c.horas_trabalhadas,
+          valor: c.horas_trabalhadas * (valorHoraPorUsuario.get(c.usuario_id) || 0),
+        }));
+      };
+      const linhasPorMes = (mes: string) => {
+        const cands = candidaturas.filter((c) => {
+          if (!['confirmado', 'realizado'].includes(c.status)) return false;
+          const d = c.data_operacao.slice(0, 7);
+          return d === mes;
+        });
+        const acc = new Map<string, { guarda: string; horas: number; valor: number }>();
+        for (const c of cands) {
+          const g = usuarioMap.get(c.usuario_id) || '—';
+          const existente = acc.get(c.usuario_id) || { guarda: g, horas: 0, valor: 0 };
+          existente.horas += c.horas_trabalhadas;
+          existente.valor += c.horas_trabalhadas * (valorHoraPorUsuario.get(c.usuario_id) || 0);
+          acc.set(c.usuario_id, existente);
+        }
+        return Array.from(acc.values());
+      };
+      return (
+        <Card className="rounded-[24px] border-slate-200">
+          <CardContent className="space-y-5 px-5 py-6">
+            <div className="flex gap-3">
+              <Button
+                variant={relatorioTipo === 'operacao' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setRelatorioTipo('operacao')}
+              >
+                Por Operação
+              </Button>
+              <Button
+                variant={relatorioTipo === 'mensal' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setRelatorioTipo('mensal')}
+              >
+                Por Mês
+              </Button>
+            </div>
+
+            {relatorioTipo === 'operacao' ? (
+              <div className="space-y-2">
+                <Label>Selecione a operação</Label>
+                <Select value={relatorioOperacaoId} onValueChange={setRelatorioOperacaoId}>
+                  <SelectTrigger><SelectValue placeholder="Escolher operação..." /></SelectTrigger>
+                  <SelectContent>
+                    {operacoes.map((op) => (
+                      <SelectItem key={op.id} value={op.id}>{op.nome}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <Label>Mês / Ano</Label>
+                <Input type="month" value={relatorioMes} onChange={(e) => setRelatorioMes(e.target.value)} />
+              </div>
+            )}
+
+            <div className="space-y-2">
+              <Label>Formato</Label>
+              <Select value={relatorioFormato} onValueChange={(v) => setRelatorioFormato(v as 'pdf' | 'xlsx')}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="pdf">PDF</SelectItem>
+                  <SelectItem value="xlsx">Planilha (XLSX)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <Button
+              className="w-full"
+              disabled={
+                (relatorioTipo === 'operacao' && !relatorioOperacaoId) ||
+                (relatorioTipo === 'mensal' && !relatorioMes)
+              }
+              onClick={() => {
+                if (relatorioTipo === 'operacao') {
+                  const op = operacoes.find((o) => o.id === relatorioOperacaoId);
+                  if (!op) return;
+                  const linhas = linhasPorOperacao(op.id);
+                  if (linhas.length === 0) {
+                    toast({ title: 'Nenhum registro', description: 'Essa operação não possui candidaturas confirmadas/realizadas.', variant: 'destructive' });
+                    return;
+                  }
+                  gerarRelatorioOperacao(op.nome, linhas, relatorioFormato);
+                  toast({ title: 'Relatório gerado!' });
+                } else {
+                  const [ano, mes] = relatorioMes.split('-');
+                  const meses = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+                  const titulo = `${meses[Number(mes) - 1]} ${ano}`;
+                  const linhas = linhasPorMes(relatorioMes);
+                  if (linhas.length === 0) {
+                    toast({ title: 'Nenhum registro', description: 'Nenhuma candidatura encontrada para este mês.', variant: 'destructive' });
+                    return;
+                  }
+                  gerarRelatorioMensal(titulo, linhas, relatorioFormato);
+                  toast({ title: 'Relatório gerado!' });
+                }
+              }}
+            >
+              Gerar Relatório
+            </Button>
+          </CardContent>
+        </Card>
+      );
+    }
     return null;
   };
 
@@ -585,32 +705,34 @@ const GuardaMunicipalIros = () => {
           </div>
         </section>
 
-        <Card className="rounded-[24px] border-slate-200">
-          <CardContent className="space-y-4 px-5 py-5">
-            <div className="grid gap-4 lg:grid-cols-[1fr_220px]">
-              <div className="space-y-2">
-                <Label>Buscar</Label>
-                <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={
-                  section === 'operacoes' ? 'Buscar operações...' :
-                  section === 'candidaturas' ? 'Buscar candidaturas...' :
-                  section === 'banco-horas' ? 'Buscar guardas...' :
-                  'Buscar notificações...'
-                } />
+        {section !== 'relatorios' && (
+          <Card className="rounded-[24px] border-slate-200">
+            <CardContent className="space-y-4 px-5 py-5">
+              <div className="grid gap-4 lg:grid-cols-[1fr_220px]">
+                <div className="space-y-2">
+                  <Label>Buscar</Label>
+                  <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={
+                    section === 'operacoes' ? 'Buscar operações...' :
+                    section === 'candidaturas' ? 'Buscar candidaturas...' :
+                    section === 'banco-horas' ? 'Buscar guardas...' :
+                    'Buscar notificações...'
+                  } />
+                </div>
+                <div className="space-y-2">
+                  <Label>Filtrar</Label>
+                  <Select value={statusFilter} onValueChange={setStatusFilter}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {sectionStatusOptions.map((o) => (
+                        <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label>Filtrar</Label>
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {sectionStatusOptions.map((o) => (
-                      <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
 
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap gap-1 rounded-[26px] bg-slate-100/80 p-1.5">
