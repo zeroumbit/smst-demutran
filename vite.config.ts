@@ -13,7 +13,7 @@ export default defineConfig(({ mode }) => ({
   plugins: [
     react(),
     VitePWA({
-      registerType: "autoUpdate",
+      registerType: "prompt",
       includeAssets: ["favicon.ico", "favicon.png", "pwa-icon.svg"],
       manifest: {
         name: "SMST - Secretaria Municipal de Segurança Pública e Trânsito",
@@ -29,20 +29,24 @@ export default defineConfig(({ mode }) => ({
         scope: "/",
         categories: ["government", "security", "transportation"],
         icons: [
+          { src: "pwa-icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
+          { src: "pwa-icon-512.png", sizes: "512x512", type: "image/png", purpose: "any" },
+          { src: "pwa-icon-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
           { src: "pwa-icon.svg", sizes: "512x512", type: "image/svg+xml", purpose: "any maskable" },
-          { src: "pwa-icon.svg", sizes: "192x192", type: "image/svg+xml", purpose: "any" },
         ],
       },
       workbox: {
         globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
+        navigateFallback: "/index.html",
+        navigateFallbackAllowlist: [/^\/[^_]*$/],
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/jpztntmwmrhdobxsyulj\.supabase\.co\/rest\/v1\/.*/i,
-            handler: "NetworkFirst",
+            handler: "StaleWhileRevalidate",
             options: {
               cacheName: "supabase-api",
-              expiration: { maxEntries: 100, maxAgeSeconds: 60 * 60 },
-              networkTimeoutSeconds: 5,
+              expiration: { maxEntries: 200, maxAgeSeconds: 60 * 60 * 24 },
+              cacheableResponse: { statuses: [0, 200] },
             },
           },
           {
@@ -50,7 +54,16 @@ export default defineConfig(({ mode }) => ({
             handler: "CacheFirst",
             options: {
               cacheName: "supabase-storage",
-              expiration: { maxEntries: 100, maxAgeSeconds: 60 * 60 * 24 * 7 },
+              expiration: { maxEntries: 100, maxAgeSeconds: 60 * 60 * 24 * 30 },
+            },
+          },
+          {
+            urlPattern: /^https:\/\/jpztntmwmrhdobxsyulj\.supabase\.co\/auth\/v1\/.*/i,
+            handler: "NetworkFirst",
+            options: {
+              cacheName: "supabase-auth",
+              expiration: { maxEntries: 50, maxAgeSeconds: 60 * 60 },
+              networkTimeoutSeconds: 5,
             },
           },
         ],

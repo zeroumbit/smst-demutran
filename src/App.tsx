@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/admin/ProtectedRoute";
 import { ConsentBar } from "@/components/shared/ConsentBar";
+import { PwaStatus } from "@/components/pwa/PwaStatus";
 import { ThemeProvider } from "@/components/ThemeProvider";
 
 // Lazy load public pages
@@ -87,6 +88,7 @@ const App = () => (
       <TooltipProvider>
         <Toaster />
         <Sonner />
+        <PwaStatus />
         <BrowserRouter>
           <AuthProvider>
             <Routes>
