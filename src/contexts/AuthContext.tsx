@@ -35,9 +35,13 @@ async function fetchUserProfile(): Promise<AdminProfile | null> {
 
     if (data) {
       const profile = data as AdminProfile;
-      const { data: userData } = await supabase.auth.getUser();
-      if (userData?.user?.app_metadata?.modulos) {
-        profile.modulos = userData.user.app_metadata.modulos;
+      try {
+        const { data: userData } = await supabase.auth.getUser();
+        if (userData?.user?.app_metadata?.modulos) {
+          profile.modulos = userData.user.app_metadata.modulos;
+        }
+      } catch {
+        // silent — sessão pode expirar, mas o perfil já foi carregado
       }
       return profile;
     }
