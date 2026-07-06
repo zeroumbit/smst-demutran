@@ -183,6 +183,20 @@ const GuardaIros = () => {
   };
 
   const handleCancelar = async (item: IROCandidatura) => {
+    const hoje = new Date();
+    const dataOp = new Date(item.data_operacao + 'T00:00:00');
+    const diffTime = dataOp.getTime() - hoje.getTime();
+    const diffHours = diffTime / (1000 * 60 * 60);
+
+    if (diffHours < 24) {
+      toast({
+        title: 'Cancelamento bloqueado',
+        description: 'Desistências com menos de 24h da operação devem ser informadas diretamente ao supervisor/chefe de setor e não podem ser feitas pelo sistema.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     const op = operacoes.find((o) => o.id === item.operacao_id);
     if (op && horasDaSolicitacao(op.tempo_solicitacao) >= 48) {
       setCandidaturaParaCancelar(item);
@@ -200,6 +214,22 @@ const GuardaIros = () => {
 
   const confirmarCancelamento = async () => {
     if (!candidaturaParaCancelar) return;
+    const hoje = new Date();
+    const dataOp = new Date(candidaturaParaCancelar.data_operacao + 'T00:00:00');
+    const diffTime = dataOp.getTime() - hoje.getTime();
+    const diffHours = diffTime / (1000 * 60 * 60);
+
+    if (diffHours < 24) {
+      toast({
+        title: 'Cancelamento bloqueado',
+        description: 'Desistências com menos de 24h da operação devem ser informadas diretamente ao supervisor/chefe de setor.',
+        variant: 'destructive',
+      });
+      setLeiDialogAberta(false);
+      setCandidaturaParaCancelar(null);
+      return;
+    }
+
     const { error } = await supabase.from('iro_candidaturas').update({ status: 'cancelado' }).eq('id', candidaturaParaCancelar.id);
     setLeiDialogAberta(false);
     setCandidaturaParaCancelar(null);

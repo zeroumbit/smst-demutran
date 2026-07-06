@@ -51,6 +51,7 @@ export interface FalaDemandaAdmin {
   observacao_interna: string | null;
   secretaria_id: string;
   secretaria_atual_id: string;
+  secretaria_atual?: { sigla: string } | null;
   assunto_id: string | null;
   assunto_outro: string | null;
   data_abertura: string;

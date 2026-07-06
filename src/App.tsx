@@ -426,14 +426,14 @@ const App = () => (
             } />
             <Route path="/admin/guardas/guarda-municipal" element={
               <SuspenseWrapper>
-                <ProtectedRoute allowedPapeis={['super_admin', 'gestor', 'admin_setor', 'tecnico']}>
+                <ProtectedRoute allowedPapeis={['super_admin', 'gestor', 'admin_setor', 'tecnico']} requiredSetorSlug="guarda-municipal">
                   <AdminGuardasMunicipais />
                 </ProtectedRoute>
               </SuspenseWrapper>
             } />
             <Route path="/admin/configuracoes-guarda-municipal" element={
               <SuspenseWrapper>
-                <ProtectedRoute allowedPapeis={['super_admin', 'gestor', 'admin_setor']}>
+                <ProtectedRoute allowedPapeis={['super_admin', 'gestor', 'admin_setor']} requiredSetorSlug="guarda-municipal">
                   <AdminConfiguracoesGuarda />
                 </ProtectedRoute>
               </SuspenseWrapper>

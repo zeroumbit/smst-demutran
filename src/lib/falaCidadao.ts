@@ -151,7 +151,7 @@ export async function avaliarDemandaFala(sessionToken: string, demandaId: string
 export async function listAdminFalaDemandas() {
   const { data, error } = await supabase
     .from('fala_demandas')
-    .select('*')
+    .select('*, secretaria_atual:fala_secretarias!fala_demandas_secretaria_atual_id_fkey(sigla)')
     .order('created_at', { ascending: false });
 
   if (error) throw error;

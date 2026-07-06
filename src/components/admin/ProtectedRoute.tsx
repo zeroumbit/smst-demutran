@@ -1,4 +1,4 @@
-import { Navigate } from 'react-router-dom';
+import { Navigate, useParams } from 'react-router-dom';
 import { useAuth, getDashboardUrl } from '@/contexts/AuthContext';
 import type { PapelUsuario } from '@/types/admin';
 
@@ -18,6 +18,7 @@ export const ProtectedRoute = ({
   requireGuarda,
 }: ProtectedRouteProps) => {
   const { isAuthenticated, isLoading, canAccessAdmin, hasPapel, isSuperAdmin, profile, isGuarda } = useAuth();
+  const { setorSlug } = useParams<{ setorSlug?: string }>();
 
   if (isLoading) {
     return (
@@ -29,6 +30,13 @@ export const ProtectedRoute = ({
 
   if (!isAuthenticated) {
     return <Navigate to="/admin/login" replace />;
+  }
+
+  // Validação dinâmica do setorSlug da URL para evitar invasão de outros setores
+  if (setorSlug && !isSuperAdmin) {
+    if (profile?.setor_slug !== setorSlug) {
+      return <Navigate to={getDashboardUrl(profile)} replace />;
+    }
   }
 
   if (requireGuarda) {

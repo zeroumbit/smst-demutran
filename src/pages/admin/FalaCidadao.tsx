@@ -60,8 +60,22 @@ const FalaCidadaoAdmin = () => {
     void loadData();
   }, []);
 
-  const filteredItems = useMemo(() => {
+  const itemsDoSetor = useMemo(() => {
+    if (!setorSlug) return items;
     return items.filter((item) => {
+      const sigla = item.secretaria_atual?.sigla || '';
+      if (setorSlug === 'demutran') {
+        return sigla === 'DEMUTRAN';
+      } else if (setorSlug === 'guarda-municipal') {
+        const gmSiglas = ['GM', 'GC', 'JOVEM', 'ROPE', 'DCIV', 'GMAM', 'GSU'];
+        return gmSiglas.includes(sigla);
+      }
+      return true;
+    });
+  }, [items, setorSlug]);
+
+  const filteredItems = useMemo(() => {
+    return itemsDoSetor.filter((item) => {
       if (statusFilter !== 'todos' && item.status !== statusFilter) return false;
       const haystack = [
         item.protocolo,
@@ -77,7 +91,7 @@ const FalaCidadaoAdmin = () => {
         .toLowerCase();
       return haystack.includes(search.toLowerCase());
     });
-  }, [items, search, statusFilter]);
+  }, [itemsDoSetor, search, statusFilter]);
 
   const openDetails = async (item: FalaDemandaAdmin) => {
     setSelected(item);
@@ -128,8 +142,9 @@ const FalaCidadaoAdmin = () => {
     }
   };
 
-  const pendentes = items.filter((item) => item.status === 'recebido' || item.status === 'analise').length;
-  const concluidas = items.filter((item) => item.status === 'concluido').length;
+  const totalDemandas = itemsDoSetor.length;
+  const pendentes = itemsDoSetor.filter((item) => item.status === 'recebido' || item.status === 'analise').length;
+  const concluidas = itemsDoSetor.filter((item) => item.status === 'concluido').length;
 
   return (
     <AdminLayout>
@@ -152,7 +167,7 @@ const FalaCidadaoAdmin = () => {
           </div>
 
           <div className="mt-6 grid gap-3 sm:grid-cols-3">
-            <StatCard label="Total" value={String(items.length)} icon={ClipboardList} />
+            <StatCard label="Total" value={String(totalDemandas)} icon={ClipboardList} />
             <StatCard label="Pendentes" value={String(pendentes)} icon={Clock3} />
             <StatCard label="Concluidas" value={String(concluidas)} icon={ShieldCheck} />
           </div>
