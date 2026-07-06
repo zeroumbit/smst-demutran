@@ -85,7 +85,8 @@ const GuardaMunicipalIros = () => {
   const [candidaturas, setCandidaturas] = useState<IROCandidatura[]>([]);
   const [bancoHoras, setBancoHoras] = useState<IROBancoHoras[]>([]);
   const [notificacoes, setNotificacoes] = useState<IRONotificacao[]>([]);
-  const [usuarios, setUsuarios] = useState<{ user_id: string; nome: string }[]>([]);
+  const [usuarios, setUsuarios] = useState<{ user_id: string; nome: string; graduacao_id?: string | null }[]>([]);
+  const [valoresGraduacao, setValoresGraduacao] = useState<{ graduacao_id: string; valor_hora: number }[]>([]);
 
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('todas');
@@ -108,7 +109,7 @@ const GuardaMunicipalIros = () => {
     try {
       const baseFilter = setorId ? (q: any) => q.eq('setor_id', setorId) : (q: any) => q;
 
-      const [opRes, candRes, bhRes, notifRes, userRes] = await Promise.all([
+      const [opRes, candRes, bhRes, notifRes, userRes, valoresRes] = await Promise.all([
         baseFilter(supabase.from('iro_operacoes').select('*').order('data_inicio', { ascending: false })),
         podeVerTudo
           ? supabase.from('iro_candidaturas').select('*, iro_operacoes!inner(nome)').order('created_at', { ascending: false })
@@ -119,10 +120,19 @@ const GuardaMunicipalIros = () => {
         podeVerTudo
           ? supabase.from('iro_notificacoes').select('*').order('created_at', { ascending: false })
           : supabase.from('iro_notificacoes').select('*').eq('usuario_id', user!.user_id).order('created_at', { ascending: false }),
-        supabase.from('perfis_usuarios').select('user_id, nome, sobrenome').eq('ativo', true),
+        supabase.from('perfis_usuarios').select('user_id, nome, sobrenome, graduacao_id').eq('ativo', true),
+        supabase.from('iro_valores_graduacao').select('graduacao_id, valor_hora').eq('ativo', true),
       ]);
 
       const operacoesData = (opRes.data || []) as IROOperacao[];
+      const hoje = todayStr();
+      const expired = operacoesData.filter((o) => o.ativo && o.data_fim < hoje);
+      for (const op of operacoesData) {
+        if (op.ativo && op.data_fim < hoje) op.ativo = false;
+      }
+      if (expired.length > 0) {
+        void supabase.from('iro_operacoes').update({ ativo: false }).in('id', expired.map((o) => o.id));
+      }
       setOperacoes(operacoesData);
       if (selectedOperacao) {
         const updated = operacoesData.find((o) => o.id === selectedOperacao.id);
@@ -133,7 +143,12 @@ const GuardaMunicipalIros = () => {
       setNotificacoes((notifRes.data || []) as IRONotificacao[]);
       setUsuarios((userRes.data || []).map((u: any) => ({
         user_id: u.user_id,
-        nome: [u.nome, u.sobrenome].filter(Boolean).join(' ') || 'Sem nome'
+        nome: [u.nome, u.sobrenome].filter(Boolean).join(' ') || 'Sem nome',
+        graduacao_id: u.graduacao_id,
+      })));
+      setValoresGraduacao((valoresRes.data || []).map((v: any) => ({
+        graduacao_id: v.graduacao_id,
+        valor_hora: Number(v.valor_hora) || 0,
       })));
     } catch {
       // silent
@@ -186,6 +201,18 @@ const GuardaMunicipalIros = () => {
     for (const u of usuarios) m.set(u.user_id, u.nome);
     return m;
   }, [usuarios]);
+
+  const valorHoraPorUsuario = useMemo(() => {
+    const gradValMap = new Map<string, number>();
+    for (const v of valoresGraduacao) gradValMap.set(v.graduacao_id, v.valor_hora);
+    const m = new Map<string, number>();
+    for (const u of usuarios) {
+      if (u.graduacao_id && gradValMap.has(u.graduacao_id)) {
+        m.set(u.user_id, gradValMap.get(u.graduacao_id)!);
+      }
+    }
+    return m;
+  }, [usuarios, valoresGraduacao]);
 
   const minhasCandidaturas = useMemo(() => candidaturas.filter((c) => c.usuario_id === user?.user_id), [candidaturas, user?.user_id]);
   const minhasNotificacoes = useMemo(() => notificacoes.filter((n) => n.usuario_id === user?.user_id), [notificacoes, user?.user_id]);
@@ -427,7 +454,7 @@ const GuardaMunicipalIros = () => {
         <div className="flex flex-col items-start gap-3 lg:items-end shrink-0">
           <div className="text-xs text-slate-500">{TEMPO_SOLICITACAO_LABEL[item.tempo_solicitacao] || item.tempo_solicitacao}</div>
           <div className="flex gap-2">
-            {canManageOperacoes && <Switch checked={item.ativo} onCheckedChange={() => void handleToggleAtiva(item)} />}
+            {canManageOperacoes && <Switch checked={item.ativo} onCheckedChange={() => void handleToggleAtiva(item)} disabled={item.data_fim < todayStr()} />}
             <Button size="sm" variant="outline" onClick={() => void openOperacaoDetails(item)}>
               <Eye className="h-4 w-4" />
             </Button>
@@ -465,6 +492,9 @@ const GuardaMunicipalIros = () => {
           <p className="font-semibold text-slate-900">{item.operacao_nome}</p>
           <p className="text-sm text-slate-500 mt-0.5">
             {usuarioMap.get(item.usuario_id) || '—'} &middot; {fmtDateBR(item.data_operacao)} &middot; {item.horas_trabalhadas}h
+            {valorHoraPorUsuario.has(item.usuario_id) && (
+              <span className="ml-1.5 font-semibold text-emerald-600">R$ {(item.horas_trabalhadas * (valorHoraPorUsuario.get(item.usuario_id) || 0)).toFixed(2).replace('.', ',')}</span>
+            )}
           </p>
         </div>
         {item.usuario_id === user?.user_id && item.status !== 'cancelado' && (
@@ -641,30 +671,39 @@ const GuardaMunicipalIros = () => {
                 </section>
               )}
 
-              <section className="space-y-4 rounded-2xl border border-slate-200 p-4">
-                <div className="flex items-center gap-2">
-                  <Users className="h-4 w-4 text-blue-600" />
-                  <h3 className="text-sm font-bold uppercase tracking-[0.16em] text-slate-700">Candidatar-se</h3>
-                </div>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label>Data</Label>
-                    <Input type="date" value={candidaturaData.data_operacao} onChange={(e) => setCandidaturaData((f) => ({ ...f, data_operacao: e.target.value }))} />
+              {selectedOperacao.data_fim >= todayStr() ? (
+                <section className="space-y-4 rounded-2xl border border-slate-200 p-4">
+                  <div className="flex items-center gap-2">
+                    <Users className="h-4 w-4 text-blue-600" />
+                    <h3 className="text-sm font-bold uppercase tracking-[0.16em] text-slate-700">Candidatar-se</h3>
                   </div>
-                  <div className="space-y-2">
-                    <Label>&nbsp;</Label>
-                    <Button
-                      className="w-full"
-                      onClick={() => {
-                        setCandidaturaData((f) => ({ ...f, operacao_id: selectedOperacao.id }));
-                        void handleCandidatar();
-                      }}
-                    >
-                      Confirmar Candidatura
-                    </Button>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label>Data</Label>
+                      <Input type="date" value={candidaturaData.data_operacao} onChange={(e) => setCandidaturaData((f) => ({ ...f, data_operacao: e.target.value }))} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>&nbsp;</Label>
+                      <Button
+                        className="w-full"
+                        onClick={() => {
+                          setCandidaturaData((f) => ({ ...f, operacao_id: selectedOperacao.id }));
+                          void handleCandidatar();
+                        }}
+                      >
+                        Confirmar Candidatura
+                      </Button>
+                    </div>
                   </div>
-                </div>
-              </section>
+                </section>
+              ) : (
+                <section className="space-y-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  <div className="flex items-center gap-2 text-slate-500">
+                    <Calendar className="h-4 w-4 text-slate-400" />
+                    <span className="text-sm font-medium">Período encerrado — esta operação não aceita mais candidaturas.</span>
+                  </div>
+                </section>
+              )}
 
               <section className="space-y-3">
                 <h3 className="text-sm font-bold uppercase tracking-[0.16em] text-slate-700">Candidaturas ({operacaoCandidaturas.length})</h3>
@@ -681,7 +720,7 @@ const GuardaMunicipalIros = () => {
                           <Badge variant="outline" className={cn('rounded-full text-[10px] font-bold px-2 py-0', STATUS_CANDIDATURA_VARIANT[c.status])}>
                             {c.status}
                           </Badge>
-                          <span className="text-slate-500">{fmtDateBR(c.data_operacao)} • {c.horas_trabalhadas}h</span>
+                          <span className="text-slate-500">{fmtDateBR(c.data_operacao)} • {c.horas_trabalhadas}h{valorHoraPorUsuario.has(c.usuario_id) && <span className="ml-1 text-emerald-600 font-semibold">R$ {(c.horas_trabalhadas * (valorHoraPorUsuario.get(c.usuario_id) || 0)).toFixed(2).replace('.', ',')}</span>}</span>
                         </div>
                         {c.usuario_id === user?.user_id && c.status !== 'cancelado' && (
                           <Button size="sm" variant="outline" className="text-red-600 border-red-200 h-7 text-xs" onClick={() => void handleCancelarCandidatura(c)}>

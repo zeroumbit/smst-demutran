@@ -12,9 +12,11 @@ import { cn } from '@/lib/utils';
 
 interface ResumoGuarda {
   total_horas_mes: number;
+  total_reais: number;
   horas_disponiveis: number;
   banco_horas: number;
   mes_anterior_horas: number;
+  mes_anterior_reais: number;
 }
 
 const fmtDateBR = (d: string | null | undefined): string => {
@@ -28,7 +30,7 @@ const GuardaDashboard = () => {
   const navigate = useNavigate();
   const { user, profile } = useAuth();
   const [loading, setLoading] = useState(true);
-  const [resumo, setResumo] = useState<ResumoGuarda>({ total_horas_mes: 0, horas_disponiveis: 0, banco_horas: 0, mes_anterior_horas: 0 });
+  const [resumo, setResumo] = useState<ResumoGuarda>({ total_horas_mes: 0, total_reais: 0, horas_disponiveis: 0, banco_horas: 0, mes_anterior_horas: 0, mes_anterior_reais: 0 });
   const [ultimasCandidaturas, setUltimasCandidaturas] = useState<any[]>([]);
   const [operacoes, setOperacoes] = useState<IROOperacao[]>([]);
   const [guardaNome, setGuardaNome] = useState('');
@@ -94,11 +96,25 @@ const GuardaDashboard = () => {
         .filter((c: any) => c.data_operacao >= firstDayAnterior && c.data_operacao <= lastDayAnterior)
         .reduce((acc: number, c: any) => acc + Number(c.horas_trabalhadas || 0), 0);
 
+      let valorHora = 0;
+      const gData = guardaData as { graduacao_id?: string } | null;
+      if (gData?.graduacao_id) {
+        const { data: vData } = await supabase
+          .from('iro_valores_graduacao')
+          .select('valor_hora')
+          .eq('graduacao_id', gData.graduacao_id)
+          .eq('ativo', true)
+          .maybeSingle();
+        if (vData) valorHora = Number((vData as any).valor_hora) || 0;
+      }
+
       setResumo({
         total_horas_mes: totalHoras,
+        total_reais: totalHoras * valorHora,
         horas_disponiveis: 0,
         banco_horas: bancoRes.data ? Number((bancoRes.data as any).horas_excedentes) : 0,
         mes_anterior_horas: horasMesAnterior,
+        mes_anterior_reais: horasMesAnterior * valorHora,
       });
     } catch {
       // silent
@@ -128,7 +144,7 @@ const GuardaDashboard = () => {
   const stats = useMemo(() => [
     { label: 'Total no mês', value: `${resumo.total_horas_mes}h`, icon: Calendar },
     { label: 'Banco de horas', value: `${resumo.banco_horas}h`, icon: Hourglass },
-    { label: 'Total', value: 'R$ 0,00', icon: Banknote },
+    { label: 'Total', value: `R$ ${resumo.total_reais.toFixed(2).replace('.', ',')}`, icon: Banknote },
     { label: 'Mês anterior', value: `${resumo.mes_anterior_horas}h`, icon: TrendingUp, sub: resumo.mes_anterior_horas > 0 ? `atual: ${resumo.total_horas_mes}h` : undefined },
   ], [resumo]);
 

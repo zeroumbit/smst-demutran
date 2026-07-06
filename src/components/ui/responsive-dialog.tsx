@@ -48,7 +48,7 @@ export function ResponsiveDialog({
   if (isMobile) {
     return (
       <Drawer open={open} onOpenChange={onOpenChange}>
-        <DrawerContent className="h-screen">
+        <DrawerContent className="h-screen mt-0">
           <DrawerHeader className="text-left relative shrink-0">
             <DrawerClose className="absolute right-4 top-4 rounded-sm opacity-70 hover:opacity-100 transition-opacity">
               <X className="h-5 w-5" />
