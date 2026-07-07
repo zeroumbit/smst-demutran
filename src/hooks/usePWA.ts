@@ -58,7 +58,9 @@ export function usePWA() {
 
   const updateSW = useCallback(() => {
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.controller?.postMessage({ type: 'SKIP_WAITING' });
+      navigator.serviceWorker.ready.then((registration) => {
+        registration.waiting?.postMessage({ type: 'SKIP_WAITING' });
+      });
     }
   }, []);
 
