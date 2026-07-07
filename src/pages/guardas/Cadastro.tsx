@@ -43,37 +43,45 @@ const CadastroGuarda = () => {
     const cpfLimpo = cpf.replace(/\D/g, '');
 
     setValidando(true);
-    const { data, error } = await supabase.rpc('validar_dados_guarda', {
-      p_cpf: cpfLimpo,
-      p_matricula: matricula.trim(),
-    });
-    setValidando(false);
+    try {
+      const { data, error } = await supabase.rpc('validar_dados_guarda', {
+        p_cpf: cpfLimpo,
+        p_matricula: matricula.trim(),
+      });
 
-    if (error) { setErroValidacao(error.message); return; }
+      if (error) { setErroValidacao(error.message); return; }
 
-    const result = data as Record<string, unknown>;
+      const result = data as Record<string, unknown>;
 
-    if (!result) { setErroValidacao('Erro ao validar dados.'); return; }
+      if (!result) { setErroValidacao('Erro ao validar dados.'); return; }
 
-    const status = result.status as string | undefined;
-    const valido = result.valido as boolean | undefined;
+      const status = result.status as string | undefined;
+      const guardaId = result.guarda_id as string | undefined;
 
-    // Handle old format (valido: true/false) and new format (status)
-    if (status === 'nao_encontrado' || (status === undefined && valido === false)) {
-      setErroValidacao((result.mensagem as string) || 'Dados não encontrados.');
-      return;
-    }
+      if (status === 'nao_encontrado') {
+        setErroValidacao((result.mensagem as string) || 'Dados não encontrados.');
+        return;
+      }
 
-    if (status === 'ja_possui_conta') {
-      setJaPossuiConta(true);
-      return;
-    }
+      if (status === 'ja_possui_conta') {
+        setJaPossuiConta(true);
+        return;
+      }
 
-    if (status === 'ok' || (status === undefined && valido === true)) {
-      setGuardaId((result.guarda_id as string) || null);
-      setGuardaNome((result.nome as string) || '');
-      setGuardaGrad((result.graduacao_nome as string) || '');
-      setPasso('cadastro');
+      // Se tem guarda_id, vai para o passo 2 independente do status
+      if (guardaId) {
+        setGuardaId(guardaId);
+        setGuardaNome((result.nome as string) || '');
+        setGuardaGrad((result.graduacao_nome as string) || '');
+        setPasso('cadastro');
+      } else {
+        setErroValidacao('Resposta inesperada. Tente novamente ou contate o gestor.');
+      }
+    } catch (err) {
+      console.error('Erro ao validar guarda:', err);
+      setErroValidacao('Erro de conexão. Verifique sua internet e tente novamente.');
+    } finally {
+      setValidando(false);
     }
   };
 
