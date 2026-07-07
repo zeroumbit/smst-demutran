@@ -76,40 +76,44 @@ export function PwaStatus() {
 
           {/* Desktop: Horizontal Bar */}
           <div className="hidden md:block">
-            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-full max-w-[720px] pointer-events-auto">
-              <div className="flex items-center gap-4 rounded-2xl border border-slate-200 bg-white px-5 py-3.5 shadow-[0_4px_24px_rgba(0,0,0,0.1)]">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-blue-600 to-blue-700 shadow-sm">
-                  <Smartphone className="h-5 w-5 text-white" />
+            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 w-full max-w-[860px] px-4 pointer-events-auto">
+              <div className="flex items-center gap-5 rounded-2xl border border-slate-200/80 bg-white/95 px-6 py-4 shadow-[0_4px_28px_rgba(0,0,0,0.08)] backdrop-blur-sm">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-[14px] bg-gradient-to-br from-blue-600 to-blue-700 shadow-sm">
+                  <Smartphone className="h-6 w-6 text-white" />
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold text-slate-900">
-                    Instalar <span className="text-blue-600">SMST</span>
-                  </p>
-                  <p className="text-xs text-slate-500 truncate">
-                    Acesso rápido a todos os serviços da Secretaria de Segurança.
-                  </p>
+                <div className="flex items-center gap-4 min-w-0">
+                  <div className="whitespace-nowrap">
+                    <p className="text-sm font-bold text-slate-900">
+                      Instalar <span className="text-blue-600">SMST</span>
+                    </p>
+                    <p className="text-[13px] text-slate-500">
+                      Acesso rápido a todos os serviços
+                    </p>
+                  </div>
+                  <div className="hidden lg:flex items-center gap-4 border-l border-slate-200 pl-4">
+                    {features.map((feature) => (
+                      <div key={feature.text} className="flex items-center gap-1.5 text-[13px] text-slate-500 whitespace-nowrap">
+                        <feature.icon className="h-4 w-4 text-blue-500 shrink-0" />
+                        <span>{feature.text}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-                <div className="hidden sm:flex items-center gap-3">
-                  {features.map((feature) => (
-                    <div key={feature.text} className="flex items-center gap-1.5 text-xs text-slate-500">
-                      <feature.icon className="h-3.5 w-3.5 text-blue-500" />
-                      <span>{feature.text}</span>
-                    </div>
-                  ))}
+                <div className="ml-auto flex items-center gap-3 shrink-0">
+                  <button
+                    onClick={install}
+                    className="flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-bold text-white shadow-sm transition-all hover:bg-blue-700 active:scale-[0.97]"
+                  >
+                    <Download className="h-4 w-4" />
+                    Instalar
+                  </button>
+                  <button
+                    onClick={() => setInstallDismissed(true)}
+                    className="flex items-center justify-center rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
                 </div>
-                <button
-                  onClick={install}
-                  className="flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white shadow-sm transition-all hover:bg-blue-700 active:scale-[0.97]"
-                >
-                  <Download className="h-3.5 w-3.5" />
-                  Instalar
-                </button>
-                <button
-                  onClick={() => setInstallDismissed(true)}
-                  className="flex items-center justify-center rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
-                >
-                  <X className="h-4 w-4" />
-                </button>
               </div>
             </div>
           </div>
