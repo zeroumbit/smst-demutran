@@ -1,4 +1,4 @@
-import { useState, FormEvent, useEffect } from 'react';
+import { useState, FormEvent, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
@@ -8,6 +8,8 @@ import { toast } from '@/hooks/use-toast';
 import { maskCpf } from '@/lib/masks';
 import { Eye, EyeOff, Loader2, Shield, Lock, Check } from 'lucide-react';
 import guardaLogo from '@/guarda.png';
+
+type ValidationStatus = 'idle' | 'validating' | 'valid' | 'invalid';
 
 const CadastroGuarda = () => {
   const navigate = useNavigate();
@@ -25,9 +27,9 @@ const CadastroGuarda = () => {
   const [guardaId, setGuardaId] = useState<string | null>(null);
   const [guardaNome, setGuardaNome] = useState('');
   const [guardaGrad, setGuardaGrad] = useState('');
-  const [validando, setValidando] = useState(false);
+  const [validationStatus, setValidationStatus] = useState<ValidationStatus>('idle');
   const [erroValidacao, setErroValidacao] = useState('');
-  const [jaPossuiConta, setJaPossuiConta] = useState(false);
+  const validationRequestId = useRef(0);
 
   useEffect(() => {
     document.title = 'Cadastro de Acesso - Guarda Municipal';
@@ -35,21 +37,40 @@ const CadastroGuarda = () => {
 
   const cpfValido = cpf.replace(/\D/g, '').length === 11;
   const matriculaPreenchida = matricula.trim().length > 0;
-  const podeContinuar = cpfValido && matriculaPreenchida;
+  const matriculaNormalizada = matricula.trim().replace(/^0+/, '') || matricula.trim();
+  const credenciaisPreenchidas = cpfValido && matriculaPreenchida;
+  const validando = validationStatus === 'validating';
+  const dadosValidados = validationStatus === 'valid';
+  const podeContinuar = validationStatus === 'valid' && Boolean(guardaId);
 
-  const handleContinuar = async () => {
+  const resetValidacao = () => {
+    setValidationStatus('idle');
     setErroValidacao('');
-    setJaPossuiConta(false);
+    setGuardaId(null);
+    setGuardaNome('');
+    setGuardaGrad('');
+  };
+
+  const validarGuarda = async (requestId: number) => {
     const cpfLimpo = cpf.replace(/\D/g, '');
 
-    setValidando(true);
+    if (!cpfValido || !matriculaPreenchida) {
+      resetValidacao();
+      return;
+    }
+
+    setValidationStatus('validating');
     try {
       const { data, error } = await supabase.rpc('validar_dados_guarda', {
         p_cpf: cpfLimpo,
-        p_matricula: matricula.trim(),
+        p_matricula: matriculaNormalizada,
       });
 
+      if (requestId !== validationRequestId.current) return;
+
       if (error) {
+        resetValidacao();
+        setValidationStatus('invalid');
         console.error('Erro RPC validar_dados_guarda:', error);
         if (error.message?.includes('does not exist') || error.message?.includes('not found') || error.message?.includes('relation') || error.message?.includes('function')) {
           setErroValidacao('Função de validação não encontrada no banco de dados. O administrador precisa aplicar a migration mais recente no Supabase.');
@@ -60,42 +81,69 @@ const CadastroGuarda = () => {
       }
 
       const result = data as Record<string, unknown>;
-      if (!result) { setErroValidacao('Erro ao validar dados.'); return; }
+      if (!result) {
+        resetValidacao();
+        setValidationStatus('invalid');
+        setErroValidacao('Erro ao validar dados.');
+        return;
+      }
 
-      // Tenta extrair guarda_id de qualquer formato (novo: guarda_id, antigo: guarda_id)
       const guardaId = (result.guarda_id as string) || (result.id as string) || null;
       const nome = (result.nome as string) || '';
       const grad = (result.graduacao_nome as string) || '';
       const status = result.status as string | undefined;
 
       if (status === 'nao_encontrado') {
+        resetValidacao();
+        setValidationStatus('invalid');
         setErroValidacao((result.mensagem as string) || 'Dados não encontrados.');
         return;
       }
 
-      // Se tem guarda_id, vai para o passo 2 (mesmo que ja possua conta)
-      if (guardaId) {
+      if (status === 'ok' && guardaId) {
         setGuardaId(guardaId);
         setGuardaNome(nome);
         setGuardaGrad(grad);
-
-        if (status === 'ja_possui_conta') {
-          setJaPossuiConta(true);
-        }
-        setPasso('cadastro');
+        setErroValidacao('');
+        setValidationStatus('valid');
       } else {
-        if (status === 'ja_possui_conta') {
-          setJaPossuiConta(true);
-        } else {
-          setErroValidacao((result.mensagem as string) || 'Guarda não encontrado. Verifique CPF e matrícula.');
-        }
+        resetValidacao();
+        setValidationStatus('invalid');
+        setErroValidacao((result.mensagem as string) || 'Guarda não encontrado. Verifique CPF e matrícula.');
       }
     } catch (err) {
+      if (requestId !== validationRequestId.current) return;
+      resetValidacao();
+      setValidationStatus('invalid');
       console.error('Erro ao validar guarda:', err);
       setErroValidacao('Erro de conexão. Verifique sua internet e tente novamente.');
     } finally {
-      setValidando(false);
+      if (requestId !== validationRequestId.current) return;
+      if (validationStatus === 'validating') {
+        setValidationStatus((current) => current === 'validating' ? 'idle' : current);
+      }
     }
+  };
+
+  useEffect(() => {
+    if (!credenciaisPreenchidas) {
+      validationRequestId.current += 1;
+      resetValidacao();
+      return;
+    }
+
+    const requestId = validationRequestId.current + 1;
+    validationRequestId.current = requestId;
+    const timeoutId = window.setTimeout(() => {
+      void validarGuarda(requestId);
+    }, 350);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [cpf, matricula]);
+
+  const handleContinuar = () => {
+    if (!podeContinuar || !guardaId) return;
+    setPasso('cadastro');
   };
 
   const handleCriarConta = async (e: FormEvent) => {
@@ -116,7 +164,7 @@ const CadastroGuarda = () => {
 
     setRegistering(true);
     try {
-      const { error } = await supabase.rpc('criar_acesso_guarda', {
+      const { data, error } = await supabase.rpc('criar_acesso_guarda', {
         p_guarda_id: guardaId,
         p_email: email.trim(),
         p_senha: senha,
@@ -131,6 +179,16 @@ const CadastroGuarda = () => {
         } else {
           toast({ title: 'Erro ao criar conta', description: error.message, variant: 'destructive' });
         }
+        return;
+      }
+
+      const result = data as Record<string, unknown> | null;
+      if (!result?.sucesso) {
+        toast({
+          title: 'Não foi possível criar a conta',
+          description: (result?.mensagem as string) || 'Tente novamente em alguns instantes.',
+          variant: 'destructive',
+        });
         return;
       }
 
@@ -151,7 +209,7 @@ const CadastroGuarda = () => {
           <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl bg-white/15 backdrop-blur-sm">
             <img src={guardaLogo} alt="Guarda Municipal" className="h-full w-full object-contain p-2" />
           </div>
-          <h1 className="text-3xl font-black tracking-[-0.04em]">Ativar seu<br />acesso</h1>
+          <h1 className="text-3xl font-black tracking-[-0.04em]">Ativar seu acesso</h1>
           <p className="mt-3 text-sm leading-relaxed text-white/80">
             Este é o portal de ativação de conta para Guardas Municipais. Aqui você vai criar seu login
             pessoal para acessar o sistema IRO, sua escala e demais ferramentas da corporação.
@@ -211,15 +269,30 @@ const CadastroGuarda = () => {
                 <div className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="cpf" className="text-sm font-semibold text-slate-700">CPF</Label>
-                    <Input id="cpf" value={cpf} onChange={(e) => { setCpf(maskCpf(e.target.value)); setErroValidacao(''); setJaPossuiConta(false); }} placeholder="000.000.000-00" required disabled={validando} className="h-12 rounded-xl border-slate-300 bg-white px-4 text-base shadow-sm focus-visible:ring-2 focus-visible:ring-primary" />
+                    <Input id="cpf" value={cpf} onChange={(e) => { setCpf(maskCpf(e.target.value)); resetValidacao(); }} placeholder="000.000.000-00" required disabled={passo === 'cadastro'} className="h-12 rounded-xl border-slate-300 bg-white px-4 text-base shadow-sm focus-visible:ring-2 focus-visible:ring-primary" />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="matricula" className="text-sm font-semibold text-slate-700">Matrícula</Label>
-                    <Input id="matricula" value={matricula} onChange={(e) => { setMatricula(e.target.value); setErroValidacao(''); setJaPossuiConta(false); }} placeholder="Ex.: 3180" required disabled={validando} className="h-12 rounded-xl border-slate-300 bg-white px-4 text-base shadow-sm focus-visible:ring-2 focus-visible:ring-primary" />
+                    <Input id="matricula" value={matricula} onChange={(e) => { setMatricula(e.target.value); resetValidacao(); }} placeholder="Ex.: 3180" required disabled={passo === 'cadastro'} className="h-12 rounded-xl border-slate-300 bg-white px-4 text-base shadow-sm focus-visible:ring-2 focus-visible:ring-primary" />
                   </div>
                 </div>
 
-                {erroValidacao && (
+                {credenciaisPreenchidas && validationStatus !== 'invalid' && (
+                  <div className={`rounded-xl border px-5 py-4 text-sm shadow-sm flex items-center gap-3 ${
+                    dadosValidados
+                      ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
+                      : 'bg-slate-50 border-slate-200 text-slate-700'
+                  }`}>
+                    <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${
+                      dadosValidados ? 'bg-emerald-200' : 'bg-white'
+                    }`}>
+                      {validando ? <Loader2 className="h-4 w-4 animate-spin text-slate-500" /> : <Check className={`h-4 w-4 ${dadosValidados ? 'text-emerald-700' : 'text-emerald-600'}`} />}
+                    </div>
+                    {validando ? 'Validando CPF e matrícula...' : dadosValidados ? 'Dados encontrados. continue para o cadastro.' : 'Aguardando validação.'}
+                  </div>
+                )}
+
+                {erroValidacao && validationStatus === 'invalid' && (
                 <div className="rounded-xl bg-red-50 border border-red-200 px-5 py-4 text-sm text-red-700 flex items-center gap-3 shadow-sm">
                   <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-red-200">
                     <span className="text-xs font-bold text-red-700">!</span>
@@ -228,19 +301,10 @@ const CadastroGuarda = () => {
                 </div>
                 )}
 
-                {jaPossuiConta && (
-                <div className="rounded-xl bg-emerald-50 border border-emerald-200 px-5 py-4 text-sm text-emerald-700 flex items-center gap-3 shadow-sm">
-                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-emerald-200">
-                    <Check className="h-4 w-4 text-emerald-700" />
-                  </div>
-                  Este Guarda Municipal já possui uma conta cadastrada.
-                </div>
-                )}
-
                 <Button
                   type="button"
-                  onClick={() => void handleContinuar()}
-                  disabled={!podeContinuar || validando}
+                  onClick={handleContinuar}
+                  disabled={!podeContinuar}
                   className={`w-full h-12 rounded-xl text-base font-bold shadow-sm transition-all ${
                     !podeContinuar
                       ? 'bg-slate-300 text-slate-500 cursor-not-allowed shadow-none'

@@ -88,7 +88,6 @@ AS $$
 DECLARE
   v_guarda public.guardas_municipais%ROWTYPE;
   v_graduacao_nome text;
-  v_ja_possui_conta boolean;
 BEGIN
   SELECT gm.* INTO v_guarda
   FROM public.guardas_municipais gm
@@ -101,14 +100,6 @@ BEGIN
 
   IF v_guarda.ativo = false THEN
     RETURN jsonb_build_object('status', 'nao_encontrado', 'mensagem', 'Este Guarda Municipal está inativo. Procure o gestor da Guarda Municipal.');
-  END IF;
-
-  SELECT EXISTS(
-    SELECT 1 FROM public.guardas_usuarios WHERE guarda_id = v_guarda.id
-  ) INTO v_ja_possui_conta;
-
-  IF v_ja_possui_conta THEN
-    RETURN jsonb_build_object('status', 'ja_possui_conta', 'mensagem', 'Este Guarda Municipal já possui uma conta cadastrada.');
   END IF;
 
   SELECT nome INTO v_graduacao_nome
