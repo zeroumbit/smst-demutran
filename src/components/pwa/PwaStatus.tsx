@@ -1,7 +1,12 @@
 import { useState } from 'react';
-import { Download, WifiOff } from 'lucide-react';
+import { Download, WifiOff, Smartphone, Zap, Shield, Globe } from 'lucide-react';
 import { usePWA } from '@/hooks/usePWA';
-import { Button } from '@/components/ui/button';
+
+const features = [
+  { icon: Zap, text: 'Carregamento instantâneo' },
+  { icon: Shield, text: 'Notificações em tempo real' },
+  { icon: Globe, text: 'Funciona offline' },
+];
 
 export function PwaStatus() {
   const { installPrompt, isOnline, install } = usePWA();
@@ -12,29 +17,80 @@ export function PwaStatus() {
   if (!showInstall && isOnline) return null;
 
   return (
-    <div className="fixed bottom-4 right-4 z-[9999] flex flex-col gap-2 max-w-[320px]">
+    <div className="fixed inset-0 z-[9999] pointer-events-none">
+      {/* Install Bottom Sheet */}
       {showInstall && (
-        <div className="rounded-2xl border border-brand-200 bg-white p-4 shadow-[0_8px_32px_-12px_rgba(0,0,0,0.25)]">
-          <div className="flex items-start gap-3">
-            <div className="rounded-xl bg-brand-100 p-2.5 text-brand-600 shrink-0">
-              <Download className="h-5 w-5" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold text-slate-900">Instalar SMST</p>
-              <p className="text-xs text-slate-500 mt-0.5">Instale para acesso rápido e offline.</p>
-              <div className="flex gap-2 mt-3">
-                <Button size="sm" onClick={install} className="text-xs h-8 rounded-xl">Instalar</Button>
-                <Button size="sm" variant="ghost" onClick={() => setInstallDismissed(true)} className="text-xs h-8 rounded-xl">Agora não</Button>
+        <>
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm pointer-events-auto transition-opacity duration-300"
+            onClick={() => setInstallDismissed(true)}
+          />
+
+          {/* Sheet */}
+          <div className="absolute bottom-0 left-0 right-0 pointer-events-auto animate-slide-up">
+            <div className="relative mx-auto w-full max-w-[400px] rounded-t-[28px] bg-white px-6 pb-8 pt-5 shadow-[0_-8px_40px_rgba(0,0,0,0.12)]">
+              {/* Drag handle */}
+              <div className="mx-auto mb-6 h-1 w-9 rounded-full bg-slate-200" />
+
+              {/* Content */}
+              <div className="flex flex-col items-center text-center">
+                {/* App icon */}
+                <div className="mb-4 flex h-20 w-20 items-center justify-center overflow-hidden rounded-[22px] bg-gradient-to-br from-blue-600 to-blue-700 shadow-lg shadow-blue-200">
+                  <div className="flex h-full w-full items-center justify-center bg-white/10">
+                    <Smartphone className="h-10 w-10 text-white" />
+                  </div>
+                </div>
+
+                {/* Title */}
+                <h2 className="text-[22px] font-bold tracking-[-0.02em] text-slate-900">
+                  Instalar <span className="text-blue-600">SMST</span>
+                </h2>
+                <p className="mt-1.5 text-sm leading-5 text-slate-500">
+                  Instale o aplicativo para ter acesso rápido a todos os serviços da Secretaria de Segurança, diretamente da sua tela inicial.
+                </p>
+              </div>
+
+              {/* Features */}
+              <div className="mx-auto mt-6 grid gap-2.5">
+                {features.map((feature) => (
+                  <div key={feature.text} className="flex items-center gap-3 rounded-xl bg-slate-50 px-4 py-2.5">
+                    <div className="flex h-7 w-7 items-center justify-center rounded-full bg-blue-100 text-blue-600">
+                      <feature.icon className="h-3.5 w-3.5" />
+                    </div>
+                    <span className="text-sm font-medium text-slate-700">{feature.text}</span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Buttons */}
+              <div className="mt-6 flex flex-col gap-2">
+                <button
+                  onClick={install}
+                  className="flex w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 px-6 py-3.5 text-sm font-bold text-white shadow-lg shadow-blue-200 transition-all active:scale-[0.98] hover:bg-blue-700"
+                >
+                  <Download className="h-4 w-4" />
+                  Instalar aplicativo
+                </button>
+                <button
+                  onClick={() => setInstallDismissed(true)}
+                  className="flex w-full items-center justify-center gap-2 rounded-2xl px-6 py-3 text-sm font-semibold text-slate-500 transition-colors hover:bg-slate-50 active:scale-[0.98]"
+                >
+                  Agora não
+                </button>
               </div>
             </div>
           </div>
-        </div>
+        </>
       )}
 
+      {/* Offline Banner */}
       {!isOnline && (
-        <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-[0_8px_32px_-12px_rgba(0,0,0,0.25)] flex items-center gap-2 text-sm text-slate-600">
-          <WifiOff className="h-4 w-4 text-slate-400 shrink-0" />
-          <span>Modo offline — dados podem estar desatualizados</span>
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 pointer-events-auto">
+          <div className="flex items-center gap-2.5 rounded-full border border-slate-200 bg-white/95 px-5 py-2.5 shadow-[0_4px_20px_rgba(0,0,0,0.08)] backdrop-blur-sm text-sm text-slate-600">
+            <WifiOff className="h-4 w-4 text-slate-400 shrink-0" />
+            <span className="font-medium">Modo offline — dados podem estar desatualizados</span>
+          </div>
         </div>
       )}
     </div>

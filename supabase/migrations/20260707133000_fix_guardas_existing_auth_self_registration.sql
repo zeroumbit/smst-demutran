@@ -17,6 +17,7 @@ DECLARE
   v_new_user_id uuid;
   v_nome_exibir text;
   v_usuario_existente_id uuid;
+  v_usuario_tecnico_id uuid;
   v_email_normalizado text;
   v_email_em_uso_por_outro boolean;
   v_matricula text;
@@ -41,6 +42,12 @@ BEGIN
 
   v_email_tecnico := 'gcm.' || v_matricula || '@guardamunicipal.sistema';
 
+  SELECT id
+  INTO v_usuario_tecnico_id
+  FROM auth.users
+  WHERE lower(email) = lower(v_email_tecnico)
+  LIMIT 1;
+
   SELECT usuario_id
   INTO v_usuario_existente_id
   FROM public.guardas_usuarios
@@ -49,17 +56,21 @@ BEGIN
   LIMIT 1;
 
   IF v_usuario_existente_id IS NULL THEN
-    SELECT id
-    INTO v_usuario_existente_id
-    FROM auth.users
-    WHERE lower(email) = lower(v_email_tecnico)
-    LIMIT 1;
+    v_usuario_existente_id := v_usuario_tecnico_id;
 
     IF v_usuario_existente_id IS NOT NULL THEN
       INSERT INTO public.guardas_usuarios (guarda_id, usuario_id)
       VALUES (p_guarda_id, v_usuario_existente_id)
       ON CONFLICT (guarda_id, usuario_id) DO NOTHING;
     END IF;
+  END IF;
+
+  IF v_usuario_tecnico_id IS NOT NULL THEN
+    v_usuario_existente_id := v_usuario_tecnico_id;
+
+    INSERT INTO public.guardas_usuarios (guarda_id, usuario_id)
+    VALUES (p_guarda_id, v_usuario_existente_id)
+    ON CONFLICT (guarda_id, usuario_id) DO NOTHING;
   END IF;
 
   SELECT EXISTS (
