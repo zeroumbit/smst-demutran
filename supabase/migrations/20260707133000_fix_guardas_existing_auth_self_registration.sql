@@ -1,53 +1,6 @@
--- Create standalone RPCs for guarda self-registration flow
--- These functions are required by the frontend at /guardas/cadastro
--- They are idempotent and can be safely applied even if the refactoring
--- migration (20260702000020) was never run.
+-- Patch: make guarda self-registration reuse pre-provisioned auth.users
+-- This migration must run after the original self-registration RPCs.
 
--- 1. Validate guarda data for self-registration
-CREATE OR REPLACE FUNCTION public.validar_dados_guarda(
-  p_cpf text,
-  p_matricula text
-)
-RETURNS jsonb
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path TO 'public'
-AS $$
-DECLARE
-  v_guarda public.guardas_municipais%ROWTYPE;
-  v_graduacao_nome text;
-BEGIN
-  SELECT gm.* INTO v_guarda
-  FROM public.guardas_municipais gm
-  WHERE gm.cpf = p_cpf AND gm.matricula = p_matricula
-  LIMIT 1;
-
-  IF v_guarda.id IS NULL THEN
-    RETURN jsonb_build_object('status', 'nao_encontrado', 'mensagem', 'O CPF e a matrícula informados não conferem com o cadastro da Guarda Municipal. Procure o gestor da Guarda Municipal.');
-  END IF;
-
-  IF v_guarda.ativo = false THEN
-    RETURN jsonb_build_object('status', 'nao_encontrado', 'mensagem', 'Este Guarda Municipal está inativo. Procure o gestor da Guarda Municipal.');
-  END IF;
-
-  SELECT nome INTO v_graduacao_nome
-  FROM public.guarda_municipal_graduacoes
-  WHERE id = v_guarda.graduacao_id;
-
-  RETURN jsonb_build_object(
-    'status', 'ok',
-    'guarda_id', v_guarda.id,
-    'nome', v_guarda.nome,
-    'matricula', v_guarda.matricula,
-    'graduacao_id', v_guarda.graduacao_id,
-    'graduacao_nome', v_graduacao_nome
-  );
-END;
-$$;
-
-GRANT EXECUTE ON FUNCTION public.validar_dados_guarda(text, text) TO anon, authenticated;
-
--- 2. Create auth user and link to guarda (used after self-registration validation)
 CREATE OR REPLACE FUNCTION public.criar_acesso_guarda(
   p_guarda_id uuid,
   p_email text,
@@ -66,9 +19,27 @@ DECLARE
   v_usuario_existente_id uuid;
   v_email_normalizado text;
   v_email_em_uso_por_outro boolean;
+  v_matricula text;
+  v_email_tecnico text;
 BEGIN
   v_nome_exibir := COALESCE(NULLIF(trim(p_apelido), ''), NULLIF(trim(p_nome), ''), 'Guarda Municipal');
   v_email_normalizado := lower(trim(p_email));
+
+  IF v_email_normalizado = '' THEN
+    RETURN jsonb_build_object('sucesso', false, 'mensagem', 'Informe um e-mail válido.');
+  END IF;
+
+  SELECT gm.matricula
+  INTO v_matricula
+  FROM public.guardas_municipais gm
+  WHERE gm.id = p_guarda_id
+  LIMIT 1;
+
+  IF v_matricula IS NULL THEN
+    RETURN jsonb_build_object('sucesso', false, 'mensagem', 'Guarda Municipal não encontrado.');
+  END IF;
+
+  v_email_tecnico := 'gcm.' || v_matricula || '@guardamunicipal.sistema';
 
   SELECT usuario_id
   INTO v_usuario_existente_id
@@ -76,6 +47,20 @@ BEGIN
   WHERE guarda_id = p_guarda_id
   ORDER BY created_at ASC
   LIMIT 1;
+
+  IF v_usuario_existente_id IS NULL THEN
+    SELECT id
+    INTO v_usuario_existente_id
+    FROM auth.users
+    WHERE lower(email) = lower(v_email_tecnico)
+    LIMIT 1;
+
+    IF v_usuario_existente_id IS NOT NULL THEN
+      INSERT INTO public.guardas_usuarios (guarda_id, usuario_id)
+      VALUES (p_guarda_id, v_usuario_existente_id)
+      ON CONFLICT (guarda_id, usuario_id) DO NOTHING;
+    END IF;
+  END IF;
 
   SELECT EXISTS (
     SELECT 1
@@ -100,6 +85,10 @@ BEGIN
         aud = 'authenticated',
         role = 'authenticated'
     WHERE id = v_usuario_existente_id;
+
+    IF NOT FOUND THEN
+      RETURN jsonb_build_object('sucesso', false, 'mensagem', 'Usuário auth pré-cadastrado não foi encontrado para atualização.');
+    END IF;
 
     UPDATE auth.identities
     SET identity_data = COALESCE(identity_data, '{}'::jsonb) || jsonb_build_object('sub', v_usuario_existente_id::text, 'email', v_email_normalizado),

@@ -4,11 +4,17 @@ import "./index.css";
 
 import { registerSW } from "virtual:pwa-register";
 
+// Recarrega a página automaticamente quando o Service Worker atualiza e assume o controle
+let refreshing = false;
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (refreshing) return;
+    refreshing = true;
+    window.location.reload();
+  });
+}
+
 registerSW({
-  onNeedRefresh() {
-    const event = new CustomEvent('pwa:need-refresh');
-    window.dispatchEvent(event);
-  },
   onOfflineReady() {
     console.log('App ready for offline use');
   },

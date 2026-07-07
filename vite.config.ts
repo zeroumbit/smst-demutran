@@ -13,7 +13,7 @@ export default defineConfig(({ mode }) => ({
   plugins: [
     react(),
     VitePWA({
-      registerType: "prompt",
+      registerType: "autoUpdate",
       includeAssets: ["favicon.ico", "favicon.png", "pwa-icon.svg"],
       manifest: {
         name: "SMST - Secretaria Municipal de Segurança Pública e Trânsito",
