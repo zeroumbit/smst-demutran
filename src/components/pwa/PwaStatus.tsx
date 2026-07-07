@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Download, WifiOff, Smartphone, Zap, Shield, Globe } from 'lucide-react';
+import { Download, WifiOff, Smartphone, Zap, Shield, Globe, X } from 'lucide-react';
 import { usePWA } from '@/hooks/usePWA';
 
 const features = [
@@ -18,65 +18,97 @@ export function PwaStatus() {
 
   return (
     <div className="fixed inset-0 z-[9999] pointer-events-none">
-      {/* Install Bottom Sheet */}
+      {/* Install prompt */}
       {showInstall && (
         <>
-          {/* Backdrop */}
-          <div
-            className="absolute inset-0 bg-black/40 backdrop-blur-sm pointer-events-auto transition-opacity duration-300"
-            onClick={() => setInstallDismissed(true)}
-          />
-
-          {/* Sheet */}
-          <div className="absolute bottom-0 left-0 right-0 pointer-events-auto animate-slide-up">
-            <div className="relative mx-auto w-full max-w-[400px] rounded-t-[28px] bg-white px-6 pb-8 pt-5 shadow-[0_-8px_40px_rgba(0,0,0,0.12)]">
-              {/* Drag handle */}
-              <div className="mx-auto mb-6 h-1 w-9 rounded-full bg-slate-200" />
-
-              {/* Content */}
-              <div className="flex flex-col items-center text-center">
-                {/* App icon */}
-                <div className="mb-4 flex h-20 w-20 items-center justify-center overflow-hidden rounded-[22px] bg-gradient-to-br from-blue-600 to-blue-700 shadow-lg shadow-blue-200">
-                  <div className="flex h-full w-full items-center justify-center bg-white/10">
-                    <Smartphone className="h-10 w-10 text-white" />
-                  </div>
-                </div>
-
-                {/* Title */}
-                <h2 className="text-[22px] font-bold tracking-[-0.02em] text-slate-900">
-                  Instalar <span className="text-blue-600">SMST</span>
-                </h2>
-                <p className="mt-1.5 text-sm leading-5 text-slate-500">
-                  Instale o aplicativo para ter acesso rápido a todos os serviços da Secretaria de Segurança, diretamente da sua tela inicial.
-                </p>
-              </div>
-
-              {/* Features */}
-              <div className="mx-auto mt-6 grid gap-2.5">
-                {features.map((feature) => (
-                  <div key={feature.text} className="flex items-center gap-3 rounded-xl bg-slate-50 px-4 py-2.5">
-                    <div className="flex h-7 w-7 items-center justify-center rounded-full bg-blue-100 text-blue-600">
-                      <feature.icon className="h-3.5 w-3.5" />
+          {/* Mobile: Bottom Sheet */}
+          <div className="md:hidden">
+            {/* Backdrop */}
+            <div
+              className="absolute inset-0 bg-black/40 backdrop-blur-sm pointer-events-auto transition-opacity duration-300"
+              onClick={() => setInstallDismissed(true)}
+            />
+            {/* Sheet */}
+            <div className="absolute bottom-0 left-0 right-0 pointer-events-auto animate-slide-up">
+              <div className="relative mx-auto w-full max-w-[400px] rounded-t-[28px] bg-white px-6 pb-8 pt-5 shadow-[0_-8px_40px_rgba(0,0,0,0.12)]">
+                <div className="mx-auto mb-6 h-1 w-9 rounded-full bg-slate-200" />
+                <div className="flex flex-col items-center text-center">
+                  <div className="mb-4 flex h-20 w-20 items-center justify-center overflow-hidden rounded-[22px] bg-gradient-to-br from-blue-600 to-blue-700 shadow-lg shadow-blue-200">
+                    <div className="flex h-full w-full items-center justify-center bg-white/10">
+                      <Smartphone className="h-10 w-10 text-white" />
                     </div>
-                    <span className="text-sm font-medium text-slate-700">{feature.text}</span>
                   </div>
-                ))}
+                  <h2 className="text-[22px] font-bold tracking-[-0.02em] text-slate-900">
+                    Instalar <span className="text-blue-600">SMST</span>
+                  </h2>
+                  <p className="mt-1.5 text-sm leading-5 text-slate-500">
+                    Instale o aplicativo para ter acesso rápido a todos os serviços da Secretaria de Segurança, diretamente da sua tela inicial.
+                  </p>
+                </div>
+                <div className="mx-auto mt-6 grid gap-2.5">
+                  {features.map((feature) => (
+                    <div key={feature.text} className="flex items-center gap-3 rounded-xl bg-slate-50 px-4 py-2.5">
+                      <div className="flex h-7 w-7 items-center justify-center rounded-full bg-blue-100 text-blue-600">
+                        <feature.icon className="h-3.5 w-3.5" />
+                      </div>
+                      <span className="text-sm font-medium text-slate-700">{feature.text}</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-6 flex flex-col gap-2">
+                  <button
+                    onClick={install}
+                    className="flex w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 px-6 py-3.5 text-sm font-bold text-white shadow-lg shadow-blue-200 transition-all active:scale-[0.98] hover:bg-blue-700"
+                  >
+                    <Download className="h-4 w-4" />
+                    Instalar aplicativo
+                  </button>
+                  <button
+                    onClick={() => setInstallDismissed(true)}
+                    className="flex w-full items-center justify-center gap-2 rounded-2xl px-6 py-3 text-sm font-semibold text-slate-500 transition-colors hover:bg-slate-50 active:scale-[0.98]"
+                  >
+                    Agora não
+                  </button>
+                </div>
               </div>
+            </div>
+          </div>
 
-              {/* Buttons */}
-              <div className="mt-6 flex flex-col gap-2">
+          {/* Desktop: Horizontal Bar */}
+          <div className="hidden md:block">
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-full max-w-[720px] pointer-events-auto">
+              <div className="flex items-center gap-4 rounded-2xl border border-slate-200 bg-white px-5 py-3.5 shadow-[0_4px_24px_rgba(0,0,0,0.1)]">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-blue-600 to-blue-700 shadow-sm">
+                  <Smartphone className="h-5 w-5 text-white" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold text-slate-900">
+                    Instalar <span className="text-blue-600">SMST</span>
+                  </p>
+                  <p className="text-xs text-slate-500 truncate">
+                    Acesso rápido a todos os serviços da Secretaria de Segurança.
+                  </p>
+                </div>
+                <div className="hidden sm:flex items-center gap-3">
+                  {features.map((feature) => (
+                    <div key={feature.text} className="flex items-center gap-1.5 text-xs text-slate-500">
+                      <feature.icon className="h-3.5 w-3.5 text-blue-500" />
+                      <span>{feature.text}</span>
+                    </div>
+                  ))}
+                </div>
                 <button
                   onClick={install}
-                  className="flex w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 px-6 py-3.5 text-sm font-bold text-white shadow-lg shadow-blue-200 transition-all active:scale-[0.98] hover:bg-blue-700"
+                  className="flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white shadow-sm transition-all hover:bg-blue-700 active:scale-[0.97]"
                 >
-                  <Download className="h-4 w-4" />
-                  Instalar aplicativo
+                  <Download className="h-3.5 w-3.5" />
+                  Instalar
                 </button>
                 <button
                   onClick={() => setInstallDismissed(true)}
-                  className="flex w-full items-center justify-center gap-2 rounded-2xl px-6 py-3 text-sm font-semibold text-slate-500 transition-colors hover:bg-slate-50 active:scale-[0.98]"
+                  className="flex items-center justify-center rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
                 >
-                  Agora não
+                  <X className="h-4 w-4" />
                 </button>
               </div>
             </div>
