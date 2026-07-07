@@ -62,7 +62,7 @@ const fmtDateBR = (d: string | null | undefined): string => {
 
 const GuardaDashboard = () => {
   const navigate = useNavigate();
-  const { user, profile, logout, refreshProfile } = useAuth();
+  const { user, profile, logout, markLeiIroAccepted } = useAuth();
   const [loading, setLoading] = useState(true);
   const [resumo, setResumo] = useState<ResumoGuarda>({ total_horas_mes: 0, total_reais: 0, horas_disponiveis: 0, banco_horas: 0, mes_anterior_horas: 0, mes_anterior_reais: 0 });
   const [ultimasCandidaturas, setUltimasCandidaturas] = useState<any[]>([]);
@@ -96,12 +96,12 @@ const GuardaDashboard = () => {
       
       const res = data as any;
       if (res && res.sucesso) {
+        markLeiIroAccepted();
+        setExibirModalLei(false);
         toast({
           title: 'Termo de Aceite registrado!',
           description: 'Você aceitou as regras da Lei da IRO.',
         });
-        await refreshProfile();
-        setExibirModalLei(false);
       } else {
         toast({
           title: 'Erro ao aceitar termo',

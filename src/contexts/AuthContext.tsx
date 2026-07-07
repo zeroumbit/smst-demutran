@@ -5,6 +5,34 @@ import { supabase } from '@/lib/supabase';
 import type { AdminProfile, PapelUsuario } from '@/types/admin';
 import { maskCpf } from '@/lib/masks';
 
+const LEI_IRO_ACCEPTED_KEY_PREFIX = 'lei-iro-accepted:';
+
+const getLeiIroAcceptedStorageKey = (userId: string) => `${LEI_IRO_ACCEPTED_KEY_PREFIX}${userId}`;
+
+const readLeiIroAccepted = (userId?: string | null): string | null => {
+  if (!userId || typeof window === 'undefined') {
+    return null;
+  }
+
+  try {
+    return window.localStorage.getItem(getLeiIroAcceptedStorageKey(userId));
+  } catch {
+    return null;
+  }
+};
+
+const persistLeiIroAccepted = (userId?: string | null, acceptedAt?: string | null): void => {
+  if (!userId || !acceptedAt || typeof window === 'undefined') {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(getLeiIroAcceptedStorageKey(userId), acceptedAt);
+  } catch {
+    // silent
+  }
+};
+
 interface AuthContextType {
   user: AdminProfile | null;
   login: (email: string, password: string) => Promise<boolean>;
@@ -21,6 +49,7 @@ interface AuthContextType {
   hasPapel: (...papeis: PapelUsuario[]) => boolean;
   canManageSector: (targetSetorId?: string | null) => boolean;
   refreshProfile: () => Promise<void>;
+  markLeiIroAccepted: (acceptedAt?: string) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -53,6 +82,12 @@ async function fetchUserProfile(): Promise<AdminProfile | null> {
           }
         } catch {
           // silent
+        }
+
+        if (!profile.aceitou_lei_iro_at) {
+          profile.aceitou_lei_iro_at = readLeiIroAccepted(profile.user_id);
+        } else {
+          persistLeiIroAccepted(profile.user_id, profile.aceitou_lei_iro_at);
         }
       }
 
@@ -135,7 +170,7 @@ async function fetchUserProfile(): Promise<AdminProfile | null> {
         setor_slug: 'guarda-municipal',
         ativo: true,
         legacy_admin: false,
-        aceitou_lei_iro_at: aceitouLeiIroAt,
+        aceitou_lei_iro_at: aceitouLeiIroAt || readLeiIroAccepted(userData?.user?.id || ''),
       };
     }
 
@@ -159,6 +194,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const refreshProfile = async () => {
     const profile = await fetchUserProfile();
     setUser(profile);
+  };
+
+  const markLeiIroAccepted = (acceptedAt?: string) => {
+    const timestamp = acceptedAt ?? new Date().toISOString();
+    setUser((currentUser) => {
+      if (!currentUser) {
+        return currentUser;
+      }
+
+      persistLeiIroAccepted(currentUser.user_id, timestamp);
+
+      return {
+        ...currentUser,
+        aceitou_lei_iro_at: timestamp,
+      };
+    });
   };
 
   useEffect(() => {
@@ -332,6 +383,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         hasPapel,
         canManageSector,
         refreshProfile,
+        markLeiIroAccepted,
       }}
     >
       {children}
