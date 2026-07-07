@@ -49,33 +49,46 @@ const CadastroGuarda = () => {
         p_matricula: matricula.trim(),
       });
 
-      if (error) { setErroValidacao(error.message); return; }
+      if (error) {
+        console.error('Erro RPC validar_dados_guarda:', error);
+        if (error.message?.includes('does not exist') || error.message?.includes('not found') || error.message?.includes('relation') || error.message?.includes('function')) {
+          setErroValidacao('Função de validação não encontrada no banco de dados. O administrador precisa aplicar a migration mais recente no Supabase.');
+        } else {
+          setErroValidacao(error.message);
+        }
+        return;
+      }
 
       const result = data as Record<string, unknown>;
-
       if (!result) { setErroValidacao('Erro ao validar dados.'); return; }
 
+      // Tenta extrair guarda_id de qualquer formato (novo: guarda_id, antigo: guarda_id)
+      const guardaId = (result.guarda_id as string) || (result.id as string) || null;
+      const nome = (result.nome as string) || '';
+      const grad = (result.graduacao_nome as string) || '';
       const status = result.status as string | undefined;
-      const guardaId = result.guarda_id as string | undefined;
 
       if (status === 'nao_encontrado') {
         setErroValidacao((result.mensagem as string) || 'Dados não encontrados.');
         return;
       }
 
-      if (status === 'ja_possui_conta') {
-        setJaPossuiConta(true);
-        return;
-      }
-
-      // Se tem guarda_id, vai para o passo 2 independente do status
+      // Se tem guarda_id, vai para o passo 2 (mesmo que ja possua conta)
       if (guardaId) {
         setGuardaId(guardaId);
-        setGuardaNome((result.nome as string) || '');
-        setGuardaGrad((result.graduacao_nome as string) || '');
+        setGuardaNome(nome);
+        setGuardaGrad(grad);
+
+        if (status === 'ja_possui_conta') {
+          setJaPossuiConta(true);
+        }
         setPasso('cadastro');
       } else {
-        setErroValidacao('Resposta inesperada. Tente novamente ou contate o gestor.');
+        if (status === 'ja_possui_conta') {
+          setJaPossuiConta(true);
+        } else {
+          setErroValidacao((result.mensagem as string) || 'Guarda não encontrado. Verifique CPF e matrícula.');
+        }
       }
     } catch (err) {
       console.error('Erro ao validar guarda:', err);
@@ -102,18 +115,32 @@ const CadastroGuarda = () => {
     }
 
     setRegistering(true);
-    const { error } = await supabase.rpc('criar_acesso_guarda', {
-      p_guarda_id: guardaId,
-      p_email: email.trim(),
-      p_senha: senha,
-      p_nome: guardaNome,
-      p_apelido: apelido.trim() || null,
-    });
-    setRegistering(false);
+    try {
+      const { error } = await supabase.rpc('criar_acesso_guarda', {
+        p_guarda_id: guardaId,
+        p_email: email.trim(),
+        p_senha: senha,
+        p_nome: guardaNome,
+        p_apelido: apelido.trim() || null,
+      });
 
-    if (error) { toast({ title: 'Erro ao criar conta', description: error.message, variant: 'destructive' }); return; }
+      if (error) {
+        console.error('Erro RPC criar_acesso_guarda:', error);
+        if (error.message?.includes('does not exist') || error.message?.includes('not found') || error.message?.includes('function')) {
+          toast({ title: 'Erro no sistema', description: 'Função de criação não encontrada no banco de dados. O administrador precisa aplicar a migration mais recente no Supabase.', variant: 'destructive' });
+        } else {
+          toast({ title: 'Erro ao criar conta', description: error.message, variant: 'destructive' });
+        }
+        return;
+      }
 
-    navigate('/admin/login');
+      navigate('/admin/login');
+    } catch (err) {
+      console.error('Erro ao criar conta:', err);
+      toast({ title: 'Erro de conexão', description: 'Verifique sua internet e tente novamente.', variant: 'destructive' });
+    } finally {
+      setRegistering(false);
+    }
   };
 
   return (
