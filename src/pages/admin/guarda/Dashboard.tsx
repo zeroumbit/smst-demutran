@@ -102,7 +102,6 @@ const GuardaDashboard = () => {
         });
         await refreshProfile();
         setExibirModalLei(false);
-        navigate('/admin/perfil-guardas/guarda-municipal/dashboard', { replace: true });
       } else {
         toast({
           title: 'Erro ao aceitar termo',

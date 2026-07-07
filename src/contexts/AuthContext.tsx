@@ -43,6 +43,19 @@ async function fetchUserProfile(): Promise<AdminProfile | null> {
       } catch {
         // silent — sessão pode expirar, mas o perfil já foi carregado
       }
+
+      // Guarda sem perfil admin: enriquecer com dados específicos
+      if (!profile.papel && !profile.legacy_admin) {
+        try {
+          const { data: guardaPerfil } = await supabase.rpc('buscar_guarda_por_usuario', { p_usuario_id: profile.user_id });
+          if (guardaPerfil) {
+            (profile as any).aceitou_lei_iro_at = (guardaPerfil as any).aceitou_lei_iro_at || null;
+          }
+        } catch {
+          // silent
+        }
+      }
+
       return profile;
     }
 
