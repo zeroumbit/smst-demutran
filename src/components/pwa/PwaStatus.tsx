@@ -76,42 +76,33 @@ export function PwaStatus() {
 
           {/* Desktop: Horizontal Bar */}
           <div className="hidden md:block">
-            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 w-full max-w-[860px] px-4 pointer-events-auto">
-              <div className="flex items-center gap-5 rounded-2xl border border-slate-200/80 bg-white/95 px-6 py-4 shadow-[0_4px_28px_rgba(0,0,0,0.08)] backdrop-blur-sm">
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-[14px] bg-gradient-to-br from-blue-600 to-blue-700 shadow-sm">
-                  <Smartphone className="h-6 w-6 text-white" />
+            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 w-full max-w-[520px] px-4 pointer-events-auto">
+              <div className="flex items-center gap-4 rounded-2xl border border-slate-200/60 bg-white/90 p-4 shadow-[0_16px_36px_rgba(0,0,0,0.08)] backdrop-blur-md transition-all duration-300 hover:shadow-[0_20px_48px_rgba(0,0,0,0.12)]">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 shadow-md shadow-blue-100">
+                  <Smartphone className="h-5 w-5 text-white" />
                 </div>
-                <div className="flex items-center gap-4 min-w-0">
-                  <div className="whitespace-nowrap">
-                    <p className="text-sm font-bold text-slate-900">
-                      Instalar <span className="text-blue-600">SMST</span>
-                    </p>
-                    <p className="text-[13px] text-slate-500">
-                      Acesso rápido a todos os serviços
-                    </p>
-                  </div>
-                  <div className="hidden lg:flex items-center gap-4 border-l border-slate-200 pl-4">
-                    {features.map((feature) => (
-                      <div key={feature.text} className="flex items-center gap-1.5 text-[13px] text-slate-500 whitespace-nowrap">
-                        <feature.icon className="h-4 w-4 text-blue-500 shrink-0" />
-                        <span>{feature.text}</span>
-                      </div>
-                    ))}
-                  </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold text-slate-900 leading-snug">
+                    Instalar <span className="text-blue-600 font-extrabold">SMST</span>
+                  </p>
+                  <p className="text-[12.5px] text-slate-500 leading-normal truncate">
+                    Acesso rápido a todos os serviços
+                  </p>
                 </div>
-                <div className="ml-auto flex items-center gap-3 shrink-0">
+                <div className="flex items-center gap-2 shrink-0">
                   <button
                     onClick={install}
-                    className="flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-bold text-white shadow-sm transition-all hover:bg-blue-700 active:scale-[0.97]"
+                    className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-4 py-2 text-xs font-bold text-white shadow-sm transition-all duration-200 hover:from-blue-700 hover:to-indigo-700 hover:shadow-md active:scale-[0.96]"
                   >
-                    <Download className="h-4 w-4" />
+                    <Download className="h-3.5 w-3.5" />
                     Instalar
                   </button>
                   <button
                     onClick={() => setInstallDismissed(true)}
-                    className="flex items-center justify-center rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
+                    className="flex items-center justify-center rounded-lg p-1.5 text-slate-400 transition-colors duration-200 hover:bg-slate-100 hover:text-slate-600"
+                    aria-label="Fechar"
                   >
-                    <X className="h-5 w-5" />
+                    <X className="h-4 w-4" />
                   </button>
                 </div>
               </div>
