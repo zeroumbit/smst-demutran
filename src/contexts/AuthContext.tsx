@@ -67,10 +67,12 @@ async function fetchUserProfile(): Promise<AdminProfile | null> {
       const email = userData?.user?.email || '';
       let guardaNome = 'Guarda Municipal';
       let guardaSetorId: string | null = null;
+      let aceitouLeiIroAt: string | null = null;
       try {
         const { data: guardaPerfil } = await supabase.rpc('buscar_guarda_por_usuario', { p_usuario_id: userData?.user?.id || '' });
         if (guardaPerfil) {
           guardaNome = (guardaPerfil as any).nome || guardaNome;
+          aceitouLeiIroAt = (guardaPerfil as any).aceitou_lei_iro_at || null;
         }
       } catch {
         try {
@@ -82,10 +84,13 @@ async function fetchUserProfile(): Promise<AdminProfile | null> {
           if (gu?.guarda_id) {
             const { data: gm } = await supabase
               .from('guardas_municipais')
-              .select('nome')
+              .select('nome, aceitou_lei_iro_at')
               .eq('id', gu.guarda_id)
               .single();
-            if (gm) guardaNome = (gm as any).nome || guardaNome;
+            if (gm) {
+              guardaNome = (gm as any).nome || guardaNome;
+              aceitouLeiIroAt = (gm as any).aceitou_lei_iro_at || null;
+            }
           }
         } catch {
           // silent
@@ -117,6 +122,7 @@ async function fetchUserProfile(): Promise<AdminProfile | null> {
         setor_slug: 'guarda-municipal',
         ativo: true,
         legacy_admin: false,
+        aceitou_lei_iro_at: aceitouLeiIroAt,
       };
     }
 

@@ -1,4 +1,4 @@
-import { Navigate, useParams } from 'react-router-dom';
+import { Navigate, useParams, useLocation } from 'react-router-dom';
 import { useAuth, getDashboardUrl } from '@/contexts/AuthContext';
 import type { PapelUsuario } from '@/types/admin';
 
@@ -19,6 +19,7 @@ export const ProtectedRoute = ({
 }: ProtectedRouteProps) => {
   const { isAuthenticated, isLoading, canAccessAdmin, hasPapel, isSuperAdmin, profile, isGuarda } = useAuth();
   const { setorSlug } = useParams<{ setorSlug?: string }>();
+  const location = useLocation();
 
   if (isLoading) {
     return (
@@ -42,6 +43,9 @@ export const ProtectedRoute = ({
   if (requireGuarda) {
     if (!isGuarda) {
       return <Navigate to={getDashboardUrl(profile)} replace />;
+    }
+    if (!profile?.aceitou_lei_iro_at && location.pathname !== '/admin/perfil-guardas/guarda-municipal/dashboard') {
+      return <Navigate to="/admin/perfil-guardas/guarda-municipal/dashboard" replace />;
     }
     return <>{children}</>;
   }
