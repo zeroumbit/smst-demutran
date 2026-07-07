@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ClipboardList, Copy, GraduationCap, Pencil, Plus, RefreshCcw, Search, Shield, Trash2 } from 'lucide-react';
+import { ClipboardList, Copy, GraduationCap, Pencil, Plus, RefreshCcw, Search, Shield, Trash2, UserCheck } from 'lucide-react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -40,10 +40,11 @@ const GuardasMunicipaisPage = () => {
 
   const loadData = async () => {
     setLoading(true);
-    const [{ data: graduacoesData, error: graduacoesError }, { data: guardasData, error: guardasError }] =
+    const [{ data: graduacoesData, error: graduacoesError }, { data: guardasData, error: guardasError }, { data: vinculosData }] =
       await Promise.all([
         supabase.from('guarda_municipal_graduacoes').select('id, nome, ordem, ativo, created_at, updated_at').order('ordem', { ascending: true }).order('nome', { ascending: true }),
         supabase.from('guardas_municipais').select('id, matricula, nome, cpf, email, telefone, graduacao_id, ativo, created_at, updated_at').order('nome', { ascending: true }),
+        supabase.from('guardas_usuarios').select('guarda_id'),
       ]);
 
     if (graduacoesError || guardasError) {
@@ -52,14 +53,15 @@ const GuardasMunicipaisPage = () => {
       return;
     }
 
+    const guardasComConta = new Set((vinculosData || []).map((v: { guarda_id: string }) => v.guarda_id));
     const graduacoesList = (graduacoesData || []) as GuardaMunicipalGraduacao[];
     const graduacaoMap = new Map(graduacoesList.map((item) => [item.id, item.nome]));
     setGraduacoes(graduacoesList);
     const guardasDedup = Object.values(
       ((guardasData || []) as GuardaMunicipal[]).reduce((acc, item) => {
-        acc[item.id] = { ...item, graduacao_nome: graduacaoMap.get(item.graduacao_id) ?? null };
+        acc[item.id] = { ...item, graduacao_nome: graduacaoMap.get(item.graduacao_id) ?? null, possui_conta: guardasComConta.has(item.id) };
         return acc;
-      }, {} as Record<string, GuardaMunicipal & { graduacao_nome: string | null }>)
+      }, {} as Record<string, GuardaMunicipal>)
     );
     setGuardas(guardasDedup as GuardaMunicipal[]);
     setLoading(false);
@@ -225,13 +227,23 @@ const GuardasMunicipaisPage = () => {
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                   <div className="flex flex-col gap-2">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="rounded-full border border-slate-300 bg-slate-100 px-3 py-0.5 text-xs font-bold text-slate-600">
-                        {item.matricula}
-                      </span>
-                      <span className="text-xs font-semibold text-slate-500">
-                        {item.graduacao_nome || '-'}
-                      </span>
-                    </div>
+                        <span className="rounded-full border border-slate-300 bg-slate-100 px-3 py-0.5 text-xs font-bold text-slate-600">
+                          {item.matricula}
+                        </span>
+                        {item.possui_conta ? (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-bold text-emerald-700">
+                            <UserCheck className="h-3 w-3" />
+                            Com conta
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-400">
+                            Sem conta
+                          </span>
+                        )}
+                        <span className="text-xs font-semibold text-slate-500">
+                          {item.graduacao_nome || '-'}
+                        </span>
+                      </div>
                     <h2 className="text-lg font-bold text-slate-900">{item.nome}</h2>
                     {item.cpf && (
                       <p className="text-xs font-medium text-slate-500">CPF: {maskCpf(item.cpf)}</p>

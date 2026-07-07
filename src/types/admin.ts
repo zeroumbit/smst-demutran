@@ -80,6 +80,7 @@ export interface GuardaMunicipal {
   email?: string | null;
   telefone?: string | null;
   ativo: boolean;
+  possui_conta?: boolean;
   created_at?: string | null;
   updated_at?: string | null;
 }
