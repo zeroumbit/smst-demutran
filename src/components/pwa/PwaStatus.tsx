@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Download, WifiOff, Smartphone, Zap, Shield, Globe, X } from 'lucide-react';
+import { Download, WifiOff, Zap, Shield, Globe, X } from 'lucide-react';
 import { usePWA } from '@/hooks/usePWA';
 
 const features = [
@@ -33,10 +33,12 @@ export function PwaStatus() {
               <div className="relative mx-auto w-full max-w-[400px] rounded-t-[28px] bg-white px-6 pb-8 pt-5 shadow-[0_-8px_40px_rgba(0,0,0,0.12)]">
                 <div className="mx-auto mb-6 h-1 w-9 rounded-full bg-slate-200" />
                 <div className="flex flex-col items-center text-center">
-                  <div className="mb-4 flex h-20 w-20 items-center justify-center overflow-hidden rounded-[22px] bg-gradient-to-br from-blue-600 to-blue-700 shadow-lg shadow-blue-200">
-                    <div className="flex h-full w-full items-center justify-center bg-white/10">
-                      <Smartphone className="h-10 w-10 text-white" />
-                    </div>
+                  <div className="mb-4 flex h-20 w-20 items-center justify-center overflow-hidden rounded-[22px] bg-gradient-to-br from-blue-600 to-blue-700 p-3 shadow-lg shadow-blue-200">
+                    <img
+                      src="/images/logo.png"
+                      alt="Logo da Secretaria"
+                      className="h-full w-full rounded-2xl bg-white object-contain p-2"
+                    />
                   </div>
                   <h2 className="text-[22px] font-bold tracking-[-0.02em] text-slate-900">
                     Instalar <span className="text-blue-600">SMST</span>
@@ -76,23 +78,27 @@ export function PwaStatus() {
 
           {/* Desktop: Horizontal Bar */}
           <div className="hidden md:block">
-            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 w-full max-w-[520px] px-4 pointer-events-auto">
-              <div className="flex items-center gap-4 rounded-2xl border border-slate-200/60 bg-white/90 p-4 shadow-[0_16px_36px_rgba(0,0,0,0.08)] backdrop-blur-md transition-all duration-300 hover:shadow-[0_20px_48px_rgba(0,0,0,0.12)]">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 shadow-md shadow-blue-100">
-                  <Smartphone className="h-5 w-5 text-white" />
+            <div className="absolute bottom-6 left-1/2 w-full max-w-[920px] -translate-x-1/2 px-4 pointer-events-auto">
+              <div className="relative grid grid-cols-[auto,minmax(0,1fr),auto] items-center gap-x-4 gap-y-3 rounded-[26px] border border-slate-200/70 bg-white/95 px-6 py-5 shadow-[0_16px_36px_rgba(0,0,0,0.08)] backdrop-blur-md transition-all duration-300 hover:shadow-[0_20px_48px_rgba(0,0,0,0.12)]">
+                <div className="row-span-2 flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 p-2 shadow-md shadow-blue-100">
+                  <img
+                    src="/images/logo.png"
+                    alt="Logo da Secretaria"
+                    className="h-full w-full rounded-xl bg-white object-contain p-1.5"
+                  />
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold text-slate-900 leading-snug">
+                <div className="min-w-0">
+                  <p className="text-sm font-bold leading-snug text-slate-900">
                     Instalar <span className="text-blue-600 font-extrabold">SMST</span>
                   </p>
-                  <p className="text-[12.5px] text-slate-500 leading-normal truncate">
+                  <p className="text-[13px] leading-5 text-slate-500">
                     Acesso rápido a todos os serviços
                   </p>
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="row-span-2 flex items-center gap-2 self-center justify-self-end pl-2">
                   <button
                     onClick={install}
-                    className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-4 py-2 text-xs font-bold text-white shadow-sm transition-all duration-200 hover:from-blue-700 hover:to-indigo-700 hover:shadow-md active:scale-[0.96]"
+                    className="flex min-w-[118px] items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-5 py-3 text-sm font-bold text-white shadow-sm transition-all duration-200 hover:from-blue-700 hover:to-indigo-700 hover:shadow-md active:scale-[0.96]"
                   >
                     <Download className="h-3.5 w-3.5" />
                     Instalar
@@ -104,6 +110,17 @@ export function PwaStatus() {
                   >
                     <X className="h-4 w-4" />
                   </button>
+                </div>
+                <div className="col-start-2 flex min-w-0 flex-wrap items-center gap-x-5 gap-y-2 border-t border-slate-200/80 pt-3 text-[13px] leading-5 text-slate-500">
+                  {features.map((feature) => (
+                    <div
+                      key={feature.text}
+                      className="inline-flex min-w-0 items-center gap-2 whitespace-nowrap"
+                    >
+                      <feature.icon className="h-3.5 w-3.5 shrink-0 text-blue-500" />
+                      <span>{feature.text}</span>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
