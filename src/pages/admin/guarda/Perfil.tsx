@@ -158,7 +158,7 @@ const GuardaPerfil = () => {
               <Label className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500">Telefone</Label>
               <Input value={telefone} onChange={(e) => setTelefone(e.target.value)} placeholder="(85) 99999-9999" className="h-12 rounded-xl border-slate-200 text-[15px] font-medium" />
             </div>
-            <Button onClick={() => void handleSalvarDados()} disabled={saving} className="min-h-11 w-full rounded-xl text-[14px] font-semibold sm:w-auto">
+            <Button onClick={() => void handleSalvarDados()} disabled={saving} className="min-h-12 w-full rounded-xl text-[14px] font-semibold sm:min-h-11 sm:w-auto">
               {saving ? 'Salvando...' : 'Salvar alterações'}
             </Button>
           </CardContent>
@@ -201,7 +201,7 @@ const GuardaPerfil = () => {
                 <p className="text-xs text-red-500">As senhas não conferem</p>
               )}
             </div>
-            <Button onClick={() => void handleAlterarSenha()} disabled={mudandoSenha} className="min-h-11 w-full rounded-xl text-[14px] font-semibold sm:w-auto">
+            <Button onClick={() => void handleAlterarSenha()} disabled={mudandoSenha} className="min-h-12 w-full rounded-xl text-[14px] font-semibold sm:min-h-11 sm:w-auto">
               {mudandoSenha ? 'Alterando...' : 'Alterar senha'}
             </Button>
           </CardContent>

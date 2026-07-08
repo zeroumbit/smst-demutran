@@ -56,6 +56,8 @@ const HouseIcon: ComponentType<{ className?: string }> = ({ className }) => (
 
 interface AdminLayoutProps {
   children: ReactNode;
+  backPath?: string;
+  backLabel?: string;
 }
 
 type MenuItem = {
@@ -115,6 +117,13 @@ const guardaMenuItems: MenuItem[] = [
   { icon: UserCircle2, label: 'Perfil', path: '/admin/perfil/guarda-municipal', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
 ];
 
+const guardaBottomNavItems: MenuItem[] = [
+  { icon: HouseIcon, label: 'Home', path: '/admin/dashboard/guarda-municipal', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
+  { icon: FileWarning, label: 'IROs', path: '/admin/iros/guarda-municipal', allowedPapeis: ['gestor', 'admin_setor', 'tecnico'] },
+  { icon: Shield, label: 'Guarda', path: '/admin/guardas/guarda-municipal', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
+  { icon: Settings2, label: 'Config', path: '/admin/configuracoes-guarda-municipal', allowedPapeis: ['super_admin', 'gestor', 'admin_setor'] },
+];
+
 const moduloItemMap: Record<string, ModuloSistema> = {
   Veiculos: 'veiculos',
   Concessionarios: 'concessionarios',
@@ -165,9 +174,10 @@ const moduloIconMap: Record<string, React.ComponentType<{ className?: string }>>
   documentos: FileText,
 };
 
-export const AdminLayout = ({ children }: AdminLayoutProps) => {
+export const AdminLayout = ({ children, backPath, backLabel }: AdminLayoutProps) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [menuModalOpen, setMenuModalOpen] = useState(false);
   const [expandedMenus, setExpandedMenus] = useState<Record<string, boolean>>({});
   const [searchQuery, setSearchQuery] = useState('');
   const [showSearchResults, setShowSearchResults] = useState(false);
@@ -329,6 +339,14 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
       .filter(Boolean) as MenuItem[];
   }, [hasPapel, sectorContext, isSuperAdmin, profile?.setor_slug, profile?.papel, profile?.modulos]);
 
+  const visibleBottomNavItems = useMemo(() => {
+    return guardaBottomNavItems.filter((item) => {
+      if (!item.allowedPapeis?.length) return true;
+      if (item.allowedPapeis.includes('super_admin') && isSuperAdmin) return true;
+      return hasPapel(...item.allowedPapeis);
+    });
+  }, [hasPapel, isSuperAdmin]);
+
   useEffect(() => {
     const autoExpand: Record<string, boolean> = {};
     visibleMenuItems.forEach((item) => {
@@ -464,7 +482,7 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
       <Link
         key={item.path}
         to={item.path!}
-        onClick={() => setSidebarOpen(false)}
+        onClick={() => { setSidebarOpen(false); setMenuModalOpen(false); }}
         className={baseClasses}
       >
         <Icon className={`${sidebarCollapsed ? 'lg:mx-auto' : 'mr-3'} h-5 w-5 shrink-0 ${isActive ? 'text-brand-600' : 'text-slate-400 group-hover:text-brand-500'}`} />
@@ -540,13 +558,25 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
 
       <div className={`flex flex-1 flex-col ${sidebarCollapsed ? 'lg:pl-[72px]' : 'lg:pl-[285px]'}`}>
         <header className="sticky top-0 z-10 flex h-20 items-center justify-between border-b border-slate-200 bg-white/95 px-4 backdrop-blur-md lg:px-6">
-          <button
-            type="button"
-            className="rounded-xl p-2 hover:bg-slate-100 lg:hidden"
-            onClick={() => setSidebarOpen(true)}
-          >
-            <Menu className="h-6 w-6 text-slate-700" />
-          </button>
+        <div className="flex items-center gap-2">
+          {backPath ? (
+            <button
+              onClick={() => navigate(backPath)}
+              className="rounded-xl p-2 hover:bg-slate-100 transition-colors"
+              title={backLabel || 'Voltar'}
+            >
+              <ChevronLeft className="h-6 w-6 text-slate-700" />
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="rounded-xl p-2 hover:bg-slate-100 lg:hidden transition-colors"
+              onClick={() => setSidebarOpen(true)}
+            >
+              <Menu className="h-6 w-6 text-slate-700" />
+            </button>
+          )}
+        </div>
 
           <div className="hidden flex-1 lg:block relative">
             <div className="flex max-w-md items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.75)]">
@@ -672,10 +702,76 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
           </div>
         </header>
 
-        <main className="flex-1 p-4 lg:p-8">
+        <main className={`flex-1 p-4 lg:p-8 ${sectorContext === 'guarda-municipal' ? 'pb-[calc(5.75rem+env(safe-area-inset-bottom))] lg:pb-8' : ''}`}>
           {children}
         </main>
       </div>
+
+      {sectorContext === 'guarda-municipal' && visibleBottomNavItems.length > 0 && (
+        <nav className="fixed bottom-0 left-0 right-0 z-50 flex min-h-[4.75rem] items-stretch border-t border-slate-200/80 bg-white/95 backdrop-blur-xl shadow-[0_-2px_20px_-8px_rgba(15,23,42,0.12)] lg:hidden pb-[env(safe-area-inset-bottom)]">
+          {visibleBottomNavItems.map((item) => {
+            const Icon = item.icon!;
+            const active = item.path ? (location.pathname === item.path || location.pathname.startsWith(item.path + '/')) : false;
+            return (
+              <Link
+                key={item.path}
+                to={item.path!}
+                className="flex min-w-0 flex-1 flex-col items-center justify-center gap-1 px-1 py-2 transition-colors"
+                aria-current={active ? 'page' : undefined}
+              >
+                <div className={`flex items-center justify-center rounded-xl p-1.5 transition-colors ${active ? 'bg-brand-50' : ''}`}>
+                  <Icon className={`h-5 w-5 ${active ? 'text-brand-600' : 'text-slate-400'}`} />
+                </div>
+                <span className={`max-w-full truncate text-[10px] font-bold ${active ? 'text-brand-600' : 'text-slate-400'}`}>
+                  {item.label}
+                </span>
+              </Link>
+            );
+          })}
+          <button
+            onClick={() => setMenuModalOpen(true)}
+            className="flex min-w-0 flex-1 flex-col items-center justify-center gap-1 px-1 py-2 transition-colors"
+          >
+            <div className="flex items-center justify-center rounded-xl p-1.5">
+              <Menu className="h-5 w-5 text-slate-400" />
+            </div>
+            <span className="text-[10px] font-bold text-slate-400">Menu</span>
+          </button>
+        </nav>
+      )}
+
+      {menuModalOpen && (
+        <div className="fixed inset-0 z-[60] flex flex-col bg-white lg:hidden animate-in slide-in-from-bottom">
+          <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+                <img src={guardaLogo as string} alt="Guarda" className="h-full w-full object-contain p-1" />
+              </div>
+              <span className="text-lg font-bold text-slate-900">Guarda Municipal</span>
+            </div>
+            <button
+              onClick={() => setMenuModalOpen(false)}
+              className="rounded-xl p-2 hover:bg-slate-100 transition-colors"
+            >
+              <X className="h-6 w-6 text-slate-700" />
+            </button>
+          </div>
+
+          <nav className="flex-1 overflow-y-auto px-4 py-4 space-y-1">
+            {visibleMenuItems.map((item) => renderNavItem(item))}
+          </nav>
+
+          <div className="border-t border-slate-200 p-4">
+            <button
+              onClick={handleLogout}
+              className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium text-slate-500 hover:bg-red-50 hover:text-red-600 transition-colors"
+            >
+              <LogOut className="h-5 w-5" />
+              <span>Sair</span>
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

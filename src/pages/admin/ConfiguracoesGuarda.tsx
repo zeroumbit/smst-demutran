@@ -130,7 +130,7 @@ const ConfiguracoesGuarda = () => {
         ) : (
           <div className="space-y-4">
             {items.map((item) => (
-              <article key={item.id} className="rounded-[26px] border border-slate-200 bg-white p-5 shadow-sm">
+              <article key={item.id} className="rounded-[34px] border border-slate-200 bg-white p-5 shadow-sm">
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                   <div className="flex flex-col gap-2">
                     <div className="flex flex-wrap items-center gap-2">
@@ -213,7 +213,7 @@ const ConfiguracoesGuarda = () => {
 
 function StatCard({ label, value, icon: Icon }: { label: string; value: string; icon: typeof ShieldCheck }) {
   return (
-    <div className="rounded-[26px] bg-white/10 p-4 backdrop-blur-sm">
+    <div className="rounded-[22px] bg-white/10 p-4 backdrop-blur-sm">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-white/70">{label}</p>

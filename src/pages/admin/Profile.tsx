@@ -54,7 +54,7 @@ const Profile = () => {
           </div>
         </section>
 
-        <div className="rounded-[26px] border border-slate-200/80 bg-white px-6 py-5 shadow-[0_4px_20px_-8px_rgba(15,23,42,0.08)]">
+        <div className="rounded-[34px] border border-slate-200/80 bg-white px-6 py-5 shadow-[0_4px_20px_-8px_rgba(15,23,42,0.08)]">
           <div className="flex items-center gap-3">
             <div className="rounded-[14px] bg-slate-900 p-2.5 text-white">
               <Mail className="h-5 w-5" />
@@ -84,7 +84,7 @@ function ProfileCard({
   icon: typeof UserCircle2;
 }) {
   return (
-    <div className="rounded-[26px] bg-white/10 p-4 backdrop-blur-sm sm:p-5">
+    <div className="rounded-[22px] bg-white/10 p-4 backdrop-blur-sm sm:p-5">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-white/60">{label}</p>

@@ -1429,7 +1429,7 @@ const DemutranLiberacao = () => {
               <SummaryCard title="Total" value={veiculos.length} subtitle="Veiculos cadastrados" icon={Car} />
               <SummaryCard title="No patio" value={apreendidos.length} subtitle="Atualmente apreendidos" icon={Warehouse} />
               <SummaryCard title="Liberados" value={liberados.length} subtitle="Ja liberados" icon={CheckCircle2} />
-              <div className="rounded-[26px] bg-white/10 p-4 backdrop-blur-sm sm:p-5">
+              <div className="rounded-[22px] bg-white/10 p-4 backdrop-blur-sm sm:p-5">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
@@ -2521,7 +2521,7 @@ function SummaryCard({
   icon: typeof Car;
 }) {
   return (
-    <div className="rounded-[26px] bg-white/10 p-3.5 sm:rounded-[30px] sm:p-4">
+    <div className="rounded-[22px] bg-white/10 p-3.5 sm:p-4">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="truncate text-[11px] font-semibold uppercase tracking-[0.16em] text-white/60">{title}</p>

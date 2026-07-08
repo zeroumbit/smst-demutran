@@ -1,4 +1,4 @@
-import React, { Suspense } from "react";
+import React, { Component, Suspense } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -74,24 +74,89 @@ const AdminRelatorios = React.lazy(() => import("./pages/admin/Relatorios"));
 
 const queryClient = new QueryClient();
 
+type AppErrorBoundaryProps = {
+  children: React.ReactNode;
+};
+
+type AppErrorBoundaryState = {
+  hasDomMismatch: boolean;
+  retryKey: number;
+};
+
+class AppErrorBoundary extends Component<AppErrorBoundaryProps, AppErrorBoundaryState> {
+  state: AppErrorBoundaryState = {
+    hasDomMismatch: false,
+    retryKey: 0,
+  };
+
+  static getDerivedStateFromError(error: unknown): Partial<AppErrorBoundaryState> | null {
+    const message = error instanceof Error ? error.message : String(error);
+
+    if (message.includes("Failed to execute 'removeChild' on 'Node'")) {
+      return { hasDomMismatch: true };
+    }
+
+    return null;
+  }
+
+  componentDidCatch(error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+
+    if (!message.includes("Failed to execute 'removeChild' on 'Node'")) {
+      window.setTimeout(() => {
+        throw error instanceof Error ? error : new Error(String(error));
+      }, 0);
+      return;
+    }
+
+    window.setTimeout(() => {
+      this.setState((current) => ({
+        hasDomMismatch: false,
+        retryKey: current.retryKey + 1,
+      }));
+    }, 0);
+  }
+
+  render() {
+    const { children } = this.props;
+    const { hasDomMismatch, retryKey } = this.state;
+
+    if (hasDomMismatch) {
+      return (
+        <div className="flex min-h-screen items-center justify-center bg-background px-6">
+          <div className="text-center">
+            <div className="mx-auto h-12 w-12 animate-spin rounded-full border-b-2 border-primary" />
+            <p className="mt-4 text-sm text-muted-foreground">Reorganizando a interface...</p>
+          </div>
+        </div>
+      );
+    }
+
+    return <React.Fragment key={retryKey}>{children}</React.Fragment>;
+  }
+}
+
 const SuspenseWrapper = ({ children }: { children: React.ReactNode }) => (
   <Suspense fallback={<div className="flex items-center justify-center min-h-screen">
     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
   </div>}>
-    {children}
+    <div data-suspense-wrapper="route">
+      {children}
+    </div>
   </Suspense>
 );
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <ThemeProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <PwaStatus />
-        <BrowserRouter>
-          <AuthProvider>
-            <Routes>
+  <AppErrorBoundary>
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <PwaStatus />
+          <BrowserRouter>
+            <AuthProvider>
+              <Routes>
             {/* Public Routes */}
             <Route path="/" element={
               <SuspenseWrapper>
@@ -531,13 +596,14 @@ const App = () => (
                 <NotFound />
               </SuspenseWrapper>
             } />
-          </Routes>
-          <ConsentBar />
-        </AuthProvider>
-      </BrowserRouter>
-    </TooltipProvider>
-    </ThemeProvider>
-  </QueryClientProvider>
+              </Routes>
+              <ConsentBar />
+            </AuthProvider>
+          </BrowserRouter>
+        </TooltipProvider>
+      </ThemeProvider>
+    </QueryClientProvider>
+  </AppErrorBoundary>
 );
 
 export default App;

@@ -407,7 +407,7 @@ const UsuariosPage = () => {
     return (
       <div
         key={item.perfil_id}
-        className="rounded-[26px] border border-slate-200/80 bg-white px-5 py-4 shadow-[0_4px_20px_-8px_rgba(15,23,42,0.08)]"
+        className="rounded-[34px] border border-slate-200/80 bg-white px-5 py-4 shadow-[0_4px_20px_-8px_rgba(15,23,42,0.08)]"
       >
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
@@ -971,7 +971,7 @@ function SummaryCard({
   icon: typeof Users;
 }) {
   return (
-    <div className="rounded-[26px] bg-white/10 p-4 backdrop-blur-sm sm:p-5">
+    <div className="rounded-[22px] bg-white/10 p-4 backdrop-blur-sm sm:p-5">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-white/60">{title}</p>

@@ -137,7 +137,7 @@ const GuardaIrosHistorico = () => {
         ) : (
           <div className="space-y-3">
             {filtered.map((c) => (
-              <div key={c.id} className="flex flex-col gap-3 rounded-2xl border border-slate-200/80 bg-white px-4 py-4 shadow-[0_4px_20px_-8px_rgba(15,23,42,0.08)] sm:flex-row sm:items-center sm:justify-between sm:px-5">
+              <div key={c.id} className="flex flex-col gap-3 rounded-2xl border border-slate-200/80 bg-white px-4 py-4 shadow-[0_4px_20px_-8px_rgba(15,23,42,0.08)] active:scale-[0.99] sm:flex-row sm:items-center sm:justify-between sm:px-5">
                 <div className="min-w-0">
                   <p className="text-[15px] font-bold text-slate-900">{c.operacao_nome}</p>
                   <p className="mt-0.5 text-[13px] leading-5 text-slate-500">

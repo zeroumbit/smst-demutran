@@ -249,7 +249,7 @@ const GuardaIros = () => {
   return (
     <GuardsLayout>
       <div className="space-y-4 sm:space-y-6">
-        <section className="rounded-2xl bg-[linear-gradient(135deg,_#0f172a_0%,_#1e293b_45%,_#2563eb_100%)] px-4 pb-4 pt-5 sm:px-6 sm:pb-5 sm:pt-6">
+        <section className="rounded-[28px] bg-[linear-gradient(135deg,_#0f172a_0%,_#1e293b_45%,_#2563eb_100%)] px-4 pb-4 pt-5 sm:px-6 sm:pb-5 sm:pt-6">
           <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
             <div className="min-w-0">
               <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-sky-100/70">Guarda Municipal</p>
@@ -263,8 +263,19 @@ const GuardaIros = () => {
               </Button>
             </div>
           </div>
+          <div className="mt-4 flex gap-2 overflow-x-auto pb-1 sm:hidden">
+            <Badge variant="outline" className="whitespace-nowrap rounded-full border-white/15 bg-white/10 px-3 py-1 text-[11px] font-bold text-white">
+              Candidatura rápida
+            </Badge>
+            <Badge variant="outline" className="whitespace-nowrap rounded-full border-white/15 bg-white/10 px-3 py-1 text-[11px] font-bold text-white">
+              Banco {resumo.banco_horas}h
+            </Badge>
+            <Badge variant="outline" className="whitespace-nowrap rounded-full border-white/15 bg-white/10 px-3 py-1 text-[11px] font-bold text-white">
+              Mês {resumo.total_horas_mes}h
+            </Badge>
+          </div>
           <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3">
-            <div className="rounded-2xl bg-white/10 p-3.5 backdrop-blur-sm sm:p-5">
+            <div className="rounded-[28px] bg-white/10 p-3.5 backdrop-blur-sm sm:p-5">
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
                   <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-white/60 sm:text-[11px]">Total no mês</p>
@@ -273,7 +284,7 @@ const GuardaIros = () => {
                 </div>
               </div>
             </div>
-            <div className="rounded-2xl bg-white/10 p-3.5 backdrop-blur-sm sm:p-5">
+            <div className="rounded-[28px] bg-white/10 p-3.5 backdrop-blur-sm sm:p-5">
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
                   <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-white/60 sm:text-[11px]">IROS mês anterior</p>
@@ -291,7 +302,7 @@ const GuardaIros = () => {
                 </div>
               </div>
             </div>
-            <div className="col-span-2 rounded-2xl bg-white/10 p-3.5 backdrop-blur-sm sm:col-span-1 sm:p-5">
+            <div className="col-span-2 rounded-[28px] bg-white/10 p-3.5 backdrop-blur-sm sm:col-span-1 sm:p-5">
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
                   <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-white/60 sm:text-[11px]">Banco de horas</p>
@@ -321,9 +332,9 @@ const GuardaIros = () => {
               Nenhuma operação disponível no momento.
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+            <div className="native-scrollbar -mx-1 flex snap-x snap-mandatory gap-3 overflow-x-auto px-1 pb-1 sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
               {filteredOperacoes.map((op) => (
-                <article key={op.id} className="flex flex-col rounded-2xl border border-slate-200/80 bg-white px-4 py-4 shadow-[0_4px_20px_-8px_rgba(15,23,42,0.08)] sm:px-5">
+                <article key={op.id} className="flex min-w-[84%] snap-start flex-col rounded-2xl border border-slate-200/80 bg-white px-4 py-4 shadow-[0_4px_20px_-8px_rgba(15,23,42,0.08)] active:scale-[0.99] sm:min-w-0 sm:px-5">
                   <Badge variant="outline" className="self-start rounded-full bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px] font-bold">
                     {op.vagas_por_dia} vaga(s)/dia
                   </Badge>
@@ -334,7 +345,7 @@ const GuardaIros = () => {
                     <span className="flex items-center gap-1.5"><Clock className="h-3.5 w-3.5 shrink-0" />{op.horario_previsto.slice(0, 5)}</span>
                     <span className="flex items-center gap-1.5"><Hourglass className="h-3.5 w-3.5 shrink-0" />{op.horas_por_dia}h/dia</span>
                   </div>
-                  <Button size="sm" className="mt-3 min-h-10 w-full rounded-xl text-[13px] font-semibold" onClick={() => { setSelectedOperacao(op); setCandidaturaData({ data_operacao: new Date().toISOString().slice(0, 10) }); }}>
+                  <Button size="sm" className="mt-3 min-h-11 w-full rounded-xl text-[13px] font-semibold sm:min-h-10" onClick={() => { setSelectedOperacao(op); setCandidaturaData({ data_operacao: new Date().toISOString().slice(0, 10) }); }}>
                     VER DETALHES
                   </Button>
                 </article>
@@ -352,7 +363,7 @@ const GuardaIros = () => {
           ) : (
             <div className="space-y-3">
               {candidaturasAtivas.map((c) => (
-                <div key={c.id} className="flex flex-col gap-3 rounded-2xl border border-slate-200/80 bg-white px-4 py-4 shadow-[0_4px_20px_-8px_rgba(15,23,42,0.08)] sm:flex-row sm:items-center sm:justify-between sm:px-5">
+                <div key={c.id} className="flex flex-col gap-3 rounded-2xl border border-slate-200/80 bg-white px-4 py-4 shadow-[0_4px_20px_-8px_rgba(15,23,42,0.08)] active:scale-[0.99] sm:flex-row sm:items-center sm:justify-between sm:px-5">
                   <div className="min-w-0">
                     <p className="text-[15px] font-bold text-slate-900">{c.operacao_nome}</p>
                     <p className="mt-0.5 text-[13px] leading-5 text-slate-500">

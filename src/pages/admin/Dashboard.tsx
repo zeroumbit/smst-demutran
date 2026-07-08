@@ -181,7 +181,7 @@ const Dashboard = () => {
 
   const panelDescription = useMemo(() => {
     if (isGuardaScope) {
-      return 'Leitura executiva para acompanhamento do efetivo ativo, graduações de carreira, escalas de Indenização de Reforço Operacional (IRO), banco de horas extras e demandas de ouvidoria da Guarda Municipal.';
+      return 'Gestão administrativa da Guarda Municipal.';
     }
     if (isDemutranScope) {
       return 'Leitura executiva para controle de veículos apreendidos, regularização fiscal, solicitações de credenciais de vagas especiais, recursos de multas de trânsito e permissionários concessionários.';
@@ -641,7 +641,7 @@ const Dashboard = () => {
           {state.metrics.map((metric) => {
             const Icon = metric.icon;
             return (
-              <Card key={metric.label} className="overflow-hidden rounded-[26px] border border-slate-200/80 bg-white shadow-[0_10px_28px_-20px_rgba(15,23,42,0.25)]">
+              <Card key={metric.label} className="overflow-hidden rounded-[34px] border border-slate-200/80 bg-white shadow-[0_10px_28px_-20px_rgba(15,23,42,0.25)]">
                 <CardContent className="p-5">
                   <div className="flex items-start justify-between gap-4">
                     <div>

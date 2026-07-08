@@ -240,7 +240,7 @@ const GuardaDashboard = () => {
     <>
       <GuardsLayout>
       <div className="space-y-4 sm:space-y-6">
-        <section className="rounded-2xl bg-[linear-gradient(135deg,_#0f172a_0%,_#1e293b_45%,_#2563eb_100%)] px-4 pb-4 pt-5 sm:px-6 sm:pb-5 sm:pt-6">
+        <section className="rounded-[34px] bg-[linear-gradient(135deg,_#0f172a_0%,_#1e293b_45%,_#2563eb_100%)] px-4 pb-4 pt-5 sm:px-6 sm:pb-5 sm:pt-6">
           <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
             <div className="min-w-0">
               <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-sky-100/70">Guarda Municipal</p>
@@ -250,11 +250,22 @@ const GuardaDashboard = () => {
               <p className="mt-2 max-w-xl text-[14px] leading-6 text-white">Resumo do mês de {mesAtual}.</p>
             </div>
           </div>
+          <div className="mt-4 flex snap-x snap-mandatory gap-2 overflow-x-auto pb-1 sm:hidden">
+            <Badge variant="outline" className="snap-start whitespace-nowrap rounded-full border-white/15 bg-white/10 px-3 py-1 text-[11px] font-bold text-white">
+              Painel pessoal
+            </Badge>
+            <Badge variant="outline" className="snap-start whitespace-nowrap rounded-full border-white/15 bg-white/10 px-3 py-1 text-[11px] font-bold text-white">
+              Limite mensal {LIMITE_IRO_MES}h
+            </Badge>
+            <Badge variant="outline" className="snap-start whitespace-nowrap rounded-full border-white/15 bg-white/10 px-3 py-1 text-[11px] font-bold text-white">
+              Atualização em tempo real
+            </Badge>
+          </div>
           <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
             {stats.map((s) => {
               const Icon = s.icon;
               return (
-                <div key={s.label} className="rounded-2xl bg-white/10 p-3.5 backdrop-blur-sm sm:p-5">
+                <div key={s.label} className="rounded-[22px] bg-white/10 p-3.5 backdrop-blur-sm sm:p-5">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
                       <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-white/60 sm:text-[11px]">{s.label}</p>
@@ -273,7 +284,7 @@ const GuardaDashboard = () => {
 
         {!loading && bannerVisible && resumo.total_horas_mes < LIMITE_IRO_MES && (
           <div className={cn(
-            'relative rounded-2xl border p-4 pr-11 shadow-sm sm:p-5 sm:pr-12',
+            'relative rounded-[34px] border p-4 pr-11 shadow-sm sm:p-5 sm:pr-12',
             resumo.total_horas_mes === 0
               ? 'bg-gradient-to-br from-emerald-50 to-green-50 border-emerald-200'
               : 'bg-gradient-to-br from-amber-50 to-yellow-50 border-amber-200',
@@ -315,14 +326,14 @@ const GuardaDashboard = () => {
             <div className="rounded-2xl border border-slate-200 bg-white p-6 text-center text-sm text-muted-foreground sm:p-8">Carregando...</div>
         ) : (
           <>
-            <div className="rounded-2xl border border-slate-200/80 bg-white px-4 py-4 shadow-[0_4px_20px_-8px_rgba(15,23,42,0.08)] sm:px-5">
+            <div className="rounded-[34px] border border-slate-200/80 bg-white px-4 py-4 shadow-[0_4px_20px_-8px_rgba(15,23,42,0.08)] sm:px-5">
               <h2 className="mb-4 text-sm font-bold uppercase tracking-[0.08em] text-slate-600">Últimas IROs realizadas</h2>
               {ultimasCandidaturas.length === 0 ? (
                 <p className="text-sm text-slate-400">Nenhuma IRO realizada neste mês.</p>
               ) : (
-                <div className="space-y-2">
+                <div className="space-y-2 sm:space-y-2">
                   {ultimasCandidaturas.map((c: any) => (
-                    <div key={c.id} className="flex items-center justify-between gap-3 rounded-xl bg-slate-50 px-4 py-3">
+                    <div key={c.id} className="flex items-center justify-between gap-3 rounded-xl bg-slate-50 px-4 py-3 active:scale-[0.99]">
                       <div className="min-w-0">
                         <p className="text-sm font-semibold text-slate-800">{c.operacao_nome}</p>
                         <p className="text-xs text-slate-500">{fmtDateBR(c.data_operacao)}</p>
@@ -334,7 +345,7 @@ const GuardaDashboard = () => {
               )}
             </div>
 
-            <div className="rounded-2xl border border-slate-200/80 bg-white px-4 py-4 shadow-[0_4px_20px_-8px_rgba(15,23,42,0.08)] sm:px-5">
+            <div className="rounded-[34px] border border-slate-200/80 bg-white px-4 py-4 shadow-[0_4px_20px_-8px_rgba(15,23,42,0.08)] sm:px-5">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-sm font-bold uppercase tracking-[0.08em] text-slate-600">Operações disponíveis</h2>
                 <button onClick={() => navigate('/admin/perfil-guardas/guarda-municipal/iros')} className="flex items-center gap-1 text-xs font-semibold text-slate-500 hover:text-slate-700">
@@ -361,7 +372,7 @@ const GuardaDashboard = () => {
                           <Badge variant="outline" className="shrink-0 rounded-full text-[10px] font-bold px-2 py-0 bg-slate-100">{op.vagas_por_dia} vaga(s)</Badge>
                         </div>
                       </div>
-                      <Button size="sm" variant="outline" className="mt-3 min-h-10 w-full rounded-xl text-[13px] font-semibold sm:ml-3 sm:mt-0 sm:w-auto sm:shrink-0" onClick={() => navigate('/admin/perfil-guardas/guarda-municipal/iros')}>
+                      <Button size="sm" variant="outline" className="mt-3 min-h-11 w-full rounded-xl text-[13px] font-semibold sm:ml-3 sm:mt-0 sm:min-h-10 sm:w-auto sm:shrink-0" onClick={() => navigate('/admin/perfil-guardas/guarda-municipal/iros')}>
                         VER DETALHES
                       </Button>
                     </div>

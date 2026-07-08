@@ -122,7 +122,7 @@ function SummaryCard({
   icon: typeof Newspaper;
 }) {
   return (
-    <div className="rounded-[26px] bg-white/10 p-4 backdrop-blur-sm sm:p-5">
+    <div className="rounded-[22px] bg-white/10 p-4 backdrop-blur-sm sm:p-5">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-white/60">{title}</p>
