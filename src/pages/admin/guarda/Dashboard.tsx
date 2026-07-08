@@ -239,12 +239,12 @@ const GuardaDashboard = () => {
   return (
     <>
       <GuardsLayout>
-      <div className="space-y-6">
-        <section className="rounded-[34px] bg-[linear-gradient(135deg,_#0f172a_0%,_#1e293b_45%,_#2563eb_100%)] px-5 pb-5 pt-6 sm:px-6">
+      <div className="space-y-4 sm:space-y-6">
+        <section className="rounded-2xl bg-[linear-gradient(135deg,_#0f172a_0%,_#1e293b_45%,_#2563eb_100%)] px-4 pb-4 pt-5 sm:px-6 sm:pb-5 sm:pt-6">
           <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
             <div className="min-w-0">
-              <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-sky-100/70">Guarda Municipal</p>
-              <h1 className="mt-3 text-[32px] font-black tracking-[-0.07em] text-white sm:text-[38px]">
+              <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-sky-100/70">Guarda Municipal</p>
+              <h1 className="mt-2 text-[26px] font-black leading-tight text-white sm:mt-3 sm:text-[34px]">
                 {guardaNome ? `Olá, ${guardaNome.split(' ')[0]}!` : 'Dashboard'}
               </h1>
               <p className="mt-2 max-w-xl text-[14px] leading-6 text-white">Resumo do mês de {mesAtual}.</p>
@@ -254,14 +254,14 @@ const GuardaDashboard = () => {
             {stats.map((s) => {
               const Icon = s.icon;
               return (
-                <div key={s.label} className="rounded-[26px] bg-white/10 p-4 backdrop-blur-sm sm:p-5">
+                <div key={s.label} className="rounded-2xl bg-white/10 p-3.5 backdrop-blur-sm sm:p-5">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-white/60">{s.label}</p>
-                      <p className="mt-1 text-2xl font-black tracking-[-0.04em] text-white sm:text-3xl">{s.value}</p>
+                      <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-white/60 sm:text-[11px]">{s.label}</p>
+                      <p className="mt-1 break-words text-[22px] font-black leading-none text-white sm:text-3xl">{s.value}</p>
                       {s.sub && <p className="mt-0.5 text-[13px] leading-5 text-white/70">{s.sub}</p>}
                     </div>
-                    <div className="shrink-0 rounded-[18px] bg-white/15 p-3 text-white backdrop-blur-sm">
+                    <div className="hidden shrink-0 rounded-2xl bg-white/15 p-3 text-white backdrop-blur-sm sm:block">
                       <Icon className="h-5 w-5" />
                     </div>
                   </div>
@@ -273,7 +273,7 @@ const GuardaDashboard = () => {
 
         {!loading && bannerVisible && resumo.total_horas_mes < LIMITE_IRO_MES && (
           <div className={cn(
-            'relative rounded-[26px] border p-5 pr-12 shadow-sm',
+            'relative rounded-2xl border p-4 pr-11 shadow-sm sm:p-5 sm:pr-12',
             resumo.total_horas_mes === 0
               ? 'bg-gradient-to-br from-emerald-50 to-green-50 border-emerald-200'
               : 'bg-gradient-to-br from-amber-50 to-yellow-50 border-amber-200',
@@ -312,31 +312,31 @@ const GuardaDashboard = () => {
         )}
 
         {loading ? (
-          <div className="rounded-[22px] border border-slate-200 bg-white p-8 text-center text-muted-foreground">Carregando...</div>
+            <div className="rounded-2xl border border-slate-200 bg-white p-6 text-center text-sm text-muted-foreground sm:p-8">Carregando...</div>
         ) : (
           <>
-            <div className="rounded-[26px] border border-slate-200/80 bg-white px-5 py-4 shadow-[0_4px_20px_-8px_rgba(15,23,42,0.08)]">
-              <h2 className="mb-4 text-sm font-bold uppercase tracking-[0.1em] text-slate-600">Últimas IROs realizadas</h2>
+            <div className="rounded-2xl border border-slate-200/80 bg-white px-4 py-4 shadow-[0_4px_20px_-8px_rgba(15,23,42,0.08)] sm:px-5">
+              <h2 className="mb-4 text-sm font-bold uppercase tracking-[0.08em] text-slate-600">Últimas IROs realizadas</h2>
               {ultimasCandidaturas.length === 0 ? (
                 <p className="text-sm text-slate-400">Nenhuma IRO realizada neste mês.</p>
               ) : (
                 <div className="space-y-2">
                   {ultimasCandidaturas.map((c: any) => (
-                    <div key={c.id} className="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3">
-                      <div>
+                    <div key={c.id} className="flex items-center justify-between gap-3 rounded-xl bg-slate-50 px-4 py-3">
+                      <div className="min-w-0">
                         <p className="text-sm font-semibold text-slate-800">{c.operacao_nome}</p>
                         <p className="text-xs text-slate-500">{fmtDateBR(c.data_operacao)}</p>
                       </div>
-                      <span className="text-sm font-bold text-slate-700">{c.horas_trabalhadas}h</span>
+                      <span className="shrink-0 text-sm font-bold text-slate-700">{c.horas_trabalhadas}h</span>
                     </div>
                   ))}
                 </div>
               )}
             </div>
 
-            <div className="rounded-[26px] border border-slate-200/80 bg-white px-5 py-4 shadow-[0_4px_20px_-8px_rgba(15,23,42,0.08)]">
+            <div className="rounded-2xl border border-slate-200/80 bg-white px-4 py-4 shadow-[0_4px_20px_-8px_rgba(15,23,42,0.08)] sm:px-5">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-sm font-bold uppercase tracking-[0.1em] text-slate-600">Operações disponíveis</h2>
+                <h2 className="text-sm font-bold uppercase tracking-[0.08em] text-slate-600">Operações disponíveis</h2>
                 <button onClick={() => navigate('/admin/perfil-guardas/guarda-municipal/iros')} className="flex items-center gap-1 text-xs font-semibold text-slate-500 hover:text-slate-700">
                   <span className="hidden sm:inline">Ver todas</span>
                   <ChevronRight className="h-4 w-4" />
@@ -350,10 +350,10 @@ const GuardaDashboard = () => {
               ) : (
                 <div className="space-y-2">
                   {operacoes.slice(0, 5).map((op) => (
-                    <div key={op.id} className="sm:flex sm:items-center sm:justify-between rounded-xl bg-slate-50 px-4 py-3">
+                    <div key={op.id} className="rounded-xl bg-slate-50 px-4 py-3 sm:flex sm:items-center sm:justify-between">
                       <div className="min-w-0 flex-1">
                         <p className="text-sm font-semibold text-slate-800 truncate">{op.nome}</p>
-                        <div className="mt-1 flex flex-nowrap items-center gap-2 overflow-x-auto text-xs text-slate-500 whitespace-nowrap sm:flex-wrap sm:whitespace-normal">
+                        <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-500">
                           <span className="flex items-center gap-1 shrink-0"><Calendar className="h-3 w-3" />{fmtDateBR(op.data_inicio)}</span>
                           <span className="text-slate-300 shrink-0">·</span>
                           <span className="flex items-center gap-1 shrink-0"><Clock className="h-3 w-3" />{op.horario_previsto.slice(0, 5)}</span>
@@ -361,7 +361,7 @@ const GuardaDashboard = () => {
                           <Badge variant="outline" className="shrink-0 rounded-full text-[10px] font-bold px-2 py-0 bg-slate-100">{op.vagas_por_dia} vaga(s)</Badge>
                         </div>
                       </div>
-                      <Button size="sm" variant="outline" className="mt-2 w-full rounded-[18px] text-[13px] font-semibold sm:mt-0 sm:w-auto sm:shrink-0 sm:ml-3" onClick={() => navigate('/admin/perfil-guardas/guarda-municipal/iros')}>
+                      <Button size="sm" variant="outline" className="mt-3 min-h-10 w-full rounded-xl text-[13px] font-semibold sm:ml-3 sm:mt-0 sm:w-auto sm:shrink-0" onClick={() => navigate('/admin/perfil-guardas/guarda-municipal/iros')}>
                         VER DETALHES
                       </Button>
                     </div>
@@ -376,20 +376,20 @@ const GuardaDashboard = () => {
 
     {exibirModalLei && (
       <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4 overflow-y-auto animate-fade-in">
-        <div className="w-full max-w-4xl bg-white rounded-[32px] shadow-2xl flex flex-col max-h-[90vh] border border-slate-100 overflow-hidden animate-in fade-in zoom-in duration-300">
+        <div className="flex max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-2xl animate-in fade-in zoom-in duration-300">
           {/* Header */}
-          <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-blue-900 p-6 text-white flex items-center gap-4">
-            <div className="rounded-2xl bg-white/10 p-3 text-white backdrop-blur-sm shrink-0">
+          <div className="flex items-start gap-3 bg-gradient-to-r from-slate-900 via-slate-800 to-blue-900 p-4 text-white sm:items-center sm:gap-4 sm:p-6">
+            <div className="rounded-xl bg-white/10 p-3 text-white backdrop-blur-sm shrink-0">
               <Shield className="h-6 w-6" />
             </div>
-            <div>
-              <span className="block text-[11px] font-bold uppercase tracking-[0.24em] text-sky-200">Termo de Compromisso</span>
-              <h2 className="text-xl font-black tracking-tight mt-0.5">LEI Nº 2.739 - INDENIZAÇÃO DE REFORÇO OPERACIONAL (IRO)</h2>
+            <div className="min-w-0">
+              <span className="block text-[10px] font-bold uppercase tracking-[0.16em] text-sky-200 sm:text-[11px]">Termo de Compromisso</span>
+              <h2 className="mt-1 text-base font-black leading-snug sm:text-xl">LEI Nº 2.739 - INDENIZAÇÃO DE REFORÇO OPERACIONAL (IRO)</h2>
             </div>
           </div>
 
           {/* Scrollable Law Content */}
-          <div className="flex-1 overflow-y-auto p-6 md:p-8 space-y-6 text-slate-700 leading-relaxed font-sans scrollbar-thin select-none">
+          <div className="flex-1 overflow-y-auto p-4 text-sm leading-relaxed text-slate-700 scrollbar-thin select-none sm:p-6 md:p-8">
             <div className="space-y-6 text-sm text-slate-800">
               <div className="text-center border-b border-slate-100 pb-4">
                 <p className="text-xs uppercase tracking-widest text-slate-400 font-semibold">PÁG. 13 - DIÁRIO OFICIAL DO MUNICÍPIO DE CANINDÉ</p>
@@ -597,8 +597,8 @@ const GuardaDashboard = () => {
           </div>
 
           {/* Footer Controls */}
-          <div className="border-t border-slate-100 p-6 bg-slate-50 space-y-4">
-            <label className="flex items-start gap-3 cursor-pointer p-4 bg-white hover:bg-slate-50 rounded-2xl border border-slate-200/80 transition-colors shadow-sm">
+          <div className="space-y-4 border-t border-slate-100 bg-slate-50 p-4 sm:p-6">
+            <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm transition-colors hover:bg-slate-50">
               <input
                 type="checkbox"
                 id="checkbox-aceite"
@@ -611,7 +611,7 @@ const GuardaDashboard = () => {
               </span>
             </label>
 
-            <div className="flex flex-col sm:flex-row items-center justify-end gap-3 pt-2">
+            <div className="flex flex-col items-center justify-end gap-3 pt-2 sm:flex-row">
               <Button
                 variant="outline"
                 className="w-full sm:w-auto border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 rounded-full font-bold h-11 px-6 transition-all shadow-none"

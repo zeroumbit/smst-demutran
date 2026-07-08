@@ -4,6 +4,7 @@ import Hero from "@/components/shared/Hero";
 import NewsCard from "@/components/shared/NewsCard";
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import { Newspaper } from 'lucide-react';
 
 interface NewsItem {
   id: string;
@@ -67,34 +68,39 @@ const Noticias = () => {
 
       <section className="py-16 bg-background">
         <div className="mx-auto max-w-7xl px-4 sm:px-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {newsItems.map((news, index) => (
-              <div
-                key={news.id}
-                style={{ animationDelay: `${index * 50}ms` }}
-                className="animate-fade-in-up h-full"
-              >
-                <NewsCard 
-                  title={news.titulo}
-                  description={news.resumo}
-                  date={news.data ? new Date(news.data).toLocaleDateString('pt-BR', { 
-                    day: '2-digit', 
-                    month: 'long', 
-                    year: 'numeric' 
-                  }) : 'Data não disponível'}
-                  imageUrl={news.imagem || undefined}
-                  newsId={news.id}
-                />
+          {newsItems.length === 0 ? (
+            <div className="bg-white rounded-lg shadow-md p-8 text-center max-w-[900px] mx-auto">
+              <div className="flex justify-center mb-4">
+                <Newspaper className="h-12 w-12 text-muted-foreground" />
               </div>
-            ))}
-          </div>
-
-          {/* Placeholder for pagination - to be implemented with dynamic content */}
-          <div className="mt-12 text-center">
-            <p className="text-muted-foreground">
-              Mostrando {newsItems.length} notícias
-            </p>
-          </div>
+              <h3 className="text-xl font-semibold text-foreground mb-2">Nenhuma notícia no momento</h3>
+              <p className="text-muted-foreground">
+                Não temos nenhuma notícia no momento, quando tivermos serão exibidas aqui.
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {newsItems.map((news, index) => (
+                <div
+                  key={news.id}
+                  style={{ animationDelay: `${index * 50}ms` }}
+                  className="animate-fade-in-up h-full"
+                >
+                  <NewsCard 
+                    title={news.titulo}
+                    description={news.resumo}
+                    date={news.data ? new Date(news.data).toLocaleDateString('pt-BR', { 
+                      day: '2-digit', 
+                      month: 'long', 
+                      year: 'numeric' 
+                    }) : 'Data não disponível'}
+                    imageUrl={news.imagem || undefined}
+                    newsId={news.id}
+                  />
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 

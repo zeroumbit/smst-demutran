@@ -69,12 +69,12 @@ export const GuardsLayout = ({ children }: GuardsLayoutProps) => {
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-slate-200 bg-white/95 backdrop-blur-xl lg:flex">
         <div className="flex items-center gap-3 border-b border-slate-200/80 px-5 py-5">
           <GuardaLogo />
-          <div>
-            <span className="block text-lg font-bold tracking-[-0.04em] text-slate-900">
+          <div className="min-w-0">
+            <span className="block truncate text-lg font-bold text-slate-900">
               Guarda Municipal
             </span>
             {profile?.name && (
-              <span className="text-xs font-medium text-slate-400">{profile.name.split(' ')[0]}</span>
+              <span className="block truncate text-xs font-medium text-slate-400">{profile.name.split(' ')[0]}</span>
             )}
           </div>
         </div>
@@ -114,13 +114,13 @@ export const GuardsLayout = ({ children }: GuardsLayoutProps) => {
 
       {/* ─── Main content ─── */}
       <div className="flex min-h-screen flex-col lg:pl-64">
-        <main className="flex-1 p-4 pb-24 lg:p-8 lg:pb-8">
+        <main className="flex-1 px-3 py-3 pb-[calc(5.75rem+env(safe-area-inset-bottom))] sm:px-4 sm:py-5 lg:p-8">
           {children}
         </main>
       </div>
 
       {/* ─── Mobile bottom tab bar ─── */}
-      <nav className="fixed bottom-0 left-0 right-0 z-50 flex items-center border-t border-slate-200/80 bg-white/95 backdrop-blur-xl shadow-[0_-2px_20px_-8px_rgba(15,23,42,0.12)] lg:hidden pb-[env(safe-area-inset-bottom)]">
+      <nav className="fixed bottom-0 left-0 right-0 z-50 flex min-h-[4.75rem] items-stretch border-t border-slate-200/80 bg-white/95 backdrop-blur-xl shadow-[0_-2px_20px_-8px_rgba(15,23,42,0.12)] lg:hidden pb-[env(safe-area-inset-bottom)]">
         {navItems.map((item) => {
           const Icon = item.icon;
           const active = isActive(item.path);
@@ -128,7 +128,8 @@ export const GuardsLayout = ({ children }: GuardsLayoutProps) => {
             <Link
               key={item.path}
               to={item.path}
-              className="flex flex-1 flex-col items-center gap-0.5 py-2 transition-colors"
+              className="flex min-w-0 flex-1 flex-col items-center justify-center gap-1 px-1 py-2 transition-colors"
+              aria-current={active ? 'page' : undefined}
             >
               <div className={`flex items-center justify-center rounded-xl p-1.5 transition-colors ${
                 active ? 'bg-brand-50' : ''
@@ -137,7 +138,7 @@ export const GuardsLayout = ({ children }: GuardsLayoutProps) => {
                   active ? 'text-brand-600' : 'text-slate-400'
                 }`} />
               </div>
-              <span className={`text-[10px] font-bold tracking-tight ${
+              <span className={`max-w-full truncate text-[10px] font-bold ${
                 active ? 'text-brand-600' : 'text-slate-400'
               }`}>
                 {item.label}
@@ -149,12 +150,12 @@ export const GuardsLayout = ({ children }: GuardsLayoutProps) => {
         {/* Logout button on mobile */}
         <button
           onClick={handleLogout}
-          className="flex flex-1 flex-col items-center gap-0.5 py-2 transition-colors"
+          className="flex min-w-0 flex-1 flex-col items-center justify-center gap-1 px-1 py-2 transition-colors"
         >
           <div className="flex items-center justify-center rounded-xl p-1.5">
             <LogOut className="h-5 w-5 text-slate-400" />
           </div>
-          <span className="text-[10px] font-bold tracking-tight text-slate-400">Sair</span>
+          <span className="text-[10px] font-bold text-slate-400">Sair</span>
         </button>
       </nav>
     </div>

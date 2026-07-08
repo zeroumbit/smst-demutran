@@ -80,20 +80,14 @@ const EventosExibicao = ({ paginaAtual = 'home' }: EventosExibicaoProps) => {
     return (
       <section className="py-16 bg-background">
         <div className="mx-auto max-w-7xl px-4 sm:px-6">
-          <div className="max-w-[900px]">
-            <h2 className="text-3xl font-bold text-foreground mb-4 text-left">Eventos</h2>
-            <p className="text-muted-foreground mb-8 text-left">
-              Confira os próximos eventos e atividades programadas
-            </p>
+          <div className="max-w-[900px] mx-auto">
             <div className="bg-white rounded-lg shadow-md p-8 text-center">
               <div className="flex justify-center mb-4">
                 <Calendar className="h-12 w-12 text-muted-foreground" />
               </div>
               <h3 className="text-xl font-semibold text-foreground mb-2">Nenhum evento programado</h3>
               <p className="text-muted-foreground">
-                Não há eventos disponíveis no momento.
-                <br />
-                Confira novamente mais tarde para novas atualizações.
+                Não temos nenhum evento no momento, quando tivermos serão exibidos aqui.
               </p>
             </div>
           </div>

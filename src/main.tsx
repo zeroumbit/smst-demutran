@@ -12,11 +12,20 @@ if ("serviceWorker" in navigator) {
     refreshing = true;
     window.location.reload();
   });
+
+  navigator.serviceWorker.addEventListener("message", (event) => {
+    if (event.data?.type !== "SMST_NOTIFICATION_CLICK") return;
+    const url = event.data.url || "/admin/dashboard";
+    window.location.assign(url);
+  });
 }
 
 registerSW({
   onOfflineReady() {
-    console.log('App ready for offline use');
+    window.dispatchEvent(new CustomEvent("pwa:offline-ready"));
+  },
+  onNeedRefresh() {
+    window.dispatchEvent(new CustomEvent("pwa:need-refresh"));
   },
 });
 

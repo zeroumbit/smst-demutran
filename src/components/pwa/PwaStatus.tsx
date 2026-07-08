@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Download, WifiOff, Zap, Shield, Globe, X } from 'lucide-react';
+import { CheckCircle2, Download, RefreshCcw, WifiOff, Zap, Shield, Globe, X } from 'lucide-react';
 import { usePWA } from '@/hooks/usePWA';
 
 const features = [
@@ -9,12 +9,14 @@ const features = [
 ];
 
 export function PwaStatus() {
-  const { installPrompt, isOnline, install } = usePWA();
+  const { installPrompt, isOnline, needRefresh, offlineReady, install, updateSW } = usePWA();
   const [installDismissed, setInstallDismissed] = useState(false);
+  const [offlineReadyDismissed, setOfflineReadyDismissed] = useState(false);
 
   const showInstall = installPrompt && !installDismissed;
+  const showOfflineReady = offlineReady && isOnline && !offlineReadyDismissed && !showInstall && !needRefresh;
 
-  if (!showInstall && isOnline) return null;
+  if (!showInstall && !needRefresh && !showOfflineReady && isOnline) return null;
 
   return (
     <div className="fixed inset-0 z-[9999] pointer-events-none">
@@ -128,12 +130,63 @@ export function PwaStatus() {
         </>
       )}
 
+      {/* Update Banner */}
+      {needRefresh && (
+        <div className="absolute bottom-4 left-1/2 w-full max-w-[420px] -translate-x-1/2 px-4 pointer-events-auto sm:bottom-6">
+          <div className="rounded-2xl border border-blue-100 bg-white/95 p-4 shadow-[0_16px_36px_rgba(15,23,42,0.14)] backdrop-blur-md">
+            <div className="flex items-start gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+                <RefreshCcw className="h-5 w-5" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-bold text-slate-900">Nova versão disponível</p>
+                <p className="mt-0.5 text-xs leading-5 text-slate-500">Atualize para usar a versão mais recente do app.</p>
+              </div>
+            </div>
+            <button
+              onClick={updateSW}
+              className="mt-4 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 text-sm font-bold text-white transition-colors hover:bg-blue-700 active:scale-[0.98]"
+            >
+              <RefreshCcw className="h-4 w-4" />
+              Atualizar agora
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Offline Ready Banner */}
+      {showOfflineReady && (
+        <div className="absolute bottom-4 left-1/2 w-full max-w-[420px] -translate-x-1/2 px-4 pointer-events-auto sm:bottom-6">
+          <div className="flex items-start gap-3 rounded-2xl border border-emerald-100 bg-white/95 p-4 shadow-[0_12px_28px_rgba(15,23,42,0.1)] backdrop-blur-md">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
+              <CheckCircle2 className="h-5 w-5" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-bold text-slate-900">App pronto para uso offline</p>
+              <p className="mt-0.5 text-xs leading-5 text-slate-500">As telas principais já podem abrir mesmo com conexão instável.</p>
+            </div>
+            <button
+              onClick={() => setOfflineReadyDismissed(true)}
+              className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
+              aria-label="Fechar"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Offline Banner */}
       {!isOnline && (
-        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 pointer-events-auto">
-          <div className="flex items-center gap-2.5 rounded-full border border-slate-200 bg-white/95 px-5 py-2.5 shadow-[0_4px_20px_rgba(0,0,0,0.08)] backdrop-blur-sm text-sm text-slate-600">
-            <WifiOff className="h-4 w-4 text-slate-400 shrink-0" />
-            <span className="font-medium">Modo offline — dados podem estar desatualizados</span>
+        <div className="absolute bottom-4 left-1/2 w-full max-w-[420px] -translate-x-1/2 px-4 pointer-events-auto sm:bottom-6">
+          <div className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-white/95 p-4 text-sm text-slate-600 shadow-[0_12px_28px_rgba(15,23,42,0.12)] backdrop-blur-md">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-500">
+              <WifiOff className="h-5 w-5" />
+            </div>
+            <div className="min-w-0">
+              <p className="font-bold text-slate-900">Você está offline</p>
+              <p className="mt-0.5 text-xs leading-5 text-slate-500">Alguns dados podem estar desatualizados até a conexão voltar.</p>
+            </div>
           </div>
         </div>
       )}

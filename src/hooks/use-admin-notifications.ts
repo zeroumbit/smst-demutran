@@ -11,6 +11,39 @@ function requestNotificationPermission(): Promise<boolean> {
   return Notification.requestPermission().then((p) => p === 'granted');
 }
 
+async function showNativeNotification(notification: AdminNotification) {
+  if (!('Notification' in window) || Notification.permission !== 'granted') return;
+
+  const options: NotificationOptions = {
+    body: notification.titulo,
+    icon: '/pwa-icon-192.png',
+    badge: '/pwa-icon-192.png',
+    tag: notification.id,
+    renotify: true,
+    silent: false,
+    data: {
+      url: '/admin/dashboard',
+      notificationId: notification.id,
+    },
+  };
+
+  if ('serviceWorker' in navigator) {
+    try {
+      const registration = await navigator.serviceWorker.ready;
+      await registration.showNotification('SMST Canindé', options);
+      return;
+    } catch {
+      /* fallback below */
+    }
+  }
+
+  const n = new Notification('SMST Canindé', options);
+  n.onclick = () => {
+    window.focus();
+    window.dispatchEvent(new CustomEvent('notification-click', { detail: notification }));
+  };
+}
+
 export function useAdminNotifications(userId: string | undefined) {
   const [notifications, setNotifications] = useState<AdminNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -51,24 +84,7 @@ export function useAdminNotifications(userId: string | undefined) {
     if (permGranted.current && items.length > 0) {
       const latest = items[0];
       if (latestIdRef.current !== null && latest.id !== latestIdRef.current && !latest.lida_em) {
-        try {
-          const n = new Notification('SMST Canindé', {
-            body: latest.titulo,
-            icon: '/pwa-icon.svg',
-            badge: '/pwa-icon.svg',
-            tag: latest.id,
-            renotify: true,
-            silent: false,
-          });
-          n.onclick = () => {
-            window.focus();
-            if (n.tag) {
-              window.dispatchEvent(new CustomEvent('notification-click', { detail: latest }));
-            }
-          };
-        } catch {
-          /* silently fail */
-        }
+        void showNativeNotification(latest);
       }
       latestIdRef.current = latest.id;
     }

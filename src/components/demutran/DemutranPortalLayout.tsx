@@ -74,7 +74,7 @@ function DemutranPortalNav() {
           <SheetTrigger className="inline-flex items-center justify-center rounded-full border border-secondary-foreground/20 p-3 lg:hidden">
             <Menu className="h-5 w-5" />
           </SheetTrigger>
-          <SheetContent side="right" className="border-slate-800 bg-slate-950 text-white">
+          <SheetContent side="right" className="w-full border-slate-800 bg-slate-950 text-white sm:w-3/4 sm:max-w-sm">
             <SheetTitle className="text-left text-white">Portal DEMUTRAN</SheetTitle>
             <div className="mt-8 space-y-3">
               {mainItems.map((item) => (

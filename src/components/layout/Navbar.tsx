@@ -1,11 +1,18 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Menu, X, Shield, ChevronDown } from "lucide-react";
+import { Menu, X, Shield, ChevronDown, ChevronRight } from "lucide-react";
 
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [openSubmenus, setOpenSubmenus] = useState<string[]>([]);
   const location = useLocation();
+
+  const toggleSubmenu = (label: string) => {
+    setOpenSubmenus((prev) =>
+      prev.includes(label) ? prev.filter((l) => l !== label) : [...prev, label]
+    );
+  };
 
   const isActive = (path: string) =>
     location.pathname === path ||
@@ -134,52 +141,93 @@ const Navbar = () => {
           </button>
         </div>
 
-        {/* Mobile Navigation */}
+        {/* Mobile Navigation - Fullscreen Overlay */}
         {isMenuOpen && (
-          <div className="lg:hidden py-4 border-t border-yellow-400 animate-fade-in">
-            <div className="flex flex-col gap-2">
-              {navItems.map((item) => (
-                item.submenu ? (
-                  <div key={item.label} className="space-y-1">
-                    <div className="text-secondary-foreground font-semibold px-4 py-2 text-sm">
+          <div className="lg:hidden fixed inset-0 z-[60] bg-secondary animate-fade-in">
+            <div className="flex items-center justify-between h-16 px-4 sm:px-6 border-b border-yellow-400">
+              <div className="flex items-center gap-3">
+                <div className="bg-white p-2 rounded-lg">
+                  <img
+                    src="https://jpztntmwmrhdobxsyulj.supabase.co/storage/v1/object/public/imagens/logo.png"
+                    alt="Logo SMST"
+                    className="h-8 w-8 object-contain"
+                  />
+                </div>
+                <h1 className="text-secondary-foreground font-bold text-lg">SMST</h1>
+              </div>
+              <button
+                onClick={() => setIsMenuOpen(false)}
+                className="text-secondary-foreground p-2"
+              >
+                <X className="h-6 w-6" />
+              </button>
+            </div>
+            <div className="flex flex-col gap-2 p-4 sm:p-6 overflow-y-auto h-[calc(100vh-4rem)]">
+              {navItems.map((item) =>
+                item.label === "Entrar" ? (
+                  <a
+                    key={item.path}
+                    href={item.path}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block pt-4"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    <Button className="w-full bg-white text-blue-700 font-bold hover:bg-gray-100 shadow-md">
                       {item.label}
-                    </div>
-                    {item.submenu.map((subItem) => (
-                      <Link key={subItem.path} to={subItem.path} onClick={() => setIsMenuOpen(false)}>
-                        <Button
-                          variant={isActive(subItem.path) ? "secondary" : "ghost"}
-                          className={`w-full justify-start pl-8 ${isActive(subItem.path) ? "" : "text-secondary-foreground hover:bg-yellow-300"
-                            }`}
-                        >
-                          {subItem.label}
-                        </Button>
-                      </Link>
-                    ))}
+                    </Button>
+                  </a>
+                ) : item.submenu ? (
+                  <div key={item.label} className="space-y-1">
+                    <button
+                      onClick={() => toggleSubmenu(item.label)}
+                      className="flex w-full items-center justify-between px-4 py-3 text-sm font-semibold text-secondary-foreground hover:text-yellow-300 transition-colors rounded-lg"
+                    >
+                      {item.label}
+                      {openSubmenus.includes(item.label) ? (
+                        <ChevronDown className="h-4 w-4" />
+                      ) : (
+                        <ChevronRight className="h-4 w-4" />
+                      )}
+                    </button>
+                    {openSubmenus.includes(item.label) && (
+                      <div className="space-y-1 animate-fade-in ml-2 border-l-2 border-yellow-400/30 pl-4">
+                        {item.submenu.map((subItem) => (
+                          <Link key={subItem.path} to={subItem.path} onClick={() => setIsMenuOpen(false)}>
+                            <Button
+                              variant={isActive(subItem.path) ? "secondary" : "ghost"}
+                              className={`w-full justify-start ${isActive(subItem.path) ? "" : "text-secondary-foreground hover:bg-yellow-300"
+                                }`}
+                            >
+                              {subItem.label}
+                            </Button>
+                          </Link>
+                        ))}
+                      </div>
+                    )}
                   </div>
+                ) : item.newTab ? (
+                  <a key={item.path} href={item.path} target="_blank" rel="noopener noreferrer" className="block">
+                    <Button
+                      variant={isActive(item.path) ? "secondary" : "ghost"}
+                      className={`w-full justify-start ${isActive(item.path) ? "" : "text-secondary-foreground hover:bg-yellow-300"
+                        }`}
+                    >
+                      {item.label}
+                    </Button>
+                  </a>
                 ) : (
-                  item.newTab ? (
-                    <a key={item.path} href={item.path} target="_blank" rel="noopener noreferrer" className="block">
-                      <Button
-                        variant={isActive(item.path) ? "secondary" : "ghost"}
-                        className={`w-full justify-start ${isActive(item.path) ? "" : "text-secondary-foreground hover:bg-yellow-300"
-                          }`}
-                      >
-                        {item.label}
-                      </Button>
-                    </a>
-                  ) : (
-                    <Link key={item.path} to={item.path} onClick={() => setIsMenuOpen(false)} className="block">
-                      <Button
-                        variant={isActive(item.path) ? "secondary" : "ghost"}
-                        className={`w-full justify-start ${isActive(item.path) ? "" : "text-secondary-foreground hover:bg-yellow-300"
-                          }`}
-                      >
-                        {item.label}
-                      </Button>
-                    </Link>
-                  )
+                  <Link key={item.path} to={item.path} onClick={() => setIsMenuOpen(false)} className="block">
+                    <Button
+                      variant={isActive(item.path) ? "secondary" : "ghost"}
+                      className={`w-full justify-start ${isActive(item.path) ? "" : "text-secondary-foreground hover:bg-yellow-300"
+                        }`}
+                    >
+                      {item.label}
+                    </Button>
+                  </Link>
                 )
-              ))}
+              )}
             </div>
           </div>
         )}

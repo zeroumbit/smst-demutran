@@ -102,7 +102,7 @@ const GuardaPerfil = () => {
   if (loading) {
     return (
       <GuardsLayout>
-        <div className="rounded-[26px] border border-slate-200 bg-white p-8 text-center text-sm text-slate-500">Carregando...</div>
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 text-center text-sm text-slate-500 sm:p-8">Carregando...</div>
       </GuardsLayout>
     );
   }
@@ -110,29 +110,29 @@ const GuardaPerfil = () => {
   if (!guarda) {
     return (
       <GuardsLayout>
-        <div className="rounded-[26px] border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-500">Perfil não encontrado.</div>
+        <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-6 text-center text-sm text-slate-500 sm:p-8">Perfil não encontrado.</div>
       </GuardsLayout>
     );
   }
 
   return (
     <GuardsLayout>
-      <div className="space-y-6 max-w-2xl mx-auto">
-        <section className="rounded-[34px] bg-[linear-gradient(135deg,_#0f172a_0%,_#1e293b_45%,_#2563eb_100%)] px-5 pb-5 pt-6 sm:px-6">
+      <div className="mx-auto max-w-2xl space-y-4 sm:space-y-6">
+        <section className="rounded-2xl bg-[linear-gradient(135deg,_#0f172a_0%,_#1e293b_45%,_#2563eb_100%)] px-4 pb-4 pt-5 sm:px-6 sm:pb-5 sm:pt-6">
           <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
             <div className="min-w-0">
-              <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-sky-100/70">Guarda Municipal</p>
-              <h1 className="mt-3 text-[32px] font-black tracking-[-0.07em] text-white sm:text-[38px]">Meu Perfil</h1>
+              <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-sky-100/70">Guarda Municipal</p>
+              <h1 className="mt-2 text-[26px] font-black leading-tight text-white sm:mt-3 sm:text-[34px]">Meu Perfil</h1>
               <p className="mt-2 max-w-xl text-[14px] leading-6 text-white">Gerencie suas informações e altere sua senha.</p>
             </div>
-            <button onClick={() => void loadData()} className="flex h-9 w-9 items-center justify-center rounded-[18px] bg-white/20 text-white shadow-none hover:bg-white/30">
+            <button onClick={() => void loadData()} className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/20 text-white shadow-none hover:bg-white/30" aria-label="Atualizar perfil">
               <RefreshCcw className="h-4 w-4" />
             </button>
           </div>
         </section>
 
-        <Card className="rounded-[28px] border-slate-200/80">
-          <CardHeader className="px-5 pt-5">
+        <Card className="rounded-2xl border-slate-200/80">
+          <CardHeader className="px-4 pt-4 sm:px-5 sm:pt-5">
             <CardTitle className="flex items-center gap-2 text-base">
               <User className="h-5 w-5 text-slate-500" />
               Dados pessoais
@@ -141,31 +141,31 @@ const GuardaPerfil = () => {
               Matrícula {guarda.matricula} &middot; {guarda.graduacao_nome || ''}
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4 px-5 pb-5">
-            <div className="rounded-[20px] bg-slate-50 px-4 py-3 text-sm">
-              <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">CPF:</span>
-              <span className="ml-2 text-[15px] font-bold text-slate-800">{guarda.cpf ? maskCpf(guarda.cpf) : '—'}</span>
+          <CardContent className="space-y-4 px-4 pb-4 sm:px-5 sm:pb-5">
+            <div className="rounded-xl bg-slate-50 px-4 py-3 text-sm">
+              <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500">CPF:</span>
+              <span className="ml-2 break-words text-[15px] font-bold text-slate-800">{guarda.cpf ? maskCpf(guarda.cpf) : '—'}</span>
             </div>
             <div className="space-y-1.5">
-              <Label className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Nome</Label>
-              <Input value={nome} onChange={(e) => setNome(e.target.value)} className="h-12 rounded-[18px] border-slate-200 text-[15px] font-medium" />
+              <Label className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500">Nome</Label>
+              <Input value={nome} onChange={(e) => setNome(e.target.value)} className="h-12 rounded-xl border-slate-200 text-[15px] font-medium" />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Email</Label>
-              <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Seu email (opcional)" className="h-12 rounded-[18px] border-slate-200 text-[15px] font-medium" />
+              <Label className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500">Email</Label>
+              <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Seu email (opcional)" className="h-12 rounded-xl border-slate-200 text-[15px] font-medium" />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Telefone</Label>
-              <Input value={telefone} onChange={(e) => setTelefone(e.target.value)} placeholder="(85) 99999-9999" className="h-12 rounded-[18px] border-slate-200 text-[15px] font-medium" />
+              <Label className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500">Telefone</Label>
+              <Input value={telefone} onChange={(e) => setTelefone(e.target.value)} placeholder="(85) 99999-9999" className="h-12 rounded-xl border-slate-200 text-[15px] font-medium" />
             </div>
-            <Button onClick={() => void handleSalvarDados()} disabled={saving} className="rounded-[18px] text-[14px] font-semibold">
+            <Button onClick={() => void handleSalvarDados()} disabled={saving} className="min-h-11 w-full rounded-xl text-[14px] font-semibold sm:w-auto">
               {saving ? 'Salvando...' : 'Salvar alterações'}
             </Button>
           </CardContent>
         </Card>
 
-        <Card className="rounded-[28px] border-slate-200/80">
-          <CardHeader className="px-5 pt-5">
+        <Card className="rounded-2xl border-slate-200/80">
+          <CardHeader className="px-4 pt-4 sm:px-5 sm:pt-5">
             <CardTitle className="flex items-center gap-2 text-base">
               <Lock className="h-5 w-5 text-slate-500" />
               Alterar senha
@@ -174,34 +174,34 @@ const GuardaPerfil = () => {
               Sua senha pode ter até 10 caracteres, incluindo letras, números e caracteres especiais.
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4 px-5 pb-5">
+          <CardContent className="space-y-4 px-4 pb-4 sm:px-5 sm:pb-5">
             <div className="space-y-1.5">
-              <Label className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Senha atual</Label>
+              <Label className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500">Senha atual</Label>
               <div className="relative">
-                <Input type={showSenhaAtual ? 'text' : 'password'} value={senhaAtual} onChange={(e) => setSenhaAtual(e.target.value)} placeholder="••••••••••" className="h-12 rounded-[18px] border-slate-200 text-[15px] font-medium" />
-                <button type="button" className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" onClick={() => setShowSenhaAtual(!showSenhaAtual)}>
+                <Input type={showSenhaAtual ? 'text' : 'password'} value={senhaAtual} onChange={(e) => setSenhaAtual(e.target.value)} placeholder="••••••••••" className="h-12 rounded-xl border-slate-200 pr-12 text-[15px] font-medium" />
+                <button type="button" className="absolute right-2 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-50" onClick={() => setShowSenhaAtual(!showSenhaAtual)} aria-label={showSenhaAtual ? 'Ocultar senha atual' : 'Mostrar senha atual'}>
                   {showSenhaAtual ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
             </div>
             <div className="space-y-1.5">
-              <Label className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Nova senha</Label>
+              <Label className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500">Nova senha</Label>
               <div className="relative">
-                <Input type={showNovaSenha ? 'text' : 'password'} value={novaSenha} onChange={(e) => setNovaSenha(e.target.value)} placeholder="••••••••••" maxLength={10} className="h-12 rounded-[18px] border-slate-200 text-[15px] font-medium" />
-                <button type="button" className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" onClick={() => setShowNovaSenha(!showNovaSenha)}>
+                <Input type={showNovaSenha ? 'text' : 'password'} value={novaSenha} onChange={(e) => setNovaSenha(e.target.value)} placeholder="••••••••••" maxLength={10} className="h-12 rounded-xl border-slate-200 pr-12 text-[15px] font-medium" />
+                <button type="button" className="absolute right-2 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-50" onClick={() => setShowNovaSenha(!showNovaSenha)} aria-label={showNovaSenha ? 'Ocultar nova senha' : 'Mostrar nova senha'}>
                   {showNovaSenha ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
               <p className="text-xs text-slate-400">{novaSenha.length}/10 caracteres</p>
             </div>
             <div className="space-y-1.5">
-              <Label className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Confirmar nova senha</Label>
-              <Input type="password" value={confirmarSenha} onChange={(e) => setConfirmarSenha(e.target.value)} placeholder="••••••••••" maxLength={10} className="h-12 rounded-[18px] border-slate-200 text-[15px] font-medium" />
+              <Label className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500">Confirmar nova senha</Label>
+              <Input type="password" value={confirmarSenha} onChange={(e) => setConfirmarSenha(e.target.value)} placeholder="••••••••••" maxLength={10} className="h-12 rounded-xl border-slate-200 text-[15px] font-medium" />
               {confirmarSenha && novaSenha !== confirmarSenha && (
                 <p className="text-xs text-red-500">As senhas não conferem</p>
               )}
             </div>
-            <Button onClick={() => void handleAlterarSenha()} disabled={mudandoSenha} className="rounded-[18px] text-[14px] font-semibold">
+            <Button onClick={() => void handleAlterarSenha()} disabled={mudandoSenha} className="min-h-11 w-full rounded-xl text-[14px] font-semibold sm:w-auto">
               {mudandoSenha ? 'Alterando...' : 'Alterar senha'}
             </Button>
           </CardContent>

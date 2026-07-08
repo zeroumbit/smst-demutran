@@ -10,6 +10,7 @@ export function usePWA() {
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [needRefresh, setNeedRefresh] = useState(false);
+  const [offlineReady, setOfflineReady] = useState(false);
 
   useEffect(() => {
     const onOnline = () => setIsOnline(true);
@@ -35,6 +36,12 @@ export function usePWA() {
     const handler = () => setNeedRefresh(true);
     window.addEventListener('pwa:need-refresh', handler);
     return () => window.removeEventListener('pwa:need-refresh', handler);
+  }, []);
+
+  useEffect(() => {
+    const handler = () => setOfflineReady(true);
+    window.addEventListener('pwa:offline-ready', handler);
+    return () => window.removeEventListener('pwa:offline-ready', handler);
   }, []);
 
   useEffect(() => {
@@ -64,5 +71,5 @@ export function usePWA() {
     }
   }, []);
 
-  return { installPrompt, isOnline, needRefresh, install, updateSW };
+  return { installPrompt, isOnline, needRefresh, offlineReady, install, updateSW };
 }

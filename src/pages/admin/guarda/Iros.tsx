@@ -241,43 +241,43 @@ const GuardaIros = () => {
   if (loading) {
     return (
       <GuardsLayout>
-        <div className="rounded-[26px] border border-slate-200 bg-white p-8 text-center text-sm text-slate-500">Carregando...</div>
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 text-center text-sm text-slate-500 sm:p-8">Carregando...</div>
       </GuardsLayout>
     );
   }
 
   return (
     <GuardsLayout>
-      <div className="space-y-6">
-        <section className="rounded-[34px] bg-[linear-gradient(135deg,_#0f172a_0%,_#1e293b_45%,_#2563eb_100%)] px-5 pb-5 pt-6 sm:px-6">
+      <div className="space-y-4 sm:space-y-6">
+        <section className="rounded-2xl bg-[linear-gradient(135deg,_#0f172a_0%,_#1e293b_45%,_#2563eb_100%)] px-4 pb-4 pt-5 sm:px-6 sm:pb-5 sm:pt-6">
           <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
             <div className="min-w-0">
-              <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-sky-100/70">Guarda Municipal</p>
-              <h1 className="mt-3 text-[32px] font-black tracking-[-0.07em] text-white sm:text-[38px]">IROs</h1>
+              <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-sky-100/70">Guarda Municipal</p>
+              <h1 className="mt-2 text-[26px] font-black leading-tight text-white sm:mt-3 sm:text-[34px]">IROs</h1>
               <p className="mt-2 max-w-xl text-[14px] leading-6 text-white">Integração de Recursos Operacionais — Gerencie suas candidaturas e acompanhe suas horas.</p>
             </div>
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" className="gap-2 rounded-[18px] bg-white/20 text-white shadow-none hover:bg-white/30 border-0" onClick={() => navigate('/admin/perfil-guardas/guarda-municipal/iros/historico')}>
+              <Button variant="outline" size="sm" className="min-h-10 gap-2 rounded-xl border-0 bg-white/20 text-white shadow-none hover:bg-white/30" onClick={() => navigate('/admin/perfil-guardas/guarda-municipal/iros/historico')}>
                 <History className="h-4 w-4" />
                 Histórico
               </Button>
             </div>
           </div>
           <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3">
-            <div className="rounded-[26px] bg-white/10 p-4 backdrop-blur-sm sm:p-5">
+            <div className="rounded-2xl bg-white/10 p-3.5 backdrop-blur-sm sm:p-5">
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
-                  <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-white/60">Total no mês</p>
-                  <p className="mt-1 text-2xl font-black tracking-[-0.04em] text-white sm:text-3xl">{resumo.total_horas_mes}h</p>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-white/60 sm:text-[11px]">Total no mês</p>
+                  <p className="mt-1 text-[22px] font-black leading-none text-white sm:text-3xl">{resumo.total_horas_mes}h</p>
                   <p className="mt-0.5 text-[13px] leading-5 text-white/70">R$ {resumo.total_reais.toFixed(2).replace('.', ',')}</p>
                 </div>
               </div>
             </div>
-            <div className="rounded-[26px] bg-white/10 p-4 backdrop-blur-sm sm:p-5">
+            <div className="rounded-2xl bg-white/10 p-3.5 backdrop-blur-sm sm:p-5">
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
-                  <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-white/60">IROS mês anterior</p>
-                  <p className="mt-1 text-2xl font-black tracking-[-0.04em] text-white sm:text-3xl">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-white/60 sm:text-[11px]">IROS mês anterior</p>
+                  <p className="mt-1 text-[22px] font-black leading-none text-white sm:text-3xl">
                     {resumo.mes_anterior_horas}h
                   </p>
                   <p className="mt-0.5 text-[13px] leading-5 text-white/70">
@@ -291,39 +291,39 @@ const GuardaIros = () => {
                 </div>
               </div>
             </div>
-            <div className="rounded-[26px] bg-white/10 p-4 backdrop-blur-sm sm:p-5">
+            <div className="col-span-2 rounded-2xl bg-white/10 p-3.5 backdrop-blur-sm sm:col-span-1 sm:p-5">
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
-                  <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-white/60">Banco de horas</p>
-                  <p className="mt-1 text-2xl font-black tracking-[-0.04em] text-amber-300 sm:text-3xl">{resumo.banco_horas}h</p>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-white/60 sm:text-[11px]">Banco de horas</p>
+                  <p className="mt-1 text-[22px] font-black leading-none text-amber-300 sm:text-3xl">{resumo.banco_horas}h</p>
                 </div>
               </div>
             </div>
           </div>
         </section>
 
-        <Card className="rounded-[28px] border-slate-200/80">
-          <CardContent className="px-5 py-5">
+        <Card className="rounded-2xl border-slate-200/80">
+          <CardContent className="px-4 py-4 sm:px-5 sm:py-5">
             <div className="space-y-1.5">
-              <Label className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Buscar operações</Label>
+              <Label className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500">Buscar operações</Label>
               <div className="relative">
                 <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar por nome..." className="h-12 rounded-[18px] border-slate-200 bg-slate-50 pl-11 text-[15px] font-medium" />
+                <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar por nome..." className="h-12 rounded-xl border-slate-200 bg-slate-50 pl-11 text-[15px] font-medium" />
               </div>
             </div>
           </CardContent>
         </Card>
 
         <div>
-          <h2 className="mb-3 text-sm font-bold uppercase tracking-[0.1em] text-slate-600">Operações disponíveis</h2>
+          <h2 className="mb-3 text-sm font-bold uppercase tracking-[0.08em] text-slate-600">Operações disponíveis</h2>
           {filteredOperacoes.length === 0 ? (
-            <div className="rounded-[26px] border border-dashed border-slate-300 bg-white p-8 text-center text-[15px] text-slate-400">
+            <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-6 text-center text-[15px] text-slate-400 sm:p-8">
               Nenhuma operação disponível no momento.
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
               {filteredOperacoes.map((op) => (
-                <article key={op.id} className="rounded-[26px] border border-slate-200/80 bg-white px-5 py-4 shadow-[0_4px_20px_-8px_rgba(15,23,42,0.08)] flex flex-col">
+                <article key={op.id} className="flex flex-col rounded-2xl border border-slate-200/80 bg-white px-4 py-4 shadow-[0_4px_20px_-8px_rgba(15,23,42,0.08)] sm:px-5">
                   <Badge variant="outline" className="self-start rounded-full bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px] font-bold">
                     {op.vagas_por_dia} vaga(s)/dia
                   </Badge>
@@ -334,7 +334,7 @@ const GuardaIros = () => {
                     <span className="flex items-center gap-1.5"><Clock className="h-3.5 w-3.5 shrink-0" />{op.horario_previsto.slice(0, 5)}</span>
                     <span className="flex items-center gap-1.5"><Hourglass className="h-3.5 w-3.5 shrink-0" />{op.horas_por_dia}h/dia</span>
                   </div>
-                  <Button size="sm" className="mt-3 w-full rounded-xl text-[13px] font-semibold" onClick={() => { setSelectedOperacao(op); setCandidaturaData({ data_operacao: new Date().toISOString().slice(0, 10) }); }}>
+                  <Button size="sm" className="mt-3 min-h-10 w-full rounded-xl text-[13px] font-semibold" onClick={() => { setSelectedOperacao(op); setCandidaturaData({ data_operacao: new Date().toISOString().slice(0, 10) }); }}>
                     VER DETALHES
                   </Button>
                 </article>
@@ -344,16 +344,16 @@ const GuardaIros = () => {
         </div>
 
         <div>
-          <h2 className="mb-3 text-sm font-bold uppercase tracking-[0.1em] text-slate-600">Minhas candidaturas ativas</h2>
+          <h2 className="mb-3 text-sm font-bold uppercase tracking-[0.08em] text-slate-600">Minhas candidaturas ativas</h2>
           {candidaturasAtivas.length === 0 ? (
-            <div className="rounded-[26px] border border-dashed border-slate-300 bg-white p-8 text-center text-[15px] text-slate-400">
+            <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-6 text-center text-[15px] text-slate-400 sm:p-8">
               Nenhuma candidatura ativa.
             </div>
           ) : (
             <div className="space-y-3">
               {candidaturasAtivas.map((c) => (
-                <div key={c.id} className="flex items-center justify-between rounded-[26px] border border-slate-200/80 bg-white px-5 py-4 shadow-[0_4px_20px_-8px_rgba(15,23,42,0.08)]">
-                  <div>
+                <div key={c.id} className="flex flex-col gap-3 rounded-2xl border border-slate-200/80 bg-white px-4 py-4 shadow-[0_4px_20px_-8px_rgba(15,23,42,0.08)] sm:flex-row sm:items-center sm:justify-between sm:px-5">
+                  <div className="min-w-0">
                     <p className="text-[15px] font-bold text-slate-900">{c.operacao_nome}</p>
                     <p className="mt-0.5 text-[13px] leading-5 text-slate-500">
                       {fmtDateBR(c.data_operacao)} &middot; {c.horas_trabalhadas}h &middot;
@@ -363,7 +363,7 @@ const GuardaIros = () => {
                     </p>
                   </div>
                   {c.status !== 'realizado' && (
-                    <Button size="sm" variant="outline" className="h-9 rounded-xl text-[13px] font-semibold text-red-600 border-red-200 hover:bg-red-50" onClick={() => void handleCancelar(c)}>
+                    <Button size="sm" variant="outline" className="min-h-10 w-full rounded-xl border-red-200 text-[13px] font-semibold text-red-600 hover:bg-red-50 sm:w-auto" onClick={() => void handleCancelar(c)}>
                       Cancelar
                     </Button>
                   )}
