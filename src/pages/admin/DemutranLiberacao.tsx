@@ -1,4 +1,4 @@
-import { ChangeEvent, useEffect, useMemo, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useState, type ChangeEvent, type ReactNode } from 'react';
 import * as XLSX from 'xlsx';
 import { Car, CheckCircle2, CircleDollarSign, Copy, Download, Eye, FileSpreadsheet, Loader2, Plus, Printer, Search, SlidersHorizontal, Upload, Warehouse, X } from 'lucide-react';
 import { useConfirmDialog } from '@/components/ui/use-confirm-dialog';
@@ -354,7 +354,7 @@ const DemutranLiberacao = () => {
   const [logradouroSuggestions, setLogradouroSuggestions] = useState<LogradouroSuggestion[]>([]);
   const [loadingLogradouros, setLoadingLogradouros] = useState(false);
 
-  const copiarTexto = async (texto: string) => {
+  const copiarTexto = useCallback(async (texto: string) => {
     try {
       await navigator.clipboard.writeText(texto);
     } catch {
@@ -367,7 +367,7 @@ const DemutranLiberacao = () => {
     }
     setProtocoloCopiado(true);
     setTimeout(() => setProtocoloCopiado(false), 2000);
-  };
+  }, []);
 
   const handlePrintVehicle = (item: typeof detalhesItem) => {
     if (!item) return;
@@ -744,39 +744,14 @@ const DemutranLiberacao = () => {
   };
 
   const handleSubmitApreensao = async () => {
-    if (!effectiveSetorId || !apreensaoForm.placa || !apreensaoForm.data_recolhimento || !apreensaoForm.descricao_veiculo || !apreensaoForm.logradouro || !apreensaoForm.motivo || !apreensaoForm.situacao) {
+    if (!effectiveSetorId || !apreensaoForm.placa || !apreensaoForm.data_recolhimento || !apreensaoForm.logradouro || !apreensaoForm.motivo || !apreensaoForm.situacao) {
       toast({
         title: 'Campos obrigatorios',
-        description: 'Preencha entrada, placa, logradouro, descricao do veiculo, motivo e situacao.',
+        description: 'Preencha entrada, placa, logradouro, motivo e situacao.',
         variant: 'destructive',
       });
       return;
     }
-
-    const payload = {
-      setor_id: effectiveSetorId,
-      placa: normalizePlate(apreensaoForm.placa),
-      chassi: apreensaoForm.chassi.trim() || null,
-      descricao_veiculo: apreensaoForm.descricao_veiculo.trim(),
-      ano: apreensaoForm.ano.trim() || null,
-      cor: apreensaoForm.cor.trim() || null,
-      modelo: apreensaoForm.modelo.trim() || null,
-      municipio: apreensaoForm.municipio.trim() || null,
-      proprietario_nome: apreensaoForm.proprietario_nome.trim() || 'Nao informado',
-      proprietario_cpf_cnpj: apreensaoForm.proprietario_cpf_cnpj.trim() || null,
-      infrator_nome: apreensaoForm.infrator_nome.trim() || null,
-      bairro_apreensao: apreensaoForm.bairro_apreensao.trim() || null,
-      data_recolhimento: new Date(apreensaoForm.data_recolhimento).toISOString(),
-      motivo: apreensaoForm.motivo.trim(),
-      status: 'recolhido',
-      situacao: apreensaoForm.situacao.trim(),
-      local_custodia: apreensaoForm.local_custodia,
-      numero_liberacao: apreensaoForm.local_custodia === 'motos_delegacia'
-        ? apreensaoForm.numero_liberacao.trim() || null
-        : null,
-      observacao: apreensaoForm.observacao.trim() || null,
-      updated_at: new Date().toISOString(),
-    };
 
     const placaNormalizada = normalizePlate(apreensaoForm.placa);
 
@@ -801,7 +776,7 @@ const DemutranLiberacao = () => {
       _proprietario_nome: apreensaoForm.proprietario_nome.trim() || 'Nao informado',
       _proprietario_cpf_cnpj: apreensaoForm.proprietario_cpf_cnpj.trim() || null,
       _chassi: apreensaoForm.chassi.trim() || null,
-      _descricao_veiculo: apreensaoForm.descricao_veiculo.trim(),
+      _descricao_veiculo: apreensaoForm.descricao_veiculo.trim() || null,
       _ano: apreensaoForm.ano.trim() || null,
       _cor: apreensaoForm.cor.trim() || null,
       _modelo: apreensaoForm.modelo.trim() || null,
@@ -816,6 +791,9 @@ const DemutranLiberacao = () => {
       _motivo: apreensaoForm.motivo.trim(),
       _situacao: apreensaoForm.situacao.trim(),
       _local_custodia: apreensaoForm.local_custodia,
+      _numero_liberacao: apreensaoForm.local_custodia === 'motos_delegacia'
+        ? apreensaoForm.numero_liberacao.trim() || null
+        : null,
       _observacao: apreensaoForm.observacao.trim() || null,
     });
     if (error) {
@@ -823,12 +801,12 @@ const DemutranLiberacao = () => {
       return;
     }
 
-    const protocolo = insertData?.[0]?.protocolo;
+    const protocolo = (insertData as { protocolo?: string })?.protocolo;
     toast({
-      title: 'Apreensao cadastrada',
+      title: 'Veiculo cadastrado com sucesso!',
       description: protocolo
-        ? `Protocolo: ${protocolo} — forneca ao proprietario para consulta online.`
-        : 'O veiculo entrou para a relacao de patio.',
+        ? `Protocolo ${protocolo} gerado — informe ao proprietario para consulta online.`
+        : 'O veiculo entrou na relacao de patio.',
     });
     closeApreensaoDialog();
     loadVeiculos();
@@ -934,12 +912,12 @@ const DemutranLiberacao = () => {
     loadVeiculos();
   };
 
-  const openDetalhes = (item: VeiculoRecolhido) => {
+  const openDetalhes = useCallback((item: VeiculoRecolhido) => {
     setDetalhesItem(item);
     setIsDetalhesDialogOpen(true);
-  };
+  }, []);
 
-  const openCpfDialog = (item: VeiculoRecolhido) => {
+  const openCpfDialog = useCallback((item: VeiculoRecolhido) => {
     setCpfEditItem(item);
     setCpfEditValue(item.proprietario_cpf_cnpj || '');
     setCpfEditName(item.proprietario_nome === 'Nao informado' ? '' : (item.proprietario_nome || ''));
@@ -947,7 +925,7 @@ const DemutranLiberacao = () => {
     setCpfEditBairro(item.bairro_apreensao || '');
     setCpfEditJustificativa('');
     setIsCpfDialogOpen(true);
-  };
+  }, []);
 
   const closeCpfDialog = () => {
     setCpfEditItem(null);
@@ -998,14 +976,14 @@ const DemutranLiberacao = () => {
     loadVeiculos();
   };
 
-  const openTaxaDialog = (item?: VeiculoRecolhido) => {
+  const openTaxaDialog = useCallback((item?: VeiculoRecolhido) => {
     setTaxaItem(item || null);
     setTaxaMode(item ? 'single' : 'all');
     setTaxaDiariaInput(item ? String(getTaxaDiariaValue(item)).replace('.', ',') : '');
     setIsTaxaDialogOpen(true);
-  };
+  }, []);
 
-  const openLiberacaoDialog = (item: VeiculoRecolhido) => {
+  const openLiberacaoDialog = useCallback((item: VeiculoRecolhido) => {
     setLiberacaoItem(item);
     setLiberacaoForm({
       data_liberacao: new Date().toISOString().slice(0, 16),
@@ -1014,7 +992,7 @@ const DemutranLiberacao = () => {
       observacao: '',
     });
     setIsLiberacaoDialogOpen(true);
-  };
+  }, []);
 
   const handleMassUpload = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -1205,7 +1183,7 @@ const DemutranLiberacao = () => {
     XLSX.writeFile(wb, 'modelo-veiculos-recolhidos.xlsx');
   };
 
-  const apreensoesColumns = [
+  const apreensoesColumns = useMemo(() => [
     { header: 'Entrada', accessor: (item: VeiculoRecolhido) => formatDateOnly(item.data_recolhimento) },
     { header: 'Placa', accessor: 'placa' as const },
     { header: 'Descricao', accessor: 'descricao_veiculo' as const },
@@ -1236,9 +1214,9 @@ const DemutranLiberacao = () => {
       ),
       className: 'text-right',
     },
-  ];
+  ], [openCpfDialog, openDetalhes, openLiberacaoDialog, openTaxaDialog]);
 
-  const consolidadoColumns = [
+  const consolidadoColumns = useMemo(() => [
     { header: 'Entrada', accessor: (item: VeiculoRecolhido) => formatDateOnly(item.data_recolhimento) },
     { header: 'Placa', accessor: 'placa' as const },
     { header: 'Descricao', accessor: 'descricao_veiculo' as const },
@@ -1274,9 +1252,9 @@ const DemutranLiberacao = () => {
       ),
       className: 'text-right',
     },
-  ];
+  ], [openDetalhes]);
 
-  const liberacoesColumns = [
+  const liberacoesColumns = useMemo(() => [
     {
       header: 'Liberacao',
       accessor: (item: VeiculoRecolhido) => (
@@ -1308,9 +1286,9 @@ const DemutranLiberacao = () => {
       ),
       className: 'text-right',
     },
-  ];
+  ], [openDetalhes, openTaxaDialog]);
 
-  const renderMobileVehicleCard = (
+  const renderMobileVehicleCard = useCallback((
     item: VeiculoRecolhido,
     mode: 'patio' | 'liberacao' | 'consolidado',
   ) => (
@@ -1408,7 +1386,7 @@ const DemutranLiberacao = () => {
         </div>
       </div>
     </article>
-  );
+  ), [copiarTexto, openCpfDialog, openDetalhes, openLiberacaoDialog, openTaxaDialog, protocoloCopiado]);
 
   return (
     <AdminLayout>
@@ -1600,16 +1578,16 @@ const DemutranLiberacao = () => {
                   placeholder="Buscar por placa, descrição, pátio ou situação"
                 />
               </div>
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-                <Button type="button" variant="outline" className="h-12 gap-2 rounded-[18px] text-[14px] font-semibold" onClick={() => openTaxaDialog()} disabled={!effectiveSetorId}>
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                <Button type="button" variant="outline" className="h-12 gap-2 rounded-[18px] text-[14px] font-semibold px-3" onClick={() => openTaxaDialog()} disabled={!effectiveSetorId}>
                   <CircleDollarSign className="h-4 w-4" />
                   Aplicar taxa em massa
                 </Button>
-                <Button type="button" variant="outline" className="h-12 gap-2 rounded-[18px] text-[14px] font-semibold" onClick={() => setIsImportDialogOpen(true)}>
+                <Button type="button" variant="outline" className="h-12 gap-2 rounded-[18px] text-[14px] font-semibold px-3" onClick={() => setIsImportDialogOpen(true)}>
                   <FileSpreadsheet className="h-4 w-4" />
                   Cadastro em Massa
                 </Button>
-                <Button onClick={() => setIsApreensaoDialogOpen(true)} className="h-12 gap-2 rounded-[18px] text-[14px] font-semibold w-full" disabled={!effectiveSetorId}>
+                <Button onClick={() => setIsApreensaoDialogOpen(true)} className="h-12 gap-2 rounded-[18px] text-[14px] font-semibold px-6" disabled={!effectiveSetorId}>
                   <Plus className="w-4 h-4" />
                   Nova Apreensao
                 </Button>
@@ -1641,12 +1619,13 @@ const DemutranLiberacao = () => {
                     })()}
                   </div>
                 )}
-                <div className="space-y-3 lg:hidden">
-                  {filteredApreendidos.map((item) => renderMobileVehicleCard(item, 'patio'))}
-                </div>
-                <div className="hidden overflow-hidden rounded-[22px] border border-border bg-card lg:block">
-                  <DataTable data={filteredApreendidos} columns={apreensoesColumns} emptyMessage="Nenhum veículo apreendido no pátio" />
-                </div>
+                <VehicleCollectionSection
+                  data={filteredApreendidos}
+                  columns={apreensoesColumns}
+                  emptyMessage="Nenhum veículo apreendido no pátio"
+                  mode="patio"
+                  renderMobileVehicleCard={renderMobileVehicleCard}
+                />
               </>
             )}
           </TabsContent>
@@ -1687,12 +1666,13 @@ const DemutranLiberacao = () => {
                     })()}
                   </div>
                 )}
-                <div className="space-y-3 lg:hidden">
-                  {filteredLiberados.map((item) => renderMobileVehicleCard(item, 'liberacao'))}
-                </div>
-                <div className="hidden overflow-hidden rounded-[22px] border border-border bg-card lg:block">
-                  <DataTable data={filteredLiberados} columns={liberacoesColumns} emptyMessage="Nenhum veículo liberado" />
-                </div>
+                <VehicleCollectionSection
+                  data={filteredLiberados}
+                  columns={liberacoesColumns}
+                  emptyMessage="Nenhum veículo liberado"
+                  mode="liberacao"
+                  renderMobileVehicleCard={renderMobileVehicleCard}
+                />
               </>
             )}
           </TabsContent>
@@ -1719,16 +1699,13 @@ const DemutranLiberacao = () => {
                 })()}
               </div>
             )}
-            <div className="space-y-3 lg:hidden">
-              {filteredConsolidado.map((item) => renderMobileVehicleCard(item, 'consolidado'))}
-            </div>
-            <div className="hidden overflow-hidden rounded-[22px] border border-border bg-card lg:block">
-              <DataTable
-                data={filteredConsolidado}
-                columns={consolidadoColumns}
-                emptyMessage="Nenhum veículo encontrado para os filtros selecionados"
-              />
-            </div>
+            <VehicleCollectionSection
+              data={filteredConsolidado}
+              columns={consolidadoColumns}
+              emptyMessage="Nenhum veículo encontrado para os filtros selecionados"
+              mode="consolidado"
+              renderMobileVehicleCard={renderMobileVehicleCard}
+            />
           </TabsContent>
         </Tabs>
 
@@ -1953,13 +1930,13 @@ const DemutranLiberacao = () => {
                     <Input id="cor" placeholder="Ex: Prata" value={apreensaoForm.cor} onChange={(e) => setApreensaoForm({ ...apreensaoForm, cor: e.target.value })} />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="modelo">Modelo</Label>
-                    <Input id="modelo" placeholder="Ex: Uno" value={apreensaoForm.modelo} onChange={(e) => setApreensaoForm({ ...apreensaoForm, modelo: e.target.value })} />
+                    <Label htmlFor="modelo">Modelo/Marca</Label>
+                    <Input id="modelo" placeholder="Ex: Fiat Uno" value={apreensaoForm.modelo} onChange={(e) => setApreensaoForm({ ...apreensaoForm, modelo: e.target.value })} />
                   </div>
                 </div>
 
                 <div className="space-y-2 mt-3">
-                  <Label htmlFor="descricao_veiculo">Descricao do veiculo *</Label>
+                  <Label htmlFor="descricao_veiculo">Descricao do veiculo</Label>
                   <Input id="descricao_veiculo" placeholder="Ex: Fiat Uno Mille 1.0" value={apreensaoForm.descricao_veiculo} onChange={(e) => setApreensaoForm({ ...apreensaoForm, descricao_veiculo: e.target.value })} />
                 </div>
 
@@ -2509,6 +2486,41 @@ const DemutranLiberacao = () => {
   );
 };
 
+const VehicleCollectionSection = memo(function VehicleCollectionSection({
+  data,
+  columns,
+  emptyMessage,
+  mode,
+  renderMobileVehicleCard,
+}: {
+  data: VeiculoRecolhido[];
+  columns: Array<{
+    header: string;
+    accessor: keyof VeiculoRecolhido | ((item: VeiculoRecolhido) => ReactNode);
+    render?: (value: unknown, item: VeiculoRecolhido) => ReactNode;
+    className?: string;
+  }>;
+  emptyMessage: string;
+  mode: 'patio' | 'liberacao' | 'consolidado';
+  renderMobileVehicleCard: (item: VeiculoRecolhido, mode: 'patio' | 'liberacao' | 'consolidado') => ReactNode;
+}) {
+  return (
+    <>
+      <div className="space-y-3 lg:hidden">
+        {data.map((item) => renderMobileVehicleCard(item, mode))}
+        {data.length === 0 && (
+          <div className="rounded-[26px] border border-dashed border-slate-200 p-8 text-center text-[15px] text-slate-400">
+            {emptyMessage}
+          </div>
+        )}
+      </div>
+      <div className="hidden overflow-hidden rounded-[22px] border border-border bg-card lg:block">
+        <DataTable data={data} columns={columns} emptyMessage={emptyMessage} />
+      </div>
+    </>
+  );
+});
+
 function SummaryCard({
   title,
   value,
@@ -2545,7 +2557,7 @@ function NativeInfoTile({
   label: string;
   value: string;
   emphasis?: boolean;
-  action?: React.ReactNode;
+  action?: ReactNode;
 }) {
   return (
     <div className={`rounded-[20px] px-3 py-3 ${emphasis ? 'bg-emerald-50 text-emerald-900' : 'bg-slate-50 text-slate-900'}`}>
@@ -2563,7 +2575,7 @@ function DetailSection({
   rows,
 }: {
   title: string;
-  rows: Array<{ label: string; value: string; action?: React.ReactNode }>;
+  rows: Array<{ label: string; value: string; action?: ReactNode }>;
 }) {
   return (
     <div className="rounded-[22px] border border-slate-200 bg-white px-4 py-4">

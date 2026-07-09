@@ -197,7 +197,7 @@ CREATE OR REPLACE FUNCTION public.recolher_veiculo(
   _data_recolhimento timestamptz DEFAULT now(),
   _motivo text DEFAULT ''::text,
   _situacao text DEFAULT 'Apreendido'::text,
-  _local_custodia text DEFAULT 'automoveis'::text,
+  _local_custodia public.demutran_local_custodia DEFAULT 'automoveis',
   _observacao text DEFAULT NULL
 )
 RETURNS jsonb

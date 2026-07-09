@@ -1,4 +1,4 @@
-import { ReactNode } from 'react';
+import { memo, ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import {
@@ -52,7 +52,7 @@ const getCellValue = <T,>(item: T, column: Column<T>): ReactNode => {
 };
 
 // Componente DataTable genérico e responsivo
-export function DataTable<T extends { id: string | number; ativo?: boolean }>({
+function DataTableComponent<T extends { id: string | number; ativo?: boolean }>({
   data,
   columns,
   onEdit,
@@ -241,3 +241,5 @@ export function DataTable<T extends { id: string | number; ativo?: boolean }>({
     </div>
   );
 }
+
+export const DataTable = memo(DataTableComponent) as typeof DataTableComponent;

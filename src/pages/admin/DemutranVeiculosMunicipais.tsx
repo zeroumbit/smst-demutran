@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode } from 'react';
 import { Building2, Calendar, CarFront, CheckCircle, Clock, Download, Eye, FileSpreadsheet, IdCard, Search, ShieldCheck, SlidersHorizontal, Upload, User, X } from 'lucide-react';
 import { useConfirmDialog } from '@/components/ui/use-confirm-dialog';
 import { AdminLayout } from '@/components/admin/AdminLayout';
@@ -151,7 +151,7 @@ const DemutranVeiculosMunicipais = () => {
     loadData();
   };
 
-  const handleEdit = (item: DemutranVeiculoMunicipal) => {
+  const handleEdit = useCallback((item: DemutranVeiculoMunicipal) => {
     setEditingItem(item);
     setFormData({
       placa: item.placa,
@@ -168,13 +168,13 @@ const DemutranVeiculosMunicipais = () => {
       ativo: item.ativo,
     });
     setIsDialogOpen(true);
-  };
+  }, []);
 
-  const handleView = (item: DemutranVeiculoMunicipal) => {
+  const handleView = useCallback((item: DemutranVeiculoMunicipal) => {
     setViewingItem(item);
-  };
+  }, []);
 
-  const handleDelete = async (item: DemutranVeiculoMunicipal) => {
+  const handleDelete = useCallback(async (item: DemutranVeiculoMunicipal) => {
     const confirmed = await confirm({ title: 'Excluir veículo', description: `Excluir o cadastro do veículo ${item.placa}?` });
     if (!confirmed) return;
 
@@ -186,7 +186,7 @@ const DemutranVeiculosMunicipais = () => {
 
     toast({ title: 'Veiculo excluido' });
     setItems((current) => current.filter((currentItem) => currentItem.id !== item.id));
-  };
+  }, [confirm]);
 
   const handleDownloadModelo = () => {
     const wb = XLSX.utils.book_new();
@@ -389,7 +389,7 @@ const DemutranVeiculosMunicipais = () => {
     return secretariaStats.filter((s) => s.secretaria === selectedSecretaria);
   }, [secretariaStats, selectedSecretaria]);
 
-  const columns = [
+  const columns = useMemo(() => [
     { header: 'Placa', accessor: 'placa' as const },
     { header: 'Chassi', accessor: 'chassi' as const },
     { header: 'Tipo', accessor: (item: DemutranVeiculoMunicipal) => item.tipo || '-' },
@@ -408,7 +408,7 @@ const DemutranVeiculosMunicipais = () => {
         </Badge>
       ),
     },
-  ];
+  ], []);
 
   const activeFiltersCount = useMemo(() => {
     let count = 0;
@@ -479,7 +479,7 @@ const DemutranVeiculosMunicipais = () => {
     setIsCustomReportDialogOpen(false);
   };
 
-  function renderMobileCard(item: DemutranVeiculoMunicipal) {
+  const renderMobileCard = useCallback((item: DemutranVeiculoMunicipal) => {
     return (
       <div
         key={item.id}
@@ -558,7 +558,7 @@ const DemutranVeiculosMunicipais = () => {
         </div>
       </div>
     );
-  }
+  }, [handleEdit, handleView]);
 
   return (
     <AdminLayout>
@@ -725,19 +725,14 @@ const DemutranVeiculosMunicipais = () => {
         {loading ? (
           <div className="rounded-[22px] border border-border bg-card p-8 text-center text-muted-foreground">Carregando frota...</div>
         ) : (
-          <>
-            <div className="space-y-3 lg:hidden">
-              {filteredItems.map((item) => renderMobileCard(item))}
-              {filteredItems.length === 0 && (
-                <div className="rounded-[26px] border border-dashed border-slate-200 p-8 text-center text-[15px] text-slate-400">
-                  Nenhum veiculo encontrado
-                </div>
-              )}
-            </div>
-            <div className="hidden overflow-hidden rounded-[22px] border border-border bg-card lg:block">
-              <DataTable data={filteredItems} columns={columns} onView={handleView} onEdit={handleEdit} onDelete={handleDelete} emptyMessage="Nenhum veiculo cadastrado" />
-            </div>
-          </>
+          <FleetResultsSection
+            items={filteredItems}
+            columns={columns}
+            onView={handleView}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+            renderMobileCard={renderMobileCard}
+          />
         )}
 
         <ResponsiveDialog
@@ -953,6 +948,43 @@ const DemutranVeiculosMunicipais = () => {
     </AdminLayout>
   );
 };
+
+const FleetResultsSection = memo(function FleetResultsSection({
+  items,
+  columns,
+  onView,
+  onEdit,
+  onDelete,
+  renderMobileCard,
+}: {
+  items: DemutranVeiculoMunicipal[];
+  columns: Array<{
+    header: string;
+    accessor: keyof DemutranVeiculoMunicipal | ((item: DemutranVeiculoMunicipal) => ReactNode);
+    render?: (value: unknown, item: DemutranVeiculoMunicipal) => ReactNode;
+    className?: string;
+  }>;
+  onView: (item: DemutranVeiculoMunicipal) => void;
+  onEdit: (item: DemutranVeiculoMunicipal) => void;
+  onDelete: (item: DemutranVeiculoMunicipal) => void;
+  renderMobileCard: (item: DemutranVeiculoMunicipal) => ReactNode;
+}) {
+  return (
+    <>
+      <div className="space-y-3 lg:hidden">
+        {items.map((item) => renderMobileCard(item))}
+        {items.length === 0 && (
+          <div className="rounded-[26px] border border-dashed border-slate-200 p-8 text-center text-[15px] text-slate-400">
+            Nenhum veiculo encontrado
+          </div>
+        )}
+      </div>
+      <div className="hidden overflow-hidden rounded-[22px] border border-border bg-card lg:block">
+        <DataTable data={items} columns={columns} onView={onView} onEdit={onEdit} onDelete={onDelete} emptyMessage="Nenhum veiculo cadastrado" />
+      </div>
+    </>
+  );
+});
 
 function SummaryCard({
   title,
