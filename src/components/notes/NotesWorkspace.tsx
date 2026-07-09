@@ -1,4 +1,4 @@
-import { type ReactNode, useEffect, useMemo, useState } from 'react';
+import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import {
   NotebookPen,
   Pin,
@@ -87,7 +87,7 @@ export function NotesWorkspace({ variant }: NotesWorkspaceProps) {
     return `${DRAFT_STORAGE_PREFIX}:${context}:${profile.user_id}:${activeNote?.id || 'new'}`;
   }, [activeNote?.id, profile?.setor_slug, profile?.user_id, variant]);
 
-  const loadNotes = async () => {
+  const loadNotes = useCallback(async () => {
     if (!profile?.user_id) {
       setNotes([]);
       setLoading(false);
@@ -113,11 +113,11 @@ export function NotesWorkspace({ variant }: NotesWorkspaceProps) {
 
     setNotes(((data || []) as unknown[]).map(normalizeNote));
     setLoading(false);
-  };
+  }, [profile?.user_id]);
 
   useEffect(() => {
     void loadNotes();
-  }, [profile?.user_id]);
+  }, [loadNotes]);
 
   useEffect(() => {
     if (!isModalOpen || modalMode === 'view' || !draftStorageKey) return;

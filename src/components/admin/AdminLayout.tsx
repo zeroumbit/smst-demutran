@@ -362,7 +362,7 @@ export const AdminLayout = ({ children, backPath, backLabel }: AdminLayoutProps)
       .filter(Boolean) as MenuItem[];
 
     return moveMenuItemBeforeLabel(filteredMenuItems, ANOTACOES_LABEL, PERFIL_LABEL);
-  }, [hasPapel, sectorContext, isSuperAdmin, profile?.setor_slug, profile?.papel, profile?.modulos]);
+  }, [hasPapel, sectorContext, isSuperAdmin, profile?.setor_slug, profile?.modulos]);
 
   const visibleBottomNavItems = useMemo(() => {
     return guardaBottomNavItems.filter((item) => {
@@ -436,7 +436,7 @@ export const AdminLayout = ({ children, backPath, backLabel }: AdminLayoutProps)
     walk(filterByPapel(demutranMenuItems));
     walk(filterByPapel(guardaMenuItems));
     return flat;
-  }, [hasPapel, isSuperAdmin, profile?.papel, profile?.modulos]);
+  }, [hasPapel, isSuperAdmin, profile?.modulos]);
 
   const filteredSearchItems = searchQuery.trim()
     ? searchableItems.filter((item) =>
