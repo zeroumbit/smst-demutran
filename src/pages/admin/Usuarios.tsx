@@ -300,13 +300,11 @@ const UsuariosPage = () => {
 
       if (error) throw error;
 
-      if (editModulos.length > 0) {
-        const { error: modulosError } = await supabase.rpc('update_profile_modulos', {
-          _user_id: editingItem.user_id,
-          _modulos: editModulos,
-        });
-        if (modulosError) throw modulosError;
-      }
+      const { error: modulosError } = await supabase.rpc('update_profile_modulos', {
+        _user_id: editingItem.user_id,
+        _modulos: editModulos,
+      });
+      if (modulosError) throw modulosError;
 
       toast({ title: 'Perfil atualizado', description: 'Os dados do usuario foram alterados.' });
 

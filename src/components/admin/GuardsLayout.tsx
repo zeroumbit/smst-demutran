@@ -7,7 +7,6 @@ import {
   UserCircle,
   LogOut,
   Shield,
-  BellDot,
   NotebookPen,
 } from 'lucide-react';
 import guardaLogo from '@/guarda.png';
@@ -84,7 +83,6 @@ export const GuardsLayout = ({ children }: GuardsLayoutProps) => {
 
   const visibleNavItems = moveNavItemBeforeLabel(navItems, ANOTACOES_LABEL, PERFIL_LABEL);
   const isActive = (path: string) => location.pathname === path || location.pathname.startsWith(path + '/');
-  const activeItem = visibleNavItems.find((item) => isActive(item.path));
 
   return (
     <div className="min-h-screen bg-[#f3f6fb] text-slate-900">
@@ -137,43 +135,8 @@ export const GuardsLayout = ({ children }: GuardsLayoutProps) => {
 
       {/* ─── Main content ─── */}
       <div className="flex min-h-screen flex-col lg:pl-64">
-        <header className="sticky top-0 z-40 border-b border-slate-200/80 bg-white/92 backdrop-blur-xl lg:hidden pt-[env(safe-area-inset-top)]">
-          <div className="mx-auto flex max-w-5xl items-center gap-3 px-4 py-3">
-            <GuardaLogo />
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">Guarda Municipal</p>
-              <div className="flex items-center gap-2">
-                <h1 className="truncate text-[17px] font-black tracking-[-0.03em] text-slate-900">
-                  {activeItem?.label || 'Painel'}
-                </h1>
-                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
-                  <Shield className="h-3 w-3" />
-                  ativo
-                </span>
-              </div>
-            </div>
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-slate-500">
-              <BellDot className="h-4.5 w-4.5" />
-            </div>
-          </div>
-          <div className="mx-auto flex max-w-5xl items-center justify-between px-4 pb-3">
-            <div className="min-w-0">
-              <p className="truncate text-[13px] font-semibold text-slate-600">
-                {profile?.name || 'Guarda Municipal'}
-              </p>
-              <p className="text-[11px] text-slate-400">Área pessoal protegida</p>
-            </div>
-            <button
-              onClick={handleLogout}
-              className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-[12px] font-bold text-slate-600 shadow-[0_8px_18px_-16px_rgba(15,23,42,0.35)] active:scale-[0.98]"
-            >
-              <LogOut className="h-4 w-4" />
-              Sair
-            </button>
-          </div>
-        </header>
 
-        <main className="native-app-scroll flex-1 px-3 py-3 pb-[calc(6.4rem+env(safe-area-inset-bottom))] sm:px-4 sm:py-5 lg:p-8">
+        <main className="native-app-scroll flex-1 px-3 py-3 pb-[calc(6.4rem+env(safe-area-inset-bottom))] pt-[env(safe-area-inset-top)] sm:px-4 sm:py-5 lg:p-8">
           <div className="mx-auto w-full max-w-5xl">
           {children}
           </div>
@@ -181,8 +144,8 @@ export const GuardsLayout = ({ children }: GuardsLayoutProps) => {
       </div>
 
       {/* ─── Mobile bottom tab bar ─── */}
-      <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-slate-200/70 bg-white/90 px-3 pb-[calc(0.7rem+env(safe-area-inset-bottom))] pt-2 backdrop-blur-xl shadow-[0_-14px_32px_-26px_rgba(15,23,42,0.28)] lg:hidden">
-        <div className="mx-auto grid max-w-5xl grid-cols-5 gap-2 rounded-[24px] bg-white/90 p-1.5 shadow-[0_14px_34px_-24px_rgba(15,23,42,0.3)] ring-1 ring-slate-200/70">
+      <nav className="fixed bottom-0 left-0 right-0 z-50 px-3 pb-[calc(0.7rem+env(safe-area-inset-bottom))] pt-2 lg:hidden pointer-events-none">
+        <div className="mx-auto grid max-w-5xl grid-cols-5 gap-2 rounded-[24px] bg-white/90 p-1.5 shadow-[0_14px_34px_-24px_rgba(15,23,42,0.3)] ring-1 ring-slate-200/70 backdrop-blur-xl pointer-events-auto">
           {visibleNavItems.map((item) => {
             const Icon = item.icon;
             const active = isActive(item.path);

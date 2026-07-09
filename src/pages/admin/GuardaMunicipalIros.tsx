@@ -684,17 +684,24 @@ const GuardaMunicipalIros = () => {
       <div className="space-y-6">
         <section className="rounded-[34px] bg-[linear-gradient(135deg,_#0f172a_0%,_#1e293b_45%,_#2563eb_100%)] px-5 py-6 text-white sm:px-6">
           <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-            <div>
-              <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-sky-100/70">Guarda Municipal</p>
-              <h1 className="mt-3 text-[34px] font-black tracking-[-0.08em]">IRO</h1>
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-100">
-                Integração de Recursos Operacionais — Operações, candidaturas, banco de horas e notificações.
-              </p>
+            <div className="flex items-center gap-3">
+              <div className="min-w-0 flex-1">
+                <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-sky-100/70">Guarda Municipal</p>
+                <h1 className="mt-3 text-[34px] font-black tracking-[-0.08em]">IRO</h1>
+              </div>
+              <Button variant="outline" size="icon" className="size-10 shrink-0 rounded-full border-white/20 bg-white/10 text-white hover:bg-white/20 sm:hidden" onClick={() => void loadData()}>
+                <RefreshCcw className="h-4 w-4" />
+              </Button>
             </div>
-            <Button variant="outline" className="border-white/20 bg-white/10 text-white hover:bg-white/20" onClick={() => void loadData()}>
-              <RefreshCcw className="mr-2 h-4 w-4" />
-              Atualizar
-            </Button>
+            <div>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-100">
+                Gerencie suas informações de IRO's
+              </p>
+              <Button variant="outline" className="mt-3 border-white/20 bg-white/10 text-white hover:bg-white/20 max-sm:hidden" onClick={() => void loadData()}>
+                <RefreshCcw className="mr-2 h-4 w-4" />
+                Atualizar
+              </Button>
+            </div>
           </div>
 
           <div className="mt-6 grid gap-3 sm:grid-cols-4">
@@ -734,14 +741,14 @@ const GuardaMunicipalIros = () => {
           </Card>
         )}
 
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex flex-wrap gap-1 rounded-[26px] bg-slate-100/80 p-1.5">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex gap-1 overflow-x-auto rounded-[26px] bg-slate-100/80 p-1.5 scrollbar-none">
             {(Object.entries(sectionLabels) as [Section, string][]).map(([key, label]) => (
               <button
                 key={key}
                 onClick={() => { setSection(key); setSearch(''); setStatusFilter('todas'); }}
                 className={cn(
-                  'rounded-[20px] px-4 py-2.5 text-sm font-bold tracking-[-0.02em] transition-all',
+                  'whitespace-nowrap rounded-[20px] px-4 py-2.5 text-sm font-bold tracking-[-0.02em] transition-all',
                   section === key
                     ? 'bg-white text-slate-950 shadow-[0_10px_24px_-18px_rgba(15,23,42,0.55)]'
                     : 'text-slate-500 hover:text-slate-700',
@@ -757,7 +764,7 @@ const GuardaMunicipalIros = () => {
 
           <div className="flex gap-2">
             {section === 'operacoes' && canManageOperacoes && (
-              <Button onClick={openCreateOperacao}><Plus className="mr-2 h-4 w-4" />Nova Operação</Button>
+              <Button onClick={openCreateOperacao} className="max-sm:hidden"><Plus className="mr-2 h-4 w-4" />Nova Operação</Button>
             )}
             {section === 'notificacoes' && notifNaoLidas > 0 && (
               <Button variant="outline" size="sm" onClick={() => void handleMarcarTodasLidas()}>
@@ -978,6 +985,15 @@ const GuardaMunicipalIros = () => {
           </div>
         </ResponsiveDialog>
       </div>
+
+      {section === 'operacoes' && canManageOperacoes && (
+        <button
+          onClick={openCreateOperacao}
+          className="fixed bottom-24 right-5 z-50 flex size-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-[0_8px_28px_-6px_rgba(37,99,235,0.55)] transition-all active:scale-90 sm:hidden"
+        >
+          <Plus className="h-7 w-7" />
+        </button>
+      )}
     </AdminLayout>
   );
 };

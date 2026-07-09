@@ -582,7 +582,7 @@ export const AdminLayout = ({ children, backPath, backLabel }: AdminLayoutProps)
       )}
 
       <div className={`flex flex-1 flex-col ${sidebarCollapsed ? 'lg:pl-[72px]' : 'lg:pl-[285px]'}`}>
-        <header className="sticky top-0 z-10 flex h-20 items-center justify-between border-b border-slate-200 bg-white/95 px-4 backdrop-blur-md lg:px-6">
+        <header className="sticky top-0 z-10 hidden h-20 items-center justify-between border-b border-slate-200 bg-white/95 px-4 backdrop-blur-md lg:flex lg:px-6">
         <div className="flex items-center gap-2">
           {backPath ? (
             <button
@@ -733,7 +733,7 @@ export const AdminLayout = ({ children, backPath, backLabel }: AdminLayoutProps)
       </div>
 
       {sectorContext === 'guarda-municipal' && visibleBottomNavItems.length > 0 && (
-        <nav className="fixed bottom-0 left-0 right-0 z-50 flex min-h-[4.75rem] items-stretch border-t border-slate-200/80 bg-white/95 backdrop-blur-xl shadow-[0_-2px_20px_-8px_rgba(15,23,42,0.12)] lg:hidden pb-[env(safe-area-inset-bottom)]">
+        <nav className="fixed bottom-0 left-0 right-0 z-50 flex min-h-[4.75rem] items-stretch border-t border-slate-200/80 bg-white shadow-[0_-2px_20px_-8px_rgba(15,23,42,0.12)] lg:hidden pb-[env(safe-area-inset-bottom)]">
           {visibleBottomNavItems.map((item) => {
             const Icon = item.icon!;
             const active = item.path ? (location.pathname === item.path || location.pathname.startsWith(item.path + '/')) : false;
