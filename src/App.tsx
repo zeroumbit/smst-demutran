@@ -71,6 +71,8 @@ const GuardaPerfil = React.lazy(() => import("./pages/admin/guarda/Perfil"));
 const GuardaCadastro = React.lazy(() => import("./pages/guardas/Cadastro"));
 const AdminFalaCidadao = React.lazy(() => import("./pages/admin/FalaCidadao"));
 const AdminRelatorios = React.lazy(() => import("./pages/admin/Relatorios"));
+const AdminMinhasAnotacoes = React.lazy(() => import("./pages/admin/MinhasAnotacoes"));
+const GuardaMinhasAnotacoes = React.lazy(() => import("./pages/admin/guarda/MinhasAnotacoes"));
 
 const queryClient = new QueryClient();
 
@@ -328,6 +330,22 @@ const App = () => (
                 </ProtectedRoute>
               </SuspenseWrapper>
             } />
+            <Route path="/admin/anotacoes" element={
+              <SuspenseWrapper>
+                <ProtectedRoute allowedPapeis={['super_admin', 'gestor', 'admin_setor', 'tecnico']}>
+                  <AdminMinhasAnotacoes />
+                </ProtectedRoute>
+              </SuspenseWrapper>
+            } />
+            <Route path="/admin/minhas-anotacoes" element={<Navigate to="/admin/anotacoes" replace />} />
+            <Route path="/admin/anotacoes/:setorSlug" element={
+              <SuspenseWrapper>
+                <ProtectedRoute allowedPapeis={['super_admin', 'gestor', 'admin_setor', 'tecnico']}>
+                  <AdminMinhasAnotacoes />
+                </ProtectedRoute>
+              </SuspenseWrapper>
+            } />
+            <Route path="/admin/minhas-anotacoes/:setorSlug" element={<Navigate to="/admin/anotacoes" replace />} />
             <Route path="/admin/configuracoes-demutran" element={
               <SuspenseWrapper>
                 <ProtectedRoute allowedPapeis={['gestor']} requiredSetorSlug="demutran">
@@ -586,6 +604,13 @@ const App = () => (
               <SuspenseWrapper>
                 <ProtectedRoute requireGuarda>
                   <GuardaPerfil />
+                </ProtectedRoute>
+              </SuspenseWrapper>
+            } />
+            <Route path="/admin/perfil-guardas/guarda-municipal/anotacoes" element={
+              <SuspenseWrapper>
+                <ProtectedRoute requireGuarda>
+                  <GuardaMinhasAnotacoes />
                 </ProtectedRoute>
               </SuspenseWrapper>
             } />

@@ -8,6 +8,7 @@ import {
   LogOut,
   Shield,
   BellDot,
+  NotebookPen,
 } from 'lucide-react';
 import guardaLogo from '@/guarda.png';
 
@@ -40,9 +41,28 @@ type NavItem = {
   path: string;
 };
 
+const ANOTACOES_LABEL = 'Anotacoes';
+const PERFIL_LABEL = 'Perfil';
+
+const moveNavItemBeforeLabel = (items: NavItem[], itemLabel: string, beforeLabel: string) => {
+  const fromIndex = items.findIndex((item) => item.label === itemLabel);
+  const toIndex = items.findIndex((item) => item.label === beforeLabel);
+
+  if (fromIndex === -1 || toIndex === -1 || fromIndex === toIndex) {
+    return items;
+  }
+
+  const reordered = [...items];
+  const [movedItem] = reordered.splice(fromIndex, 1);
+  const adjustedTargetIndex = reordered.findIndex((item) => item.label === beforeLabel);
+  reordered.splice(adjustedTargetIndex, 0, movedItem);
+  return reordered;
+};
+
 const navItems: NavItem[] = [
   { icon: HouseIcon, label: 'Dashboard', path: '/admin/perfil-guardas/guarda-municipal/dashboard' },
   { icon: FileWarning, label: 'IROs', path: '/admin/perfil-guardas/guarda-municipal/iros' },
+  { icon: NotebookPen, label: 'Anotacoes', path: '/admin/perfil-guardas/guarda-municipal/anotacoes' },
   { icon: UserCircle, label: 'Perfil', path: '/admin/perfil-guardas/guarda-municipal/perfil' },
 ];
 
@@ -62,8 +82,9 @@ export const GuardsLayout = ({ children }: GuardsLayoutProps) => {
     navigate('/admin/login');
   };
 
+  const visibleNavItems = moveNavItemBeforeLabel(navItems, ANOTACOES_LABEL, PERFIL_LABEL);
   const isActive = (path: string) => location.pathname === path || location.pathname.startsWith(path + '/');
-  const activeItem = navItems.find((item) => isActive(item.path));
+  const activeItem = visibleNavItems.find((item) => isActive(item.path));
 
   return (
     <div className="min-h-screen bg-[#f3f6fb] text-slate-900">
@@ -82,7 +103,7 @@ export const GuardsLayout = ({ children }: GuardsLayoutProps) => {
         </div>
 
         <nav className="flex-1 space-y-1 px-3 py-5">
-          {navItems.map((item) => {
+          {visibleNavItems.map((item) => {
             const Icon = item.icon;
             const active = isActive(item.path);
             return (
@@ -161,8 +182,8 @@ export const GuardsLayout = ({ children }: GuardsLayoutProps) => {
 
       {/* ─── Mobile bottom tab bar ─── */}
       <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-slate-200/70 bg-white/90 px-3 pb-[calc(0.7rem+env(safe-area-inset-bottom))] pt-2 backdrop-blur-xl shadow-[0_-14px_32px_-26px_rgba(15,23,42,0.28)] lg:hidden">
-        <div className="mx-auto grid max-w-5xl grid-cols-4 gap-2 rounded-[24px] bg-white/90 p-1.5 shadow-[0_14px_34px_-24px_rgba(15,23,42,0.3)] ring-1 ring-slate-200/70">
-          {navItems.map((item) => {
+        <div className="mx-auto grid max-w-5xl grid-cols-5 gap-2 rounded-[24px] bg-white/90 p-1.5 shadow-[0_14px_34px_-24px_rgba(15,23,42,0.3)] ring-1 ring-slate-200/70">
+          {visibleNavItems.map((item) => {
             const Icon = item.icon;
             const active = isActive(item.path);
             return (

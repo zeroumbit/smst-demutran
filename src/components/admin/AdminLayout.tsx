@@ -34,6 +34,7 @@ import {
   MessageSquareText,
   BarChart3,
   Shield,
+  NotebookPen,
 } from 'lucide-react';
 
 const HouseIcon: ComponentType<{ className?: string }> = ({ className }) => (
@@ -69,9 +70,28 @@ type MenuItem = {
   children?: MenuItem[];
 };
 
+const ANOTACOES_LABEL = 'Anotacoes';
+const PERFIL_LABEL = 'Perfil';
+
+const moveMenuItemBeforeLabel = (items: MenuItem[], itemLabel: string, beforeLabel: string) => {
+  const fromIndex = items.findIndex((item) => item.label === itemLabel);
+  const toIndex = items.findIndex((item) => item.label === beforeLabel);
+
+  if (fromIndex === -1 || toIndex === -1 || fromIndex === toIndex) {
+    return items;
+  }
+
+  const reordered = [...items];
+  const [movedItem] = reordered.splice(fromIndex, 1);
+  const adjustedTargetIndex = reordered.findIndex((item) => item.label === beforeLabel);
+  reordered.splice(adjustedTargetIndex, 0, movedItem);
+  return reordered;
+};
+
 const defaultMenuItems: MenuItem[] = [
   { icon: HouseIcon, label: 'Dashboard', path: '/admin/dashboard', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
   { icon: MessageSquareText, label: 'Fala Cidadao', path: '/admin/fala-cidadao', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
+  { icon: NotebookPen, label: 'Anotacoes', path: '/admin/anotacoes', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
   { icon: BarChart3, label: 'Relatorios', path: '/admin/relatorios', allowedPapeis: ['super_admin'] },
   { icon: CarFront, label: 'Veiculos', path: '/admin/demutran/veiculos', allowedPapeis: ['gestor', 'admin_setor'] },
   { icon: IdCard, label: 'Concessionarios', path: '/admin/demutran/concessionarios', allowedPapeis: ['gestor', 'admin_setor'] },
@@ -91,6 +111,7 @@ const defaultMenuItems: MenuItem[] = [
 const demutranMenuItems: MenuItem[] = [
   { icon: HouseIcon, label: 'Dashboard', path: '/admin/dashboard/demutran', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
   { icon: MessageSquareText, label: 'Fala Cidadao', path: '/admin/fala-cidadao/demutran', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
+  { icon: NotebookPen, label: 'Anotacoes', path: '/admin/anotacoes/demutran', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
   { icon: BarChart3, label: 'Relatorios', path: '/admin/relatorios', allowedPapeis: ['super_admin'] },
   { icon: CarFront, label: 'Veiculos', path: '/admin/demutran/veiculos', allowedPapeis: ['gestor', 'admin_setor'] },
   { icon: IdCard, label: 'Concessionarios', path: '/admin/demutran/concessionarios', allowedPapeis: ['gestor', 'admin_setor'] },
@@ -108,6 +129,7 @@ const demutranMenuItems: MenuItem[] = [
 const guardaMenuItems: MenuItem[] = [
   { icon: HouseIcon, label: 'Dashboard', path: '/admin/dashboard/guarda-municipal', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
   { icon: MessageSquareText, label: 'Fala Cidadao', path: '/admin/fala-cidadao/guarda-municipal', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
+  { icon: NotebookPen, label: 'Anotacoes', path: '/admin/anotacoes/guarda-municipal', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
   { icon: FileWarning, label: 'IROs', path: '/admin/iros/guarda-municipal', allowedPapeis: ['gestor', 'admin_setor', 'tecnico'] },
   { icon: Shield, label: 'Guardas', path: '/admin/guardas/guarda-municipal', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
   { icon: ImageIcon, label: 'Midias', path: '/admin/midias/guarda-municipal', allowedPapeis: ['gestor', 'admin_setor'] },
@@ -120,6 +142,7 @@ const guardaMenuItems: MenuItem[] = [
 const guardaBottomNavItems: MenuItem[] = [
   { icon: HouseIcon, label: 'Home', path: '/admin/dashboard/guarda-municipal', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
   { icon: FileWarning, label: 'IROs', path: '/admin/iros/guarda-municipal', allowedPapeis: ['gestor', 'admin_setor', 'tecnico'] },
+  { icon: NotebookPen, label: 'Anotacoes', path: '/admin/anotacoes/guarda-municipal', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
   { icon: Shield, label: 'Guarda', path: '/admin/guardas/guarda-municipal', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
   { icon: Settings2, label: 'Config', path: '/admin/configuracoes-guarda-municipal', allowedPapeis: ['super_admin', 'gestor', 'admin_setor'] },
 ];
@@ -334,9 +357,11 @@ export const AdminLayout = ({ children, backPath, backLabel }: AdminLayoutProps)
       return hasPapel(...item.allowedPapeis) ? item : null;
     };
 
-    return sourceMenuItems
+    const filteredMenuItems = sourceMenuItems
       .map(filterItem)
       .filter(Boolean) as MenuItem[];
+
+    return moveMenuItemBeforeLabel(filteredMenuItems, ANOTACOES_LABEL, PERFIL_LABEL);
   }, [hasPapel, sectorContext, isSuperAdmin, profile?.setor_slug, profile?.papel, profile?.modulos]);
 
   const visibleBottomNavItems = useMemo(() => {
