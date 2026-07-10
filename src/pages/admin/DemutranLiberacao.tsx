@@ -567,27 +567,33 @@ const DemutranLiberacao = () => {
   }, [apreendidos, searchTermPatio, filtroTipo, filtroOrigem, dataEntradaInicio, dataEntradaFim, filtroAno]);
 
   const filteredLiberados = useMemo(() => {
-    return liberados.filter((item) => {
-      const searchMatch =
-        `${item.placa} ${item.descricao_veiculo} ${item.chassi || ''} ${item.local_custodia} ${item.situacao} ${item.numero_liberacao || ''}`.toLowerCase().includes(searchTermLiberados.toLowerCase());
+    return liberados
+      .filter((item) => {
+        const searchMatch =
+          `${item.placa} ${item.descricao_veiculo} ${item.chassi || ''} ${item.local_custodia} ${item.situacao} ${item.numero_liberacao || ''}`.toLowerCase().includes(searchTermLiberados.toLowerCase());
 
-      const isMoto = item.local_custodia === 'motos' || item.local_custodia === 'motos_delegacia';
-      const tipoMatch = filtroTipo === 'todos' || (filtroTipo === 'moto' && isMoto) || (filtroTipo === 'carro' && !isMoto);
+        const isMoto = item.local_custodia === 'motos' || item.local_custodia === 'motos_delegacia';
+        const tipoMatch = filtroTipo === 'todos' || (filtroTipo === 'moto' && isMoto) || (filtroTipo === 'carro' && !isMoto);
 
-      const isForum = item.local_custodia === 'veiculos_forum';
-      const isDelegacia = item.local_custodia === 'motos_delegacia';
-      const origemMatch = filtroOrigem === 'todos'
-        || (filtroOrigem === 'forum' && isForum)
-        || (filtroOrigem === 'delegacia' && isDelegacia)
-        || (filtroOrigem === 'padrao' && !isForum && !isDelegacia);
+        const isForum = item.local_custodia === 'veiculos_forum';
+        const isDelegacia = item.local_custodia === 'motos_delegacia';
+        const origemMatch = filtroOrigem === 'todos'
+          || (filtroOrigem === 'forum' && isForum)
+          || (filtroOrigem === 'delegacia' && isDelegacia)
+          || (filtroOrigem === 'padrao' && !isForum && !isDelegacia);
 
-      const entradaMatch = matchData(item.data_recolhimento, dataEntradaInicio, dataEntradaFim);
-      const saidaMatch = matchData(item.data_liberacao, dataSaidaInicio, dataSaidaFim);
+        const entradaMatch = matchData(item.data_recolhimento, dataEntradaInicio, dataEntradaFim);
+        const saidaMatch = matchData(item.data_liberacao, dataSaidaInicio, dataSaidaFim);
 
-      const anoMatch = filtroAno === 'todos' || new Date(item.data_recolhimento).getFullYear() === Number(filtroAno);
+        const anoMatch = filtroAno === 'todos' || new Date(item.data_recolhimento).getFullYear() === Number(filtroAno);
 
-      return searchMatch && tipoMatch && origemMatch && entradaMatch && saidaMatch && anoMatch;
-    });
+        return searchMatch && tipoMatch && origemMatch && entradaMatch && saidaMatch && anoMatch;
+      })
+      .sort((a, b) => {
+        const dateA = a.data_liberacao ? new Date(a.data_liberacao).getTime() : 0;
+        const dateB = b.data_liberacao ? new Date(b.data_liberacao).getTime() : 0;
+        return dateB - dateA;
+      });
   }, [liberados, searchTermLiberados, filtroTipo, filtroOrigem, dataEntradaInicio, dataEntradaFim, dataSaidaInicio, dataSaidaFim, filtroAno]);
 
   const filteredConsolidado = useMemo(() => {
