@@ -17,7 +17,7 @@ export const ProtectedRoute = ({
   allowSuperAdmin = true,
   requireGuarda,
 }: ProtectedRouteProps) => {
-  const { isAuthenticated, isLoading, canAccessAdmin, hasPapel, isSuperAdmin, profile, isGuarda } = useAuth();
+  const { isAuthenticated, isLoading, canAccessAdmin, hasPapel, isSuperAdmin, profile, isGuarda, temGuarda } = useAuth();
   const { setorSlug } = useParams<{ setorSlug?: string }>();
   const location = useLocation();
 
@@ -41,7 +41,7 @@ export const ProtectedRoute = ({
   }
 
   if (requireGuarda) {
-    if (!isGuarda) {
+    if (!isGuarda && !temGuarda) {
       return <Navigate to={getDashboardUrl(profile)} replace />;
     }
     if (!profile?.aceitou_lei_iro_at && location.pathname !== '/admin/perfil-guardas/guarda-municipal/dashboard') {

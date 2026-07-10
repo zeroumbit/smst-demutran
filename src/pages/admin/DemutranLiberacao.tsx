@@ -392,7 +392,17 @@ const DemutranLiberacao = () => {
         <tr><td style="border:1px solid #cbd5e1;padding:6px;">Taxa diaria</td><td style="border:1px solid #cbd5e1;padding:6px;">${formatCurrency(getTaxaDiariaValue(item))}</td></tr>
         <tr><td style="border:1px solid #cbd5e1;padding:6px;">Dias de estadia</td><td style="border:1px solid #cbd5e1;padding:6px;">${getDiasEstadia(item)} dia(s)</td></tr>
         <tr><td style="border:1px solid #cbd5e1;padding:6px;font-weight:700;">Total acumulado</td><td style="border:1px solid #cbd5e1;padding:6px;font-weight:700;">${formatCurrency(getValorEstadia(item))}</td></tr>
-      </table>
+      </table>${item.status === 'liberado' ? `
+      <h3 style="font-size:14px;margin:16px 0 8px;">Dados da liberacao</h3>
+      <table style="width:100%;border-collapse:collapse;margin-bottom:12px;font-size:12px;">
+        <tr><th style="border:1px solid #cbd5e1;padding:6px;background:#e2e8f0;text-align:left;">Campo</th><th style="border:1px solid #cbd5e1;padding:6px;background:#e2e8f0;text-align:left;">Valor</th></tr>
+        <tr><td style="border:1px solid #cbd5e1;padding:6px;">Data da liberacao</td><td style="border:1px solid #cbd5e1;padding:6px;">${formatDateTime(item.data_liberacao)}</td></tr>
+        <tr><td style="border:1px solid #cbd5e1;padding:6px;">Numero da liberacao</td><td style="border:1px solid #cbd5e1;padding:6px;">${item.numero_liberacao || 'Nao informado'}</td></tr>
+        <tr><td style="border:1px solid #cbd5e1;padding:6px;">Liberado por</td><td style="border:1px solid #cbd5e1;padding:6px;">${item.liberado_por || 'Nao informado'}</td></tr>
+        <tr><td style="border:1px solid #cbd5e1;padding:6px;">Observacao</td><td style="border:1px solid #cbd5e1;padding:6px;">${item.observacao || 'Nao informada'}</td></tr>
+        <tr><td style="border:1px solid #cbd5e1;padding:6px;">Taxa diaria</td><td style="border:1px solid #cbd5e1;padding:6px;">${formatCurrency(getTaxaDiariaValue(item))}</td></tr>
+        <tr><td style="border:1px solid #cbd5e1;padding:6px;font-weight:700;">Total pago</td><td style="border:1px solid #cbd5e1;padding:6px;font-weight:700;">${formatCurrency(getValorEstadia(item))}</td></tr>
+      </table>` : ''}
       <h3 style="font-size:14px;margin:16px 0 8px;">Dados do proprietario</h3>
       <table style="width:100%;border-collapse:collapse;margin-bottom:12px;font-size:12px;">
         <tr><th style="border:1px solid #cbd5e1;padding:6px;background:#e2e8f0;text-align:left;">Campo</th><th style="border:1px solid #cbd5e1;padding:6px;background:#e2e8f0;text-align:left;">Valor</th></tr>
@@ -411,7 +421,7 @@ const DemutranLiberacao = () => {
         <tr><td style="border:1px solid #cbd5e1;padding:6px;">Logradouro</td><td style="border:1px solid #cbd5e1;padding:6px;">${item.logradouro || 'Nao informado'}</td></tr>
         <tr><td style="border:1px solid #cbd5e1;padding:6px;">Descricao</td><td style="border:1px solid #cbd5e1;padding:6px;">${item.descricao_veiculo || 'Nao informada'}</td></tr>
       </table>`;
-    printHtml('Veiculo recolhido - ' + item.placa, html);
+    printHtml((item.status === 'liberado' ? 'Veiculo liberado' : 'Veiculo recolhido') + ' - ' + item.placa, html);
   };
 
   const effectiveSetorId = demutranSetorId || setorId || '';
@@ -843,7 +853,7 @@ const DemutranLiberacao = () => {
       return;
     }
 
-    toast({ title: 'Veiculo liberado', description: 'O registro foi movido para a aba de liberacoes.' });
+    toast({ title: 'VEICULO LIBERADO COM SUCESSO', variant: 'success' });
     setIsConfirmacaoLiberacaoOpen(false);
     setConfirmacaoStep(1);
     closeLiberacaoDialog();
@@ -1217,19 +1227,20 @@ const DemutranLiberacao = () => {
   ], [openCpfDialog, openDetalhes, openLiberacaoDialog, openTaxaDialog]);
 
   const consolidadoColumns = useMemo(() => [
-    { header: 'Entrada', accessor: (item: VeiculoRecolhido) => formatDateOnly(item.data_recolhimento) },
-    { header: 'Placa', accessor: 'placa' as const },
-    { header: 'Descricao', accessor: 'descricao_veiculo' as const },
-    { header: 'Taxa/dia', accessor: (item: VeiculoRecolhido) => formatCurrency(getTaxaDiariaValue(item)) },
-    { header: 'Total estadia', accessor: (item: VeiculoRecolhido) => formatCurrency(getValorEstadia(item)) },
-    { header: 'No patio', accessor: (item: VeiculoRecolhido) => getCustodyLabel(item.local_custodia) },
-    { header: 'Situacao', accessor: 'situacao' as const },
+    { header: 'Entrada', accessor: (item: VeiculoRecolhido) => formatDateOnly(item.data_recolhimento), className: 'pl-3 pr-6' },
+    { header: 'Placa', accessor: 'placa' as const, className: 'pl-3 pr-6' },
+    { header: 'Descricao', accessor: 'descricao_veiculo' as const, className: 'pl-3 pr-6' },
+    { header: 'Taxa/dia', accessor: (item: VeiculoRecolhido) => formatCurrency(getTaxaDiariaValue(item)), className: 'pl-3 pr-6' },
+    { header: 'Total estadia', accessor: (item: VeiculoRecolhido) => formatCurrency(getValorEstadia(item)), className: 'pl-3 pr-6' },
+    { header: 'No patio', accessor: (item: VeiculoRecolhido) => getCustodyLabel(item.local_custodia), className: 'pl-3 pr-6' },
+    { header: 'Situacao', accessor: 'situacao' as const, className: 'pl-3 pr-6' },
     {
       header: 'Status',
       accessor: (item: VeiculoRecolhido) =>
         item.status === 'liberado'
           ? `Liberado em ${formatDateOnly(item.data_liberacao)}`
           : 'No patio',
+      className: 'pl-3 pr-6',
     },
     {
       header: 'Liberacao',
@@ -1239,6 +1250,7 @@ const DemutranLiberacao = () => {
             ? formatDateTime(item.data_liberacao)
             : formatDateOnly(item.data_liberacao)
           : '—',
+      className: 'pl-3 pr-6',
     },
     {
       header: 'Acoes',
@@ -1250,7 +1262,7 @@ const DemutranLiberacao = () => {
           </Button>
         </div>
       ),
-      className: 'text-right',
+      className: 'pl-6 pr-4 text-right',
     },
   ], [openDetalhes]);
 
@@ -1264,8 +1276,6 @@ const DemutranLiberacao = () => {
       ),
     },
     { header: 'Placa', accessor: 'placa' as const },
-    { header: 'Descricao', accessor: 'descricao_veiculo' as const },
-    { header: 'Taxa/dia', accessor: (item: VeiculoRecolhido) => formatCurrency(getTaxaDiariaValue(item)) },
     { header: 'Total estadia', accessor: (item: VeiculoRecolhido) => formatCurrency(getValorEstadia(item)) },
     { header: 'No patio', accessor: (item: VeiculoRecolhido) => getCustodyLabel(item.local_custodia) },
     { header: 'Situacao', accessor: 'situacao' as const },
@@ -1274,19 +1284,19 @@ const DemutranLiberacao = () => {
       header: 'Acoes',
       accessor: (item: VeiculoRecolhido) => (
         <div className="flex items-center justify-end gap-2">
-          <Button type="button" variant="outline" size="sm" className="gap-2" onClick={() => openTaxaDialog(item)}>
-            <CircleDollarSign className="h-4 w-4" />
-            Taxa
-          </Button>
           <Button type="button" variant="outline" size="sm" className="gap-2" onClick={() => openDetalhes(item)}>
             <Eye className="h-4 w-4" />
             Ver
+          </Button>
+          <Button type="button" variant="outline" size="sm" className="gap-2" onClick={() => handlePrintVehicle(item)}>
+            <Printer className="h-4 w-4" />
+            Imprimir
           </Button>
         </div>
       ),
       className: 'text-right',
     },
-  ], [openDetalhes, openTaxaDialog]);
+  ], [openDetalhes, handlePrintVehicle]);
 
   const renderMobileVehicleCard = useCallback((
     item: VeiculoRecolhido,
@@ -1303,12 +1313,16 @@ const DemutranLiberacao = () => {
               {mode === 'patio' ? 'No patio' : mode === 'liberacao' ? 'Liberado' : item.status === 'liberado' ? 'Historico' : 'Em custodia'}
             </p>
             <h3 className="mt-2 text-[24px] font-black tracking-[-0.05em]">{item.placa}</h3>
-            <p className="mt-1 truncate text-[14px] font-medium text-white/78">{item.descricao_veiculo}</p>
+            {mode !== 'liberacao' && (
+              <p className="mt-1 truncate text-[14px] font-medium text-white/78">{item.descricao_veiculo}</p>
+            )}
           </div>
-          <div className="rounded-[20px] border border-white/15 bg-white/10 px-3 py-2 text-right backdrop-blur">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/65">Taxa/dia</p>
-            <p className="mt-1 text-[15px] font-bold">{formatCurrency(getTaxaDiariaValue(item))}</p>
-          </div>
+          {mode !== 'liberacao' && (
+            <div className="rounded-[20px] border border-white/15 bg-white/10 px-3 py-2 text-right backdrop-blur">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/65">Taxa/dia</p>
+              <p className="mt-1 text-[15px] font-bold">{formatCurrency(getTaxaDiariaValue(item))}</p>
+            </div>
+          )}
         </div>
 
         <div className="mt-4 flex flex-wrap gap-2">
@@ -1378,6 +1392,11 @@ const DemutranLiberacao = () => {
               <Button type="button" variant="outline" className="h-11 rounded-[16px] text-[14px] font-semibold" onClick={() => openLiberacaoDialog(item)}>
                 <CheckCircle2 className="mr-2 h-4 w-4" />
                 Liberar
+              </Button>
+            ) : mode === 'liberacao' ? (
+              <Button type="button" variant="outline" className="h-11 rounded-[16px] text-[14px] font-semibold" onClick={() => handlePrintVehicle(item)}>
+                <Printer className="mr-2 h-4 w-4" />
+                Imprimir
               </Button>
             ) : (
               <div />
@@ -1536,36 +1555,40 @@ const DemutranLiberacao = () => {
         </button>
 
         <Tabs defaultValue="patio" className="space-y-5">
-          <div className="flex flex-wrap items-center justify-end gap-2">
-            <Button type="button" variant="outline" className="gap-2" onClick={() => setIsReportDialogOpen(true)}>
-              <FileSpreadsheet className="h-4 w-4" />
-              Relatorio personalizado
-            </Button>
-            <Button type="button" variant="default" className="gap-2" onClick={handleGenerateGeral}>
-              <FileSpreadsheet className="h-4 w-4" />
-              Relatorio geral
-            </Button>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <TabsList className="grid h-auto grid-cols-3 rounded-[26px] bg-slate-100/80 p-1.5">
+              <TabsTrigger
+                value="patio"
+                className="rounded-[20px] px-8 py-3 text-[15px] font-bold tracking-[-0.02em] text-slate-500 shadow-none data-[state=active]:bg-white data-[state=active]:text-slate-950 data-[state=active]:shadow-[0_10px_24px_-18px_rgba(15,23,42,0.55)]"
+              >
+                No patio
+              </TabsTrigger>
+              <TabsTrigger
+                value="liberacoes"
+                className="rounded-[20px] px-8 py-3 text-[15px] font-bold tracking-[-0.02em] text-slate-500 shadow-none data-[state=active]:bg-white data-[state=active]:text-slate-950 data-[state=active]:shadow-[0_10px_24px_-18px_rgba(15,23,42,0.55)]"
+              >
+                Liberacoes
+              </TabsTrigger>
+              <TabsTrigger
+                value="consolidado"
+                className="rounded-[20px] px-8 py-3 text-[15px] font-bold tracking-[-0.02em] text-slate-500 shadow-none data-[state=active]:bg-white data-[state=active]:text-slate-950 data-[state=active]:shadow-[0_10px_24px_-18px_rgba(15,23,42,0.55)]"
+              >
+                Consolidado
+              </TabsTrigger>
+            </TabsList>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button type="button" variant="outline" className="gap-2" onClick={() => setIsReportDialogOpen(true)}>
+                <FileSpreadsheet className="h-4 w-4" />
+                Relatorio personalizado
+              </Button>
+              <Button type="button" variant="default" className="gap-2" onClick={handleGenerateGeral}>
+                <FileSpreadsheet className="h-4 w-4" />
+                Relatorio geral
+              </Button>
+            </div>
           </div>
-          <TabsList className="grid h-auto grid-cols-3 rounded-[26px] bg-slate-100/80 p-1.5">
-            <TabsTrigger
-              value="patio"
-              className="rounded-[20px] px-3 py-3 text-[15px] font-bold tracking-[-0.02em] text-slate-500 shadow-none data-[state=active]:bg-white data-[state=active]:text-slate-950 data-[state=active]:shadow-[0_10px_24px_-18px_rgba(15,23,42,0.55)]"
-            >
-              No patio
-            </TabsTrigger>
-            <TabsTrigger
-              value="liberacoes"
-              className="rounded-[20px] px-3 py-3 text-[15px] font-bold tracking-[-0.02em] text-slate-500 shadow-none data-[state=active]:bg-white data-[state=active]:text-slate-950 data-[state=active]:shadow-[0_10px_24px_-18px_rgba(15,23,42,0.55)]"
-            >
-              Liberacoes
-            </TabsTrigger>
-            <TabsTrigger
-              value="consolidado"
-              className="rounded-[20px] px-3 py-3 text-[15px] font-bold tracking-[-0.02em] text-slate-500 shadow-none data-[state=active]:bg-white data-[state=active]:text-slate-950 data-[state=active]:shadow-[0_10px_24px_-18px_rgba(15,23,42,0.55)]"
-            >
-              Consolidado
-            </TabsTrigger>
-          </TabsList>
 
           <TabsContent value="patio" className="space-y-5">
             <div className="flex flex-col gap-3">

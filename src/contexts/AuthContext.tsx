@@ -45,6 +45,7 @@ interface AuthContextType {
   isAdmin: boolean;
   isSuperAdmin: boolean;
   isGuarda: boolean;
+  temGuarda: boolean;
   canAccessAdmin: boolean;
   hasPapel: (...papeis: PapelUsuario[]) => boolean;
   canManageSector: (targetSetorId?: string | null) => boolean;
@@ -89,6 +90,22 @@ async function fetchUserProfile(): Promise<AdminProfile | null> {
         } else {
           persistLeiIroAccepted(profile.user_id, profile.aceitou_lei_iro_at);
         }
+      }
+
+      // Admin que tambem e guarda: verificar registro em guardas_usuarios
+      if (profile.papel) {
+        try {
+          const { data: gu } = await supabase
+            .from('guardas_usuarios')
+            .select('id')
+            .eq('usuario_id', profile.user_id)
+            .maybeSingle();
+          (profile as any).tem_guarda = !!gu;
+        } catch {
+          (profile as any).tem_guarda = false;
+        }
+      } else {
+        (profile as any).tem_guarda = false;
       }
 
       return profile;
@@ -339,6 +356,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const isSuperAdmin = papel === 'super_admin' || !!user?.legacy_admin;
   const isAdmin = isSuperAdmin || papel === 'gestor' || papel === 'admin_setor';
   const isGuarda = !!user && !papel && !user?.legacy_admin;
+  const temGuarda = isGuarda || !!(user as any)?.tem_guarda;
   const canAccessAdmin = !!user && (isAdmin || papel === 'tecnico') && !isGuarda;
 
   const hasPapel = (...papeis: PapelUsuario[]) => {
@@ -379,6 +397,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         isAdmin,
         isSuperAdmin,
         isGuarda,
+        temGuarda,
         canAccessAdmin,
         hasPapel,
         canManageSector,

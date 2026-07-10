@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ClipboardList, Copy, GraduationCap, Pencil, Plus, RefreshCcw, Search, Shield, Trash2, UserCheck } from 'lucide-react';
+import { ClipboardList, Copy, GraduationCap, Pencil, Plus, RefreshCcw, Search, Shield, ToggleLeft, ToggleRight, Trash2, UserCheck } from 'lucide-react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { ResponsiveDialog } from '@/components/ui/responsive-dialog';
 import { useConfirmDialog } from '@/components/ui/use-confirm-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -37,6 +38,7 @@ const GuardasMunicipaisPage = () => {
   const [graduacaoForm, setGraduacaoForm] = useState(graduacaoInitialForm);
   const [editingGuarda, setEditingGuarda] = useState<GuardaMunicipal | null>(null);
   const [editingGraduacao, setEditingGraduacao] = useState<GuardaMunicipalGraduacao | null>(null);
+  const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; step: 1 | 2; item: GuardaMunicipal | null }>({ open: false, step: 1, item: null });
 
   const loadData = async () => {
     setLoading(true);
@@ -120,9 +122,25 @@ const GuardasMunicipaisPage = () => {
     resetGraduacaoDialog(); void loadData();
   };
 
-  const handleDeleteGuarda = async (item: GuardaMunicipal) => {
-    const confirmed = await confirm({ title: 'Excluir guarda', description: `Deseja excluir o guarda ${item.nome}?` });
-    if (!confirmed) return;
+  const handleToggleAtivo = async (item: GuardaMunicipal) => {
+    const { error } = await supabase.from('guardas_municipais').update({ ativo: !item.ativo }).eq('id', item.id);
+    if (error) { toast({ title: 'Erro ao alterar status', description: error.message, variant: 'destructive' }); return; }
+    toast({ title: item.ativo ? 'Guarda desabilitado' : 'Guarda habilitado' });
+    void loadData();
+  };
+
+  const handleDeleteGuarda = (item: GuardaMunicipal) => {
+    setDeleteDialog({ open: true, step: 1, item });
+  };
+
+  const handleConfirmDeleteStep1 = () => {
+    setDeleteDialog((prev) => ({ ...prev, step: 2 }));
+  };
+
+  const handleConfirmDeleteStep2 = async () => {
+    const item = deleteDialog.item;
+    if (!item) return;
+    setDeleteDialog({ open: false, step: 1, item: null });
     const { error } = await supabase.from('guardas_municipais').delete().eq('id', item.id);
     if (error) { toast({ title: 'Erro ao excluir guarda', description: error.message, variant: 'destructive' }); return; }
     toast({ title: 'Guarda excluído' }); void loadData();
@@ -223,7 +241,7 @@ const GuardasMunicipaisPage = () => {
         ) : section === 'guardas' ? (
           <div className="space-y-4">
             {filteredGuardas.map((item) => (
-              <article key={item.id} className="rounded-[34px] border border-slate-200 bg-white p-5 shadow-sm">
+              <article key={item.id} className={`rounded-[34px] border p-5 shadow-sm ${item.ativo ? 'border-slate-200 bg-white' : 'border-red-200 bg-red-50/40'}`}>
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                   <div className="flex flex-col gap-2">
                     <div className="flex flex-wrap items-center gap-2">
@@ -243,18 +261,27 @@ const GuardasMunicipaisPage = () => {
                         <span className="text-xs font-semibold text-slate-500">
                           {item.graduacao_nome || '-'}
                         </span>
+                        {!item.ativo && (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-bold text-red-700">
+                            Inativo
+                          </span>
+                        )}
                       </div>
-                    <h2 className="text-lg font-bold text-slate-900">{item.nome}</h2>
+                    <h2 className={`text-lg font-bold ${item.ativo ? 'text-slate-900' : 'text-slate-500'}`}>{item.nome}</h2>
                     {item.cpf && (
                       <p className="text-xs font-medium text-slate-500">CPF: {maskCpf(item.cpf)}</p>
                     )}
                   </div>
                   <div className="flex items-center gap-2">
+                    <Button variant="outline" size="sm" onClick={() => void handleToggleAtivo(item)}>
+                      {item.ativo ? <ToggleLeft className="mr-1.5 h-4 w-4" /> : <ToggleRight className="mr-1.5 h-4 w-4" />}
+                      {item.ativo ? 'Desabilitar' : 'Habilitar'}
+                    </Button>
                     <Button variant="outline" size="sm" onClick={() => openEditGuarda(item)}>
                       <Pencil className="mr-1.5 h-4 w-4" />
                       Editar
                     </Button>
-                    <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700" onClick={() => void handleDeleteGuarda(item)}>
+                    <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700" onClick={() => handleDeleteGuarda(item)}>
                       <Trash2 className="mr-1.5 h-4 w-4" />
                       Excluir
                     </Button>
@@ -366,6 +393,47 @@ const GuardasMunicipaisPage = () => {
             </div>
           </div>
         </ResponsiveDialog>
+
+        <AlertDialog open={deleteDialog.open} onOpenChange={(open) => { if (!open) setDeleteDialog({ open: false, step: 1, item: null }); }}>
+          <AlertDialogContent className="max-w-md">
+            {deleteDialog.step === 1 ? (
+              <>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Excluir guarda</AlertDialogTitle>
+                  <AlertDialogDescription className="space-y-3">
+                    <p>Deseja excluir permanentemente o guarda <strong>{deleteDialog.item?.nome}</strong>?</p>
+                    <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+                      <p className="font-semibold">Matrícula: {deleteDialog.item?.matricula}</p>
+                      <p>Graduação: {deleteDialog.item?.graduacao_nome || '-'}</p>
+                      {deleteDialog.item?.cpf && <p>CPF: {maskCpf(deleteDialog.item.cpf)}</p>}
+                      <p className="mt-2 text-xs">Esta ação removerá todos os vínculos e dados associados.</p>
+                    </div>
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel onClick={() => setDeleteDialog({ open: false, step: 1, item: null })}>Cancelar</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleConfirmDeleteStep1} className="bg-red-600 hover:bg-red-700">Continuar</AlertDialogAction>
+                </AlertDialogFooter>
+              </>
+            ) : (
+              <>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Confirmação final</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    <p className="mb-3">Tem <strong>absoluta certeza</strong> que deseja excluir permanentemente o guarda <strong>{deleteDialog.item?.nome}</strong>?</p>
+                    <div className="rounded-lg border border-red-300 bg-red-100 p-3 text-sm font-semibold text-red-900">
+                      Esta ação não pode ser desfeita. Todos os dados serão perdidos.
+                    </div>
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel onClick={() => setDeleteDialog({ open: false, step: 1, item: null })}>Voltar</AlertDialogCancel>
+                  <AlertDialogAction onClick={() => void handleConfirmDeleteStep2()} className="bg-red-600 hover:bg-red-700">Sim, excluir permanentemente</AlertDialogAction>
+                </AlertDialogFooter>
+              </>
+            )}
+          </AlertDialogContent>
+        </AlertDialog>
 
         {confirmDialog}
       </div>

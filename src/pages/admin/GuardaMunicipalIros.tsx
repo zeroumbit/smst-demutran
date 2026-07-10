@@ -684,20 +684,15 @@ const GuardaMunicipalIros = () => {
       <div className="space-y-6">
         <section className="rounded-[34px] bg-[linear-gradient(135deg,_#0f172a_0%,_#1e293b_45%,_#2563eb_100%)] px-5 py-6 text-white sm:px-6">
           <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-            <div className="flex items-center gap-3">
-              <div className="min-w-0 flex-1">
-                <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-sky-100/70">Guarda Municipal</p>
-                <h1 className="mt-3 text-[34px] font-black tracking-[-0.08em]">IRO</h1>
-              </div>
-              <Button variant="outline" size="icon" className="size-10 shrink-0 rounded-full border-white/20 bg-white/10 text-white hover:bg-white/20 sm:hidden" onClick={() => void loadData()}>
-                <RefreshCcw className="h-4 w-4" />
-              </Button>
-            </div>
-            <div>
+            <div className="min-w-0 flex-1">
+              <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-sky-100/70">Guarda Municipal</p>
+              <h1 className="mt-3 text-[34px] font-black tracking-[-0.08em]">IRO</h1>
               <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-100">
                 Gerencie suas informações de IRO's
               </p>
-              <Button variant="outline" className="mt-3 border-white/20 bg-white/10 text-white hover:bg-white/20 max-sm:hidden" onClick={() => void loadData()}>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" className="border-white/20 bg-white/10 text-white hover:bg-white/20" onClick={() => void loadData()}>
                 <RefreshCcw className="mr-2 h-4 w-4" />
                 Atualizar
               </Button>
