@@ -13,14 +13,47 @@ CREATE TABLE IF NOT EXISTS public.notes (
   deleted_at timestamptz
 );
 
-ALTER TABLE public.notes
-  ADD CONSTRAINT notes_title_not_blank CHECK (char_length(btrim(title)) > 0);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_constraint
+    WHERE conname = 'notes_title_not_blank'
+      AND conrelid = 'public.notes'::regclass
+  ) THEN
+    ALTER TABLE public.notes
+      ADD CONSTRAINT notes_title_not_blank CHECK (char_length(btrim(title)) > 0);
+  END IF;
+END;
+$$;
 
-ALTER TABLE public.notes
-  ADD CONSTRAINT notes_description_not_blank CHECK (char_length(btrim(description)) > 0);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_constraint
+    WHERE conname = 'notes_description_not_blank'
+      AND conrelid = 'public.notes'::regclass
+  ) THEN
+    ALTER TABLE public.notes
+      ADD CONSTRAINT notes_description_not_blank CHECK (char_length(btrim(description)) > 0);
+  END IF;
+END;
+$$;
 
-ALTER TABLE public.notes
-  ADD CONSTRAINT notes_category_length CHECK (category IS NULL OR char_length(btrim(category)) <= 80);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_constraint
+    WHERE conname = 'notes_category_length'
+      AND conrelid = 'public.notes'::regclass
+  ) THEN
+    ALTER TABLE public.notes
+      ADD CONSTRAINT notes_category_length CHECK (category IS NULL OR char_length(btrim(category)) <= 80);
+  END IF;
+END;
+$$;
 
 CREATE INDEX IF NOT EXISTS idx_notes_user_active_updated_at
   ON public.notes (user_id, updated_at DESC)

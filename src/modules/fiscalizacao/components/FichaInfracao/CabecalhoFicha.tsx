@@ -1,6 +1,7 @@
 import { Badge } from '@/components/ui/badge';
 import { BadgeGravidade } from '../Shared/BadgeGravidade';
 import type { FiscalizacaoInfracao } from '../../types/fiscalizacao.types';
+import { formatarPontuacaoFiscalizacao } from '../../utils/fiscalizacao.formatters';
 
 export function CabecalhoFicha({ infracao }: { infracao: FiscalizacaoInfracao }) {
   return (
@@ -24,7 +25,7 @@ export function CabecalhoFicha({ infracao }: { infracao: FiscalizacaoInfracao })
 
         <div className="grid gap-3 sm:grid-cols-2 lg:w-[280px] lg:grid-cols-1">
           <FichaStat label="Amparo legal" value={infracao.amparo_legal} />
-          <FichaStat label="Pontuação" value={infracao.pontuacao > 0 ? `${infracao.pontuacao} ponto(s)` : 'Não computável'} />
+          <FichaStat label="Pontuação" value={formatarPontuacaoFiscalizacao(infracao.pontuacao, infracao.gravidade)} />
           <FichaStat label="Infrator" value={infracao.infrator} />
         </div>
       </div>

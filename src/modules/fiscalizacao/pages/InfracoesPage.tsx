@@ -30,6 +30,10 @@ export function FiscalizacaoInfracoesPage({ scope }: { scope: 'admin' | 'guarda'
   const buscaDeferred = useDeferredValue(filtros.busca);
 
   const { data: categorias = [] } = useCategorias();
+  const categoriasComItens = useMemo(
+    () => categorias.filter((item) => (item.total_infracoes || 0) > 0),
+    [categorias],
+  );
   const { data, isLoading, isError, refetch } = useBuscarInfracoes({
     ...filtros,
     busca: buscaDeferred,
@@ -66,9 +70,15 @@ export function FiscalizacaoInfracoesPage({ scope }: { scope: 'admin' | 'guarda'
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button asChild variant="outline" className="border-white/20 bg-white/10 text-white hover:bg-white/20">
-              <Link to={categoriasHref}>Ver categorias</Link>
-            </Button>
+            {categoriasComItens.length > 0 ? (
+              <Button asChild variant="outline" className="border-white/20 bg-white/10 text-white hover:bg-white/20">
+                <Link to={categoriasHref}>Ver categorias</Link>
+              </Button>
+            ) : (
+              <Button variant="outline" className="border-white/20 bg-white/10 text-white hover:bg-white/20" disabled>
+                Ver categorias
+              </Button>
+            )}
             <Button variant="outline" className="border-white/20 bg-white/10 text-white hover:bg-white/20" onClick={() => void refetch()}>
               Atualizar consulta
             </Button>

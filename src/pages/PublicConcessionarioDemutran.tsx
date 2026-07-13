@@ -44,7 +44,18 @@ const vencimentoLabels: Record<string, string> = {
 };
 
 type PerfilEditavel = {
+  titular_nome: string;
+  cpf: string;
   endereco: string;
+  cnh_numero: string;
+  validade_cnh: string;
+  atividade_remunerada: string;
+  categoria_cnh: string;
+  curso: string;
+  inicio_atividade: string;
+  motorista_auxiliar: string;
+  cnh_auxiliar: string;
+  validade_cnh_auxiliar: string;
   email_notificacao: string;
   telefone_notificacao: string;
   aceita_notificacoes: boolean;
@@ -54,7 +65,18 @@ type PerfilEditavel = {
 };
 
 const initialEdit: PerfilEditavel = {
+  titular_nome: '',
+  cpf: '',
   endereco: '',
+  cnh_numero: '',
+  validade_cnh: '',
+  atividade_remunerada: '',
+  categoria_cnh: '',
+  curso: '',
+  inicio_atividade: '',
+  motorista_auxiliar: '',
+  cnh_auxiliar: '',
+  validade_cnh_auxiliar: '',
   email_notificacao: '',
   telefone_notificacao: '',
   aceita_notificacoes: true,
@@ -126,7 +148,18 @@ const PublicConcessionarioDemutran = () => {
 
   const syncEditForm = (data: DemutranConcessionario) => {
     setEditForm({
+      titular_nome: data.titular_nome || '',
+      cpf: data.cpf || '',
       endereco: data.endereco || '',
+      cnh_numero: data.cnh_numero || '',
+      validade_cnh: data.validade_cnh || '',
+      atividade_remunerada: data.atividade_remunerada || '',
+      categoria_cnh: data.categoria_cnh || '',
+      curso: data.curso || '',
+      inicio_atividade: data.inicio_atividade || '',
+      motorista_auxiliar: data.motorista_auxiliar || '',
+      cnh_auxiliar: data.cnh_auxiliar || '',
+      validade_cnh_auxiliar: data.validade_cnh_auxiliar || '',
       email_notificacao: data.email_notificacao || '',
       telefone_notificacao: data.telefone_notificacao || '',
       aceita_notificacoes: data.aceita_notificacoes,
@@ -229,9 +262,18 @@ const PublicConcessionarioDemutran = () => {
     setSaving(true);
     const { data, error } = await (supabase as any).rpc('atualizar_perfil_concessionario_publico', {
       _session_token: sessionToken,
+      _titular_nome: editForm.titular_nome,
+      _cpf: editForm.cpf,
       _endereco: editForm.endereco,
-      _veiculo: null,
-      _placa: null,
+      _cnh_numero: editForm.cnh_numero,
+      _validade_cnh: editForm.validade_cnh || null,
+      _atividade_remunerada: editForm.atividade_remunerada,
+      _categoria_cnh: editForm.categoria_cnh,
+      _curso: editForm.curso,
+      _inicio_atividade: editForm.inicio_atividade || null,
+      _motorista_auxiliar: editForm.motorista_auxiliar,
+      _cnh_auxiliar: editForm.cnh_auxiliar,
+      _validade_cnh_auxiliar: editForm.validade_cnh_auxiliar || null,
       _observacoes: editForm.observacoes,
       _email_notificacao: editForm.email_notificacao,
       _telefone_notificacao: editForm.telefone_notificacao,
@@ -898,48 +940,106 @@ const PublicConcessionarioDemutran = () => {
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <form onSubmit={handleSave} className="space-y-4">
-                        <div className="grid gap-4 sm:grid-cols-2">
-                          <Info label="Nome" value={perfil.titular_nome || '-'} />
-                          <Info label="CPF" value={perfil.cpf || '-'} />
-                        </div>
-                        <Field label="Endereço">
-                          <Input value={editForm.endereco || ''} onChange={(event) => setEditForm((current) => ({ ...current, endereco: event.target.value }))} placeholder="Rua, número, bairro" />
-                        </Field>
-                        <div className="grid gap-4 sm:grid-cols-2">
-                          <Field label="Email">
-                            <Input type="email" value={editForm.email_notificacao || ''} onChange={(event) => setEditForm((current) => ({ ...current, email_notificacao: event.target.value }))} placeholder="seu@email.com" />
-                          </Field>
-                          <Field label="Telefone">
-                            <Input value={editForm.telefone_notificacao || ''} maxLength={15} onChange={(event) => setEditForm((current) => ({ ...current, telefone_notificacao: maskPhone(event.target.value) }))} placeholder="(00) 00000-0000" />
-                          </Field>
-                        </div>
-                        <p className="-mt-2 text-xs text-muted-foreground">Email e telefone poderão ser usados para envio de notificações.</p>
-                        <div className="grid gap-4 sm:grid-cols-2">
-                          <Field label="Nova senha">
-                            <div className="relative">
-                              <Input type={showNovaSenha ? 'text' : 'password'} placeholder="Opcional" value={editForm.novaSenha} onChange={(event) => setEditForm((current) => ({ ...current, novaSenha: event.target.value }))} className="pr-10" />
-                              <button type="button" onClick={() => setShowNovaSenha(!showNovaSenha)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" aria-label={showNovaSenha ? 'Ocultar senha' : 'Mostrar senha'}>
-                                {showNovaSenha ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                              </button>
-                            </div>
-                          </Field>
-                          <Field label="Confirmar nova senha">
-                            <div className="relative">
-                              <Input type={showConfirmarSenha ? 'text' : 'password'} value={editForm.confirmarNovaSenha} onChange={(event) => setEditForm((current) => ({ ...current, confirmarNovaSenha: event.target.value }))} className="pr-10" />
-                              <button type="button" onClick={() => setShowConfirmarSenha(!showConfirmarSenha)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" aria-label={showConfirmarSenha ? 'Ocultar senha' : 'Mostrar senha'}>
-                                {showConfirmarSenha ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                              </button>
-                            </div>
+                      <form onSubmit={handleSave} className="space-y-6">
+                        <div className="space-y-3">
+                          <h4 className="text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">Dados pessoais</h4>
+                          <div className="grid gap-4 sm:grid-cols-2">
+                            <Field label="Nome">
+                              <Input value={editForm.titular_nome || ''} onChange={(event) => setEditForm((current) => ({ ...current, titular_nome: event.target.value }))} placeholder="Nome completo" />
+                            </Field>
+                            <Field label="CPF">
+                              <Input value={editForm.cpf || ''} onChange={(event) => setEditForm((current) => ({ ...current, cpf: maskCpf(event.target.value) }))} placeholder="000.000.000-00" />
+                            </Field>
+                          </div>
+                          <Field label="Endereço">
+                            <Input value={editForm.endereco || ''} onChange={(event) => setEditForm((current) => ({ ...current, endereco: event.target.value }))} placeholder="Rua, número, bairro" />
                           </Field>
                         </div>
-                        <Field label="Observações">
-                          <Textarea rows={4} value={editForm.observacoes || ''} onChange={(event) => setEditForm((current) => ({ ...current, observacoes: event.target.value }))} placeholder="Observações adicionais" />
-                        </Field>
-                        <div className="flex items-center gap-3 rounded-md border border-border px-3 py-2">
-                          <Switch checked={editForm.aceita_notificacoes} onCheckedChange={(checked) => setEditForm((current) => ({ ...current, aceita_notificacoes: checked }))} />
-                          <span className="text-sm text-muted-foreground">{editForm.aceita_notificacoes ? 'Receber notificações do DEMUTRAN' : 'Notificações desativadas'}</span>
+
+                        <div className="space-y-3">
+                          <h4 className="text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">CNH / Habilitação</h4>
+                          <div className="grid gap-4 sm:grid-cols-2">
+                            <Field label="Número da CNH">
+                              <Input value={editForm.cnh_numero || ''} onChange={(event) => setEditForm((current) => ({ ...current, cnh_numero: event.target.value }))} placeholder="Número do documento" />
+                            </Field>
+                            <Field label="Validade da CNH">
+                              <Input type="date" value={editForm.validade_cnh || ''} onChange={(event) => setEditForm((current) => ({ ...current, validade_cnh: event.target.value }))} />
+                            </Field>
+                            <Field label="Categoria CNH">
+                              <Input value={editForm.categoria_cnh || ''} onChange={(event) => setEditForm((current) => ({ ...current, categoria_cnh: event.target.value }))} placeholder="Ex: A, B, AB" />
+                            </Field>
+                            <Field label="Atividade remunerada">
+                              <Input value={editForm.atividade_remunerada || ''} onChange={(event) => setEditForm((current) => ({ ...current, atividade_remunerada: event.target.value }))} placeholder="Ex: Motorista de taxi" />
+                            </Field>
+                            <Field label="Curso">
+                              <Input value={editForm.curso || ''} onChange={(event) => setEditForm((current) => ({ ...current, curso: event.target.value }))} placeholder="Ex: Curso de condutor" />
+                            </Field>
+                            <Field label="Início da atividade">
+                              <Input type="date" value={editForm.inicio_atividade || ''} onChange={(event) => setEditForm((current) => ({ ...current, inicio_atividade: event.target.value }))} />
+                            </Field>
+                          </div>
                         </div>
+
+                        <div className="space-y-3">
+                          <h4 className="text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">Motorista auxiliar</h4>
+                          <div className="grid gap-4 sm:grid-cols-2">
+                            <Field label="Nome do auxiliar">
+                              <Input value={editForm.motorista_auxiliar || ''} onChange={(event) => setEditForm((current) => ({ ...current, motorista_auxiliar: event.target.value }))} placeholder="Nome completo" />
+                            </Field>
+                            <Field label="CNH / registro">
+                              <Input value={editForm.cnh_auxiliar || ''} onChange={(event) => setEditForm((current) => ({ ...current, cnh_auxiliar: event.target.value }))} placeholder="Número do documento" />
+                            </Field>
+                            <Field label="Validade CNH auxiliar">
+                              <Input type="date" value={editForm.validade_cnh_auxiliar || ''} onChange={(event) => setEditForm((current) => ({ ...current, validade_cnh_auxiliar: event.target.value }))} />
+                            </Field>
+                          </div>
+                        </div>
+
+                        <div className="space-y-3">
+                          <h4 className="text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">Contato e notificações</h4>
+                          <div className="grid gap-4 sm:grid-cols-2">
+                            <Field label="Email">
+                              <Input type="email" value={editForm.email_notificacao || ''} onChange={(event) => setEditForm((current) => ({ ...current, email_notificacao: event.target.value }))} placeholder="seu@email.com" />
+                            </Field>
+                            <Field label="Telefone">
+                              <Input value={editForm.telefone_notificacao || ''} maxLength={15} onChange={(event) => setEditForm((current) => ({ ...current, telefone_notificacao: maskPhone(event.target.value) }))} placeholder="(00) 00000-0000" />
+                            </Field>
+                          </div>
+                          <div className="flex items-center gap-3 rounded-md border border-border px-3 py-2">
+                            <Switch checked={editForm.aceita_notificacoes} onCheckedChange={(checked) => setEditForm((current) => ({ ...current, aceita_notificacoes: checked }))} />
+                            <span className="text-sm text-muted-foreground">{editForm.aceita_notificacoes ? 'Receber notificações do DEMUTRAN' : 'Notificações desativadas'}</span>
+                          </div>
+                        </div>
+
+                        <div className="space-y-3">
+                          <h4 className="text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">Segurança</h4>
+                          <div className="grid gap-4 sm:grid-cols-2">
+                            <Field label="Nova senha">
+                              <div className="relative">
+                                <Input type={showNovaSenha ? 'text' : 'password'} placeholder="Opcional" value={editForm.novaSenha} onChange={(event) => setEditForm((current) => ({ ...current, novaSenha: event.target.value }))} className="pr-10" />
+                                <button type="button" onClick={() => setShowNovaSenha(!showNovaSenha)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" aria-label={showNovaSenha ? 'Ocultar senha' : 'Mostrar senha'}>
+                                  {showNovaSenha ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                </button>
+                              </div>
+                            </Field>
+                            <Field label="Confirmar nova senha">
+                              <div className="relative">
+                                <Input type={showConfirmarSenha ? 'text' : 'password'} value={editForm.confirmarNovaSenha} onChange={(event) => setEditForm((current) => ({ ...current, confirmarNovaSenha: event.target.value }))} className="pr-10" />
+                                <button type="button" onClick={() => setShowConfirmarSenha(!showConfirmarSenha)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" aria-label={showConfirmarSenha ? 'Ocultar senha' : 'Mostrar senha'}>
+                                  {showConfirmarSenha ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                </button>
+                              </div>
+                            </Field>
+                          </div>
+                        </div>
+
+                        <div className="space-y-3">
+                          <h4 className="text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">Observações</h4>
+                          <Field label="Observações">
+                            <Textarea rows={3} value={editForm.observacoes || ''} onChange={(event) => setEditForm((current) => ({ ...current, observacoes: event.target.value }))} placeholder="Observações adicionais" />
+                          </Field>
+                        </div>
+
                         <Button type="submit" className="gap-2" disabled={saving}>
                           <Save className="h-4 w-4" />
                           {saving ? 'Salvando...' : 'Salvar alterações'}

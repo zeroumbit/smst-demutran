@@ -32,7 +32,7 @@ CREATE TABLE IF NOT EXISTS public.fiscalizacao_infracoes (
   exemplos_observacoes text,
   informacoes_complementares text,
   pode_configurar_crime boolean NOT NULL DEFAULT false,
-  constatacao varchar(50),
+  constatacao text,
   categoria varchar(50),
   capitulo varchar(50),
   ativo boolean NOT NULL DEFAULT true,

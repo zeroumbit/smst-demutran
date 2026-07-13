@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BadgeGravidade } from '../Shared/BadgeGravidade';
 import type { FiscalizacaoCategoria, FiscalizacaoGravidade, FiltroInfracao } from '../../types/fiscalizacao.types';
 
-const gravidades: FiscalizacaoGravidade[] = ['leve', 'media', 'grave', 'gravissima'];
+const gravidades: FiscalizacaoGravidade[] = ['leve', 'media', 'grave', 'gravissima', 'nao_aplicavel'];
 
 export function FiltrosInfracoes({
   filtros,
@@ -17,6 +17,8 @@ export function FiltrosInfracoes({
   categorias: FiscalizacaoCategoria[];
   onChange: (next: FiltroInfracao) => void;
 }) {
+  const categoriasComItens = categorias.filter((categoria) => (categoria.total_infracoes || 0) > 0);
+
   const toggleGravidade = (gravidade: FiscalizacaoGravidade, checked: boolean | 'indeterminate') => {
     const gravidadesAtuais = new Set(filtros.gravidade);
     if (checked) gravidadesAtuais.add(gravidade);
@@ -54,6 +56,7 @@ export function FiltrosInfracoes({
           <Label className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">Categoria</Label>
           <Select
             value={filtros.categoria || 'todas'}
+            disabled={categoriasComItens.length === 0}
             onValueChange={(value) =>
               onChange({
                 ...filtros,
@@ -63,17 +66,22 @@ export function FiltrosInfracoes({
             }
           >
             <SelectTrigger className="h-12 rounded-2xl">
-              <SelectValue placeholder="Todas as categorias" />
+              <SelectValue placeholder={categoriasComItens.length === 0 ? 'Classificação temática indisponível' : 'Todas as categorias'} />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="todas">Todas as categorias</SelectItem>
-              {categorias.map((categoria) => (
+              {categoriasComItens.map((categoria) => (
                 <SelectItem key={categoria.id} value={categoria.nome}>
                   {categoria.nome}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
+          {categoriasComItens.length === 0 && (
+            <p className="text-xs leading-5 text-slate-500">
+              O JSON atual do MBFT não trouxe classificação temática por categoria. A consulta segue disponível por código, texto, gravidade e pontuação.
+            </p>
+          )}
         </div>
 
         <div className="space-y-3">

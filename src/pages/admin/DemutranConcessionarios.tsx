@@ -347,6 +347,9 @@ const DemutranConcessionarios = () => {
     useState<keyof typeof arrecadacaoReference>('2025_periodo');
   const [filtrosAbertos, setFiltrosAbertos] = useState(false);
   const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
+  const [paymentDialogItem, setPaymentDialogItem] = useState<DemutranConcessionario | null>(null);
+  const [paymentDialogDate, setPaymentDialogDate] = useState('');
+  const [paymentDialogSaving, setPaymentDialogSaving] = useState(false);
   const [isCustomReportDialogOpen, setIsCustomReportDialogOpen] = useState(false);
   const [selectedReportOption, setSelectedReportOption] = useState('todos');
   const [selectedReportFormat, setSelectedReportFormat] = useState<'csv' | 'pdf'>('csv');
@@ -779,26 +782,28 @@ const DemutranConcessionarios = () => {
     );
   };
 
-  const handleMarkAsPaid = async (item: DemutranConcessionario) => {
-    const currentYear = new Date().getFullYear().toString();
+  const handleOpenPaymentDialog = (item: DemutranConcessionario) => {
+    setPaymentDialogItem(item);
+    setPaymentDialogDate(new Date().toISOString().slice(0, 10));
+  };
 
-    const proceed = await confirm({
-      title: 'Marcar taxas como pagas',
-      description: `Confirma que as taxas do concessionário ${item.titular_nome} estão pagas para o exercício ${currentYear}?`,
-      confirmText: 'Sim, confirmar pagamento',
-      cancelText: 'Cancelar',
-      variant: 'default',
-    });
-    if (!proceed) return;
+  const handleConfirmPayment = async () => {
+    const item = paymentDialogItem;
+    if (!item || !paymentDialogDate) return;
 
+    const year = paymentDialogDate.slice(0, 4);
+
+    setPaymentDialogSaving(true);
     const { error } = await (supabase as any)
       .from('demutran_concessionarios')
       .update({
-        exercicio: currentYear,
-        ultimo_alvara: currentYear,
+        exercicio: year,
+        ultimo_alvara: paymentDialogDate,
         updated_at: new Date().toISOString(),
       })
       .eq('id', item.id);
+
+    setPaymentDialogSaving(false);
 
     if (error) {
       toast({ title: 'Erro ao atualizar', description: error.message, variant: 'destructive' });
@@ -806,6 +811,8 @@ const DemutranConcessionarios = () => {
     }
 
     toast({ title: 'Taxas marcadas como pagas' });
+    setPaymentDialogItem(null);
+    setPaymentDialogDate('');
     loadData();
   };
 
@@ -1062,7 +1069,7 @@ const DemutranConcessionarios = () => {
               variant="ghost"
               size="sm"
               className="h-9 rounded-xl text-[13px] font-semibold text-emerald-600 hover:text-emerald-700"
-              onClick={() => handleMarkAsPaid(item)}
+              onClick={() => handleOpenPaymentDialog(item)}
             >
               <CheckCircle2 className="w-4 h-4 mr-1" />
               Pagar
@@ -1352,7 +1359,7 @@ const DemutranConcessionarios = () => {
                 onEdit={handleEdit}
                 onDelete={handleDelete}
                 onToggleAtivo={handleToggleAtivo}
-                onMarkAsPaid={handleMarkAsPaid}
+                onMarkAsPaid={handleOpenPaymentDialog}
                 canMarkAsPaid={(item) => getConcessionarioFinancialStatus(item) === 'em_debito'}
                 emptyMessage="Nenhum concessionario encontrado com os filtros aplicados"
               />
@@ -1524,7 +1531,7 @@ const DemutranConcessionarios = () => {
                     size="sm"
                     className="shrink-0 bg-emerald-600 hover:bg-emerald-700 text-white"
                     onClick={() => {
-                      handleMarkAsPaid(editingItem);
+                      handleOpenPaymentDialog(editingItem);
                     }}
                   >
                     <CheckCircle2 className="w-4 h-4 mr-1" />
@@ -1667,7 +1674,7 @@ const DemutranConcessionarios = () => {
                 });
               }}
               onMarkAsPaid={() => {
-                handleMarkAsPaid(viewingItem);
+                handleOpenPaymentDialog(viewingItem!);
                 setViewingItem(null);
               }}
             />
@@ -1723,6 +1730,32 @@ const DemutranConcessionarios = () => {
         )}
       </div>
       {confirmDialog}
+
+      <ResponsiveDialog
+        open={Boolean(paymentDialogItem)}
+        onOpenChange={(open) => { if (!open) { setPaymentDialogItem(null); setPaymentDialogDate(''); } }}
+        title="Marcar taxas como pagas"
+        description={paymentDialogItem ? `Confirmar pagamento das taxas de ${paymentDialogItem.titular_nome}` : ''}
+        onCancel={() => { setPaymentDialogItem(null); setPaymentDialogDate(''); }}
+        onConfirm={handleConfirmPayment}
+        confirmLabel={paymentDialogSaving ? 'Salvando...' : 'Confirmar pagamento'}
+        confirmLoading={paymentDialogSaving}
+      >
+        <div className="space-y-4 py-2">
+          <div className="space-y-2">
+            <Label>Data do pagamento</Label>
+            <Input
+              type="date"
+              value={paymentDialogDate}
+              onChange={(e) => setPaymentDialogDate(e.target.value)}
+              required
+            />
+            <p className="text-xs text-muted-foreground">
+              {paymentDialogDate && `Exercício: ${paymentDialogDate.slice(0, 4)}`}
+            </p>
+          </div>
+        </div>
+      </ResponsiveDialog>
 
       <ResponsiveDialog
         open={isImportDialogOpen}

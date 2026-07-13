@@ -33,7 +33,7 @@ const normalizeBoolean = (value) => {
   return ['1', 'true', 'sim', 'yes', 's', 'y'].includes(text);
 };
 
-const normalizeGravidade = (value) => {
+const normalizeGravidade = (value, row = {}) => {
   const text = String(value || '').trim().toLowerCase()
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '');
@@ -43,14 +43,27 @@ const normalizeGravidade = (value) => {
     media: 'media',
     grave: 'grave',
     gravissima: 'gravissima',
+    'nao aplicavel': 'nao_aplicavel',
+    nao_aplicavel: 'nao_aplicavel',
   };
 
   const normalized = map[text];
+  if (normalized) {
+    return normalized;
+  }
+
+  const infoComplementar = String(row.informacoes_complementares || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+
+  if (!text && infoComplementar.includes('gravidade no pdf: nao aplicavel')) {
+    return 'nao_aplicavel';
+  }
+
   if (!normalized) {
     throw new Error(`Gravidade inválida: ${value}`);
   }
-
-  return normalized;
 };
 
 const normalizePontuacao = (value) => {
@@ -128,7 +141,7 @@ const normalizeRow = (row) => ({
   tipificacao_resumida: String(row.tipificacao_resumida || '').trim(),
   amparo_legal: String(row.amparo_legal || '').trim(),
   tipificacao_completa: String(row.tipificacao_completa || '').trim(),
-  gravidade: normalizeGravidade(row.gravidade),
+  gravidade: normalizeGravidade(row.gravidade, row),
   penalidade: String(row.penalidade || '').trim(),
   medida_administrativa: normalizeText(row.medida_administrativa),
   infrator: String(row.infrator || '').trim(),

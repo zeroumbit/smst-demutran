@@ -1,4 +1,4 @@
-export type FiscalizacaoGravidade = 'leve' | 'media' | 'grave' | 'gravissima';
+export type FiscalizacaoGravidade = 'leve' | 'media' | 'grave' | 'gravissima' | 'nao_aplicavel';
 
 export interface FiscalizacaoInfracao {
   id: string;
