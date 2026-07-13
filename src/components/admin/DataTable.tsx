@@ -15,7 +15,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Edit, Eye, Trash2, MoreVertical } from 'lucide-react';
+import { Edit, Eye, Trash2, MoreVertical, CheckCircle2 } from 'lucide-react';
 
 // Define a interface da coluna para a tabela de dados
 interface Column<T> {
@@ -33,10 +33,12 @@ interface DataTableProps<T> {
   onView?: (item: T) => void;
   onDelete?: (item: T) => void;
   onToggleAtivo?: (item: T) => void;
+  onMarkAsPaid?: (item: T) => void;
   canEdit?: (item: T) => boolean;
   canView?: (item: T) => boolean;
   canDelete?: (item: T) => boolean;
   canToggleAtivo?: (item: T) => boolean;
+  canMarkAsPaid?: (item: T) => boolean;
   emptyMessage?: string;
 }
 
@@ -59,13 +61,15 @@ function DataTableComponent<T extends { id: string | number; ativo?: boolean }>(
   onView,
   onDelete,
   onToggleAtivo,
+  onMarkAsPaid,
   canEdit,
   canView,
   canDelete,
   canToggleAtivo,
+  canMarkAsPaid,
   emptyMessage = 'Nenhum registro encontrado',
 }: DataTableProps<T>) {
-  const hasRowActions = Boolean(onEdit || onView || onDelete || onToggleAtivo);
+  const hasRowActions = Boolean(onEdit || onView || onDelete || onToggleAtivo || onMarkAsPaid);
 
   // Se não houver dados, exibe uma mensagem centralizada
   if (data.length === 0) {
@@ -104,6 +108,17 @@ function DataTableComponent<T extends { id: string | number; ativo?: boolean }>(
                 {hasRowActions && (
                   <TableCell className="text-right whitespace-nowrap">
                     <div className="flex items-center justify-end gap-1">
+                      {onMarkAsPaid && canMarkAsPaid?.(item) !== false && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="p-3 hover:bg-emerald-600 hover:text-white transition-colors text-emerald-600"
+                          onClick={() => onMarkAsPaid(item)}
+                          title="Marcar como pago"
+                        >
+                          <CheckCircle2 className="w-4 h-4" />
+                        </Button>
+                      )}
                       {onToggleAtivo && canToggleAtivo?.(item) !== false && (
                         <Switch
                           checked={Boolean((item as any).ativo)}
@@ -187,7 +202,7 @@ function DataTableComponent<T extends { id: string | number; ativo?: boolean }>(
               </div>
 
               {/* Menu de Ações para mobile */}
-              {(onEdit || onView || onDelete || onToggleAtivo) && (
+              {(onEdit || onView || onDelete || onToggleAtivo || onMarkAsPaid) && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="sm" className="p-2 h-auto">
@@ -195,6 +210,15 @@ function DataTableComponent<T extends { id: string | number; ativo?: boolean }>(
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
+                    {onMarkAsPaid && canMarkAsPaid?.(item) !== false && (
+                      <DropdownMenuItem
+                        onClick={() => onMarkAsPaid(item)}
+                        className="flex items-center gap-2 cursor-pointer text-emerald-600"
+                      >
+                        <CheckCircle2 className="w-4 h-4" />
+                        <span>Marcar como pago</span>
+                      </DropdownMenuItem>
+                    )}
                     {onToggleAtivo && canToggleAtivo?.(item) !== false && (
                       <DropdownMenuItem
                         onClick={() => onToggleAtivo(item)}

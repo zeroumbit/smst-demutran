@@ -8,6 +8,7 @@ import {
   LogOut,
   Shield,
   NotebookPen,
+  ClipboardList,
 } from 'lucide-react';
 import guardaLogo from '@/guarda.png';
 
@@ -61,6 +62,7 @@ const moveNavItemBeforeLabel = (items: NavItem[], itemLabel: string, beforeLabel
 const navItems: NavItem[] = [
   { icon: HouseIcon, label: 'Dashboard', path: '/admin/perfil-guardas/guarda-municipal/dashboard' },
   { icon: FileWarning, label: 'IROs', path: '/admin/perfil-guardas/guarda-municipal/iros' },
+  { icon: ClipboardList, label: 'Fiscalizacao', path: '/admin/perfil-guardas/guarda-municipal/fiscalizacao/infracoes' },
   { icon: NotebookPen, label: 'Anotacoes', path: '/admin/perfil-guardas/guarda-municipal/anotacoes' },
   { icon: UserCircle, label: 'Perfil', path: '/admin/perfil-guardas/guarda-municipal/perfil' },
 ];
@@ -145,7 +147,7 @@ export const GuardsLayout = ({ children }: GuardsLayoutProps) => {
 
       {/* ─── Mobile bottom tab bar ─── */}
       <nav className="fixed bottom-0 left-0 right-0 z-50 px-3 pb-[calc(0.7rem+env(safe-area-inset-bottom))] pt-2 lg:hidden pointer-events-none">
-        <div className="mx-auto grid max-w-5xl grid-cols-5 gap-2 rounded-[24px] bg-white/90 p-1.5 shadow-[0_14px_34px_-24px_rgba(15,23,42,0.3)] ring-1 ring-slate-200/70 backdrop-blur-xl pointer-events-auto">
+        <div className="mx-auto grid max-w-5xl grid-cols-6 gap-2 rounded-[24px] bg-white/90 p-1.5 shadow-[0_14px_34px_-24px_rgba(15,23,42,0.3)] ring-1 ring-slate-200/70 backdrop-blur-xl pointer-events-auto">
           {visibleNavItems.map((item) => {
             const Icon = item.icon;
             const active = isActive(item.path);

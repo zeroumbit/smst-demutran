@@ -42,6 +42,17 @@ type ManualFormState = {
   motivo: string;
 };
 
+type OperacaoFormState = {
+  nome: string;
+  descricao: string;
+  horario_previsto: string;
+  data_inicio: string;
+  data_fim: string;
+  vagas_por_dia: number;
+  horas_por_dia: number;
+  tempo_solicitacao: IROOperacao['tempo_solicitacao'];
+};
+
 type MonthSummary = {
   monthKey: string;
   monthLabel: string;
@@ -146,7 +157,7 @@ const sectionLabels: Record<Section, string> = {
   relatorios: 'Relatórios',
 };
 
-const operacaoFormInitial = {
+const operacaoFormInitial = (): OperacaoFormState => ({
   nome: '',
   descricao: '',
   horario_previsto: '08:00',
@@ -155,7 +166,18 @@ const operacaoFormInitial = {
   vagas_por_dia: 1,
   horas_por_dia: 8,
   tempo_solicitacao: 'imediato',
-};
+});
+
+const normalizeOperacaoForm = (operacao?: Partial<IROOperacao> | null): OperacaoFormState => ({
+  nome: operacao?.nome ?? '',
+  descricao: operacao?.descricao ?? '',
+  horario_previsto: operacao?.horario_previsto?.slice(0, 5) || '08:00',
+  data_inicio: operacao?.data_inicio ?? todayStr(),
+  data_fim: operacao?.data_fim ?? todayStr(),
+  vagas_por_dia: Number.isFinite(operacao?.vagas_por_dia) ? Number(operacao?.vagas_por_dia) : 1,
+  horas_por_dia: Number.isFinite(operacao?.horas_por_dia) ? Number(operacao?.horas_por_dia) : 8,
+  tempo_solicitacao: operacao?.tempo_solicitacao ?? 'imediato',
+});
 
 const manualFormInitial = (): ManualFormState => ({
   usuario_id: '',
@@ -207,7 +229,7 @@ const GuardaMunicipalIros = () => {
   const [operacaoCandidaturas, setOperacaoCandidaturas] = useState<IROCandidatura[]>([]);
 
   const [operacaoDialogOpen, setOperacaoDialogOpen] = useState(false);
-  const [operacaoForm, setOperacaoForm] = useState(operacaoFormInitial);
+  const [operacaoForm, setOperacaoForm] = useState<OperacaoFormState>(() => operacaoFormInitial());
   const [editingOperacao, setEditingOperacao] = useState<IROOperacao | null>(null);
 
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
@@ -334,11 +356,7 @@ const GuardaMunicipalIros = () => {
 
     if (isNovaOperacao) {
       setEditingOperacao(null);
-      setOperacaoForm({
-        ...operacaoFormInitial,
-        data_inicio: todayStr(),
-        data_fim: todayStr(),
-      });
+      setOperacaoForm(normalizeOperacaoForm());
       setOperacaoDialogOpen(true);
       return;
     }
@@ -352,16 +370,7 @@ const GuardaMunicipalIros = () => {
       }
 
       setEditingOperacao(item);
-      setOperacaoForm({
-        nome: item.nome,
-        descricao: item.descricao || '',
-        horario_previsto: item.horario_previsto.slice(0, 5),
-        data_inicio: item.data_inicio,
-        data_fim: item.data_fim,
-        vagas_por_dia: item.vagas_por_dia,
-        horas_por_dia: item.horas_por_dia,
-        tempo_solicitacao: item.tempo_solicitacao,
-      });
+      setOperacaoForm(normalizeOperacaoForm(item));
       setOperacaoDialogOpen(true);
     }
   }, [canManageOperacoes, editOperacaoId, isEditandoOperacao, isNovaOperacao, navigate, operacoes]);
@@ -572,7 +581,7 @@ const GuardaMunicipalIros = () => {
 
   const resetOperacaoDialog = () => {
     setEditingOperacao(null);
-    setOperacaoForm(operacaoFormInitial);
+    setOperacaoForm(operacaoFormInitial());
     setOperacaoDialogOpen(false);
     navigate(BASE_IROS);
   };
@@ -626,16 +635,7 @@ const GuardaMunicipalIros = () => {
     }
 
     setEditingOperacao(item);
-    setOperacaoForm({
-      nome: item.nome,
-      descricao: item.descricao || '',
-      horario_previsto: item.horario_previsto.slice(0, 5),
-      data_inicio: item.data_inicio,
-      data_fim: item.data_fim,
-      vagas_por_dia: item.vagas_por_dia,
-      horas_por_dia: item.horas_por_dia,
-      tempo_solicitacao: item.tempo_solicitacao,
-    });
+    setOperacaoForm(normalizeOperacaoForm(item));
     setOperacaoDialogOpen(true);
   };
 
@@ -1320,7 +1320,7 @@ const GuardaMunicipalIros = () => {
                   <div className="grid gap-4 md:grid-cols-2">
                     <div className="space-y-2">
                       <Label>Data</Label>
-                      <Input type="date" value={candidaturaData.data_operacao} onChange={(event) => setCandidaturaData((current) => ({ ...current, data_operacao: event.target.value }))} />
+                      <Input type="date" value={candidaturaData.data_operacao ?? todayStr()} onChange={(event) => setCandidaturaData((current) => ({ ...current, data_operacao: event.target.value }))} />
                     </div>
                     <div className="space-y-2">
                       <Label>&nbsp;</Label>
@@ -1587,16 +1587,16 @@ const GuardaMunicipalIros = () => {
           <div className="space-y-4 py-2">
             <div className="space-y-2">
               <Label>Nome da operação</Label>
-              <Input value={operacaoForm.nome} onChange={(event) => setOperacaoForm((current) => ({ ...current, nome: event.target.value }))} placeholder="Ex: Operação Verão" />
+                <Input value={operacaoForm.nome ?? ''} onChange={(event) => setOperacaoForm((current) => ({ ...current, nome: event.target.value }))} placeholder="Ex: Operação Verão" />
             </div>
             <div className="space-y-2">
               <Label>Descrição</Label>
-              <Textarea rows={3} value={operacaoForm.descricao} onChange={(event) => setOperacaoForm((current) => ({ ...current, descricao: event.target.value }))} placeholder="Descrição opcional" />
+                <Textarea rows={3} value={operacaoForm.descricao ?? ''} onChange={(event) => setOperacaoForm((current) => ({ ...current, descricao: event.target.value }))} placeholder="Descrição opcional" />
             </div>
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Label>Horário previsto</Label>
-                <Input type="time" value={operacaoForm.horario_previsto} onChange={(event) => setOperacaoForm((current) => ({ ...current, horario_previsto: event.target.value }))} />
+                <Input type="time" value={operacaoForm.horario_previsto ?? '08:00'} onChange={(event) => setOperacaoForm((current) => ({ ...current, horario_previsto: event.target.value }))} />
               </div>
               <div className="space-y-2">
                 <Label>Tempo para solicitação</Label>
@@ -1617,21 +1617,21 @@ const GuardaMunicipalIros = () => {
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Label>Data início</Label>
-                <Input type="date" min={todayStr()} value={operacaoForm.data_inicio} onChange={(event) => setOperacaoForm((current) => ({ ...current, data_inicio: event.target.value }))} />
+                <Input type="date" min={todayStr()} value={operacaoForm.data_inicio ?? todayStr()} onChange={(event) => setOperacaoForm((current) => ({ ...current, data_inicio: event.target.value }))} />
               </div>
               <div className="space-y-2">
                 <Label>Data fim</Label>
-                <Input type="date" min={todayStr()} value={operacaoForm.data_fim} onChange={(event) => setOperacaoForm((current) => ({ ...current, data_fim: event.target.value }))} />
+                <Input type="date" min={todayStr()} value={operacaoForm.data_fim ?? todayStr()} onChange={(event) => setOperacaoForm((current) => ({ ...current, data_fim: event.target.value }))} />
               </div>
             </div>
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Label>Vagas por dia</Label>
-                <Input type="number" min={1} value={operacaoForm.vagas_por_dia} onChange={(event) => setOperacaoForm((current) => ({ ...current, vagas_por_dia: Number(event.target.value) }))} />
+                <Input type="number" min={1} value={Number.isFinite(operacaoForm.vagas_por_dia) ? operacaoForm.vagas_por_dia : ''} onChange={(event) => setOperacaoForm((current) => ({ ...current, vagas_por_dia: Number(event.target.value) }))} />
               </div>
               <div className="space-y-2">
                 <Label>Horas por dia</Label>
-                <Input type="number" min={0.5} step={0.5} value={operacaoForm.horas_por_dia} onChange={(event) => setOperacaoForm((current) => ({ ...current, horas_por_dia: Number(event.target.value) }))} />
+                <Input type="number" min={0.5} step={0.5} value={Number.isFinite(operacaoForm.horas_por_dia) ? operacaoForm.horas_por_dia : ''} onChange={(event) => setOperacaoForm((current) => ({ ...current, horas_por_dia: Number(event.target.value) }))} />
               </div>
             </div>
             <div className="flex justify-end gap-2">

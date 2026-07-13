@@ -1,5 +1,5 @@
 import { ChangeEvent, useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, Bell, Download, Eye, EyeOff, FileSpreadsheet, IdCard, Loader2, Plus, Printer, Search, SlidersHorizontal, Upload, X } from 'lucide-react';
+import { AlertTriangle, Bell, CheckCircle2, Download, Eye, EyeOff, FileSpreadsheet, IdCard, Loader2, Plus, Printer, Search, SlidersHorizontal, Upload, X } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { DataTable } from '@/components/admin/DataTable';
@@ -631,7 +631,7 @@ const DemutranConcessionarios = () => {
       if (newVeiculo !== originalVeiculo || newPlaca !== originalPlaca) {
         const proceed = await confirm({
           title: 'Alterar dados do veiculo',
-          description: 'A ação de alterar os dados do seu veiculo vai gerar uma taxa de transferência. Deseja mesmo fazer isso?',
+          description: 'Confirma a alteração dos dados do veículo?',
           confirmText: 'Sim, confirmar',
           cancelText: 'Cancelar',
           variant: 'default',
@@ -777,6 +777,36 @@ const DemutranConcessionarios = () => {
     setItems((current) =>
       current.map((currentItem) => (currentItem.id === item.id ? { ...currentItem, ativo: !currentItem.ativo } : currentItem)),
     );
+  };
+
+  const handleMarkAsPaid = async (item: DemutranConcessionario) => {
+    const currentYear = new Date().getFullYear().toString();
+
+    const proceed = await confirm({
+      title: 'Marcar taxas como pagas',
+      description: `Confirma que as taxas do concessionário ${item.titular_nome} estão pagas para o exercício ${currentYear}?`,
+      confirmText: 'Sim, confirmar pagamento',
+      cancelText: 'Cancelar',
+      variant: 'default',
+    });
+    if (!proceed) return;
+
+    const { error } = await (supabase as any)
+      .from('demutran_concessionarios')
+      .update({
+        exercicio: currentYear,
+        ultimo_alvara: currentYear,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', item.id);
+
+    if (error) {
+      toast({ title: 'Erro ao atualizar', description: error.message, variant: 'destructive' });
+      return;
+    }
+
+    toast({ title: 'Taxas marcadas como pagas' });
+    loadData();
   };
 
   const handleFileImport = async (event: ChangeEvent<HTMLInputElement>) => {
@@ -1026,6 +1056,18 @@ const DemutranConcessionarios = () => {
         </div>
 
         <div className="mt-3 flex items-center gap-2 border-t border-slate-100 pt-3">
+          {getConcessionarioFinancialStatus(item) === 'em_debito' && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-9 rounded-xl text-[13px] font-semibold text-emerald-600 hover:text-emerald-700"
+              onClick={() => handleMarkAsPaid(item)}
+            >
+              <CheckCircle2 className="w-4 h-4 mr-1" />
+              Pagar
+            </Button>
+          )}
           <Button
             type="button"
             variant="ghost"
@@ -1310,6 +1352,8 @@ const DemutranConcessionarios = () => {
                 onEdit={handleEdit}
                 onDelete={handleDelete}
                 onToggleAtivo={handleToggleAtivo}
+                onMarkAsPaid={handleMarkAsPaid}
+                canMarkAsPaid={(item) => getConcessionarioFinancialStatus(item) === 'em_debito'}
                 emptyMessage="Nenhum concessionario encontrado com os filtros aplicados"
               />
             </div>
@@ -1468,6 +1512,28 @@ const DemutranConcessionarios = () => {
               </Field>
             </div>
 
+            {editingItem && getConcessionarioFinancialStatus(editingItem) === 'em_debito' && (
+              <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold text-red-800">Taxas em débito</p>
+                    <p className="text-xs text-red-600">O concessionário está com o exercício pendente.</p>
+                  </div>
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="shrink-0 bg-emerald-600 hover:bg-emerald-700 text-white"
+                    onClick={() => {
+                      handleMarkAsPaid(editingItem);
+                    }}
+                  >
+                    <CheckCircle2 className="w-4 h-4 mr-1" />
+                    Marcar como pago
+                  </Button>
+                </div>
+              </div>
+            )}
+
             <div className="space-y-3">
               <h3 className="text-sm font-bold uppercase tracking-[0.12em] text-slate-500">Dados pessoais</h3>
               <div className="grid gap-3 sm:grid-cols-2">
@@ -1599,6 +1665,10 @@ const DemutranConcessionarios = () => {
                   mensagem: '',
                   tipo: 'geral',
                 });
+              }}
+              onMarkAsPaid={() => {
+                handleMarkAsPaid(viewingItem);
+                setViewingItem(null);
               }}
             />
           )}
@@ -1744,7 +1814,7 @@ function DetailCard({ label, value }: { label: string; value: string }) {
   );
 }
 
-function ConcessionarioDetails({ item, onNotify }: { item: DemutranConcessionario; onNotify: () => void }) {
+function ConcessionarioDetails({ item, onNotify, onMarkAsPaid }: { item: DemutranConcessionario; onNotify: () => void; onMarkAsPaid?: () => void }) {
   const financial = getConcessionarioFinancialCopy(item);
 
   const handlePrint = () => {
@@ -1803,8 +1873,23 @@ function ConcessionarioDetails({ item, onNotify }: { item: DemutranConcessionari
         financial.status === 'prazo_aberto' && 'border-blue-200 bg-blue-50/70 text-blue-800',
         financial.status === 'em_debito' && 'border-red-200 bg-red-50/80 text-red-800',
       )}>
-        <p className="text-sm font-bold">{financial.label}</p>
-        <p className="mt-1 text-sm">{financial.description}</p>
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-sm font-bold">{financial.label}</p>
+            <p className="mt-1 text-sm">{financial.description}</p>
+          </div>
+          {financial.status === 'em_debito' && onMarkAsPaid && (
+            <Button
+              type="button"
+              size="sm"
+              className="shrink-0 bg-emerald-600 hover:bg-emerald-700 text-white"
+              onClick={onMarkAsPaid}
+            >
+              <CheckCircle2 className="w-4 h-4 mr-1" />
+              Marcar como pago
+            </Button>
+          )}
+        </div>
       </div>
       <div className="rounded-2xl bg-gradient-to-br from-slate-50 to-white p-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
