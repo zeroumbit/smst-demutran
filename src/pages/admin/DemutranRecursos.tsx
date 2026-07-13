@@ -446,7 +446,7 @@ const DemutranRecursos = () => {
         </div>
 
         <div className={`lg:block ${filtrosAbertos ? 'block' : 'hidden'}`}>
-          <div className="sticky top-0 z-10 bg-white pb-2 lg:rounded-[30px] lg:border lg:border-slate-200/80 lg:px-5 lg:pt-4">
+          <div className="bg-white pb-2 lg:rounded-[30px] lg:border lg:border-slate-200/80 lg:px-5 lg:pt-4">
             <div className="rounded-[28px] bg-white lg:px-0">
               <div className="mb-4 flex items-center justify-between gap-3">
                 <div className="flex items-center gap-3">

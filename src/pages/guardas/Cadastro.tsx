@@ -192,6 +192,8 @@ const CadastroGuarda = () => {
         return;
       }
 
+      await supabase.rpc('registrar_autocadastro_guarda', { p_guarda_id: guardaId });
+
       navigate('/admin/login');
     } catch (err) {
       console.error('Erro ao criar conta:', err);
