@@ -16,6 +16,11 @@ export function FiscalizacaoCategoriasPage({ scope }: { scope: 'admin' | 'guarda
   const categoriaAtual = searchParams.get('categoria') || '';
   const { data: categorias = [], isLoading } = useCategorias();
   const { data: itensCategoria = [], isLoading: carregandoCategoria } = useBuscarInfracoesPorCategoria(categoriaAtual);
+  const categoriasComItens = useMemo(
+    () => categorias.filter((item) => (item.total_infracoes || 0) > 0),
+    [categorias],
+  );
+  const classificacaoTematicaDisponivel = categoriasComItens.length > 0;
 
   const backPath = scope === 'admin' ? fiscalizacaoRoutes.admin.infracoes : fiscalizacaoRoutes.guarda.infracoes;
   const detalheHref = (codigo: string) =>
@@ -66,7 +71,7 @@ export function FiscalizacaoCategoriasPage({ scope }: { scope: 'admin' | 'guarda
         </div>
       </section>
 
-      {categoriaSelecionada ? (
+      {categoriaSelecionada && classificacaoTematicaDisponivel ? (
         carregandoCategoria ? (
           <Skeleton className="h-[320px] rounded-[28px]" />
         ) : (
@@ -77,15 +82,23 @@ export function FiscalizacaoCategoriasPage({ scope }: { scope: 'admin' | 'guarda
           <CardContent className="space-y-6 p-5">
             <div>
               <p className="text-sm leading-6 text-slate-600">
-                Selecione uma categoria para listar as infrações relacionadas e abrir suas fichas completas.
+                {classificacaoTematicaDisponivel
+                  ? 'Selecione uma categoria para listar as infrações relacionadas e abrir suas fichas completas.'
+                  : 'O conjunto atual do MBFT foi importado sem classificação temática por categoria. A consulta completa segue disponível pela busca textual, código, gravidade, pontuação e indicativo de crime de trânsito.'}
               </p>
             </div>
-            <ListaCategorias
-              categorias={categorias}
-              href={(categoria) =>
-                `${scope === 'admin' ? fiscalizacaoRoutes.admin.categorias : fiscalizacaoRoutes.guarda.categorias}?categoria=${encodeURIComponent(categoria)}`
-              }
-            />
+            {classificacaoTematicaDisponivel ? (
+              <ListaCategorias
+                categorias={categoriasComItens}
+                href={(categoria) =>
+                  `${scope === 'admin' ? fiscalizacaoRoutes.admin.categorias : fiscalizacaoRoutes.guarda.categorias}?categoria=${encodeURIComponent(categoria)}`
+                }
+              />
+            ) : (
+              <div className="rounded-[24px] border border-dashed border-slate-300 bg-slate-50 px-5 py-6 text-sm leading-6 text-slate-600">
+                Nenhuma infração do arquivo importado possui os campos <code>categoria</code> e <code>capitulo</code> preenchidos. Se você produzir uma versão classificada desses campos, a navegação temática passa a funcionar automaticamente.
+              </div>
+            )}
           </CardContent>
         </Card>
       )}

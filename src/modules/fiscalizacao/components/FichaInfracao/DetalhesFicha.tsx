@@ -2,6 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import type { FiscalizacaoInfracao } from '../../types/fiscalizacao.types';
+import { formatarPontuacaoFiscalizacao } from '../../utils/fiscalizacao.formatters';
 
 const blocks = [
   { key: 'penalidade', title: 'Penalidade' },
@@ -58,7 +59,7 @@ export function DetalhesFicha({ infracao }: { infracao: FiscalizacaoInfracao }) 
           <CardContent className="space-y-4">
             <ChecklistItem title="Infrator" value={infracao.infrator} />
             <ChecklistItem title="Amparo legal" value={infracao.amparo_legal} />
-            <ChecklistItem title="Pontuação" value={infracao.pontuacao > 0 ? `${infracao.pontuacao} ponto(s)` : 'Não computável'} />
+            <ChecklistItem title="Pontuação" value={formatarPontuacaoFiscalizacao(infracao.pontuacao, infracao.gravidade)} />
             <ChecklistItem title="Competência" value={infracao.competencia || 'Não informado'} />
           </CardContent>
         </Card>

@@ -7,6 +7,7 @@ const GRAVIDADE_CONFIG: Record<FiscalizacaoGravidade, { label: string; classes: 
   media: { label: 'Média', classes: 'border-amber-200 bg-amber-50 text-amber-700' },
   grave: { label: 'Grave', classes: 'border-orange-200 bg-orange-50 text-orange-700' },
   gravissima: { label: 'Gravíssima', classes: 'border-red-200 bg-red-50 text-red-700' },
+  nao_aplicavel: { label: 'Não aplicável', classes: 'border-slate-200 bg-slate-100 text-slate-700' },
 };
 
 export function BadgeGravidade({

@@ -1,4 +1,4 @@
-import { ReactNode, ComponentType } from 'react';
+import { ReactNode, ComponentType, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -9,6 +9,7 @@ import {
   Shield,
   NotebookPen,
   ClipboardList,
+  X,
 } from 'lucide-react';
 import guardaLogo from '@/guarda.png';
 
@@ -60,7 +61,7 @@ const moveNavItemBeforeLabel = (items: NavItem[], itemLabel: string, beforeLabel
 };
 
 const navItems: NavItem[] = [
-  { icon: HouseIcon, label: 'Dashboard', path: '/admin/perfil-guardas/guarda-municipal/dashboard' },
+  { icon: HouseIcon, label: 'Home', path: '/admin/perfil-guardas/guarda-municipal/dashboard' },
   { icon: FileWarning, label: 'IROs', path: '/admin/perfil-guardas/guarda-municipal/iros' },
   { icon: ClipboardList, label: 'Fiscalizacao', path: '/admin/perfil-guardas/guarda-municipal/fiscalizacao/infracoes' },
   { icon: NotebookPen, label: 'Anotacoes', path: '/admin/perfil-guardas/guarda-municipal/anotacoes' },
@@ -85,6 +86,7 @@ export const GuardsLayout = ({ children }: GuardsLayoutProps) => {
 
   const visibleNavItems = moveNavItemBeforeLabel(navItems, ANOTACOES_LABEL, PERFIL_LABEL);
   const isActive = (path: string) => location.pathname === path || location.pathname.startsWith(path + '/');
+  const [menuModalOpen, setMenuModalOpen] = useState(false);
 
   return (
     <div className="min-h-screen bg-[#f3f6fb] text-slate-900">
@@ -147,10 +149,36 @@ export const GuardsLayout = ({ children }: GuardsLayoutProps) => {
 
       {/* ─── Mobile bottom tab bar ─── */}
       <nav className="fixed bottom-0 left-0 right-0 z-50 px-3 pb-[calc(0.7rem+env(safe-area-inset-bottom))] pt-2 lg:hidden pointer-events-none">
-        <div className="mx-auto grid max-w-5xl grid-cols-6 gap-2 rounded-[24px] bg-white/90 p-1.5 shadow-[0_14px_34px_-24px_rgba(15,23,42,0.3)] ring-1 ring-slate-200/70 backdrop-blur-xl pointer-events-auto">
+        <div className="mx-auto grid max-w-5xl grid-cols-5 gap-2 rounded-[24px] bg-white/90 p-1.5 shadow-[0_14px_34px_-24px_rgba(15,23,42,0.3)] ring-1 ring-slate-200/70 backdrop-blur-xl pointer-events-auto">
           {visibleNavItems.map((item) => {
             const Icon = item.icon;
             const active = isActive(item.path);
+
+            if (item.label === PERFIL_LABEL) {
+              return (
+                <button
+                  key={item.path}
+                  onClick={() => setMenuModalOpen(true)}
+                  className={`flex min-w-0 flex-col items-center justify-center gap-1 rounded-[18px] px-1 py-2.5 transition-all active:scale-[0.98] ${
+                    active ? 'bg-brand-50/90 shadow-[inset_0_1px_0_rgba(255,255,255,0.75)]' : ''
+                  }`}
+                >
+                  <div className={`flex items-center justify-center rounded-xl p-1.5 transition-colors ${
+                    active ? 'bg-white shadow-[0_8px_18px_-14px_rgba(37,99,235,0.55)]' : ''
+                  }`}>
+                    <Icon className={`h-5 w-5 ${
+                      active ? 'text-brand-600' : 'text-slate-400'
+                    }`} />
+                  </div>
+                  <span className={`max-w-full truncate text-[10px] font-bold ${
+                    active ? 'text-brand-600' : 'text-slate-400'
+                  }`}>
+                    Menu
+                  </span>
+                </button>
+              );
+            }
+
             return (
               <Link
                 key={item.path}
@@ -175,18 +203,58 @@ export const GuardsLayout = ({ children }: GuardsLayoutProps) => {
               </Link>
             );
           })}
-
-          <button
-            onClick={handleLogout}
-            className="flex min-w-0 flex-col items-center justify-center gap-1 rounded-[18px] px-1 py-2.5 transition-all active:scale-[0.98]"
-          >
-            <div className="flex items-center justify-center rounded-xl p-1.5">
-              <LogOut className="h-5 w-5 text-slate-400" />
-            </div>
-            <span className="text-[10px] font-bold text-slate-400">Sair</span>
-          </button>
         </div>
       </nav>
+
+      {/* ─── Mobile menu modal ─── */}
+      {menuModalOpen && (
+        <div className="fixed inset-0 z-[60] flex flex-col bg-white lg:hidden animate-in slide-in-from-bottom">
+          <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
+            <div className="flex items-center gap-3">
+              <GuardaLogo />
+              <span className="text-lg font-bold text-slate-900">Guarda Municipal</span>
+            </div>
+            <button
+              onClick={() => setMenuModalOpen(false)}
+              className="rounded-full p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+
+          <nav className="flex-1 overflow-y-auto px-4 py-4 space-y-1">
+            {navItems.map((item) => {
+              const Icon = item.icon;
+              const active = isActive(item.path);
+              return (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  onClick={() => setMenuModalOpen(false)}
+                  className={`flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium transition-all ${
+                    active
+                      ? 'bg-brand-50 text-brand-700'
+                      : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
+                  }`}
+                >
+                  <Icon className="h-5 w-5 shrink-0" />
+                  <span>{item.label}</span>
+                </Link>
+              );
+            })}
+          </nav>
+
+          <div className="border-t border-slate-200 p-4">
+            <button
+              onClick={handleLogout}
+              className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium text-slate-500 hover:bg-red-50 hover:text-red-600 transition-colors"
+            >
+              <LogOut className="h-5 w-5" />
+              <span>Sair</span>
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
