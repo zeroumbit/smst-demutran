@@ -1,5 +1,5 @@
 import { ChangeEvent, useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, Bell, CheckCircle2, Download, Eye, EyeOff, FileSpreadsheet, IdCard, Loader2, Plus, Printer, Search, SlidersHorizontal, Upload, X } from 'lucide-react';
+import { AlertTriangle, Bell, CheckCircle2, Download, Edit, Eye, EyeOff, FileSpreadsheet, IdCard, Loader2, Plus, Printer, Search, SlidersHorizontal, Upload, X } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { DataTable } from '@/components/admin/DataTable';
@@ -56,6 +56,8 @@ type FormData = {
   senha_acesso: string;
   confirmar_senha_acesso: string;
   ativo: boolean;
+  concessao_arquivo_url: string;
+  concessao_arquivo_nome: string;
 };
 
 type ParsedImportRow = Omit<DemutranConcessionario, 'id' | 'setor_id' | 'created_at' | 'updated_at'>;
@@ -124,6 +126,8 @@ const initialForm: FormData = {
   senha_acesso: '',
   confirmar_senha_acesso: '',
   ativo: true,
+  concessao_arquivo_url: '',
+  concessao_arquivo_nome: '',
 };
 
 const statusBadgeClasses = {
@@ -594,6 +598,8 @@ const DemutranConcessionarios = () => {
     email_notificacao: formData.email_notificacao.trim() || null,
     telefone_notificacao: formData.telefone_notificacao.trim() || null,
     aceita_notificacoes: formData.aceita_notificacoes,
+    concessao_arquivo_url: formData.concessao_arquivo_url.trim() || null,
+    concessao_arquivo_nome: formData.concessao_arquivo_nome.trim() || null,
     ativo: formData.ativo,
     updated_at: new Date().toISOString(),
   });
@@ -707,6 +713,8 @@ const DemutranConcessionarios = () => {
       email_notificacao: item.email_notificacao || '',
       telefone_notificacao: item.telefone_notificacao || '',
       aceita_notificacoes: item.aceita_notificacoes,
+      concessao_arquivo_url: item.concessao_arquivo_url || '',
+      concessao_arquivo_nome: item.concessao_arquivo_nome || '',
       senha_acesso: '',
       confirmar_senha_acesso: '',
       ativo: item.ativo,
@@ -1597,6 +1605,23 @@ const DemutranConcessionarios = () => {
             </div>
 
             <div className="space-y-3">
+              <h3 className="text-sm font-bold uppercase tracking-[0.12em] text-slate-500">Documento da concessao</h3>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Field label="URL do arquivo">
+                  <Input value={formData.concessao_arquivo_url} onChange={(event) => setFormData((current) => ({ ...current, concessao_arquivo_url: event.target.value }))} placeholder="https://..." />
+                </Field>
+                <Field label="Nome do arquivo">
+                  <Input value={formData.concessao_arquivo_nome} onChange={(event) => setFormData((current) => ({ ...current, concessao_arquivo_nome: event.target.value }))} placeholder="Ex: concessao.pdf" />
+                </Field>
+              </div>
+              {formData.concessao_arquivo_url && (
+                <a href={formData.concessao_arquivo_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-sm text-blue-600 hover:text-blue-800 underline">
+                  {formData.concessao_arquivo_nome || 'Abrir arquivo'}
+                </a>
+              )}
+            </div>
+
+            <div className="space-y-3">
               <h3 className="text-sm font-bold uppercase tracking-[0.12em] text-slate-500">Dados de acesso</h3>
               <div className={`rounded-2xl border px-4 py-3 text-sm ${editingItem && accessMap[editingItem.id] ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : 'border-amber-200 bg-amber-50 text-amber-800'}`}>
                 {editingItem
@@ -1675,6 +1700,10 @@ const DemutranConcessionarios = () => {
               }}
               onMarkAsPaid={() => {
                 handleOpenPaymentDialog(viewingItem!);
+                setViewingItem(null);
+              }}
+              onEdit={() => {
+                handleEdit(viewingItem);
                 setViewingItem(null);
               }}
             />
@@ -1847,7 +1876,7 @@ function DetailCard({ label, value }: { label: string; value: string }) {
   );
 }
 
-function ConcessionarioDetails({ item, onNotify, onMarkAsPaid }: { item: DemutranConcessionario; onNotify: () => void; onMarkAsPaid?: () => void }) {
+function ConcessionarioDetails({ item, onNotify, onMarkAsPaid, onEdit }: { item: DemutranConcessionario; onNotify: () => void; onMarkAsPaid?: () => void; onEdit?: () => void }) {
   const financial = getConcessionarioFinancialCopy(item);
 
   const handlePrint = () => {
@@ -1950,6 +1979,12 @@ function ConcessionarioDetails({ item, onNotify, onMarkAsPaid }: { item: Demutra
             <Bell className="h-4 w-4" />
             Enviar notificacao
           </Button>
+          {onEdit && (
+            <Button type="button" variant="default" size="sm" className="gap-2" onClick={onEdit}>
+              <Edit className="h-4 w-4" />
+              Editar
+            </Button>
+          )}
         </div>
       </div>
 
@@ -2021,6 +2056,16 @@ function ConcessionarioDetails({ item, onNotify, onMarkAsPaid }: { item: Demutra
       <div className="rounded-xl border border-border bg-card px-4 py-3">
         <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">Observacoes</p>
         <p className="mt-1 text-sm font-medium text-foreground">{item.observacoes || '-'}</p>
+      </div>
+
+      <div className="space-y-4">
+        <SectionHeader>Documento da concessao</SectionHeader>
+        <DetailCard label="Arquivo" value={item.concessao_arquivo_nome || '-'} />
+        {item.concessao_arquivo_url && (
+          <a href={item.concessao_arquivo_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-sm text-blue-600 hover:text-blue-800 underline px-4">
+            {item.concessao_arquivo_nome || 'Abrir arquivo'}
+          </a>
+        )}
       </div>
     </div>
   );
