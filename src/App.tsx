@@ -63,10 +63,16 @@ const AdminProfile = React.lazy(() => import("./pages/admin/Profile"));
 const AdminConfiguracoes = React.lazy(() => import("./pages/admin/Configuracoes"));
 const AdminGuardasMunicipais = React.lazy(() => import("./pages/admin/GuardasMunicipais"));
 const AdminGuardaMunicipalIros = React.lazy(() => import("./pages/admin/GuardaMunicipalIros"));
+const AdminFiscalizacaoInfracoes = React.lazy(() => import("./pages/admin/FiscalizacaoInfracoes"));
+const AdminFiscalizacaoInfracaoDetalhe = React.lazy(() => import("./pages/admin/FiscalizacaoInfracaoDetalhe"));
+const AdminFiscalizacaoCategorias = React.lazy(() => import("./pages/admin/FiscalizacaoCategorias"));
 const AdminConfiguracoesGuarda = React.lazy(() => import("./pages/admin/ConfiguracoesGuarda"));
 const GuardaDashboard = React.lazy(() => import("./pages/admin/guarda/Dashboard"));
 const GuardaIros = React.lazy(() => import("./pages/admin/guarda/Iros"));
 const GuardaIrosHistorico = React.lazy(() => import("./pages/admin/guarda/IrosHistorico"));
+const GuardaFiscalizacaoInfracoes = React.lazy(() => import("./pages/admin/guarda/FiscalizacaoInfracoes"));
+const GuardaFiscalizacaoInfracaoDetalhe = React.lazy(() => import("./pages/admin/guarda/FiscalizacaoInfracaoDetalhe"));
+const GuardaFiscalizacaoCategorias = React.lazy(() => import("./pages/admin/guarda/FiscalizacaoCategorias"));
 const GuardaPerfil = React.lazy(() => import("./pages/admin/guarda/Perfil"));
 const GuardaCadastro = React.lazy(() => import("./pages/guardas/Cadastro"));
 const AdminFalaCidadao = React.lazy(() => import("./pages/admin/FalaCidadao"));
@@ -500,6 +506,27 @@ const App = () => (
             } />
             <Route path="/admin/guarda-municipal/iros" element={<Navigate to="/admin/iros/guarda-municipal" replace />} />
             <Route path="/admin/guarda-municipal/guardas" element={<Navigate to="/admin/guardas/guarda-municipal" replace />} />
+            <Route path="/admin/fiscalizacao/infracoes" element={
+              <SuspenseWrapper>
+                <ProtectedRoute allowedPapeis={['super_admin', 'gestor', 'admin_setor', 'tecnico']} requiredSetorSlug="guarda-municipal">
+                  <AdminFiscalizacaoInfracoes />
+                </ProtectedRoute>
+              </SuspenseWrapper>
+            } />
+            <Route path="/admin/fiscalizacao/infracoes/:codigo" element={
+              <SuspenseWrapper>
+                <ProtectedRoute allowedPapeis={['super_admin', 'gestor', 'admin_setor', 'tecnico']} requiredSetorSlug="guarda-municipal">
+                  <AdminFiscalizacaoInfracaoDetalhe />
+                </ProtectedRoute>
+              </SuspenseWrapper>
+            } />
+            <Route path="/admin/fiscalizacao/categorias" element={
+              <SuspenseWrapper>
+                <ProtectedRoute allowedPapeis={['super_admin', 'gestor', 'admin_setor', 'tecnico']} requiredSetorSlug="guarda-municipal">
+                  <AdminFiscalizacaoCategorias />
+                </ProtectedRoute>
+              </SuspenseWrapper>
+            } />
             <Route path="/admin/iros/guarda-municipal/*" element={
               <SuspenseWrapper>
                 <ProtectedRoute allowedPapeis={['gestor', 'admin_setor', 'tecnico']} requiredSetorSlug="guarda-municipal">
@@ -597,6 +624,27 @@ const App = () => (
               <SuspenseWrapper>
                 <ProtectedRoute requireGuarda>
                   <GuardaIrosHistorico />
+                </ProtectedRoute>
+              </SuspenseWrapper>
+            } />
+            <Route path="/admin/perfil-guardas/guarda-municipal/fiscalizacao/infracoes" element={
+              <SuspenseWrapper>
+                <ProtectedRoute requireGuarda>
+                  <GuardaFiscalizacaoInfracoes />
+                </ProtectedRoute>
+              </SuspenseWrapper>
+            } />
+            <Route path="/admin/perfil-guardas/guarda-municipal/fiscalizacao/infracoes/:codigo" element={
+              <SuspenseWrapper>
+                <ProtectedRoute requireGuarda>
+                  <GuardaFiscalizacaoInfracaoDetalhe />
+                </ProtectedRoute>
+              </SuspenseWrapper>
+            } />
+            <Route path="/admin/perfil-guardas/guarda-municipal/fiscalizacao/categorias" element={
+              <SuspenseWrapper>
+                <ProtectedRoute requireGuarda>
+                  <GuardaFiscalizacaoCategorias />
                 </ProtectedRoute>
               </SuspenseWrapper>
             } />
