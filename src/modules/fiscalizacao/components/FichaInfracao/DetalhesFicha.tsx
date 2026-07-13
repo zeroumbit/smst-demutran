@@ -15,6 +15,17 @@ const blocks = [
   { key: 'informacoes_complementares', title: 'Informações Complementares' },
 ] as const;
 
+function formatarBlocoDetalhe(
+  key: (typeof blocks)[number]['key'],
+  value: string,
+) {
+  if (key === 'quando_autuar') {
+    return value.replace(/^\s*n[aã]o\s+comput[aá]vel\s*/i, '').trim();
+  }
+
+  return value;
+}
+
 export function DetalhesFicha({ infracao }: { infracao: FiscalizacaoInfracao }) {
   return (
     <div className="grid gap-4">
@@ -68,6 +79,7 @@ export function DetalhesFicha({ infracao }: { infracao: FiscalizacaoInfracao }) 
       {blocks.map((block) => {
         const value = infracao[block.key];
         if (!value) return null;
+        const formattedValue = formatarBlocoDetalhe(block.key, value);
 
         return (
           <Card key={block.key} className="rounded-[26px] border-slate-200">
@@ -76,7 +88,7 @@ export function DetalhesFicha({ infracao }: { infracao: FiscalizacaoInfracao }) 
             </CardHeader>
             <CardContent>
               <div className="prose prose-slate max-w-none text-sm leading-7">
-                <p className="whitespace-pre-line text-slate-700">{value}</p>
+                <p className="whitespace-pre-line text-slate-700">{formattedValue}</p>
               </div>
             </CardContent>
           </Card>

@@ -284,7 +284,7 @@ const GuardaDashboard = () => {
 
         {!loading && bannerVisible && resumo.total_horas_mes < LIMITE_IRO_MES && (
           <div className={cn(
-            'relative rounded-[34px] border p-4 pr-11 shadow-sm sm:p-5 sm:pr-12',
+            'relative rounded-[20px] border p-4 pr-11 shadow-sm sm:p-5 sm:pr-12',
             resumo.total_horas_mes === 0
               ? 'bg-gradient-to-br from-emerald-50 to-green-50 border-emerald-200'
               : 'bg-gradient-to-br from-amber-50 to-yellow-50 border-amber-200',
@@ -326,7 +326,7 @@ const GuardaDashboard = () => {
             <div className="rounded-2xl border border-slate-200 bg-white p-6 text-center text-sm text-muted-foreground sm:p-8">Carregando...</div>
         ) : (
           <>
-            <div className="rounded-[34px] border border-slate-200/80 bg-white px-4 py-4 shadow-[0_4px_20px_-8px_rgba(15,23,42,0.08)] sm:px-5">
+            <div className="rounded-[20px] border border-slate-200/80 bg-white px-4 py-4 shadow-[0_4px_20px_-8px_rgba(15,23,42,0.08)] sm:px-5">
               <h2 className="mb-4 text-sm font-bold uppercase tracking-[0.08em] text-slate-600">Últimas IROs realizadas</h2>
               {ultimasCandidaturas.length === 0 ? (
                 <p className="text-sm text-slate-400">Nenhuma IRO realizada neste mês.</p>
@@ -345,7 +345,7 @@ const GuardaDashboard = () => {
               )}
             </div>
 
-            <div className="rounded-[34px] border border-slate-200/80 bg-white px-4 py-4 shadow-[0_4px_20px_-8px_rgba(15,23,42,0.08)] sm:px-5">
+            <div className="rounded-[32px] border border-slate-200/80 bg-white px-4 py-4 shadow-[0_4px_20px_-8px_rgba(15,23,42,0.08)] sm:px-5">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-sm font-bold uppercase tracking-[0.08em] text-slate-600">Operações disponíveis</h2>
                 <button onClick={() => navigate('/admin/perfil-guardas/guarda-municipal/iros')} className="flex items-center gap-1 text-xs font-semibold text-slate-500 hover:text-slate-700">
