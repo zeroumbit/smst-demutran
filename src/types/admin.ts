@@ -81,6 +81,7 @@ export interface GuardaMunicipal {
   telefone?: string | null;
   ativo: boolean;
   possui_conta?: boolean;
+  data_autocadastro?: string | null;
   created_at?: string | null;
   updated_at?: string | null;
 }
@@ -162,6 +163,8 @@ export interface IROCandidatura {
   status: 'pendente' | 'confirmado' | 'cancelado' | 'realizado';
   adicionado_manual: boolean;
   observacao: string | null;
+  motivo_manual?: string | null;
+  gestor_responsavel_id?: string | null;
   created_at: string;
   updated_at: string;
   operacao_nome?: string;
@@ -201,6 +204,18 @@ export interface IRONotificacao {
   tipo: 'info' | 'sucesso' | 'alerta' | 'erro' | 'manual';
   lida: boolean;
   link: string | null;
+  created_at: string;
+}
+
+export interface IROAuditoriaManual {
+  id: string;
+  candidatura_id: string;
+  gestor_id: string;
+  guarda_id: string;
+  operacao_id: string;
+  motivo: string;
+  horas_adicionadas: number;
+  data_referencia: string;
   created_at: string;
 }
 

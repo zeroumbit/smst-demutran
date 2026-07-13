@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useCallback, useEffect, useState, useMemo } from 'react';
 import { GuardsLayout } from '@/components/admin/GuardsLayout';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
@@ -29,12 +29,12 @@ const fmtDateBR = (d: string | null | undefined): string => {
 const GuardaIrosHistorico = () => {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
-  const [candidaturas, setCandidaturas] = useState<any[]>([]);
+  const [candidaturas, setCandidaturas] = useState<IROCandidatura[]>([]);
   const [search, setSearch] = useState('');
   const [mesFilter, setMesFilter] = useState('todos');
   const [anoFilter, setAnoFilter] = useState('todos');
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     if (!user?.user_id) { setLoading(false); return; }
     setLoading(true);
     const { data } = await supabase
@@ -42,11 +42,11 @@ const GuardaIrosHistorico = () => {
       .select('*, iro_operacoes!inner(nome)')
       .eq('usuario_id', user.user_id)
       .order('data_operacao', { ascending: false });
-    setCandidaturas((data || []).map((c: any) => ({ ...c, operacao_nome: c.iro_operacoes?.nome || '' })));
+    setCandidaturas(((data || []) as Array<IROCandidatura & { iro_operacoes?: { nome?: string | null } | null }>).map((c) => ({ ...c, operacao_nome: c.iro_operacoes?.nome || '' })));
     setLoading(false);
-  };
+  }, [user?.user_id]);
 
-  useEffect(() => { void loadData(); }, [user?.user_id]);
+  useEffect(() => { void loadData(); }, [loadData]);
 
   const meses = useMemo(() => {
     const set = new Set<string>();
@@ -139,10 +139,20 @@ const GuardaIrosHistorico = () => {
             {filtered.map((c) => (
               <div key={c.id} className="flex flex-col gap-3 rounded-2xl border border-slate-200/80 bg-white px-4 py-4 shadow-[0_4px_20px_-8px_rgba(15,23,42,0.08)] active:scale-[0.99] sm:flex-row sm:items-center sm:justify-between sm:px-5">
                 <div className="min-w-0">
-                  <p className="text-[15px] font-bold text-slate-900">{c.operacao_nome}</p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="text-[15px] font-bold text-slate-900">{c.operacao_nome}</p>
+                    {c.adicionado_manual && (
+                      <Badge variant="outline" className="rounded-full border-emerald-200 bg-emerald-50 px-3 py-1 text-[11px] font-bold text-emerald-700">
+                        Manual
+                      </Badge>
+                    )}
+                  </div>
                   <p className="mt-0.5 text-[13px] leading-5 text-slate-500">
                     {fmtDateBR(c.data_operacao)} &middot; {c.horas_trabalhadas}h
                   </p>
+                  {c.adicionado_manual && c.motivo_manual && (
+                    <p className="mt-1 text-xs leading-5 text-slate-500">Motivo: {c.motivo_manual}</p>
+                  )}
                 </div>
                 <Badge variant="outline" className={cn('w-fit rounded-full px-3 py-1 text-[11px] font-bold', STATUS_VARIANT[c.status])}>
                   {c.status}

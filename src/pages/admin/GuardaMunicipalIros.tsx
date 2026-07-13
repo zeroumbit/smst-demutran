@@ -1,27 +1,118 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { AlertTriangle, Calendar, Check, Clock, Eye, EyeOff, Hourglass, Pencil, Plus, RefreshCcw, Search, ShieldCheck, Trash2, Users, X } from 'lucide-react';
+import { AlertTriangle, Calendar, Check, CheckCircle2, ChevronsUpDown, Clock, Eye, EyeOff, Hourglass, Pencil, Plus, RefreshCcw, Trash2, Users, X } from 'lucide-react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ResponsiveDialog } from '@/components/ui/responsive-dialog';
-import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { toast } from '@/hooks/use-toast';
-import { supabase } from '@/lib/supabase';
+import { Switch } from '@/components/ui/switch';
+import { Textarea } from '@/components/ui/textarea';
+import { useConfirmDialog } from '@/components/ui/use-confirm-dialog';
 import { useAuth } from '@/contexts/AuthContext';
+import { toast } from '@/hooks/use-toast';
+import { gerarRelatorioMensal, gerarRelatorioOperacao } from '@/lib/relatorio-iro';
+import { supabase } from '@/lib/supabase';
 import { cn } from '@/lib/utils';
-import { gerarRelatorioOperacao, gerarRelatorioMensal } from '@/lib/relatorio-iro';
-import type { IROOperacao, IROCandidatura, IROHoraManual, IROBancoHoras, IRONotificacao } from '@/types/admin';
+import { maskCpf } from '@/lib/masks';
+import type { IROBancoHoras, IROCandidatura, IRONotificacao, IROOperacao } from '@/types/admin';
 
 type Section = 'operacoes' | 'candidaturas' | 'banco-horas' | 'notificacoes' | 'relatorios';
 
+type GuardaOption = {
+  usuario_id: string;
+  guarda_id: string;
+  nome: string;
+  matricula: string;
+  cpf: string | null;
+  graduacao_id: string | null;
+  graduacao_nome: string | null;
+  valor_hora: number;
+};
+
+type ManualFormState = {
+  usuario_id: string;
+  operacao_id: string;
+  quantidade_horas: string;
+  motivo: string;
+};
+
+type MonthSummary = {
+  monthKey: string;
+  monthLabel: string;
+  existingHours: number;
+  newHours: number;
+  totalHours: number;
+  availableHours: number;
+  exceedsLimit: boolean;
+  nearLimit: boolean;
+  maxAllowedToLaunch: number;
+};
+
+type ManualPreview = {
+  valid: boolean;
+  errors: string[];
+  guarda: GuardaOption | null;
+  operacao: IROOperacao | null;
+  hoursToAdd: number;
+  estimatedValue: number;
+  monthSummaries: MonthSummary[];
+};
+
+type PerfilUsuarioRow = {
+  user_id: string;
+  nome: string | null;
+  sobrenome: string | null;
+  graduacao_id: string | null;
+};
+
+type ValorGraduacaoRow = {
+  graduacao_id: string;
+  valor_hora: number | string | null;
+};
+
+type IROCandidaturaRow = IROCandidatura & {
+  iro_operacoes?: { nome?: string | null } | null;
+};
+
+type GuardaJoinRow = {
+  usuario_id: string | null;
+  guarda_id: string;
+  guardas_municipais:
+    | {
+        id: string;
+        nome: string;
+        matricula: string;
+        cpf: string | null;
+        graduacao_id: string | null;
+        ativo: boolean;
+        guarda_municipal_graduacoes?: { nome?: string | null } | { nome?: string | null }[] | null;
+      }
+    | {
+        id: string;
+        nome: string;
+        matricula: string;
+        cpf: string | null;
+        graduacao_id: string | null;
+        ativo: boolean;
+        guarda_municipal_graduacoes?: { nome?: string | null } | { nome?: string | null }[] | null;
+      }[]
+    | null;
+};
+
 const TEMPO_SOLICITACAO_LABEL: Record<string, string> = {
-  imediato: 'Imediato', '1h': '1 hora', '6h': '6 horas', '8h': '8 horas',
-  '12h': '12 horas', '24h': '24 horas', '48h': '48 horas',
+  imediato: 'Imediato',
+  '1h': '1 hora',
+  '6h': '6 horas',
+  '8h': '8 horas',
+  '12h': '12 horas',
+  '24h': '24 horas',
+  '48h': '48 horas',
 };
 
 const STATUS_CANDIDATURA_VARIANT: Record<string, string> = {
@@ -32,7 +123,11 @@ const STATUS_CANDIDATURA_VARIANT: Record<string, string> = {
 };
 
 const NOTIFICACAO_TIPO_LABEL: Record<string, string> = {
-  info: 'Info', sucesso: 'Sucesso', alerta: 'Alerta', erro: 'Erro', manual: 'Manual',
+  info: 'Info',
+  sucesso: 'Sucesso',
+  alerta: 'Alerta',
+  erro: 'Erro',
+  manual: 'Manual',
 };
 
 const NOTIFICACAO_TIPO_VARIANT: Record<string, string> = {
@@ -40,7 +135,7 @@ const NOTIFICACAO_TIPO_VARIANT: Record<string, string> = {
   sucesso: 'bg-emerald-50 text-emerald-700 border-emerald-200',
   alerta: 'bg-amber-50 text-amber-700 border-amber-200',
   erro: 'bg-red-50 text-red-700 border-red-200',
-  manual: 'bg-purple-50 text-purple-700 border-purple-200',
+  manual: 'bg-emerald-50 text-emerald-700 border-emerald-200',
 };
 
 const sectionLabels: Record<Section, string> = {
@@ -52,11 +147,25 @@ const sectionLabels: Record<Section, string> = {
 };
 
 const operacaoFormInitial = {
-  nome: '', descricao: '', horario_previsto: '08:00',
+  nome: '',
+  descricao: '',
+  horario_previsto: '08:00',
   data_inicio: new Date().toISOString().slice(0, 10),
   data_fim: new Date().toISOString().slice(0, 10),
-  vagas_por_dia: 1, horas_por_dia: 8, tempo_solicitacao: 'imediato',
+  vagas_por_dia: 1,
+  horas_por_dia: 8,
+  tempo_solicitacao: 'imediato',
 };
+
+const manualFormInitial = (): ManualFormState => ({
+  usuario_id: '',
+  operacao_id: '',
+  quantidade_horas: '',
+  motivo: '',
+});
+
+const BASE_IROS = '/admin/iros/guarda-municipal';
+const LIMITE_IRO_MES = 72;
 
 const fmtDateBR = (d: string | null | undefined): string => {
   if (!d) return '';
@@ -67,31 +176,32 @@ const fmtDateBR = (d: string | null | undefined): string => {
 
 const todayStr = () => new Date().toISOString().slice(0, 10);
 
-const BASE_IROS = '/admin/iros/guarda-municipal';
+const formatCurrency = (value: number) => `R$ ${value.toFixed(2).replace('.', ',')}`;
+
+const monthLabel = (key: string) => {
+  const [year, month] = key.split('-');
+  const label = new Date(Number(year), Number(month) - 1, 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+  return label.charAt(0).toUpperCase() + label.slice(1);
+};
 
 const GuardaMunicipalIros = () => {
+  const { confirm, confirmDialog } = useConfirmDialog();
   const { setorId, profile, user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+
   const [loading, setLoading] = useState(true);
   const [section, setSection] = useState<Section>('operacoes');
-  const podeVerTudo = profile?.papel === 'gestor' || profile?.papel === 'super_admin' || profile?.papel === 'admin_setor' || (profile?.papel === 'tecnico' && profile?.modulos?.includes('iros'));
-  const canManageOperacoes = podeVerTudo;
-
-  const subPath = location.pathname.replace(BASE_IROS, '').replace(/\/+$/, '');
-  const isNovaOperacao = subPath === '/nova-operacao';
-  const isEditandoOperacao = subPath.endsWith('/editar');
-  const editOperacaoId = isEditandoOperacao ? subPath.split('/').filter(Boolean).at(-2) : null;
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('todas');
 
   const [operacoes, setOperacoes] = useState<IROOperacao[]>([]);
   const [candidaturas, setCandidaturas] = useState<IROCandidatura[]>([]);
   const [bancoHoras, setBancoHoras] = useState<IROBancoHoras[]>([]);
   const [notificacoes, setNotificacoes] = useState<IRONotificacao[]>([]);
   const [usuarios, setUsuarios] = useState<{ user_id: string; nome: string; graduacao_id?: string | null }[]>([]);
+  const [guardasAtivos, setGuardasAtivos] = useState<GuardaOption[]>([]);
   const [valoresGraduacao, setValoresGraduacao] = useState<{ graduacao_id: string; valor_hora: number }[]>([]);
-
-  const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('todas');
 
   const [selectedOperacao, setSelectedOperacao] = useState<IROOperacao | null>(null);
   const [operacaoCandidaturas, setOperacaoCandidaturas] = useState<IROCandidatura[]>([]);
@@ -104,20 +214,40 @@ const GuardaMunicipalIros = () => {
   const [operacaoToDelete, setOperacaoToDelete] = useState<IROOperacao | null>(null);
   const [deleteConfirmChecked, setDeleteConfirmChecked] = useState(false);
 
-  const [candidaturaData, setCandidaturaData] = useState({ operacao_id: '', data_operacao: new Date().toISOString().slice(0, 10) });
+  const [candidaturaData, setCandidaturaData] = useState({ operacao_id: '', data_operacao: todayStr() });
+
+  const [manualDialogOpen, setManualDialogOpen] = useState(false);
+  const [manualSaving, setManualSaving] = useState(false);
+  const [manualForm, setManualForm] = useState<ManualFormState>(manualFormInitial);
+  const [guardaComboboxOpen, setGuardaComboboxOpen] = useState(false);
+  const [operacaoComboboxOpen, setOperacaoComboboxOpen] = useState(false);
 
   const [relatorioTipo, setRelatorioTipo] = useState<'operacao' | 'mensal'>('operacao');
   const [relatorioOperacaoId, setRelatorioOperacaoId] = useState('');
   const [relatorioMes, setRelatorioMes] = useState(new Date().toISOString().slice(0, 7));
   const [relatorioFormato, setRelatorioFormato] = useState<'pdf' | 'xlsx'>('pdf');
 
-  const loadData = async () => {
+  const podeVerTudo =
+    profile?.papel === 'gestor' ||
+    profile?.papel === 'super_admin' ||
+    profile?.papel === 'admin_setor' ||
+    (profile?.papel === 'tecnico' && profile?.modulos?.includes('iros'));
+  const canManageOperacoes = podeVerTudo;
+  const canLaunchManual = podeVerTudo;
+
+  const subPath = location.pathname.replace(BASE_IROS, '').replace(/\/+$/, '');
+  const isNovaOperacao = subPath === '/nova-operacao';
+  const isEditandoOperacao = subPath.endsWith('/editar');
+  const editOperacaoId = isEditandoOperacao ? subPath.split('/').filter(Boolean).at(-2) : null;
+
+  const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const baseFilter = setorId ? (q: any) => q.eq('setor_id', setorId) : (q: any) => q;
+      const applySetorFilter = <T extends { eq: (column: string, value: string) => T }>(query: T): T =>
+        setorId ? query.eq('setor_id', setorId) : query;
 
-      const [opRes, candRes, bhRes, notifRes, userRes, valoresRes] = await Promise.all([
-        baseFilter(supabase.from('iro_operacoes').select('*').order('data_inicio', { ascending: false })),
+      const [opRes, candRes, bhRes, notifRes, userRes, valoresRes, guardasRes] = await Promise.all([
+        applySetorFilter(supabase.from('iro_operacoes').select('*').order('data_inicio', { ascending: false })),
         podeVerTudo
           ? supabase.from('iro_candidaturas').select('*, iro_operacoes!inner(nome)').order('created_at', { ascending: false })
           : supabase.from('iro_candidaturas').select('*, iro_operacoes!inner(nome)').eq('usuario_id', user!.user_id).order('created_at', { ascending: false }),
@@ -129,175 +259,316 @@ const GuardaMunicipalIros = () => {
           : supabase.from('iro_notificacoes').select('*').eq('usuario_id', user!.user_id).order('created_at', { ascending: false }),
         supabase.from('perfis_usuarios').select('user_id, nome, sobrenome, graduacao_id').eq('ativo', true),
         supabase.from('iro_valores_graduacao').select('graduacao_id, valor_hora').eq('ativo', true),
+        supabase
+          .from('guardas_usuarios')
+          .select('usuario_id, guarda_id, guardas_municipais!inner(id, nome, matricula, cpf, graduacao_id, ativo, guarda_municipal_graduacoes(nome))'),
       ]);
+
+      const valores = ((valoresRes.data || []) as ValorGraduacaoRow[]).map((item) => ({
+        graduacao_id: item.graduacao_id,
+        valor_hora: Number(item.valor_hora) || 0,
+      }));
+      const valorByGraduacao = new Map(valores.map((item) => [item.graduacao_id, item.valor_hora]));
 
       const operacoesData = (opRes.data || []) as IROOperacao[];
       const hoje = todayStr();
-      const expired = operacoesData.filter((o) => o.ativo && o.data_fim < hoje);
-      for (const op of operacoesData) {
-        if (op.ativo && op.data_fim < hoje) op.ativo = false;
+      const expired = operacoesData.filter((item) => item.ativo && item.data_fim < hoje);
+      for (const item of operacoesData) {
+        if (item.ativo && item.data_fim < hoje) item.ativo = false;
       }
       if (expired.length > 0) {
-        void supabase.from('iro_operacoes').update({ ativo: false }).in('id', expired.map((o) => o.id));
+        void supabase.from('iro_operacoes').update({ ativo: false }).in('id', expired.map((item) => item.id));
       }
+
+      const guardas = ((guardasRes.data || []) as GuardaJoinRow[])
+        .map((row) => {
+          const guarda = Array.isArray(row.guardas_municipais) ? row.guardas_municipais[0] : row.guardas_municipais;
+          if (!guarda?.ativo || !row.usuario_id) return null;
+          const graduacaoNome =
+            Array.isArray(guarda.guarda_municipal_graduacoes)
+              ? guarda.guarda_municipal_graduacoes[0]?.nome || null
+              : guarda.guarda_municipal_graduacoes?.nome || null;
+
+          return {
+            usuario_id: row.usuario_id,
+            guarda_id: row.guarda_id,
+            nome: guarda.nome,
+            matricula: guarda.matricula,
+            cpf: guarda.cpf || null,
+            graduacao_id: guarda.graduacao_id || null,
+            graduacao_nome: graduacaoNome,
+            valor_hora: valorByGraduacao.get(guarda.graduacao_id) || 0,
+          } satisfies GuardaOption;
+        })
+        .filter(Boolean) as GuardaOption[];
+
       setOperacoes(operacoesData);
-      if (selectedOperacao) {
-        const updated = operacoesData.find((o) => o.id === selectedOperacao.id);
-        if (updated) setSelectedOperacao(updated);
-      }
-      setCandidaturas((candRes.data || []).map((c: any) => ({ ...c, operacao_nome: c.iro_operacoes?.nome || '' })));
+      setCandidaturas(((candRes.data || []) as IROCandidaturaRow[]).map((item) => ({ ...item, operacao_nome: item.iro_operacoes?.nome || '' })));
       setBancoHoras((bhRes.data || []) as IROBancoHoras[]);
       setNotificacoes((notifRes.data || []) as IRONotificacao[]);
-      setUsuarios((userRes.data || []).map((u: any) => ({
-        user_id: u.user_id,
-        nome: [u.nome, u.sobrenome].filter(Boolean).join(' ') || 'Sem nome',
-        graduacao_id: u.graduacao_id,
-      })));
-      setValoresGraduacao((valoresRes.data || []).map((v: any) => ({
-        graduacao_id: v.graduacao_id,
-        valor_hora: Number(v.valor_hora) || 0,
-      })));
-    } catch {
-      // silent
+      setUsuarios(
+        ((userRes.data || []) as PerfilUsuarioRow[]).map((item) => ({
+          user_id: item.user_id,
+          nome: [item.nome, item.sobrenome].filter(Boolean).join(' ') || 'Sem nome',
+          graduacao_id: item.graduacao_id,
+        })),
+      );
+      setGuardasAtivos(guardas.sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')));
+      setValoresGraduacao(valores);
+
+      if (selectedOperacao) {
+        const updated = operacoesData.find((item) => item.id === selectedOperacao.id);
+        if (updated) setSelectedOperacao(updated);
+      }
     } finally {
       setLoading(false);
     }
-  };
+  }, [podeVerTudo, selectedOperacao, setorId, user]);
 
-  useEffect(() => { void loadData(); }, [setorId]);
+  useEffect(() => {
+    void loadData();
+  }, [loadData]);
 
   useEffect(() => {
     if (!canManageOperacoes) return;
+
     if (isNovaOperacao) {
       setEditingOperacao(null);
-      setOperacaoForm({ ...operacaoFormInitial, data_inicio: new Date().toISOString().slice(0, 10), data_fim: new Date().toISOString().slice(0, 10) });
+      setOperacaoForm({
+        ...operacaoFormInitial,
+        data_inicio: todayStr(),
+        data_fim: todayStr(),
+      });
       setOperacaoDialogOpen(true);
-    } else if (isEditandoOperacao && editOperacaoId) {
-      const op = operacoes.find((o) => o.id === editOperacaoId);
-      if (op) {
-        if (operacoesComConfirmados.has(op.id)) {
-          toast({ title: 'Operação bloqueada', description: 'Já existem candidaturas confirmadas. Não é possível editar.', variant: 'destructive' });
-          navigate(BASE_IROS);
-          return;
-        }
-        setEditingOperacao(op);
-        setOperacaoForm({
-          nome: op.nome, descricao: op.descricao || '',
-          horario_previsto: op.horario_previsto.slice(0, 5),
-          data_inicio: op.data_inicio, data_fim: op.data_fim,
-          vagas_por_dia: op.vagas_por_dia, horas_por_dia: op.horas_por_dia,
-          tempo_solicitacao: op.tempo_solicitacao,
-        });
-        setOperacaoDialogOpen(true);
+      return;
+    }
+
+    if (isEditandoOperacao && editOperacaoId && operacoes.length > 0) {
+      const item = operacoes.find((entry) => entry.id === editOperacaoId);
+      if (!item) {
+        toast({ title: 'Operação não encontrada', variant: 'destructive' });
+        navigate(BASE_IROS);
+        return;
+      }
+
+      setEditingOperacao(item);
+      setOperacaoForm({
+        nome: item.nome,
+        descricao: item.descricao || '',
+        horario_previsto: item.horario_previsto.slice(0, 5),
+        data_inicio: item.data_inicio,
+        data_fim: item.data_fim,
+        vagas_por_dia: item.vagas_por_dia,
+        horas_por_dia: item.horas_por_dia,
+        tempo_solicitacao: item.tempo_solicitacao,
+      });
+      setOperacaoDialogOpen(true);
+    }
+  }, [canManageOperacoes, editOperacaoId, isEditandoOperacao, isNovaOperacao, navigate, operacoes]);
+
+  const valorHoraPorUsuario = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const item of guardasAtivos) {
+      map.set(item.usuario_id, item.valor_hora);
+    }
+    for (const item of usuarios) {
+      if (!map.has(item.user_id) && item.graduacao_id) {
+        const valor = valoresGraduacao.find((entry) => entry.graduacao_id === item.graduacao_id)?.valor_hora || 0;
+        map.set(item.user_id, valor);
       }
     }
-  }, [location.pathname, operacoes, canManageOperacoes]);
+    return map;
+  }, [guardasAtivos, usuarios, valoresGraduacao]);
+
+  const usuarioMap = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const item of usuarios) map.set(item.user_id, item.nome);
+    for (const item of guardasAtivos) map.set(item.usuario_id, item.nome);
+    return map;
+  }, [guardasAtivos, usuarios]);
+
+  const minhasCandidaturas = useMemo(
+    () => candidaturas.filter((item) => item.usuario_id === user?.user_id),
+    [candidaturas, user?.user_id],
+  );
+
+  const meuBancoHoras = useMemo(
+    () => bancoHoras.find((item) => item.usuario_id === user?.user_id) || null,
+    [bancoHoras, user?.user_id],
+  );
+
+  const minhasNotificacoes = useMemo(
+    () => notificacoes.filter((item) => item.usuario_id === user?.user_id),
+    [notificacoes, user?.user_id],
+  );
+
+  const notifNaoLidas = useMemo(
+    () => minhasNotificacoes.filter((item) => !item.lida).length,
+    [minhasNotificacoes],
+  );
+
+  const horasMes = useMemo(() => {
+    const alvo = podeVerTudo ? candidaturas : minhasCandidaturas;
+    const mesAtual = new Date().toISOString().slice(0, 7);
+    return alvo
+      .filter((item) => item.status !== 'cancelado' && item.data_operacao.slice(0, 7) === mesAtual)
+      .reduce((acc, item) => acc + Number(item.horas_trabalhadas || 0), 0);
+  }, [candidaturas, minhasCandidaturas, podeVerTudo]);
+
+  const stats = useMemo(() => {
+    const baseCandidaturas = podeVerTudo ? candidaturas : minhasCandidaturas;
+    const mesAtual = new Date().toISOString().slice(0, 7);
+    return {
+      operacoesAtivas: operacoes.filter((item) => item.ativo && item.data_fim >= todayStr()).length,
+      candidaturasMes: baseCandidaturas.filter((item) => item.data_operacao.slice(0, 7) === mesAtual && item.status !== 'cancelado').length,
+      horasMes,
+      totalBancoHoras: podeVerTudo
+        ? bancoHoras.reduce((acc, item) => acc + Number(item.horas_excedentes || 0), 0)
+        : Number(meuBancoHoras?.horas_excedentes || 0),
+    };
+  }, [bancoHoras, candidaturas, horasMes, minhasCandidaturas, meuBancoHoras, operacoes, podeVerTudo]);
 
   const operacoesComConfirmados = useMemo(() => {
     const set = new Set<string>();
-    for (const c of candidaturas) {
-      if (c.status === 'confirmado' || c.status === 'realizado') {
-        set.add(c.operacao_id);
-      }
+    for (const item of candidaturas) {
+      if (['confirmado', 'realizado'].includes(item.status)) set.add(item.operacao_id);
     }
     return set;
   }, [candidaturas]);
 
-  const usuarioMap = useMemo(() => {
-    const m = new Map<string, string>();
-    for (const u of usuarios) m.set(u.user_id, u.nome);
-    return m;
-  }, [usuarios]);
-
-  const valorHoraPorUsuario = useMemo(() => {
-    const gradValMap = new Map<string, number>();
-    for (const v of valoresGraduacao) gradValMap.set(v.graduacao_id, v.valor_hora);
-    const m = new Map<string, number>();
-    for (const u of usuarios) {
-      if (u.graduacao_id && gradValMap.has(u.graduacao_id)) {
-        m.set(u.user_id, gradValMap.get(u.graduacao_id)!);
-      }
-    }
-    return m;
-  }, [usuarios, valoresGraduacao]);
-
-  const minhasCandidaturas = useMemo(() => candidaturas.filter((c) => c.usuario_id === user?.user_id), [candidaturas, user?.user_id]);
-  const minhasNotificacoes = useMemo(() => notificacoes.filter((n) => n.usuario_id === user?.user_id), [notificacoes, user?.user_id]);
-  const notifNaoLidas = useMemo(() => minhasNotificacoes.filter((n) => !n.lida).length, [minhasNotificacoes]);
-  const meuBancoHoras = useMemo(() => bancoHoras.find((b) => b.usuario_id === user?.user_id), [bancoHoras, user?.user_id]);
-
-  const horasMes = useMemo(() => {
-    const now = new Date();
-    let total = 0;
-    for (const c of candidaturas) {
-      if (c.usuario_id === user?.user_id && ['confirmado', 'realizado'].includes(c.status)) {
-        const d = new Date(c.data_operacao);
-        if (d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()) total += c.horas_trabalhadas;
-      }
-    }
-    return total;
-  }, [candidaturas, user?.user_id]);
-
-  const stats = useMemo(() => ({
-    operacoesAtivas: operacoes.filter((o) => o.ativo).length,
-    candidaturasMes: candidaturas.filter((c) => {
-      const d = new Date(c.data_operacao);
-      const now = new Date();
-      return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-    }).length,
-    totalBancoHoras: bancoHoras.reduce((a, b) => a + b.horas_excedentes, 0),
-    notifNaoLidas,
-    horasMes,
-  }), [operacoes, candidaturas, bancoHoras, notifNaoLidas, horasMes]);
-
   const filteredOperacoes = useMemo(() => {
     const term = search.trim().toLowerCase();
-    return operacoes.filter((o) => {
-      if (term && !o.nome.toLowerCase().includes(term) && !(o.descricao || '').toLowerCase().includes(term)) return false;
-      if (statusFilter === 'ativas' && !o.ativo) return false;
-      if (statusFilter === 'inativas' && o.ativo) return false;
+    return operacoes.filter((item) => {
+      if (term && !`${item.nome} ${item.descricao || ''}`.toLowerCase().includes(term)) return false;
+      if (statusFilter === 'ativas' && !item.ativo) return false;
+      if (statusFilter === 'inativas' && item.ativo) return false;
       return true;
     });
   }, [operacoes, search, statusFilter]);
 
   const filteredCandidaturas = useMemo(() => {
     const term = search.trim().toLowerCase();
-    const list = podeVerTudo ? candidaturas : minhasCandidaturas;
-    return list.filter((c) => {
-      if (term && !`${c.operacao_nome} ${usuarioMap.get(c.usuario_id) || ''}`.toLowerCase().includes(term)) return false;
-      if (statusFilter !== 'todas' && c.status !== statusFilter) return false;
+    const base = podeVerTudo ? candidaturas : minhasCandidaturas;
+    return base.filter((item) => {
+      if (term && !`${item.operacao_nome} ${usuarioMap.get(item.usuario_id) || ''}`.toLowerCase().includes(term)) return false;
+      if (statusFilter === 'manuais' && !item.adicionado_manual) return false;
+      if (statusFilter === 'automaticas' && item.adicionado_manual) return false;
+      if (!['todas', 'manuais', 'automaticas'].includes(statusFilter) && item.status !== statusFilter) return false;
       return true;
     });
-  }, [candidaturas, minhasCandidaturas, search, statusFilter, podeVerTudo, usuarioMap]);
+  }, [candidaturas, minhasCandidaturas, podeVerTudo, search, statusFilter, usuarioMap]);
 
   const filteredBancoHoras = useMemo(() => {
-    const list = podeVerTudo ? bancoHoras : (meuBancoHoras ? [meuBancoHoras] : []);
+    const base = podeVerTudo ? bancoHoras : (meuBancoHoras ? [meuBancoHoras] : []);
     const term = search.trim().toLowerCase();
-    return list.filter((b) => {
-      if (term && !(usuarioMap.get(b.usuario_id) || '').toLowerCase().includes(term)) return false;
+    return base.filter((item) => {
+      if (term && !(usuarioMap.get(item.usuario_id) || '').toLowerCase().includes(term)) return false;
       return true;
     });
-  }, [bancoHoras, meuBancoHoras, search, podeVerTudo, usuarioMap]);
+  }, [bancoHoras, meuBancoHoras, podeVerTudo, search, usuarioMap]);
 
   const filteredNotificacoes = useMemo(() => {
     const term = search.trim().toLowerCase();
-    return minhasNotificacoes.filter((n) => {
-      if (term && !n.titulo.toLowerCase().includes(term) && !n.mensagem.toLowerCase().includes(term)) return false;
-      if (statusFilter === 'lidas' && !n.lida) return false;
-      if (statusFilter === 'nao-lidas' && n.lida) return false;
+    return minhasNotificacoes.filter((item) => {
+      if (term && !item.titulo.toLowerCase().includes(term) && !item.mensagem.toLowerCase().includes(term)) return false;
+      if (statusFilter === 'lidas' && !item.lida) return false;
+      if (statusFilter === 'nao-lidas' && item.lida) return false;
       return true;
     });
   }, [minhasNotificacoes, search, statusFilter]);
 
-  const openOperacaoDetails = async (item: IROOperacao) => {
-    setSelectedOperacao(item);
-    const { data } = await supabase
-      .from('iro_candidaturas')
-      .select('*, iro_operacoes!inner(nome)')
-      .eq('operacao_id', item.id)
-      .order('created_at', { ascending: false });
-    setOperacaoCandidaturas((data || []).map((c: any) => ({ ...c, operacao_nome: c.iro_operacoes?.nome || '' })));
-  };
+  const manualFormDirty = useMemo(() => {
+    const initial = manualFormInitial();
+    return (
+      manualForm.usuario_id !== initial.usuario_id ||
+      manualForm.operacao_id !== initial.operacao_id ||
+      manualForm.quantidade_horas !== initial.quantidade_horas ||
+      manualForm.motivo.trim() !== initial.motivo
+    );
+  }, [manualForm]);
+
+  const selectedManualGuarda = useMemo(
+    () => guardasAtivos.find((item) => item.usuario_id === manualForm.usuario_id) || null,
+    [guardasAtivos, manualForm.usuario_id],
+  );
+
+  const selectedManualOperacao = useMemo(
+    () => operacoes.find((item) => item.id === manualForm.operacao_id) || null,
+    [manualForm.operacao_id, operacoes],
+  );
+
+  const manualPreview = useMemo<ManualPreview>(() => {
+    const errors: string[] = [];
+    const guarda = selectedManualGuarda;
+    const operacao = selectedManualOperacao;
+
+    if (!guarda) errors.push('Selecione um guarda ativo.');
+    if (!operacao) errors.push('Selecione uma operação.');
+
+    const horas = Number(manualForm.quantidade_horas);
+    if (!manualForm.quantidade_horas || isNaN(horas) || horas <= 0) {
+      errors.push('Informe uma quantidade de horas válida.');
+    }
+    if (horas > LIMITE_IRO_MES) {
+      errors.push(`A quantidade de horas não pode ultrapassar o limite de ${LIMITE_IRO_MES}h mensais.`);
+    }
+
+    if (manualForm.motivo.trim().length > 0 && manualForm.motivo.trim().length < 10) {
+      errors.push('O motivo precisa ter no mínimo 10 caracteres.');
+    }
+
+    const monthKey = operacao?.data_inicio?.slice(0, 7) || '';
+    const existingHours = monthKey
+      ? candidaturas
+          .filter(
+            (item) =>
+              item.usuario_id === manualForm.usuario_id &&
+              item.data_operacao?.slice(0, 7) === monthKey &&
+              ['confirmado', 'realizado'].includes(item.status),
+          )
+          .reduce((acc, item) => acc + Number(item.horas_trabalhadas || 0), 0)
+      : 0;
+
+    const totalHours = existingHours + horas;
+    const exceedsLimit = totalHours > LIMITE_IRO_MES;
+    const nearLimit = totalHours >= LIMITE_IRO_MES * 0.8;
+    const availableHours = Math.max(LIMITE_IRO_MES - existingHours, 0);
+
+    if (operacao && candidaturas.some(
+      (item) =>
+        item.usuario_id === manualForm.usuario_id &&
+        item.data_operacao === operacao.data_inicio &&
+        ['confirmado', 'realizado'].includes(item.status),
+    )) {
+      errors.push(`Já existe IRO confirmada/realizada na data de início da operação (${fmtDateBR(operacao.data_inicio)}).`);
+    }
+
+    if (exceedsLimit) {
+      errors.push(`A quantidade ultrapassa o limite de ${LIMITE_IRO_MES}h no mês. Disponível: ${(LIMITE_IRO_MES - existingHours).toFixed(2).replace('.', ',')}h.`);
+    }
+
+    const estimatedValue = horas * Number(guarda?.valor_hora || 0);
+
+    return {
+      valid: errors.length === 0 && !!guarda && !!operacao && horas > 0,
+      errors,
+      guarda,
+      operacao,
+      hoursToAdd: horas,
+      estimatedValue,
+      monthSummaries: [{
+        monthKey,
+        monthLabel: monthKey ? monthLabel(monthKey) : '',
+        existingHours,
+        newHours: horas,
+        totalHours,
+        availableHours,
+        exceedsLimit,
+        nearLimit,
+        maxAllowedToLaunch: availableHours,
+      }],
+    };
+  }, [candidaturas, manualForm, selectedManualGuarda, selectedManualOperacao]);
 
   const resetOperacaoDialog = () => {
     setEditingOperacao(null);
@@ -306,21 +577,63 @@ const GuardaMunicipalIros = () => {
     navigate(BASE_IROS);
   };
 
+  const resetManualDialog = () => {
+    setManualForm(manualFormInitial());
+    setManualDialogOpen(false);
+    setGuardaComboboxOpen(false);
+    setOperacaoComboboxOpen(false);
+  };
+
+  const handleManualDialogChange = async (open: boolean) => {
+    if (!open && manualFormDirty) {
+      const shouldClose = await confirm({
+        title: 'Descartar lançamento',
+        description: 'Existem dados preenchidos. Deseja descartar o lançamento manual?',
+      });
+      if (!shouldClose) return;
+    }
+
+    if (!open) {
+      resetManualDialog();
+      return;
+    }
+
+    setManualDialogOpen(true);
+  };
+
+  const openOperacaoDetails = async (item: IROOperacao) => {
+    setSelectedOperacao(item);
+    const { data } = await supabase
+      .from('iro_candidaturas')
+      .select('*, iro_operacoes!inner(nome)')
+      .eq('operacao_id', item.id)
+      .order('created_at', { ascending: false });
+    setOperacaoCandidaturas(((data || []) as IROCandidaturaRow[]).map((entry) => ({ ...entry, operacao_nome: entry.iro_operacoes?.nome || '' })));
+  };
+
   const openCreateOperacao = () => {
     navigate(`${BASE_IROS}/nova-operacao`);
   };
 
   const openEditOperacao = (item: IROOperacao) => {
     if (operacoesComConfirmados.has(item.id)) {
-      toast({ title: 'Operação bloqueada', description: 'Já existem candidaturas confirmadas. Não é possível editar.', variant: 'destructive' });
+      toast({
+        title: 'Operação bloqueada',
+        description: 'Já existem candidaturas confirmadas. Não é possível editar.',
+        variant: 'destructive',
+      });
       return;
     }
+
     setEditingOperacao(item);
     setOperacaoForm({
-      nome: item.nome, descricao: item.descricao || '',
+      nome: item.nome,
+      descricao: item.descricao || '',
       horario_previsto: item.horario_previsto.slice(0, 5),
-      data_inicio: item.data_inicio, data_fim: item.data_fim,
-      vagas_por_dia: item.vagas_por_dia, horas_por_dia: item.horas_por_dia,
+      data_inicio: item.data_inicio,
+      data_fim: item.data_fim,
+      vagas_por_dia: item.vagas_por_dia,
+      horas_por_dia: item.horas_por_dia,
       tempo_solicitacao: item.tempo_solicitacao,
     });
     setOperacaoDialogOpen(true);
@@ -331,6 +644,7 @@ const GuardaMunicipalIros = () => {
       toast({ title: 'Campos obrigatórios', description: 'Preencha nome e horário previsto.', variant: 'destructive' });
       return;
     }
+
     const hoje = todayStr();
     if (operacaoForm.data_inicio < hoje) {
       toast({ title: 'Data inválida', description: 'A data de início não pode ser no passado.', variant: 'destructive' });
@@ -341,27 +655,69 @@ const GuardaMunicipalIros = () => {
       return;
     }
     if (operacaoForm.data_fim < operacaoForm.data_inicio) {
-      toast({ title: 'Data inválida', description: 'A data de fim deve ser posterior ou igual à data de início.', variant: 'destructive' });
+      toast({
+        title: 'Data inválida',
+        description: 'A data de fim deve ser posterior ou igual à data de início.',
+        variant: 'destructive',
+      });
       return;
     }
-    const payload = { setor_id: setorId, nome: operacaoForm.nome, descricao: operacaoForm.descricao || null, horario_previsto: operacaoForm.horario_previsto, data_inicio: operacaoForm.data_inicio, data_fim: operacaoForm.data_fim, vagas_por_dia: operacaoForm.vagas_por_dia, horas_por_dia: operacaoForm.horas_por_dia, tempo_solicitacao: operacaoForm.tempo_solicitacao };
+
+    const payload = {
+      setor_id: setorId,
+      nome: operacaoForm.nome,
+      descricao: operacaoForm.descricao || null,
+      horario_previsto: operacaoForm.horario_previsto,
+      data_inicio: operacaoForm.data_inicio,
+      data_fim: operacaoForm.data_fim,
+      vagas_por_dia: operacaoForm.vagas_por_dia,
+      horas_por_dia: operacaoForm.horas_por_dia,
+      tempo_solicitacao: operacaoForm.tempo_solicitacao,
+    };
+
     if (editingOperacao) {
       const { data: updated, error } = await supabase.from('iro_operacoes').update(payload).eq('id', editingOperacao.id).select();
-      if (error) { toast({ title: 'Erro', description: error.message, variant: 'destructive' }); return; }
-      if (!updated || updated.length === 0) { toast({ title: 'Erro', description: 'Nenhuma linha foi alterada. Verifique suas permissões.', variant: 'destructive' }); return; }
+      if (error) {
+        toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+        return;
+      }
+      if (!updated || updated.length === 0) {
+        toast({
+          title: 'Erro',
+          description: 'Nenhuma linha foi alterada. Verifique suas permissões.',
+          variant: 'destructive',
+        });
+        return;
+      }
       toast({ title: 'Operação atualizada' });
     } else {
       const { error } = await supabase.from('iro_operacoes').insert({ ...payload, created_by: profile?.perfil_id || null });
-      if (error) { toast({ title: 'Erro', description: error.message, variant: 'destructive' }); return; }
+      if (error) {
+        toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+        return;
+      }
       toast({ title: 'Operação criada' });
     }
+
     resetOperacaoDialog();
     await loadData();
   };
 
   const handleToggleAtiva = async (item: IROOperacao) => {
+    const confirmed = await confirm({
+      title: item.ativo ? 'Desativar operação' : 'Ativar operação',
+      description: item.ativo
+        ? `Confirma a desativação da operação "${item.nome}"?`
+        : `Confirma a ativação da operação "${item.nome}"?`,
+    });
+    if (!confirmed) return;
+
     const { error } = await supabase.from('iro_operacoes').update({ ativo: !item.ativo }).eq('id', item.id);
-    if (error) { toast({ title: 'Erro', description: error.message, variant: 'destructive' }); return; }
+    if (error) {
+      toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+      return;
+    }
+
     toast({ title: item.ativo ? 'Operação desativada' : 'Operação ativada' });
     void loadData();
   };
@@ -374,8 +730,18 @@ const GuardaMunicipalIros = () => {
 
   const handleDeleteOperacao = async () => {
     if (!operacaoToDelete) return;
+    const confirmed = await confirm({
+      title: 'Excluir operação definitivamente',
+      description: `Confirma a exclusão permanente da operação "${operacaoToDelete.nome}"?`,
+    });
+    if (!confirmed) return;
+
     const { error } = await supabase.from('iro_operacoes').delete().eq('id', operacaoToDelete.id);
-    if (error) { toast({ title: 'Erro', description: error.message, variant: 'destructive' }); return; }
+    if (error) {
+      toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+      return;
+    }
+
     toast({ title: 'Operação excluída permanentemente' });
     setDeleteConfirmOpen(false);
     setOperacaoToDelete(null);
@@ -385,30 +751,55 @@ const GuardaMunicipalIros = () => {
 
   const handleCandidatar = async () => {
     if (!candidaturaData.operacao_id || !candidaturaData.data_operacao) {
-      toast({ title: 'Selecione operação e data', variant: 'destructive' }); return;
+      toast({ title: 'Selecione operação e data', variant: 'destructive' });
+      return;
     }
-    const op = operacoes.find((o) => o.id === candidaturaData.operacao_id);
-    if (op && op.data_fim < todayStr()) {
+
+    const operacao = operacoes.find((item) => item.id === candidaturaData.operacao_id);
+    if (operacao && operacao.data_fim < todayStr()) {
       toast({ title: 'Prazo encerrado', description: 'O período desta operação já se encerrou.', variant: 'destructive' });
       return;
     }
-    const { data, error } = await supabase.rpc('candidatar_se_iro', { p_operacao_id: candidaturaData.operacao_id, p_usuario_id: user?.user_id, p_data: candidaturaData.data_operacao });
-    if (error) { toast({ title: 'Erro', description: error.message, variant: 'destructive' }); return; }
-    const r = data as { sucesso: boolean; mensagem: string; total_mes?: number };
-    if (r.sucesso) {
-      toast({ title: 'Candidatura realizada!', description: r.total_mes ? `Total no mês: ${r.total_mes}h` : undefined });
+
+    const { data, error } = await supabase.rpc('candidatar_se_iro', {
+      p_operacao_id: candidaturaData.operacao_id,
+      p_usuario_id: user?.user_id,
+      p_data: candidaturaData.data_operacao,
+    });
+    if (error) {
+      toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+      return;
+    }
+
+    const result = data as { sucesso: boolean; mensagem: string; total_mes?: number };
+    if (result.sucesso) {
+      toast({ title: 'Candidatura realizada!', description: result.total_mes ? `Total no mês: ${result.total_mes}h` : undefined });
       setSelectedOperacao(null);
       setOperacaoCandidaturas([]);
     } else {
-      toast({ title: r.mensagem, variant: 'destructive' });
+      toast({ title: result.mensagem, variant: 'destructive' });
     }
-    setCandidaturaData({ operacao_id: '', data_operacao: new Date().toISOString().slice(0, 10) });
+
+    setCandidaturaData({ operacao_id: '', data_operacao: todayStr() });
     void loadData();
   };
 
   const handleCancelarCandidatura = async (item: IROCandidatura) => {
+    if (item.adicionado_manual) {
+      toast({
+        title: 'IRO manual protegida',
+        description: 'Registros manuais não podem ser cancelados por este fluxo.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     const { error } = await supabase.from('iro_candidaturas').update({ status: 'cancelado' }).eq('id', item.id);
-    if (error) { toast({ title: 'Erro', description: error.message, variant: 'destructive' }); return; }
+    if (error) {
+      toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+      return;
+    }
+
     toast({ title: 'Candidatura cancelada' });
     if (selectedOperacao) await openOperacaoDetails(selectedOperacao);
     void loadData();
@@ -416,51 +807,146 @@ const GuardaMunicipalIros = () => {
 
   const handleMarcarLida = async (item: IRONotificacao) => {
     const { error } = await supabase.from('iro_notificacoes').update({ lida: !item.lida }).eq('id', item.id);
-    if (error) { toast({ title: 'Erro', description: error.message, variant: 'destructive' }); return; }
+    if (error) {
+      toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+      return;
+    }
     void loadData();
   };
 
   const handleMarcarTodasLidas = async () => {
-    const ids = minhasNotificacoes.filter((n) => !n.lida).map((n) => n.id);
+    const ids = minhasNotificacoes.filter((item) => !item.lida).map((item) => item.id);
     if (!ids.length) return;
     const { error } = await supabase.from('iro_notificacoes').update({ lida: true }).in('id', ids);
-    if (error) { toast({ title: 'Erro', description: error.message, variant: 'destructive' }); return; }
+    if (error) {
+      toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+      return;
+    }
     toast({ title: `${ids.length} notificação(is) marcada(s) como lida(s)` });
     void loadData();
   };
 
+  const handleSalvarIroManual = async () => {
+    if (!manualPreview.valid) {
+      toast({
+        title: 'Revise o lançamento manual',
+        description: manualPreview.errors[0] || 'Há inconsistências no formulário.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (manualForm.motivo.trim().length < 10) {
+      toast({ title: 'Motivo obrigatório', description: 'Informe uma justificativa com no mínimo 10 caracteres.', variant: 'destructive' });
+      return;
+    }
+
+    setManualSaving(true);
+    try {
+      const { data, error } = await supabase.rpc('lancar_iro_extra', {
+        p_operacao_id: manualForm.operacao_id,
+        p_usuario_id: manualForm.usuario_id,
+        p_quantidade_horas: Number(manualForm.quantidade_horas),
+        p_motivo: manualForm.motivo.trim(),
+      });
+
+      if (error) {
+        toast({ title: 'Erro ao lançar IRO extra', description: error.message, variant: 'destructive' });
+        return;
+      }
+
+      const result = data as {
+        mensagem?: string;
+        horas_adicionadas?: number;
+        valor_total?: number;
+      };
+
+      toast({
+        title: 'IRO extra lançada',
+        description:
+          result.mensagem ||
+          `${result.horas_adicionadas || manualPreview.hoursToAdd}h adicionadas.`,
+      });
+
+      resetManualDialog();
+      await loadData();
+    } finally {
+      setManualSaving(false);
+    }
+  };
+
   const sectionStatusOptions = useMemo(() => {
-    if (section === 'operacoes') return [{ value: 'todas', label: 'Todas' }, { value: 'ativas', label: 'Ativas' }, { value: 'inativas', label: 'Inativas' }];
-    if (section === 'candidaturas') return [{ value: 'todas', label: 'Todos' }, { value: 'confirmado', label: 'Confirmado' }, { value: 'realizado', label: 'Realizado' }, { value: 'cancelado', label: 'Cancelado' }];
-    if (section === 'notificacoes') return [{ value: 'todas', label: 'Todas' }, { value: 'lidas', label: 'Lidas' }, { value: 'nao-lidas', label: 'Não lidas' }];
+    if (section === 'operacoes') {
+      return [
+        { value: 'todas', label: 'Todas' },
+        { value: 'ativas', label: 'Ativas' },
+        { value: 'inativas', label: 'Inativas' },
+      ];
+    }
+
+    if (section === 'candidaturas') {
+      return [
+        { value: 'todas', label: 'Todos' },
+        { value: 'confirmado', label: 'Confirmado' },
+        { value: 'realizado', label: 'Realizado' },
+        { value: 'cancelado', label: 'Cancelado' },
+        { value: 'manuais', label: 'Apenas manuais' },
+        { value: 'automaticas', label: 'Apenas automáticas' },
+      ];
+    }
+
+    if (section === 'notificacoes') {
+      return [
+        { value: 'todas', label: 'Todas' },
+        { value: 'lidas', label: 'Lidas' },
+        { value: 'nao-lidas', label: 'Não lidas' },
+      ];
+    }
+
     if (section === 'relatorios') return [];
+
     return [{ value: 'todas', label: 'Todos' }];
   }, [section]);
 
   const renderOperacaoCard = (item: IROOperacao) => (
     <article key={item.id} className="rounded-[34px] border border-slate-200 bg-white p-5 shadow-sm">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-        <div className="space-y-3 flex-1">
+        <div className="flex-1 space-y-3">
           <div className="flex flex-wrap items-center gap-2">
-            <Badge variant="outline" className={cn('rounded-full px-3 py-1 text-xs font-bold', item.ativo ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-500 border-slate-200')}>
+            <Badge variant="outline" className={cn('rounded-full px-3 py-1 text-xs font-bold', item.ativo ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-slate-200 bg-slate-100 text-slate-500')}>
               {item.ativo ? 'Ativa' : 'Inativa'}
             </Badge>
-            <Badge variant="outline" className="rounded-full px-3 py-1 text-xs font-bold bg-slate-50">
+            <Badge variant="outline" className="rounded-full bg-slate-50 px-3 py-1 text-xs font-bold">
               {item.vagas_por_dia} vaga(s)/dia
             </Badge>
+            {item.data_fim < todayStr() && (
+              <Badge variant="outline" className="rounded-full border-amber-200 bg-amber-50 px-3 py-1 text-xs font-bold text-amber-700">
+                Encerrada
+              </Badge>
+            )}
           </div>
           <div>
             <h2 className="text-lg font-bold text-slate-900">{item.nome}</h2>
-            {item.descricao && <p className="text-sm text-slate-600 mt-1">{item.descricao}</p>}
+            {item.descricao && <p className="mt-1 text-sm text-slate-600">{item.descricao}</p>}
           </div>
           <div className="flex flex-wrap gap-3 text-sm text-slate-500">
-            <span className="flex items-center gap-1"><Calendar className="h-3.5 w-3.5" />{fmtDateBR(item.data_inicio)} - {fmtDateBR(item.data_fim)}</span>
-            <span className="flex items-center gap-1"><Clock className="h-3.5 w-3.5" />{item.horario_previsto.slice(0, 5)}</span>
-            <span className="flex items-center gap-1"><Hourglass className="h-3.5 w-3.5" />{item.horas_por_dia}h/dia</span>
+            <span className="flex items-center gap-1">
+              <Calendar className="h-3.5 w-3.5" />
+              {fmtDateBR(item.data_inicio)} - {fmtDateBR(item.data_fim)}
+            </span>
+            <span className="flex items-center gap-1">
+              <Clock className="h-3.5 w-3.5" />
+              {item.horario_previsto.slice(0, 5)}
+            </span>
+            <span className="flex items-center gap-1">
+              <Hourglass className="h-3.5 w-3.5" />
+              {item.horas_por_dia}h/dia
+            </span>
           </div>
         </div>
-        <div className="flex flex-col items-start gap-3 lg:items-end shrink-0">
-          <div className="text-xs text-slate-500">{TEMPO_SOLICITACAO_LABEL[item.tempo_solicitacao] || item.tempo_solicitacao}</div>
+
+        <div className="shrink-0">
+          <div className="mb-3 text-right text-xs text-slate-500">{TEMPO_SOLICITACAO_LABEL[item.tempo_solicitacao] || item.tempo_solicitacao}</div>
           <div className="flex gap-2">
             {canManageOperacoes && <Switch checked={item.ativo} onCheckedChange={() => void handleToggleAtiva(item)} disabled={item.data_fim < todayStr()} />}
             <Button size="sm" variant="outline" onClick={() => void openOperacaoDetails(item)}>
@@ -468,16 +954,16 @@ const GuardaMunicipalIros = () => {
             </Button>
             {canManageOperacoes && (
               <>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => openEditOperacao(item)}
-                    disabled={operacoesComConfirmados.has(item.id)}
-                    title={operacoesComConfirmados.has(item.id) ? 'Já existem candidaturas confirmadas para esta operação' : 'Editar'}
-                  >
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                <Button size="sm" variant="outline" className="text-red-600 border-red-200 hover:bg-red-50" onClick={() => openDeleteConfirm(item)}>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => openEditOperacao(item)}
+                  disabled={operacoesComConfirmados.has(item.id)}
+                  title={operacoesComConfirmados.has(item.id) ? 'Já existem candidaturas confirmadas para esta operação' : 'Editar'}
+                >
+                  <Pencil className="h-4 w-4" />
+                </Button>
+                <Button size="sm" variant="outline" className="border-red-200 text-red-600 hover:bg-red-50" onClick={() => openDeleteConfirm(item)}>
                   <Trash2 className="h-4 w-4" />
                 </Button>
               </>
@@ -495,18 +981,30 @@ const GuardaMunicipalIros = () => {
           <Badge variant="outline" className={cn('rounded-full px-3 py-1 text-xs font-bold', STATUS_CANDIDATURA_VARIANT[item.status])}>
             {item.status}
           </Badge>
+          {item.adicionado_manual && (
+            <Badge variant="outline" className="rounded-full border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700">
+              Manual
+            </Badge>
+          )}
         </div>
-        <div className="flex-1 min-w-0">
+
+        <div className="min-w-0 flex-1">
           <p className="font-semibold text-slate-900">{item.operacao_nome}</p>
-          <p className="text-sm text-slate-500 mt-0.5">
+          <p className="mt-0.5 text-sm text-slate-500">
             {usuarioMap.get(item.usuario_id) || '—'} &middot; {fmtDateBR(item.data_operacao)} &middot; {item.horas_trabalhadas}h
             {valorHoraPorUsuario.has(item.usuario_id) && (
-              <span className="ml-1.5 font-semibold text-emerald-600">R$ {(item.horas_trabalhadas * (valorHoraPorUsuario.get(item.usuario_id) || 0)).toFixed(2).replace('.', ',')}</span>
+              <span className="ml-1.5 font-semibold text-emerald-600">
+                {formatCurrency(item.horas_trabalhadas * (valorHoraPorUsuario.get(item.usuario_id) || 0))}
+              </span>
             )}
           </p>
+          {item.adicionado_manual && item.motivo_manual && (
+            <p className="mt-1 text-xs leading-5 text-slate-500">Motivo: {item.motivo_manual}</p>
+          )}
         </div>
-        {item.usuario_id === user?.user_id && item.status !== 'cancelado' && (
-          <Button size="sm" variant="outline" className="text-red-600 border-red-200 hover:bg-red-50" onClick={() => void handleCancelarCandidatura(item)}>
+
+        {item.usuario_id === user?.user_id && item.status !== 'cancelado' && !item.adicionado_manual && (
+          <Button size="sm" variant="outline" className="border-red-200 text-red-600 hover:bg-red-50" onClick={() => void handleCancelarCandidatura(item)}>
             Cancelar
           </Button>
         )}
@@ -519,7 +1017,7 @@ const GuardaMunicipalIros = () => {
       <div className="flex items-center justify-between">
         <div>
           <p className="font-semibold text-slate-900">{usuarioMap.get(item.usuario_id) || '—'}</p>
-          <p className="text-sm text-slate-500 mt-0.5">{item.descricao || item.origem || '—'}</p>
+          <p className="mt-0.5 text-sm text-slate-500">{item.descricao || item.origem || '—'}</p>
         </div>
         <div className="text-right">
           <p className="text-2xl font-black text-amber-600">{item.horas_excedentes}h</p>
@@ -535,22 +1033,24 @@ const GuardaMunicipalIros = () => {
         <button onClick={() => void handleMarcarLida(item)} className={cn('shrink-0 rounded-lg border p-2 transition-colors', item.lida ? 'border-slate-200 text-slate-400' : 'border-brand-200 text-brand-600')}>
           {item.lida ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
         </button>
-        <div className="flex-1 min-w-0">
+        <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <p className={cn('font-semibold text-sm', !item.lida && 'text-brand-800')}>{item.titulo}</p>
-            <Badge variant="outline" className={cn('rounded-full text-[10px] font-bold px-2 py-0', NOTIFICACAO_TIPO_VARIANT[item.tipo])}>
+            <p className={cn('text-sm font-semibold', !item.lida && 'text-brand-800')}>{item.titulo}</p>
+            <Badge variant="outline" className={cn('rounded-full px-2 py-0 text-[10px] font-bold', NOTIFICACAO_TIPO_VARIANT[item.tipo])}>
               {NOTIFICACAO_TIPO_LABEL[item.tipo]}
             </Badge>
           </div>
-          <p className="text-sm text-muted-foreground mt-1">{item.mensagem}</p>
-          <p className="text-xs text-slate-400 mt-2">{new Date(item.created_at).toLocaleString('pt-BR')}</p>
+          <p className="mt-1 text-sm text-muted-foreground">{item.mensagem}</p>
+          <p className="mt-2 text-xs text-slate-400">{new Date(item.created_at).toLocaleString('pt-BR')}</p>
         </div>
       </div>
     </article>
   );
 
   const renderSectionItems = () => {
-    if (loading) return <div className="rounded-[22px] border border-slate-200 bg-white p-8 text-center text-sm text-slate-500">Carregando...</div>;
+    if (loading) {
+      return <div className="rounded-[22px] border border-slate-200 bg-white p-8 text-center text-sm text-slate-500">Carregando...</div>;
+    }
 
     if (section === 'operacoes') {
       return filteredOperacoes.length ? filteredOperacoes.map(renderOperacaoCard) : <EmptyBox text="Nenhuma operação encontrada." />;
@@ -564,119 +1064,113 @@ const GuardaMunicipalIros = () => {
     if (section === 'notificacoes') {
       return filteredNotificacoes.length ? filteredNotificacoes.map(renderNotificacaoCard) : <EmptyBox text="Nenhuma notificação." />;
     }
-    if (section === 'relatorios') {
-      const linhasPorOperacao = (operacaoId: string) => {
-        const cands = candidaturas.filter((c) => c.operacao_id === operacaoId && ['confirmado', 'realizado'].includes(c.status));
-        return cands.map((c) => ({
-          guarda: usuarioMap.get(c.usuario_id) || '—',
-          horas: c.horas_trabalhadas,
-          valor: c.horas_trabalhadas * (valorHoraPorUsuario.get(c.usuario_id) || 0),
-        }));
-      };
-      const linhasPorMes = (mes: string) => {
-        const cands = candidaturas.filter((c) => {
-          if (!['confirmado', 'realizado'].includes(c.status)) return false;
-          const d = c.data_operacao.slice(0, 7);
-          return d === mes;
-        });
-        const acc = new Map<string, { guarda: string; horas: number; valor: number }>();
-        for (const c of cands) {
-          const g = usuarioMap.get(c.usuario_id) || '—';
-          const existente = acc.get(c.usuario_id) || { guarda: g, horas: 0, valor: 0 };
-          existente.horas += c.horas_trabalhadas;
-          existente.valor += c.horas_trabalhadas * (valorHoraPorUsuario.get(c.usuario_id) || 0);
-          acc.set(c.usuario_id, existente);
-        }
-        return Array.from(acc.values());
-      };
-      return (
-        <Card className="rounded-[24px] border-slate-200">
-          <CardContent className="space-y-5 px-5 py-6">
-            <div className="flex gap-3">
-              <Button
-                variant={relatorioTipo === 'operacao' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setRelatorioTipo('operacao')}
-              >
-                Por Operação
-              </Button>
-              <Button
-                variant={relatorioTipo === 'mensal' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setRelatorioTipo('mensal')}
-              >
-                Por Mês
-              </Button>
-            </div>
 
-            {relatorioTipo === 'operacao' ? (
-              <div className="space-y-2">
-                <Label>Selecione a operação</Label>
-                <Select value={relatorioOperacaoId} onValueChange={setRelatorioOperacaoId}>
-                  <SelectTrigger><SelectValue placeholder="Escolher operação..." /></SelectTrigger>
-                  <SelectContent>
-                    {operacoes.map((op) => (
-                      <SelectItem key={op.id} value={op.id}>{op.nome}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                <Label>Mês / Ano</Label>
-                <Input type="month" value={relatorioMes} onChange={(e) => setRelatorioMes(e.target.value)} />
-              </div>
-            )}
+    const linhasPorOperacao = (operacaoId: string) => {
+      const itens = candidaturas.filter((item) => item.operacao_id === operacaoId && ['confirmado', 'realizado'].includes(item.status));
+      return itens.map((item) => ({
+        guarda: usuarioMap.get(item.usuario_id) || '—',
+        horas: item.horas_trabalhadas,
+        valor: item.horas_trabalhadas * (valorHoraPorUsuario.get(item.usuario_id) || 0),
+      }));
+    };
 
+    const linhasPorMes = (mes: string) => {
+      const itens = candidaturas.filter((item) => item.status !== 'cancelado' && item.data_operacao.slice(0, 7) === mes);
+      const acc = new Map<string, { guarda: string; horas: number; valor: number }>();
+
+      for (const item of itens) {
+        const guarda = usuarioMap.get(item.usuario_id) || '—';
+        const current = acc.get(item.usuario_id) || { guarda, horas: 0, valor: 0 };
+        current.horas += item.horas_trabalhadas;
+        current.valor += item.horas_trabalhadas * (valorHoraPorUsuario.get(item.usuario_id) || 0);
+        acc.set(item.usuario_id, current);
+      }
+
+      return Array.from(acc.values());
+    };
+
+    return (
+      <Card className="rounded-[24px] border-slate-200">
+        <CardContent className="space-y-5 px-5 py-6">
+          <div className="flex gap-3">
+            <Button variant={relatorioTipo === 'operacao' ? 'default' : 'outline'} size="sm" onClick={() => setRelatorioTipo('operacao')}>
+              Por Operação
+            </Button>
+            <Button variant={relatorioTipo === 'mensal' ? 'default' : 'outline'} size="sm" onClick={() => setRelatorioTipo('mensal')}>
+              Por Mês
+            </Button>
+          </div>
+
+          {relatorioTipo === 'operacao' ? (
             <div className="space-y-2">
-              <Label>Formato</Label>
-              <Select value={relatorioFormato} onValueChange={(v) => setRelatorioFormato(v as 'pdf' | 'xlsx')}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+              <Label>Selecione a operação</Label>
+              <Select value={relatorioOperacaoId} onValueChange={setRelatorioOperacaoId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Escolher operação..." />
+                </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="pdf">PDF</SelectItem>
-                  <SelectItem value="xlsx">Planilha (XLSX)</SelectItem>
+                  {operacoes.map((item) => (
+                    <SelectItem key={item.id} value={item.id}>
+                      {item.nome}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
+          ) : (
+            <div className="space-y-2">
+              <Label>Mês / Ano</Label>
+              <Input type="month" value={relatorioMes} onChange={(event) => setRelatorioMes(event.target.value)} />
+            </div>
+          )}
 
-            <Button
-              className="w-full"
-              disabled={
-                (relatorioTipo === 'operacao' && !relatorioOperacaoId) ||
-                (relatorioTipo === 'mensal' && !relatorioMes)
-              }
-              onClick={() => {
-                if (relatorioTipo === 'operacao') {
-                  const op = operacoes.find((o) => o.id === relatorioOperacaoId);
-                  if (!op) return;
-                  const linhas = linhasPorOperacao(op.id);
-                  if (linhas.length === 0) {
-                    toast({ title: 'Nenhum registro', description: 'Essa operação não possui candidaturas confirmadas/realizadas.', variant: 'destructive' });
-                    return;
-                  }
-                  gerarRelatorioOperacao(op.nome, linhas, relatorioFormato);
-                  toast({ title: 'Relatório gerado!' });
-                } else {
-                  const [ano, mes] = relatorioMes.split('-');
-                  const meses = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
-                  const titulo = `${meses[Number(mes) - 1]} ${ano}`;
-                  const linhas = linhasPorMes(relatorioMes);
-                  if (linhas.length === 0) {
-                    toast({ title: 'Nenhum registro', description: 'Nenhuma candidatura encontrada para este mês.', variant: 'destructive' });
-                    return;
-                  }
-                  gerarRelatorioMensal(titulo, linhas, relatorioFormato);
-                  toast({ title: 'Relatório gerado!' });
+          <div className="space-y-2">
+            <Label>Formato</Label>
+            <Select value={relatorioFormato} onValueChange={(value) => setRelatorioFormato(value as 'pdf' | 'xlsx')}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="pdf">PDF</SelectItem>
+                <SelectItem value="xlsx">Planilha (XLSX)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <Button
+            className="w-full"
+            disabled={(relatorioTipo === 'operacao' && !relatorioOperacaoId) || (relatorioTipo === 'mensal' && !relatorioMes)}
+            onClick={() => {
+              if (relatorioTipo === 'operacao') {
+                const operacao = operacoes.find((item) => item.id === relatorioOperacaoId);
+                if (!operacao) return;
+                const linhas = linhasPorOperacao(operacao.id);
+                if (linhas.length === 0) {
+                  toast({ title: 'Nenhum registro', description: 'Essa operação não possui candidaturas confirmadas/realizadas.', variant: 'destructive' });
+                  return;
                 }
-              }}
-            >
-              Gerar Relatório
-            </Button>
-          </CardContent>
-        </Card>
-      );
-    }
-    return null;
+                gerarRelatorioOperacao(operacao.nome, linhas, relatorioFormato);
+                toast({ title: 'Relatório gerado!' });
+                return;
+              }
+
+              const [ano, mes] = relatorioMes.split('-');
+              const meses = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+              const titulo = `${meses[Number(mes) - 1]} ${ano}`;
+              const linhas = linhasPorMes(relatorioMes);
+              if (linhas.length === 0) {
+                toast({ title: 'Nenhum registro', description: 'Nenhuma candidatura encontrada para este mês.', variant: 'destructive' });
+                return;
+              }
+              gerarRelatorioMensal(titulo, linhas, relatorioFormato);
+              toast({ title: 'Relatório gerado!' });
+            }}
+          >
+            Gerar Relatório
+          </Button>
+        </CardContent>
+      </Card>
+    );
   };
 
   return (
@@ -687,9 +1181,7 @@ const GuardaMunicipalIros = () => {
             <div className="min-w-0 flex-1">
               <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-sky-100/70">Guarda Municipal</p>
               <h1 className="mt-3 text-[34px] font-black tracking-[-0.08em]">IRO</h1>
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-100">
-                Gerencie suas informações de IRO's
-              </p>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-100">Gerencie operações, candidaturas e lançamentos manuais de IRO.</p>
             </div>
             <div className="flex items-center gap-2">
               <Button variant="outline" className="border-white/20 bg-white/10 text-white hover:bg-white/20" onClick={() => void loadData()}>
@@ -702,7 +1194,7 @@ const GuardaMunicipalIros = () => {
           <div className="mt-6 grid gap-3 sm:grid-cols-4">
             <StatCard label="Operações ativas" value={String(stats.operacoesAtivas)} icon={Calendar} />
             <StatCard label="Candidaturas no mês" value={String(stats.candidaturasMes)} icon={Users} />
-            <StatCard label="Minhas horas no mês" value={`${stats.horasMes}h`} icon={Clock} />
+            <StatCard label="Horas no mês" value={`${stats.horasMes}h`} icon={Clock} />
             <StatCard label="Banco de horas" value={`${stats.totalBancoHoras}h`} icon={Hourglass} />
           </div>
         </section>
@@ -713,20 +1205,31 @@ const GuardaMunicipalIros = () => {
               <div className="grid gap-4 lg:grid-cols-[1fr_220px]">
                 <div className="space-y-2">
                   <Label>Buscar</Label>
-                  <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={
-                    section === 'operacoes' ? 'Buscar operações...' :
-                    section === 'candidaturas' ? 'Buscar candidaturas...' :
-                    section === 'banco-horas' ? 'Buscar guardas...' :
-                    'Buscar notificações...'
-                  } />
+                  <Input
+                    value={search}
+                    onChange={(event) => setSearch(event.target.value)}
+                    placeholder={
+                      section === 'operacoes'
+                        ? 'Buscar operações...'
+                        : section === 'candidaturas'
+                          ? 'Buscar candidaturas...'
+                          : section === 'banco-horas'
+                            ? 'Buscar guardas...'
+                            : 'Buscar notificações...'
+                    }
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label>Filtrar</Label>
                   <Select value={statusFilter} onValueChange={setStatusFilter}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
                     <SelectContent>
-                      {sectionStatusOptions.map((o) => (
-                        <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                      {sectionStatusOptions.map((item) => (
+                        <SelectItem key={item.value} value={item.value}>
+                          {item.label}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -741,29 +1244,39 @@ const GuardaMunicipalIros = () => {
             {(Object.entries(sectionLabels) as [Section, string][]).map(([key, label]) => (
               <button
                 key={key}
-                onClick={() => { setSection(key); setSearch(''); setStatusFilter('todas'); }}
+                onClick={() => {
+                  setSection(key);
+                  setSearch('');
+                  setStatusFilter('todas');
+                }}
                 className={cn(
                   'whitespace-nowrap rounded-[20px] px-4 py-2.5 text-sm font-bold tracking-[-0.02em] transition-all',
-                  section === key
-                    ? 'bg-white text-slate-950 shadow-[0_10px_24px_-18px_rgba(15,23,42,0.55)]'
-                    : 'text-slate-500 hover:text-slate-700',
+                  section === key ? 'bg-white text-slate-950 shadow-[0_10px_24px_-18px_rgba(15,23,42,0.55)]' : 'text-slate-500 hover:text-slate-700',
                 )}
               >
                 {label}
-                {key === 'notificacoes' && notifNaoLidas > 0 && (
-                  <span className="ml-2 rounded-full bg-brand-600 px-2 py-0.5 text-[11px] text-white">{notifNaoLidas}</span>
-                )}
+                {key === 'notificacoes' && notifNaoLidas > 0 && <span className="ml-2 rounded-full bg-brand-600 px-2 py-0.5 text-[11px] text-white">{notifNaoLidas}</span>}
               </button>
             ))}
           </div>
 
-          <div className="flex gap-2">
+          <div className="flex flex-wrap justify-end gap-2">
+            {section === 'operacoes' && canLaunchManual && (
+              <Button onClick={() => setManualDialogOpen(true)} className="border-emerald-600 bg-emerald-600 text-white hover:bg-emerald-700">
+                <Plus className="mr-2 h-4 w-4" />
+                IROs Extras
+              </Button>
+            )}
             {section === 'operacoes' && canManageOperacoes && (
-              <Button onClick={openCreateOperacao} className="max-sm:hidden"><Plus className="mr-2 h-4 w-4" />Nova Operação</Button>
+              <Button onClick={openCreateOperacao} className="max-sm:hidden">
+                <Plus className="mr-2 h-4 w-4" />
+                Nova Operação
+              </Button>
             )}
             {section === 'notificacoes' && notifNaoLidas > 0 && (
               <Button variant="outline" size="sm" onClick={() => void handleMarcarTodasLidas()}>
-                <Check className="mr-2 h-4 w-4" />Marcar todas lidas
+                <Check className="mr-2 h-4 w-4" />
+                Marcar todas lidas
               </Button>
             )}
           </div>
@@ -773,7 +1286,12 @@ const GuardaMunicipalIros = () => {
 
         <ResponsiveDialog
           open={Boolean(selectedOperacao)}
-          onOpenChange={(open) => { if (!open) { setSelectedOperacao(null); setOperacaoCandidaturas([]); } }}
+          onOpenChange={(open) => {
+            if (!open) {
+              setSelectedOperacao(null);
+              setOperacaoCandidaturas([]);
+            }
+          }}
           title={selectedOperacao?.nome || 'Detalhes da operação'}
           description={selectedOperacao ? `${fmtDateBR(selectedOperacao.data_inicio)} - ${fmtDateBR(selectedOperacao.data_fim)} • ${selectedOperacao.vagas_por_dia} vaga(s)/dia` : ''}
         >
@@ -789,9 +1307,7 @@ const GuardaMunicipalIros = () => {
               {selectedOperacao.descricao && (
                 <section className="space-y-2">
                   <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Descrição</p>
-                  <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-6 text-slate-700">
-                    {selectedOperacao.descricao}
-                  </div>
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-6 text-slate-700">{selectedOperacao.descricao}</div>
                 </section>
               )}
 
@@ -804,14 +1320,14 @@ const GuardaMunicipalIros = () => {
                   <div className="grid gap-4 md:grid-cols-2">
                     <div className="space-y-2">
                       <Label>Data</Label>
-                      <Input type="date" value={candidaturaData.data_operacao} onChange={(e) => setCandidaturaData((f) => ({ ...f, data_operacao: e.target.value }))} />
+                      <Input type="date" value={candidaturaData.data_operacao} onChange={(event) => setCandidaturaData((current) => ({ ...current, data_operacao: event.target.value }))} />
                     </div>
                     <div className="space-y-2">
                       <Label>&nbsp;</Label>
                       <Button
                         className="w-full"
                         onClick={() => {
-                          setCandidaturaData((f) => ({ ...f, operacao_id: selectedOperacao.id }));
+                          setCandidaturaData((current) => ({ ...current, operacao_id: selectedOperacao.id }));
                           void handleCandidatar();
                         }}
                       >
@@ -832,22 +1348,28 @@ const GuardaMunicipalIros = () => {
               <section className="space-y-3">
                 <h3 className="text-sm font-bold uppercase tracking-[0.16em] text-slate-700">Candidaturas ({operacaoCandidaturas.length})</h3>
                 {operacaoCandidaturas.length === 0 ? (
-                  <div className="rounded-2xl border border-dashed border-slate-300 px-4 py-6 text-center text-sm text-slate-500">
-                    Nenhuma candidatura para esta operação.
-                  </div>
+                  <div className="rounded-2xl border border-dashed border-slate-300 px-4 py-6 text-center text-sm text-slate-500">Nenhuma candidatura para esta operação.</div>
                 ) : (
-                  operacaoCandidaturas.map((c) => (
-                    <div key={c.id} className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm">
+                  operacaoCandidaturas.map((item) => (
+                    <div key={item.id} className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm">
                       <div className="flex flex-wrap items-center justify-between gap-2">
-                        <div className="flex items-center gap-2">
-                          <strong>{usuarioMap.get(c.usuario_id) || '—'}</strong>
-                          <Badge variant="outline" className={cn('rounded-full text-[10px] font-bold px-2 py-0', STATUS_CANDIDATURA_VARIANT[c.status])}>
-                            {c.status}
+                        <div className="flex flex-wrap items-center gap-2">
+                          <strong>{usuarioMap.get(item.usuario_id) || '—'}</strong>
+                          <Badge variant="outline" className={cn('rounded-full px-2 py-0 text-[10px] font-bold', STATUS_CANDIDATURA_VARIANT[item.status])}>
+                            {item.status}
                           </Badge>
-                          <span className="text-slate-500">{fmtDateBR(c.data_operacao)} • {c.horas_trabalhadas}h{valorHoraPorUsuario.has(c.usuario_id) && <span className="ml-1 text-emerald-600 font-semibold">R$ {(c.horas_trabalhadas * (valorHoraPorUsuario.get(c.usuario_id) || 0)).toFixed(2).replace('.', ',')}</span>}</span>
+                          {item.adicionado_manual && (
+                            <Badge variant="outline" className="rounded-full border-emerald-200 bg-emerald-50 px-2 py-0 text-[10px] font-bold text-emerald-700">
+                              Manual
+                            </Badge>
+                          )}
+                          <span className="text-slate-500">
+                            {fmtDateBR(item.data_operacao)} • {item.horas_trabalhadas}h
+                            {valorHoraPorUsuario.has(item.usuario_id) && <span className="ml-1 font-semibold text-emerald-600">{formatCurrency(item.horas_trabalhadas * (valorHoraPorUsuario.get(item.usuario_id) || 0))}</span>}
+                          </span>
                         </div>
-                        {c.usuario_id === user?.user_id && c.status !== 'cancelado' && (
-                          <Button size="sm" variant="outline" className="text-red-600 border-red-200 h-7 text-xs" onClick={() => void handleCancelarCandidatura(c)}>
+                        {item.usuario_id === user?.user_id && item.status !== 'cancelado' && !item.adicionado_manual && (
+                          <Button size="sm" variant="outline" className="h-7 border-red-200 text-xs text-red-600" onClick={() => void handleCancelarCandidatura(item)}>
                             Cancelar
                           </Button>
                         )}
@@ -861,31 +1383,233 @@ const GuardaMunicipalIros = () => {
         </ResponsiveDialog>
 
         <ResponsiveDialog
+          open={manualDialogOpen}
+          onOpenChange={handleManualDialogChange}
+          title="IROs Extras"
+          description="Formulário usado exclusivamente para registrar IROs que não foram possíveis de serem adicionadas pelos guardas."
+        >
+          <div className="space-y-6 py-2">
+            <section className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+              Use este fluxo apenas para contingência operacional. O lançamento cria registros manuais auditáveis, envia notificação automática ao guarda e respeita o limite legal de 72h por mês.
+            </section>
+
+            <div className="grid gap-4">
+              <div className="space-y-2">
+                <Label>Selecione um Guarda</Label>
+                <SearchableSelect
+                  open={guardaComboboxOpen}
+                  onOpenChange={setGuardaComboboxOpen}
+                  value={manualForm.usuario_id}
+                  onValueChange={(value) => setManualForm((current) => ({ ...current, usuario_id: value }))}
+                  placeholder="Buscar por nome, matrícula ou CPF..."
+                  emptyText="Nenhum guarda ativo encontrado."
+                  triggerLabel={
+                    selectedManualGuarda
+                      ? `${selectedManualGuarda.nome} • ${selectedManualGuarda.graduacao_nome || 'Graduação'} • Mat. ${selectedManualGuarda.matricula}`
+                      : 'Escolher guarda...'
+                  }
+                  items={guardasAtivos.map((item) => ({
+                    value: item.usuario_id,
+                    label: `${item.nome} ${item.matricula} ${item.cpf || ''}`,
+                    render: (
+                      <div className="flex min-w-0 flex-col">
+                        <span className="font-medium text-slate-900">{item.nome}</span>
+                        <span className="text-xs text-slate-500">
+                          {item.graduacao_nome || 'Graduação'} • Mat. {item.matricula}
+                          {item.cpf ? ` • CPF ${maskCpf(item.cpf)}` : ''}
+                        </span>
+                      </div>
+                    ),
+                  }))}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Em qual operação</Label>
+                <SearchableSelect
+                  open={operacaoComboboxOpen}
+                  onOpenChange={setOperacaoComboboxOpen}
+                  value={manualForm.operacao_id}
+                  onValueChange={(value) => setManualForm((current) => ({ ...current, operacao_id: value }))}
+                  placeholder="Buscar operação por nome..."
+                  emptyText="Nenhuma operação encontrada."
+                  triggerLabel={
+                    selectedManualOperacao
+                      ? `${selectedManualOperacao.nome} • ${fmtDateBR(selectedManualOperacao.data_inicio)} - ${fmtDateBR(selectedManualOperacao.data_fim)}`
+                      : 'Escolher operação...'
+                  }
+                  items={operacoes.map((item) => ({
+                    value: item.id,
+                    label: `${item.nome} ${item.data_inicio} ${item.data_fim}`,
+                    render: (
+                      <div className="flex min-w-0 flex-col">
+                        <span className="font-medium text-slate-900">{item.nome}</span>
+                        <span className="text-xs text-slate-500">
+                          {fmtDateBR(item.data_inicio)} - {fmtDateBR(item.data_fim)}
+                          {item.data_fim < todayStr() ? ' • Encerrada' : item.ativo ? ' • Ativa' : ' • Inativa'}
+                        </span>
+                      </div>
+                    ),
+                  }))}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Quantidade de Horas</Label>
+                <Input
+                  type="number"
+                  min="0.5"
+                  max={LIMITE_IRO_MES}
+                  step="0.5"
+                  value={manualForm.quantidade_horas}
+                  onChange={(event) => setManualForm((current) => ({ ...current, quantidade_horas: event.target.value }))}
+                  placeholder="Ex.: 8"
+                />
+                <p className="text-xs text-slate-500">Informe a quantidade total de horas para esta IRO extra (limite de {LIMITE_IRO_MES}h por mês).</p>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Motivo da IRO Extra</Label>
+                <Textarea
+                  rows={4}
+                  value={manualForm.motivo}
+                  onChange={(event) => setManualForm((current) => ({ ...current, motivo: event.target.value }))}
+                  placeholder="Descreva a contingência, o impedimento do registro normal e a justificativa operacional."
+                />
+                <p className="text-xs text-slate-500">Mínimo de 10 caracteres.</p>
+              </div>
+            </div>
+
+            <section className="space-y-4 rounded-[24px] border border-slate-200 bg-slate-50 p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <h3 className="text-sm font-bold uppercase tracking-[0.16em] text-slate-700">Resumo Dinâmico</h3>
+                  <p className="mt-1 text-xs text-slate-500">Pré-visualização técnica do lançamento antes da gravação definitiva.</p>
+                </div>
+                {manualPreview.valid ? (
+                  <Badge variant="outline" className="rounded-full border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700">
+                    Pronto para salvar
+                  </Badge>
+                ) : (
+                  <Badge variant="outline" className="rounded-full border-amber-200 bg-amber-50 px-3 py-1 text-xs font-bold text-amber-700">
+                    Revisão necessária
+                  </Badge>
+                )}
+              </div>
+
+              <div className="space-y-4">
+                <SummaryCard
+                  title="Guarda"
+                  value={manualPreview.guarda?.nome || 'Não selecionado'}
+                  subtitle={
+                    manualPreview.guarda
+                      ? `${manualPreview.guarda.graduacao_nome || 'Graduação'} • ${formatCurrency(manualPreview.guarda.valor_hora)}/h`
+                      : 'Selecione um guarda ativo'
+                  }
+                />
+                <div className="grid gap-4 md:grid-cols-2">
+                  <SummaryCard
+                    title="Horas"
+                    value={`${manualPreview.hoursToAdd.toFixed(2).replace('.', ',')}h`}
+                    subtitle={manualPreview.hoursToAdd > 0 ? 'Lançamento manual único' : 'Informe a quantidade de horas'}
+                  />
+                  <SummaryCard
+                    title="Valor Estimado"
+                    value={formatCurrency(manualPreview.estimatedValue)}
+                    subtitle={manualPreview.operacao ? `Baseado na operação "${manualPreview.operacao.nome}"` : 'Selecione uma operação'}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                {manualPreview.monthSummaries.map((item) => (
+                  <div key={item.monthKey} className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <p className="font-semibold text-slate-900">{item.monthLabel}</p>
+                        <p className="text-xs text-slate-500">
+                          Já realizadas: {item.existingHours.toFixed(2).replace('.', ',')}h • Novas: {item.newHours.toFixed(2).replace('.', ',')}h • Total: {item.totalHours.toFixed(2).replace('.', ',')}h
+                        </p>
+                      </div>
+                      <div className="min-w-[180px] space-y-2">
+                        <div className="h-2.5 overflow-hidden rounded-full bg-slate-200">
+                          <div
+                            className={cn('h-full rounded-full transition-all', item.totalHours >= LIMITE_IRO_MES ? 'bg-red-500' : item.totalHours >= LIMITE_IRO_MES * 0.8 ? 'bg-amber-500' : 'bg-emerald-500')}
+                            style={{ width: `${Math.min((item.totalHours / LIMITE_IRO_MES) * 100, 100)}%` }}
+                          />
+                        </div>
+                        <p className="text-right text-xs text-slate-500">
+                          Disponível antes do lançamento: {item.availableHours.toFixed(2).replace('.', ',')}h
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {manualPreview.monthSummaries.length === 0 && <EmptyBox text="Preencha guarda, operação e horas para visualizar o resumo." compact />}
+              </div>
+
+              <div className="space-y-2">
+                {selectedManualOperacao && selectedManualOperacao.data_fim < todayStr() && (
+                  <WarningLine tone="amber" text="A operação selecionada já está finalizada. O lançamento será registrado como IRO retroativa." />
+                )}
+                {manualPreview.monthSummaries.some((item) => item.nearLimit) && (
+                  <WarningLine tone="amber" text="O guarda está próximo do limite de 72h em pelo menos um dos meses afetados." />
+                )}
+                {manualPreview.monthSummaries.some((item) => item.exceedsLimit) && (
+                  <WarningLine tone="red" text="A quantidade informada ultrapassa o limite mensal de 72h e será bloqueada no salvamento." />
+                )}
+                {manualPreview.errors.map((error) => (
+                  <WarningLine key={error} tone="red" text={error} />
+                ))}
+              </div>
+            </section>
+
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => handleManualDialogChange(false)} disabled={manualSaving}>
+                Cancelar
+              </Button>
+              <Button className="bg-emerald-600 text-white hover:bg-emerald-700" onClick={() => void handleSalvarIroManual()} disabled={!manualPreview.valid || manualSaving || manualForm.motivo.trim().length < 10}>
+                {manualSaving ? 'Salvando...' : 'Salvar IRO Extra'}
+              </Button>
+            </div>
+          </div>
+        </ResponsiveDialog>
+
+        <ResponsiveDialog
           open={operacaoDialogOpen}
-          onOpenChange={(open) => { if (!open) resetOperacaoDialog(); else setOperacaoDialogOpen(true); }}
+          onOpenChange={(open) => {
+            if (!open) resetOperacaoDialog();
+            else setOperacaoDialogOpen(true);
+          }}
           title={editingOperacao ? 'Editar Operação' : 'Nova Operação'}
           description="Defina os detalhes da operação IRO."
         >
           <div className="space-y-4 py-2">
             <div className="space-y-2">
               <Label>Nome da operação</Label>
-              <Input value={operacaoForm.nome} onChange={(e) => setOperacaoForm((f) => ({ ...f, nome: e.target.value }))} placeholder="Ex: Operação Verão" />
+              <Input value={operacaoForm.nome} onChange={(event) => setOperacaoForm((current) => ({ ...current, nome: event.target.value }))} placeholder="Ex: Operação Verão" />
             </div>
             <div className="space-y-2">
               <Label>Descrição</Label>
-              <textarea className="flex min-h-[60px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm" value={operacaoForm.descricao} onChange={(e) => setOperacaoForm((f) => ({ ...f, descricao: e.target.value }))} placeholder="Descrição opcional" />
+              <Textarea rows={3} value={operacaoForm.descricao} onChange={(event) => setOperacaoForm((current) => ({ ...current, descricao: event.target.value }))} placeholder="Descrição opcional" />
             </div>
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Label>Horário previsto</Label>
-                <Input type="time" value={operacaoForm.horario_previsto} onChange={(e) => setOperacaoForm((f) => ({ ...f, horario_previsto: e.target.value }))} />
+                <Input type="time" value={operacaoForm.horario_previsto} onChange={(event) => setOperacaoForm((current) => ({ ...current, horario_previsto: event.target.value }))} />
               </div>
               <div className="space-y-2">
                 <Label>Tempo para solicitação</Label>
-                <Select value={operacaoForm.tempo_solicitacao} onValueChange={(v) => setOperacaoForm((f) => ({ ...f, tempo_solicitacao: v }))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                <Select value={operacaoForm.tempo_solicitacao} onValueChange={(value) => setOperacaoForm((current) => ({ ...current, tempo_solicitacao: value }))}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
-                    {Object.entries(TEMPO_SOLICITACAO_LABEL).map(([k, v]) => (<SelectItem key={k} value={k}>{v}</SelectItem>))}
+                    {Object.entries(TEMPO_SOLICITACAO_LABEL).map(([key, label]) => (
+                      <SelectItem key={key} value={key}>
+                        {label}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -893,39 +1617,36 @@ const GuardaMunicipalIros = () => {
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Label>Data início</Label>
-                <Input type="date" min={todayStr()} value={operacaoForm.data_inicio} onChange={(e) => setOperacaoForm((f) => ({ ...f, data_inicio: e.target.value }))} />
+                <Input type="date" min={todayStr()} value={operacaoForm.data_inicio} onChange={(event) => setOperacaoForm((current) => ({ ...current, data_inicio: event.target.value }))} />
               </div>
               <div className="space-y-2">
                 <Label>Data fim</Label>
-                <Input type="date" min={todayStr()} value={operacaoForm.data_fim} onChange={(e) => setOperacaoForm((f) => ({ ...f, data_fim: e.target.value }))} />
+                <Input type="date" min={todayStr()} value={operacaoForm.data_fim} onChange={(event) => setOperacaoForm((current) => ({ ...current, data_fim: event.target.value }))} />
               </div>
             </div>
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Label>Vagas por dia</Label>
-                <Input type="number" min={1} value={operacaoForm.vagas_por_dia} onChange={(e) => setOperacaoForm((f) => ({ ...f, vagas_por_dia: Number(e.target.value) }))} />
+                <Input type="number" min={1} value={operacaoForm.vagas_por_dia} onChange={(event) => setOperacaoForm((current) => ({ ...current, vagas_por_dia: Number(event.target.value) }))} />
               </div>
               <div className="space-y-2">
                 <Label>Horas por dia</Label>
-                <Input type="number" min={0.5} step={0.5} value={operacaoForm.horas_por_dia} onChange={(e) => setOperacaoForm((f) => ({ ...f, horas_por_dia: Number(e.target.value) }))} />
+                <Input type="number" min={0.5} step={0.5} value={operacaoForm.horas_por_dia} onChange={(event) => setOperacaoForm((current) => ({ ...current, horas_por_dia: Number(event.target.value) }))} />
               </div>
             </div>
             <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={resetOperacaoDialog}>Cancelar</Button>
+              <Button variant="outline" onClick={resetOperacaoDialog}>
+                Cancelar
+              </Button>
               <Button onClick={() => void handleSaveOperacao()}>{editingOperacao ? 'Salvar' : 'Criar Operação'}</Button>
             </div>
           </div>
         </ResponsiveDialog>
 
-        <ResponsiveDialog
-          open={deleteConfirmOpen}
-          onOpenChange={(open) => { if (!open) { setDeleteConfirmOpen(false); setOperacaoToDelete(null); setDeleteConfirmChecked(false); } }}
-          title="Excluir operação"
-          description="Esta ação é irreversível."
-        >
+        <ResponsiveDialog open={deleteConfirmOpen} onOpenChange={(open) => !open && setDeleteConfirmOpen(false)} title="Excluir operação" description="Esta ação é irreversível.">
           <div className="space-y-6 py-2">
             <div className="flex items-start gap-4 rounded-2xl border border-red-200 bg-red-50 p-4">
-              <div className="rounded-xl bg-red-100 p-2.5 text-red-600 shrink-0">
+              <div className="shrink-0 rounded-xl bg-red-100 p-2.5 text-red-600">
                 <AlertTriangle className="h-5 w-5" />
               </div>
               <div className="space-y-1 text-sm">
@@ -939,11 +1660,11 @@ const GuardaMunicipalIros = () => {
               <ul className="space-y-2 text-sm text-amber-900">
                 <li className="flex items-start gap-2">
                   <span className="mt-1 block h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500" />
-                  Todas as candidaturas vinculadas a esta operação serão <strong>excluídas permanentemente</strong>.
+                  Todas as candidaturas vinculadas a esta operação serão excluídas permanentemente.
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="mt-1 block h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500" />
-                  Os registros de banco de horas relacionados serão <strong>desvinculados</strong>.
+                  Os registros de banco de horas relacionados serão desvinculados.
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="mt-1 block h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500" />
@@ -952,27 +1673,23 @@ const GuardaMunicipalIros = () => {
               </ul>
             </div>
 
-            <label className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-white p-4 cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={deleteConfirmChecked}
-                onChange={(e) => setDeleteConfirmChecked(e.target.checked)}
-                className="mt-0.5 h-4 w-4 shrink-0 accent-red-600"
-              />
-              <span className="text-sm leading-5 text-slate-700">
-                Eu entendi as consequências e desejo <strong>excluir permanentemente</strong> esta operação.
-              </span>
+            <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-slate-200 bg-white p-4 select-none">
+              <input type="checkbox" checked={deleteConfirmChecked} onChange={(event) => setDeleteConfirmChecked(event.target.checked)} className="mt-0.5 h-4 w-4 shrink-0 accent-red-600" />
+              <span className="text-sm leading-5 text-slate-700">Eu entendi as consequências e desejo excluir permanentemente esta operação.</span>
             </label>
 
             <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => { setDeleteConfirmOpen(false); setOperacaoToDelete(null); setDeleteConfirmChecked(false); }}>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setDeleteConfirmOpen(false);
+                  setOperacaoToDelete(null);
+                  setDeleteConfirmChecked(false);
+                }}
+              >
                 Cancelar
               </Button>
-              <Button
-                disabled={!deleteConfirmChecked}
-                className={deleteConfirmChecked ? 'bg-red-600 hover:bg-red-700 text-white' : ''}
-                onClick={() => void handleDeleteOperacao()}
-              >
+              <Button disabled={!deleteConfirmChecked} className={deleteConfirmChecked ? 'bg-red-600 text-white hover:bg-red-700' : ''} onClick={() => void handleDeleteOperacao()}>
                 <Trash2 className="mr-2 h-4 w-4" />
                 Confirmar Exclusão
               </Button>
@@ -982,13 +1699,11 @@ const GuardaMunicipalIros = () => {
       </div>
 
       {section === 'operacoes' && canManageOperacoes && (
-        <button
-          onClick={openCreateOperacao}
-          className="fixed bottom-24 right-5 z-50 flex size-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-[0_8px_28px_-6px_rgba(37,99,235,0.55)] transition-all active:scale-90 sm:hidden"
-        >
+        <button onClick={openCreateOperacao} className="fixed bottom-24 right-5 z-50 flex size-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-[0_8px_28px_-6px_rgba(37,99,235,0.55)] transition-all active:scale-90 sm:hidden">
           <Plus className="h-7 w-7" />
         </button>
       )}
+      {confirmDialog}
     </AdminLayout>
   );
 };
@@ -1009,18 +1724,94 @@ function StatCard({ label, value, icon: Icon }: { label: string; value: string; 
   );
 }
 
-function Info({ label, value }: { label: string; value: string }) {
+function SummaryCard({ title, value, subtitle }: { title: string; value: string; subtitle: string }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-      <p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">{label}</p>
-      <p className="mt-1 text-sm font-semibold text-slate-800">{value}</p>
+    <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
+      <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">{title}</p>
+      <p className="mt-2 text-lg font-black text-slate-900">{value}</p>
+      <p className="mt-1 text-xs leading-5 text-slate-500">{subtitle}</p>
     </div>
   );
 }
 
-function EmptyBox({ text }: { text: string }) {
+function WarningLine({ tone, text }: { tone: 'amber' | 'red'; text: string }) {
   return (
-    <div className="rounded-2xl border border-dashed border-slate-300 px-4 py-6 text-center text-sm text-slate-500">{text}</div>
+    <div className={cn('flex items-start gap-2 rounded-2xl px-3 py-2 text-sm', tone === 'red' ? 'bg-red-50 text-red-700' : 'bg-amber-50 text-amber-800')}>
+      <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+      <span>{text}</span>
+    </div>
+  );
+}
+
+function SearchableSelect({
+  open,
+  onOpenChange,
+  value,
+  onValueChange,
+  triggerLabel,
+  placeholder,
+  emptyText,
+  items,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  value: string;
+  onValueChange: (value: string) => void;
+  triggerLabel: string;
+  placeholder: string;
+  emptyText: string;
+  items: Array<{ value: string; label: string; render: ReactNode }>;
+}) {
+  return (
+    <Popover open={open} onOpenChange={onOpenChange}>
+      <PopoverTrigger asChild>
+        <Button variant="outline" role="combobox" aria-expanded={open} className="h-auto w-full justify-between py-3 text-left font-normal">
+          <span className="truncate">{triggerLabel}</span>
+          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+        <Command>
+          <CommandInput placeholder={placeholder} />
+          <CommandList>
+            <CommandEmpty>{emptyText}</CommandEmpty>
+            <CommandGroup>
+              {items.map((item) => (
+                <CommandItem
+                  key={item.value}
+                  value={item.label}
+                  onSelect={() => {
+                    onValueChange(item.value);
+                    onOpenChange(false);
+                  }}
+                  className="gap-2"
+                >
+                  <CheckCircle2 className={cn('h-4 w-4 shrink-0', value === item.value ? 'opacity-100 text-emerald-600' : 'opacity-0')} />
+                  {item.render}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+function EmptyBox({ text, compact = false }: { text: string; compact?: boolean }) {
+  return (
+    <div className={cn('rounded-2xl border border-dashed border-slate-300 bg-white text-center text-sm text-slate-500', compact ? 'px-4 py-5' : 'px-4 py-8')}>
+      {text}
+    </div>
+  );
+}
+
+function Info({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+      <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-slate-500">{label}</p>
+      <p className="mt-2 text-sm font-semibold text-slate-900">{value}</p>
+    </div>
   );
 }
 

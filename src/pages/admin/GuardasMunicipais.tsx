@@ -17,6 +17,16 @@ import type { GuardaMunicipal, GuardaMunicipalGraduacao } from '@/types/admin';
 
 type Section = 'guardas' | 'graduacoes';
 
+function capitalizeNome(nome: string): string {
+  const lowercased = nome.toLowerCase();
+  const words = lowercased.split(' ');
+  return words.map((word, i) =>
+    i > 0 && ['de', 'da', 'do', 'das', 'dos', 'e'].includes(word)
+      ? word
+      : word.charAt(0).toUpperCase() + word.slice(1)
+  ).join(' ');
+}
+
 const guardaInitialForm = { matricula: '', nome: '', graduacao_id: '', cpf: '' };
 const graduacaoInitialForm = { nome: '', ordem: '0' };
 
@@ -31,6 +41,7 @@ const GuardasMunicipaisPage = () => {
   const [graduacoes, setGraduacoes] = useState<GuardaMunicipalGraduacao[]>([]);
 
   const [search, setSearch] = useState('');
+  const guardasComAcesso = useMemo(() => guardas.filter((g) => g.possui_conta).length, [guardas]);
 
   const [guardaDialogOpen, setGuardaDialogOpen] = useState(false);
   const [graduacaoDialogOpen, setGraduacaoDialogOpen] = useState(false);
@@ -42,11 +53,10 @@ const GuardasMunicipaisPage = () => {
 
   const loadData = async () => {
     setLoading(true);
-    const [{ data: graduacoesData, error: graduacoesError }, { data: guardasData, error: guardasError }, { data: vinculosData }] =
+    const [{ data: graduacoesData, error: graduacoesError }, { data: guardasData, error: guardasError }] =
       await Promise.all([
         supabase.from('guarda_municipal_graduacoes').select('id, nome, ordem, ativo, created_at, updated_at').order('ordem', { ascending: true }).order('nome', { ascending: true }),
-        supabase.from('guardas_municipais').select('id, matricula, nome, cpf, email, telefone, graduacao_id, ativo, created_at, updated_at').order('nome', { ascending: true }),
-        supabase.from('guardas_usuarios').select('guarda_id'),
+        supabase.from('guardas_municipais').select('id, matricula, nome, cpf, email, telefone, graduacao_id, ativo, data_autocadastro, created_at, updated_at').order('nome', { ascending: true }),
       ]);
 
     if (graduacoesError || guardasError) {
@@ -55,13 +65,12 @@ const GuardasMunicipaisPage = () => {
       return;
     }
 
-    const guardasComConta = new Set((vinculosData || []).map((v: { guarda_id: string }) => v.guarda_id));
     const graduacoesList = (graduacoesData || []) as GuardaMunicipalGraduacao[];
     const graduacaoMap = new Map(graduacoesList.map((item) => [item.id, item.nome]));
     setGraduacoes(graduacoesList);
     const guardasDedup = Object.values(
       ((guardasData || []) as GuardaMunicipal[]).reduce((acc, item) => {
-        acc[item.id] = { ...item, graduacao_nome: graduacaoMap.get(item.graduacao_id) ?? null, possui_conta: guardasComConta.has(item.id) };
+        acc[item.id] = { ...item, nome: capitalizeNome(item.nome), graduacao_nome: graduacaoMap.get(item.graduacao_id) ?? null, possui_conta: item.data_autocadastro !== null };
         return acc;
       }, {} as Record<string, GuardaMunicipal>)
     );
@@ -181,8 +190,9 @@ const GuardasMunicipaisPage = () => {
               </Button>
             </div>
           </div>
-          <div className="mt-6 grid gap-3 sm:grid-cols-2">
+          <div className="mt-6 grid gap-3 sm:grid-cols-3">
             <StatCard label="Total de Guardas" value={String(guardas.length)} icon={ClipboardList} />
+            <StatCard label="Com Acesso" value={String(guardasComAcesso)} icon={UserCheck} />
             <StatCard label="Graduações" value={String(graduacoes.length)} icon={GraduationCap} />
           </div>
         </section>
