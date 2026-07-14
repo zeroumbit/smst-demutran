@@ -55,6 +55,71 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+async function buildGuardaProfile(userId: string, email: string): Promise<AdminProfile | null> {
+  let guardaNome = 'Guarda Municipal';
+  let guardaSetorId: string | null = null;
+  let aceitouLeiIroAt: string | null = null;
+
+  try {
+    const { data: guardaPerfil } = await supabase.rpc('buscar_guarda_por_usuario', { p_usuario_id: userId });
+    if (guardaPerfil) {
+      guardaNome = (guardaPerfil as any).nome || guardaNome;
+      aceitouLeiIroAt = (guardaPerfil as any).aceitou_lei_iro_at || null;
+    }
+  } catch {
+    try {
+      const { data: gu } = await supabase
+        .from('guardas_usuarios')
+        .select('guarda_id')
+        .eq('usuario_id', userId)
+        .maybeSingle();
+      if (gu?.guarda_id) {
+        const { data: gm } = await supabase
+          .from('guardas_municipais')
+          .select('nome, aceitou_lei_iro_at')
+          .eq('id', gu.guarda_id)
+          .single();
+        if (gm) {
+          guardaNome = (gm as any).nome || guardaNome;
+          aceitouLeiIroAt = (gm as any).aceitou_lei_iro_at || null;
+        }
+      }
+    } catch {
+      // silent
+    }
+  }
+
+  try {
+    const { data: sid } = await supabase.rpc('get_guarda_municipal_setor_id');
+    if (sid) guardaSetorId = sid as string;
+  } catch {
+    try {
+      const { data: setorData } = await supabase
+        .from('setores')
+        .select('id')
+        .eq('slug', 'guarda-municipal')
+        .maybeSingle();
+      if (setorData) guardaSetorId = (setorData as any).id;
+    } catch {
+      // silent
+    }
+  }
+
+  return {
+    user_id: userId,
+    email,
+    name: guardaNome,
+    papel: null,
+    perfil_id: null,
+    setor_id: guardaSetorId,
+    setor_nome: 'Guarda Municipal',
+    setor_slug: 'guarda-municipal',
+    ativo: true,
+    legacy_admin: false,
+    aceitou_lei_iro_at: aceitouLeiIroAt || readLeiIroAccepted(userId),
+  };
+}
+
 async function fetchUserProfile(): Promise<AdminProfile | null> {
   try {
     const { data, error } = await supabase.rpc('get_user_profile');
@@ -65,13 +130,34 @@ async function fetchUserProfile(): Promise<AdminProfile | null> {
 
     if (data) {
       const profile = data as AdminProfile;
+      const { data: userData } = await supabase.auth.getUser();
+      const authUser = userData?.user;
+      const authUserId = authUser?.id || profile.user_id;
+      const authUserEmail = authUser?.email || profile.email || '';
+
       try {
-        const { data: userData } = await supabase.auth.getUser();
-        if (userData?.user?.app_metadata?.modulos) {
-          profile.modulos = userData.user.app_metadata.modulos;
+        if (authUser?.app_metadata?.modulos) {
+          profile.modulos = authUser.app_metadata.modulos;
         }
       } catch {
         // silent — sessão pode expirar, mas o perfil já foi carregado
+      }
+
+      let guardaVinculado = false;
+      try {
+        const { data: gu } = await supabase
+          .from('guardas_usuarios')
+          .select('id')
+          .eq('usuario_id', authUserId)
+          .maybeSingle();
+        guardaVinculado = !!gu;
+        (profile as any).tem_guarda = guardaVinculado;
+      } catch {
+        (profile as any).tem_guarda = false;
+      }
+
+      if (!profile.papel && !profile.legacy_admin && guardaVinculado && authUserId) {
+        return await buildGuardaProfile(authUserId, authUserEmail);
       }
 
       // Guarda sem perfil admin: enriquecer com dados específicos
@@ -129,66 +215,7 @@ async function fetchUserProfile(): Promise<AdminProfile | null> {
     }
     if (isGuarda) {
       const { data: userData } = await supabase.auth.getUser();
-      const email = userData?.user?.email || '';
-      let guardaNome = 'Guarda Municipal';
-      let guardaSetorId: string | null = null;
-      let aceitouLeiIroAt: string | null = null;
-      try {
-        const { data: guardaPerfil } = await supabase.rpc('buscar_guarda_por_usuario', { p_usuario_id: userData?.user?.id || '' });
-        if (guardaPerfil) {
-          guardaNome = (guardaPerfil as any).nome || guardaNome;
-          aceitouLeiIroAt = (guardaPerfil as any).aceitou_lei_iro_at || null;
-        }
-      } catch {
-        try {
-          const { data: gu } = await supabase
-            .from('guardas_usuarios')
-            .select('guarda_id')
-            .eq('usuario_id', userData?.user?.id || '')
-            .maybeSingle();
-          if (gu?.guarda_id) {
-            const { data: gm } = await supabase
-              .from('guardas_municipais')
-              .select('nome, aceitou_lei_iro_at')
-              .eq('id', gu.guarda_id)
-              .single();
-            if (gm) {
-              guardaNome = (gm as any).nome || guardaNome;
-              aceitouLeiIroAt = (gm as any).aceitou_lei_iro_at || null;
-            }
-          }
-        } catch {
-          // silent
-        }
-      }
-      try {
-        const { data: sid } = await supabase.rpc('get_guarda_municipal_setor_id');
-        if (sid) guardaSetorId = sid as string;
-      } catch {
-        try {
-          const { data: setorData } = await supabase
-            .from('setores')
-            .select('id')
-            .eq('slug', 'guarda-municipal')
-            .maybeSingle();
-          if (setorData) guardaSetorId = (setorData as any).id;
-        } catch {
-          // silent
-        }
-      }
-      return {
-        user_id: userData?.user?.id || '',
-        email,
-        name: guardaNome,
-        papel: null,
-        perfil_id: null,
-        setor_id: guardaSetorId,
-        setor_nome: 'Guarda Municipal',
-        setor_slug: 'guarda-municipal',
-        ativo: true,
-        legacy_admin: false,
-        aceitou_lei_iro_at: aceitouLeiIroAt || readLeiIroAccepted(userData?.user?.id || ''),
-      };
+      return await buildGuardaProfile(userData?.user?.id || '', userData?.user?.email || '');
     }
 
     return null;

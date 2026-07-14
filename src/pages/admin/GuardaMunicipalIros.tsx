@@ -612,6 +612,10 @@ const GuardaMunicipalIros = () => {
 
   const openOperacaoDetails = async (item: IROOperacao) => {
     setSelectedOperacao(item);
+    setCandidaturaData((current) => ({
+      operacao_id: item.id,
+      data_operacao: current.data_operacao || todayStr(),
+    }));
     const { data } = await supabase
       .from('iro_candidaturas')
       .select('*, iro_operacoes!inner(nome)')
@@ -749,21 +753,28 @@ const GuardaMunicipalIros = () => {
     void loadData();
   };
 
-  const handleCandidatar = async () => {
-    if (!candidaturaData.operacao_id || !candidaturaData.data_operacao) {
+  const handleCandidatar = async (operacaoId?: string) => {
+    const targetOperacaoId = operacaoId || candidaturaData.operacao_id;
+
+    if (!targetOperacaoId || !candidaturaData.data_operacao) {
       toast({ title: 'Selecione operação e data', variant: 'destructive' });
       return;
     }
 
-    const operacao = operacoes.find((item) => item.id === candidaturaData.operacao_id);
+    if (!user?.user_id) {
+      toast({ title: 'Sessão inválida', description: 'Faça login novamente para concluir a candidatura.', variant: 'destructive' });
+      return;
+    }
+
+    const operacao = operacoes.find((item) => item.id === targetOperacaoId);
     if (operacao && operacao.data_fim < todayStr()) {
       toast({ title: 'Prazo encerrado', description: 'O período desta operação já se encerrou.', variant: 'destructive' });
       return;
     }
 
     const { data, error } = await supabase.rpc('candidatar_se_iro', {
-      p_operacao_id: candidaturaData.operacao_id,
-      p_usuario_id: user?.user_id,
+      p_operacao_id: targetOperacaoId,
+      p_usuario_id: user.user_id,
       p_data: candidaturaData.data_operacao,
     });
     if (error) {
@@ -1326,10 +1337,7 @@ const GuardaMunicipalIros = () => {
                       <Label>&nbsp;</Label>
                       <Button
                         className="w-full"
-                        onClick={() => {
-                          setCandidaturaData((current) => ({ ...current, operacao_id: selectedOperacao.id }));
-                          void handleCandidatar();
-                        }}
+                        onClick={() => void handleCandidatar(selectedOperacao.id)}
                       >
                         Confirmar Candidatura
                       </Button>
