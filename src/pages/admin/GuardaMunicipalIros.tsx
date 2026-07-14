@@ -234,6 +234,9 @@ const GuardaMunicipalIros = () => {
   const [operacaoForm, setOperacaoForm] = useState<OperacaoFormState>(() => operacaoFormInitial());
   const [editingOperacao, setEditingOperacao] = useState<IROOperacao | null>(null);
 
+  const [candidaturaResultado, setCandidaturaResultado] = useState<{ sucesso: boolean; mensagem: string; operacaoNome?: string; dataOperacao?: string; horas?: number; totalMes?: number } | null>(null);
+  const [candidaturaResultadoAberto, setCandidaturaResultadoAberto] = useState(false);
+
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [operacaoToDelete, setOperacaoToDelete] = useState<IROOperacao | null>(null);
   const [deleteConfirmChecked, setDeleteConfirmChecked] = useState(false);
@@ -843,17 +846,25 @@ const GuardaMunicipalIros = () => {
       p_data: candidaturaData.data_operacao,
     });
     if (error) {
-      toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+      setCandidaturaResultado({ sucesso: false, mensagem: error.message });
+      setCandidaturaResultadoAberto(true);
       return;
     }
 
     const result = data as { sucesso: boolean; mensagem: string; total_mes?: number };
+    setCandidaturaResultado({
+      sucesso: result.sucesso,
+      mensagem: result.mensagem,
+      operacaoNome: operacao?.nome,
+      dataOperacao: candidaturaData.data_operacao,
+      horas: operacao?.horas_por_dia,
+      totalMes: result.total_mes,
+    });
+    setCandidaturaResultadoAberto(true);
+
     if (result.sucesso) {
-      toast({ title: 'Candidatura realizada!', description: result.total_mes ? `Total no mês: ${result.total_mes}h` : undefined });
       setSelectedOperacao(null);
       setOperacaoCandidaturas([]);
-    } else {
-      toast({ title: result.mensagem, variant: 'destructive' });
     }
 
     setCandidaturaData({ operacao_id: '', data_operacao: todayStr() });
@@ -1886,6 +1897,42 @@ const GuardaMunicipalIros = () => {
           <Plus className="h-7 w-7" />
         </button>
       )}
+
+      <ResponsiveDialog
+        open={candidaturaResultadoAberto}
+        onOpenChange={(open) => { if (!open) { setCandidaturaResultadoAberto(false); setCandidaturaResultado(null); } }}
+        title={candidaturaResultado?.sucesso ? 'Inscrição realizada' : 'Inscrição não realizada'}
+        description={candidaturaResultado?.sucesso ? 'Sua candidatura foi registrada com sucesso.' : 'Não foi possível completar sua inscrição.'}
+      >
+        <div className="space-y-5 py-2">
+          <div className={cn('flex flex-col items-center gap-3 rounded-2xl p-6 text-center', candidaturaResultado?.sucesso ? 'bg-emerald-50' : 'bg-red-50')}>
+            {candidaturaResultado?.sucesso ? (
+              <CheckCircle2 className="h-14 w-14 text-emerald-500" />
+            ) : (
+              <X className="h-14 w-14 text-red-500" />
+            )}
+            <div>
+              <p className={cn('text-lg font-bold', candidaturaResultado?.sucesso ? 'text-emerald-800' : 'text-red-800')}>
+                {candidaturaResultado?.mensagem || (candidaturaResultado?.sucesso ? 'Candidatura realizada!' : 'Erro ao candidatar')}
+              </p>
+              {candidaturaResultado?.sucesso && candidaturaResultado?.operacaoNome && (
+                <div className="mt-3 space-y-1 text-sm text-slate-600">
+                  <p><span className="font-semibold text-slate-700">Operação:</span> {candidaturaResultado.operacaoNome}</p>
+                  <p><span className="font-semibold text-slate-700">Data:</span> {fmtDateBR(candidaturaResultado.dataOperacao || '')}</p>
+                  <p><span className="font-semibold text-slate-700">Horas:</span> {candidaturaResultado.horas}h/dia</p>
+                  {candidaturaResultado.totalMes !== undefined && (
+                    <p className="pt-1 text-emerald-700"><span className="font-semibold">Total no mês:</span> {candidaturaResultado.totalMes}h</p>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+          <Button className="w-full" onClick={() => { setCandidaturaResultadoAberto(false); setCandidaturaResultado(null); }}>
+            {candidaturaResultado?.sucesso ? 'OK, entendi' : 'Fechar'}
+          </Button>
+        </div>
+      </ResponsiveDialog>
+
       {confirmDialog}
     </AdminLayout>
   );
