@@ -23,6 +23,7 @@ import { maskCpf } from '@/lib/masks';
 import type { IROBancoHoras, IROCandidatura, IRONotificacao, IROOperacao } from '@/types/admin';
 
 type Section = 'operacoes' | 'candidaturas' | 'banco-horas' | 'notificacoes' | 'relatorios';
+type IROViewMode = 'minhas' | 'gerenciar';
 
 type GuardaOption = {
   usuario_id: string;
@@ -214,6 +215,7 @@ const GuardaMunicipalIros = () => {
 
   const [loading, setLoading] = useState(true);
   const [section, setSection] = useState<Section>('operacoes');
+  const [viewMode, setViewMode] = useState<IROViewMode>('gerenciar');
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('todas');
 
@@ -401,6 +403,9 @@ const GuardaMunicipalIros = () => {
     [candidaturas, user?.user_id],
   );
 
+  const isMinhaIrosView = podeVerTudo && viewMode === 'minhas';
+  const activeSection = isMinhaIrosView ? 'candidaturas' : section;
+
   const meuBancoHoras = useMemo(
     () => bancoHoras.find((item) => item.usuario_id === user?.user_id) || null,
     [bancoHoras, user?.user_id],
@@ -417,25 +422,27 @@ const GuardaMunicipalIros = () => {
   );
 
   const horasMes = useMemo(() => {
-    const alvo = podeVerTudo ? candidaturas : minhasCandidaturas;
+    const alvo = isMinhaIrosView ? minhasCandidaturas : podeVerTudo ? candidaturas : minhasCandidaturas;
     const mesAtual = new Date().toISOString().slice(0, 7);
     return alvo
       .filter((item) => item.status !== 'cancelado' && item.data_operacao.slice(0, 7) === mesAtual)
       .reduce((acc, item) => acc + Number(item.horas_trabalhadas || 0), 0);
-  }, [candidaturas, minhasCandidaturas, podeVerTudo]);
+  }, [candidaturas, isMinhaIrosView, minhasCandidaturas, podeVerTudo]);
 
   const stats = useMemo(() => {
-    const baseCandidaturas = podeVerTudo ? candidaturas : minhasCandidaturas;
+    const baseCandidaturas = isMinhaIrosView ? minhasCandidaturas : podeVerTudo ? candidaturas : minhasCandidaturas;
     const mesAtual = new Date().toISOString().slice(0, 7);
     return {
       operacoesAtivas: operacoes.filter((item) => item.ativo && item.data_fim >= todayStr()).length,
       candidaturasMes: baseCandidaturas.filter((item) => item.data_operacao.slice(0, 7) === mesAtual && item.status !== 'cancelado').length,
       horasMes,
-      totalBancoHoras: podeVerTudo
+      totalBancoHoras: isMinhaIrosView
+        ? Number(meuBancoHoras?.horas_excedentes || 0)
+        : podeVerTudo
         ? bancoHoras.reduce((acc, item) => acc + Number(item.horas_excedentes || 0), 0)
         : Number(meuBancoHoras?.horas_excedentes || 0),
     };
-  }, [bancoHoras, candidaturas, horasMes, minhasCandidaturas, meuBancoHoras, operacoes, podeVerTudo]);
+  }, [bancoHoras, candidaturas, horasMes, isMinhaIrosView, minhasCandidaturas, meuBancoHoras, operacoes, podeVerTudo]);
 
   const operacoesComConfirmados = useMemo(() => {
     const set = new Set<string>();
@@ -457,7 +464,7 @@ const GuardaMunicipalIros = () => {
 
   const filteredCandidaturas = useMemo(() => {
     const term = search.trim().toLowerCase();
-    const base = podeVerTudo ? candidaturas : minhasCandidaturas;
+    const base = isMinhaIrosView ? minhasCandidaturas : podeVerTudo ? candidaturas : minhasCandidaturas;
     return base.filter((item) => {
       if (term && !`${item.operacao_nome} ${usuarioMap.get(item.usuario_id) || ''}`.toLowerCase().includes(term)) return false;
       if (statusFilter === 'manuais' && !item.adicionado_manual) return false;
@@ -465,16 +472,16 @@ const GuardaMunicipalIros = () => {
       if (!['todas', 'manuais', 'automaticas'].includes(statusFilter) && item.status !== statusFilter) return false;
       return true;
     });
-  }, [candidaturas, minhasCandidaturas, podeVerTudo, search, statusFilter, usuarioMap]);
+  }, [candidaturas, isMinhaIrosView, minhasCandidaturas, podeVerTudo, search, statusFilter, usuarioMap]);
 
   const filteredBancoHoras = useMemo(() => {
-    const base = podeVerTudo ? bancoHoras : (meuBancoHoras ? [meuBancoHoras] : []);
+    const base = isMinhaIrosView ? (meuBancoHoras ? [meuBancoHoras] : []) : podeVerTudo ? bancoHoras : (meuBancoHoras ? [meuBancoHoras] : []);
     const term = search.trim().toLowerCase();
     return base.filter((item) => {
       if (term && !(usuarioMap.get(item.usuario_id) || '').toLowerCase().includes(term)) return false;
       return true;
     });
-  }, [bancoHoras, meuBancoHoras, podeVerTudo, search, usuarioMap]);
+  }, [bancoHoras, isMinhaIrosView, meuBancoHoras, podeVerTudo, search, usuarioMap]);
 
   const filteredNotificacoes = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -887,7 +894,7 @@ const GuardaMunicipalIros = () => {
   };
 
   const sectionStatusOptions = useMemo(() => {
-    if (section === 'operacoes') {
+    if (activeSection === 'operacoes') {
       return [
         { value: 'todas', label: 'Todas' },
         { value: 'ativas', label: 'Ativas' },
@@ -895,7 +902,7 @@ const GuardaMunicipalIros = () => {
       ];
     }
 
-    if (section === 'candidaturas') {
+    if (activeSection === 'candidaturas') {
       return [
         { value: 'todas', label: 'Todos' },
         { value: 'confirmado', label: 'Confirmado' },
@@ -906,7 +913,7 @@ const GuardaMunicipalIros = () => {
       ];
     }
 
-    if (section === 'notificacoes') {
+    if (activeSection === 'notificacoes') {
       return [
         { value: 'todas', label: 'Todas' },
         { value: 'lidas', label: 'Lidas' },
@@ -914,10 +921,10 @@ const GuardaMunicipalIros = () => {
       ];
     }
 
-    if (section === 'relatorios') return [];
+    if (activeSection === 'relatorios') return [];
 
     return [{ value: 'todas', label: 'Todos' }];
-  }, [section]);
+  }, [activeSection]);
 
   const renderOperacaoCard = (item: IROOperacao) => (
     <article key={item.id} className="rounded-[34px] border border-slate-200 bg-white p-5 shadow-sm">
@@ -1063,16 +1070,16 @@ const GuardaMunicipalIros = () => {
       return <div className="rounded-[22px] border border-slate-200 bg-white p-8 text-center text-sm text-slate-500">Carregando...</div>;
     }
 
-    if (section === 'operacoes') {
+    if (activeSection === 'operacoes') {
       return filteredOperacoes.length ? filteredOperacoes.map(renderOperacaoCard) : <EmptyBox text="Nenhuma operação encontrada." />;
     }
-    if (section === 'candidaturas') {
+    if (activeSection === 'candidaturas') {
       return filteredCandidaturas.length ? filteredCandidaturas.map(renderCandidaturaCard) : <EmptyBox text="Nenhuma candidatura encontrada." />;
     }
-    if (section === 'banco-horas') {
+    if (activeSection === 'banco-horas') {
       return filteredBancoHoras.length ? filteredBancoHoras.map(renderBancoHorasCard) : <EmptyBox text="Nenhum registro no banco de horas." />;
     }
-    if (section === 'notificacoes') {
+    if (activeSection === 'notificacoes') {
       return filteredNotificacoes.length ? filteredNotificacoes.map(renderNotificacaoCard) : <EmptyBox text="Nenhuma notificação." />;
     }
 
@@ -1210,7 +1217,41 @@ const GuardaMunicipalIros = () => {
           </div>
         </section>
 
-        {section !== 'relatorios' && (
+        {podeVerTudo && (
+          <Card className="rounded-[24px] border-slate-200">
+            <CardContent className="px-5 py-4">
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant={viewMode === 'minhas' ? 'default' : 'outline'}
+                  onClick={() => {
+                    setViewMode('minhas');
+                    setSearch('');
+                    setStatusFilter('todas');
+                  }}
+                >
+                  Minhas IROs
+                </Button>
+                <Button
+                  variant={viewMode === 'gerenciar' ? 'default' : 'outline'}
+                  onClick={() => {
+                    setViewMode('gerenciar');
+                    setSearch('');
+                    setStatusFilter('todas');
+                  }}
+                >
+                  Gerenciar IROs
+                </Button>
+              </div>
+              <p className="mt-3 text-sm text-slate-500">
+                {viewMode === 'minhas'
+                  ? 'Veja apenas as IROs em que você mesmo se candidatou.'
+                  : 'Acompanhe operações, candidaturas, banco de horas, notificações e relatórios do setor.'}
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
+        {activeSection !== 'relatorios' && (
           <Card className="rounded-[24px] border-slate-200">
             <CardContent className="space-y-4 px-5 py-5">
               <div className="grid gap-4 lg:grid-cols-[1fr_220px]">
@@ -1220,11 +1261,11 @@ const GuardaMunicipalIros = () => {
                     value={search}
                     onChange={(event) => setSearch(event.target.value)}
                     placeholder={
-                      section === 'operacoes'
+                      activeSection === 'operacoes'
                         ? 'Buscar operações...'
-                        : section === 'candidaturas'
+                        : activeSection === 'candidaturas'
                           ? 'Buscar candidaturas...'
-                          : section === 'banco-horas'
+                          : activeSection === 'banco-horas'
                             ? 'Buscar guardas...'
                             : 'Buscar notificações...'
                     }
@@ -1251,40 +1292,48 @@ const GuardaMunicipalIros = () => {
         )}
 
         <div className="flex items-center justify-between gap-3">
-          <div className="flex gap-1 overflow-x-auto rounded-[26px] bg-slate-100/80 p-1.5 scrollbar-none">
-            {(Object.entries(sectionLabels) as [Section, string][]).map(([key, label]) => (
-              <button
-                key={key}
-                onClick={() => {
-                  setSection(key);
-                  setSearch('');
-                  setStatusFilter('todas');
-                }}
-                className={cn(
-                  'whitespace-nowrap rounded-[20px] px-4 py-2.5 text-sm font-bold tracking-[-0.02em] transition-all',
-                  section === key ? 'bg-white text-slate-950 shadow-[0_10px_24px_-18px_rgba(15,23,42,0.55)]' : 'text-slate-500 hover:text-slate-700',
-                )}
-              >
-                {label}
-                {key === 'notificacoes' && notifNaoLidas > 0 && <span className="ml-2 rounded-full bg-brand-600 px-2 py-0.5 text-[11px] text-white">{notifNaoLidas}</span>}
-              </button>
-            ))}
-          </div>
+          {isMinhaIrosView ? (
+            <div className="rounded-[26px] bg-slate-100/80 p-1.5">
+              <div className="rounded-[20px] bg-white px-4 py-2.5 text-sm font-bold tracking-[-0.02em] text-slate-950 shadow-[0_10px_24px_-18px_rgba(15,23,42,0.55)]">
+                Minhas Candidaturas
+              </div>
+            </div>
+          ) : (
+            <div className="flex gap-1 overflow-x-auto rounded-[26px] bg-slate-100/80 p-1.5 scrollbar-none">
+              {(Object.entries(sectionLabels) as [Section, string][]).map(([key, label]) => (
+                <button
+                  key={key}
+                  onClick={() => {
+                    setSection(key);
+                    setSearch('');
+                    setStatusFilter('todas');
+                  }}
+                  className={cn(
+                    'whitespace-nowrap rounded-[20px] px-4 py-2.5 text-sm font-bold tracking-[-0.02em] transition-all',
+                    section === key ? 'bg-white text-slate-950 shadow-[0_10px_24px_-18px_rgba(15,23,42,0.55)]' : 'text-slate-500 hover:text-slate-700',
+                  )}
+                >
+                  {label}
+                  {key === 'notificacoes' && notifNaoLidas > 0 && <span className="ml-2 rounded-full bg-brand-600 px-2 py-0.5 text-[11px] text-white">{notifNaoLidas}</span>}
+                </button>
+              ))}
+            </div>
+          )}
 
           <div className="flex flex-wrap justify-end gap-2">
-            {section === 'operacoes' && canLaunchManual && (
+            {!isMinhaIrosView && section === 'operacoes' && canLaunchManual && (
               <Button onClick={() => setManualDialogOpen(true)} className="border-emerald-600 bg-emerald-600 text-white hover:bg-emerald-700">
                 <Plus className="mr-2 h-4 w-4" />
                 IROs Extras
               </Button>
             )}
-            {section === 'operacoes' && canManageOperacoes && (
+            {!isMinhaIrosView && section === 'operacoes' && canManageOperacoes && (
               <Button onClick={openCreateOperacao} className="max-sm:hidden">
                 <Plus className="mr-2 h-4 w-4" />
                 Nova Operação
               </Button>
             )}
-            {section === 'notificacoes' && notifNaoLidas > 0 && (
+            {activeSection === 'notificacoes' && notifNaoLidas > 0 && (
               <Button variant="outline" size="sm" onClick={() => void handleMarcarTodasLidas()}>
                 <Check className="mr-2 h-4 w-4" />
                 Marcar todas lidas
