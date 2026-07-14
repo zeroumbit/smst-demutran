@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { ResponsiveDialog } from '@/components/ui/responsive-dialog';
-import { Calendar, Clock, Hourglass, Search, ChevronRight, History, AlertTriangle, Gavel, DollarSign, TrendingUp } from 'lucide-react';
+import { Calendar, CheckCircle2, Clock, Hourglass, Search, ChevronRight, History, AlertTriangle, Gavel, DollarSign, TrendingUp, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
 import type { IROOperacao, IROCandidatura } from '@/types/admin';
@@ -46,6 +46,8 @@ const GuardaIros = () => {
 
   const [leiDialogAberta, setLeiDialogAberta] = useState(false);
   const [candidaturaParaCancelar, setCandidaturaParaCancelar] = useState<IROCandidatura | null>(null);
+  const [candidaturaResultado, setCandidaturaResultado] = useState<{ sucesso: boolean; mensagem: string; operacaoNome?: string; dataOperacao?: string; horas?: number; totalMes?: number } | null>(null);
+  const [candidaturaResultadoAberto, setCandidaturaResultadoAberto] = useState(false);
 
   const loadData = async () => {
     if (!user?.user_id) { setLoading(false); return; }
@@ -161,23 +163,20 @@ const GuardaIros = () => {
       p_data: candidaturaData.data_operacao,
     });
     if (error) {
-      toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+      setCandidaturaResultado({ sucesso: false, mensagem: error.message, operacaoNome: selectedOperacao.nome });
+      setCandidaturaResultadoAberto(true);
       return;
     }
     const r = data as { sucesso: boolean; mensagem: string; total_mes?: number };
-    if (r.sucesso && horasDaSolicitacao(selectedOperacao.tempo_solicitacao) >= 48) {
-      toast({
-        title: 'Candidatura realizada!',
-        description: 'Atenção: esta operação segue a Lei nº 2.739/2025 — desistência deve ser comunicada ao chefe imediato com 24h de antecedência.',
-        variant: 'default',
-      });
-    } else {
-      toast({
-        title: r.sucesso ? 'Candidatura realizada!' : 'Atenção',
-        description: r.sucesso ? (r.total_mes ? `Total no mês: ${r.total_mes}h` : undefined) : r.mensagem,
-        variant: r.sucesso ? 'default' : 'destructive',
-      });
-    }
+    setCandidaturaResultado({
+      sucesso: r.sucesso,
+      mensagem: r.sucesso ? 'Inscrição realizada com sucesso!' : r.mensagem,
+      operacaoNome: selectedOperacao.nome,
+      dataOperacao: candidaturaData.data_operacao,
+      horas: selectedOperacao.horas_por_dia,
+      totalMes: r.total_mes,
+    });
+    setCandidaturaResultadoAberto(true);
     setSelectedOperacao(null);
     void loadData();
   };
@@ -480,6 +479,41 @@ const GuardaIros = () => {
                 Confirmar cancelamento
               </Button>
             </div>
+          </div>
+        </ResponsiveDialog>
+
+        <ResponsiveDialog
+          open={candidaturaResultadoAberto}
+          onOpenChange={(open) => { if (!open) { setCandidaturaResultadoAberto(false); setCandidaturaResultado(null); } }}
+          title={candidaturaResultado?.sucesso ? 'Inscrição realizada' : 'Inscrição não realizada'}
+          description={candidaturaResultado?.sucesso ? 'Sua candidatura foi registrada com sucesso.' : 'Não foi possível completar sua inscrição.'}
+        >
+          <div className="space-y-5 py-2">
+            <div className={cn('flex flex-col items-center gap-3 rounded-2xl p-6 text-center', candidaturaResultado?.sucesso ? 'bg-emerald-50' : 'bg-red-50')}>
+              {candidaturaResultado?.sucesso ? (
+                <CheckCircle2 className="h-14 w-14 text-emerald-500" />
+              ) : (
+                <X className="h-14 w-14 text-red-500" />
+              )}
+              <div>
+                <p className={cn('text-lg font-bold', candidaturaResultado?.sucesso ? 'text-emerald-800' : 'text-red-800')}>
+                  {candidaturaResultado?.mensagem || (candidaturaResultado?.sucesso ? 'Candidatura realizada!' : 'Erro ao candidatar')}
+                </p>
+                {candidaturaResultado?.sucesso && candidaturaResultado?.operacaoNome && (
+                  <div className="mt-3 space-y-1 text-sm text-slate-600">
+                    <p><span className="font-semibold text-slate-700">Operação:</span> {candidaturaResultado.operacaoNome}</p>
+                    <p><span className="font-semibold text-slate-700">Data:</span> {fmtDateBR(candidaturaResultado.dataOperacao || '')}</p>
+                    <p><span className="font-semibold text-slate-700">Horas:</span> {candidaturaResultado.horas}h/dia</p>
+                    {candidaturaResultado.totalMes !== undefined && (
+                      <p className="pt-1 text-emerald-700"><span className="font-semibold">Total no mês:</span> {candidaturaResultado.totalMes}h</p>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+            <Button className="w-full" onClick={() => { setCandidaturaResultadoAberto(false); setCandidaturaResultado(null); }}>
+              {candidaturaResultado?.sucesso ? 'OK, entendi' : 'Fechar'}
+            </Button>
           </div>
         </ResponsiveDialog>
       </div>
