@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { AlertTriangle, Calendar, Check, CheckCircle2, ChevronsUpDown, Clock, Eye, EyeOff, Hourglass, Pencil, Plus, RefreshCcw, Trash2, Users, X } from 'lucide-react';
+import { AlertTriangle, Calendar, Check, CheckCircle2, ChevronsUpDown, Clock, Eye, EyeOff, Hourglass, Pencil, Plus, Printer, RefreshCcw, Trash2, Users, X } from 'lucide-react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -398,6 +398,18 @@ const GuardaMunicipalIros = () => {
     return map;
   }, [guardasAtivos, usuarios]);
 
+  const guardaMatriculaMap = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const item of guardasAtivos) map.set(item.usuario_id, item.matricula);
+    return map;
+  }, [guardasAtivos]);
+
+  const guardaGraduacaoMap = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const item of guardasAtivos) map.set(item.usuario_id, item.graduacao_nome || '');
+    return map;
+  }, [guardasAtivos]);
+
   const minhasCandidaturas = useMemo(
     () => candidaturas.filter((item) => item.usuario_id === user?.user_id),
     [candidaturas, user?.user_id],
@@ -473,6 +485,52 @@ const GuardaMunicipalIros = () => {
       return true;
     });
   }, [candidaturas, isMinhaIrosView, minhasCandidaturas, podeVerTudo, search, statusFilter, usuarioMap]);
+
+  const candidaturasAgrupadas = useMemo(() => {
+    if (!podeVerTudo || viewMode !== 'gerenciar') return [];
+    const map = new Map<string, { operacao: IROOperacao; candidaturas: IROCandidatura[]; stats: { total: number; confirmados: number; capacidadeTotal: number; restante: number } }>();
+    for (const op of operacoes) {
+      const opCandidaturas = filteredCandidaturas.filter((c) => c.operacao_id === op.id);
+      if (opCandidaturas.length === 0) continue;
+      const confirmadosRealizados = opCandidaturas.filter((c) => c.status === 'confirmado' || c.status === 'realizado');
+      const dias = Math.max(1, Math.ceil((new Date(op.data_fim).getTime() - new Date(op.data_inicio).getTime()) / (1000 * 60 * 60 * 24)) + 1);
+      const capacidadeTotal = dias * op.vagas_por_dia;
+      const usadas = confirmadosRealizados.length;
+      map.set(op.id, {
+        operacao: op,
+        candidaturas: opCandidaturas,
+        stats: { total: opCandidaturas.length, confirmados: confirmadosRealizados.length, capacidadeTotal, restante: Math.max(0, capacidadeTotal - usadas) },
+      });
+    }
+    return Array.from(map.values()).sort((a, b) => b.candidaturas.length - a.candidaturas.length);
+  }, [filteredCandidaturas, operacoes, podeVerTudo, viewMode]);
+
+  const handlePrintCandidaturas = useCallback((operacao: IROOperacao, opCandidaturas: IROCandidatura[], formato: 'pdf' | 'xlsx' = 'pdf') => {
+    const candidatos = opCandidaturas.map((c) => ({
+      nome: usuarioMap.get(c.usuario_id) || '—',
+      matricula: guardaMatriculaMap.get(c.usuario_id) || '—',
+      graduacao: guardaGraduacaoMap.get(c.usuario_id) || '—',
+      data: c.data_operacao,
+      horario: operacao.horario_previsto.slice(0, 5),
+      horas: c.horas_trabalhadas,
+      valor: c.horas_trabalhadas * (valorHoraPorUsuario.get(c.usuario_id) || 0),
+      status: c.status,
+    }));
+    gerarRelatorioDetalhadoOperacao(
+      {
+        nome: operacao.nome,
+        descricao: operacao.descricao,
+        data_inicio: operacao.data_inicio,
+        data_fim: operacao.data_fim,
+        horario_previsto: operacao.horario_previsto,
+        vagas_por_dia: operacao.vagas_por_dia,
+        horas_por_dia: operacao.horas_por_dia,
+      },
+      candidatos,
+      formato,
+    );
+    toast({ title: 'Lista de candidaturas gerada!' });
+  }, [usuarioMap, guardaMatriculaMap, guardaGraduacaoMap, valorHoraPorUsuario]);
 
   const filteredBancoHoras = useMemo(() => {
     const base = isMinhaIrosView ? (meuBancoHoras ? [meuBancoHoras] : []) : podeVerTudo ? bancoHoras : (meuBancoHoras ? [meuBancoHoras] : []);
@@ -1009,7 +1067,8 @@ const GuardaMunicipalIros = () => {
         <div className="min-w-0 flex-1">
           <p className="font-semibold text-slate-900">{item.operacao_nome}</p>
           <p className="mt-0.5 text-sm text-slate-500">
-            {usuarioMap.get(item.usuario_id) || '—'} &middot; {fmtDateBR(item.data_operacao)} &middot; {item.horas_trabalhadas}h
+            <span className="font-medium text-slate-700">{usuarioMap.get(item.usuario_id) || '—'}</span>
+            {' '}(Mat. {guardaMatriculaMap.get(item.usuario_id) || '—'}) &middot; {guardaGraduacaoMap.get(item.usuario_id) || '—'} &middot; {fmtDateBR(item.data_operacao)} &middot; {item.horas_trabalhadas}h
             {valorHoraPorUsuario.has(item.usuario_id) && (
               <span className="ml-1.5 font-semibold text-emerald-600">
                 {formatCurrency(item.horas_trabalhadas * (valorHoraPorUsuario.get(item.usuario_id) || 0))}
@@ -1074,6 +1133,73 @@ const GuardaMunicipalIros = () => {
       return filteredOperacoes.length ? filteredOperacoes.map(renderOperacaoCard) : <EmptyBox text="Nenhuma operação encontrada." />;
     }
     if (activeSection === 'candidaturas') {
+      if (podeVerTudo && viewMode === 'gerenciar' && candidaturasAgrupadas.length > 0) {
+        return candidaturasAgrupadas.map(({ operacao, candidaturas: opCandidaturas, stats }) => (
+          <article key={operacao.id} className="rounded-[34px] border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+              <div className="flex-1 space-y-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h3 className="text-lg font-bold text-slate-900">{operacao.nome}</h3>
+                  <Badge variant="outline" className={cn('rounded-full px-3 py-1 text-xs font-bold', operacao.ativo ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-slate-200 bg-slate-100 text-slate-500')}>
+                    {operacao.ativo ? 'Ativa' : 'Inativa'}
+                  </Badge>
+                </div>
+                <div className="flex flex-wrap gap-3 text-sm text-slate-500">
+                  <span className="flex items-center gap-1"><Calendar className="h-3.5 w-3.5" />{fmtDateBR(operacao.data_inicio)} - {fmtDateBR(operacao.data_fim)}</span>
+                  <span className="flex items-center gap-1"><Clock className="h-3.5 w-3.5" />{operacao.horario_previsto.slice(0, 5)}</span>
+                  <span className="flex items-center gap-1"><Hourglass className="h-3.5 w-3.5" />{operacao.horas_por_dia}h/dia</span>
+                  <span className="flex items-center gap-1"><Users className="h-3.5 w-3.5" />{operacao.vagas_por_dia} vaga(s)/dia</span>
+                </div>
+                <div className="flex flex-wrap gap-2 text-xs">
+                  <span className="rounded-full bg-slate-100 px-3 py-1 font-semibold text-slate-700">{stats.total} candidatura(s)</span>
+                  <span className="rounded-full bg-blue-50 px-3 py-1 font-semibold text-blue-700">{stats.confirmados} confirmado(s)/realizado(s)</span>
+                  <span className={cn('rounded-full px-3 py-1 font-semibold', stats.restante > 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700')}>
+                    {stats.restante} vaga(s) restante(s) de {stats.capacidadeTotal}
+                  </span>
+                </div>
+              </div>
+              <div className="flex shrink-0 gap-2">
+                <Button size="sm" variant="outline" onClick={() => handlePrintCandidaturas(operacao, opCandidaturas)}>
+                  <Printer className="mr-1.5 h-4 w-4" />
+                  Imprimir
+                </Button>
+              </div>
+            </div>
+            <div className="mt-4 overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-slate-200 text-left text-xs font-bold uppercase tracking-[0.08em] text-slate-500">
+                    <th className="py-2.5 pr-3">Nome</th>
+                    <th className="py-2.5 pr-3">Matrícula</th>
+                    <th className="py-2.5 pr-3">Graduação</th>
+                    <th className="py-2.5 pr-3">Data</th>
+                    <th className="py-2.5 pr-3">Horas</th>
+                    <th className="py-2.5 pr-3">Valor</th>
+                    <th className="py-2.5">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {opCandidaturas.map((c) => (
+                    <tr key={c.id} className="border-b border-slate-100 last:border-0">
+                      <td className="py-2.5 pr-3 font-medium text-slate-900">{usuarioMap.get(c.usuario_id) || '—'}</td>
+                      <td className="py-2.5 pr-3 text-slate-500">{guardaMatriculaMap.get(c.usuario_id) || '—'}</td>
+                      <td className="py-2.5 pr-3 text-slate-500">{guardaGraduacaoMap.get(c.usuario_id) || '—'}</td>
+                      <td className="py-2.5 pr-3 text-slate-600">{fmtDateBR(c.data_operacao)}</td>
+                      <td className="py-2.5 pr-3 font-medium">{c.horas_trabalhadas}h</td>
+                      <td className="py-2.5 pr-3 font-medium text-emerald-600">{formatCurrency(c.horas_trabalhadas * (valorHoraPorUsuario.get(c.usuario_id) || 0))}</td>
+                      <td className="py-2.5">
+                        <Badge variant="outline" className={cn('rounded-full px-2.5 py-0.5 text-[10px] font-bold', STATUS_CANDIDATURA_VARIANT[c.status])}>
+                          {c.status}
+                        </Badge>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </article>
+        ));
+      }
       return filteredCandidaturas.length ? filteredCandidaturas.map(renderCandidaturaCard) : <EmptyBox text="Nenhuma candidatura encontrada." />;
     }
     if (activeSection === 'banco-horas') {
