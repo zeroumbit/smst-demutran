@@ -1,7 +1,9 @@
-import { useCallback, useEffect, useState, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useParams } from 'react-router-dom';
 import { GuardsLayout } from '@/components/admin/GuardsLayout';
+import { AdminLayout } from '@/components/admin/AdminLayout';
 import { supabase } from '@/lib/supabase';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth, getDashboardUrl } from '@/contexts/AuthContext';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
@@ -27,6 +29,7 @@ const fmtDateBR = (d: string | null | undefined): string => {
 };
 
 const GuardaIrosHistorico = () => {
+  const { setorSlug } = useParams<{ setorSlug?: string }>();
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [candidaturas, setCandidaturas] = useState<IROCandidatura[]>([]);
@@ -78,8 +81,19 @@ const GuardaIrosHistorico = () => {
     });
   }, [candidaturas, search, mesFilter, anoFilter]);
 
+  const isGuardaFlow = !setorSlug || setorSlug === 'guarda-municipal';
+  const Layout = isGuardaFlow
+    ? GuardsLayout
+    : ({ children }: { children: React.ReactNode }) => (
+        <AdminLayout backPath={`/admin/dashboard/${setorSlug}/iro`} backLabel="Voltar para IROs">
+          <div className="p-4 sm:p-6 lg:p-8">
+            {children}
+          </div>
+        </AdminLayout>
+      );
+
   return (
-    <GuardsLayout>
+    <Layout>
       <div className="space-y-4 sm:space-y-6">
         <section className="rounded-2xl bg-[linear-gradient(135deg,_#0f172a_0%,_#1e293b_45%,_#2563eb_100%)] px-4 pb-4 pt-5 sm:px-6 sm:pb-5 sm:pt-6">
           <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
@@ -162,7 +176,7 @@ const GuardaIrosHistorico = () => {
           </div>
         )}
       </div>
-    </GuardsLayout>
+    </Layout>
   );
 };
 

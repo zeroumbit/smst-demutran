@@ -27,6 +27,7 @@ const Eventos = React.lazy(() => import("./pages/Eventos"));
 const PublicConsultaVeiculo = React.lazy(() => import("./pages/PublicConsultaVeiculo"));
 const PublicCredencialDemutran = React.lazy(() => import("./pages/PublicCredencialDemutran"));
 const PublicConcessionarioDemutran = React.lazy(() => import("./pages/PublicConcessionarioDemutran"));
+const ConcessionarioCadastro = React.lazy(() => import("./pages/guardas/CadastroConcessionario"));
 const PublicRecursoDemutran = React.lazy(() => import("./pages/PublicRecursoDemutran"));
 const PublicDocumentosDemutran = React.lazy(() => import("./pages/PublicDocumentosDemutran"));
 const PublicMidiasDemutran = React.lazy(() => import("./pages/PublicMidiasDemutran"));
@@ -185,6 +186,11 @@ const App = () => (
             <Route path="/demutran/credenciais" element={
               <SuspenseWrapper>
                 <PublicCredencialDemutran />
+              </SuspenseWrapper>
+            } />
+            <Route path="/demutran/concessionario/cadastro" element={
+              <SuspenseWrapper>
+                <ConcessionarioCadastro />
               </SuspenseWrapper>
             } />
             <Route path="/demutran/concessionario/*" element={
@@ -526,6 +532,20 @@ const App = () => (
               <SuspenseWrapper>
                 <ProtectedRoute allowedPapeis={['gestor', 'admin_setor', 'tecnico']} requiredSetorSlug="guarda-municipal">
                   <AdminGuardaMunicipalIros />
+                </ProtectedRoute>
+              </SuspenseWrapper>
+            } />
+            <Route path="/admin/dashboard/:setorSlug/iro" element={
+              <SuspenseWrapper>
+                <ProtectedRoute allowedPapeis={['gestor', 'admin_setor']} requireGraduacao>
+                  <GuardaIros />
+                </ProtectedRoute>
+              </SuspenseWrapper>
+            } />
+            <Route path="/admin/dashboard/:setorSlug/iro/historico" element={
+              <SuspenseWrapper>
+                <ProtectedRoute allowedPapeis={['gestor', 'admin_setor']} requireGraduacao>
+                  <GuardaIrosHistorico />
                 </ProtectedRoute>
               </SuspenseWrapper>
             } />

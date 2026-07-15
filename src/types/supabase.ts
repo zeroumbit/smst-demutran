@@ -384,7 +384,15 @@ export type Database = {
           created_at: string
           curso: string | null
           email_notificacao: string | null
-          endereco: string | null
+          logradouro: string | null
+          numero: string | null
+          bairro_distrito: string | null
+          marca: string | null
+          cor: string | null
+          modelo: string | null
+          ano_fabricacao: string | null
+          ano_modelo: string | null
+          chassi: string | null
           exercicio: string | null
           fabricacao: string | null
           id: string
