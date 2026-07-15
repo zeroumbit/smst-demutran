@@ -323,8 +323,16 @@ export interface DemutranConcessionario {
   ponto_referencia: string | null;
   numero_vaga: string | null;
   titular_nome: string | null;
-  endereco: string | null;
+  logradouro: string | null;
+  numero: string | null;
+  bairro_distrito: string | null;
   veiculo: string | null;
+  marca: string | null;
+  cor: string | null;
+  modelo: string | null;
+  ano_fabricacao: string | null;
+  ano_modelo: string | null;
+  chassi: string | null;
   placa: string | null;
   fabricacao: string | null;
   ultimo_alvara: string | null;

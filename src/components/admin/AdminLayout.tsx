@@ -92,6 +92,7 @@ const moveMenuItemBeforeLabel = (items: MenuItem[], itemLabel: string, beforeLab
 const defaultMenuItems: MenuItem[] = [
   { icon: HouseIcon, label: 'Dashboard', path: '/admin/dashboard', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
   { icon: MessageSquareText, label: 'Fala Cidadao', path: '/admin/fala-cidadao', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
+  { icon: FileWarning, label: 'IRO', path: '/admin/dashboard/:setorSlug/iro', allowedPapeis: ['gestor', 'admin_setor'] },
   { icon: NotebookPen, label: 'Anotacoes', path: '/admin/anotacoes', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
   { icon: BarChart3, label: 'Relatorios', path: '/admin/relatorios', allowedPapeis: ['super_admin'] },
   { icon: CarFront, label: 'Veiculos', path: '/admin/demutran/veiculos', allowedPapeis: ['gestor', 'admin_setor'] },
@@ -112,6 +113,7 @@ const defaultMenuItems: MenuItem[] = [
 const demutranMenuItems: MenuItem[] = [
   { icon: HouseIcon, label: 'Dashboard', path: '/admin/dashboard/demutran', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
   { icon: MessageSquareText, label: 'Fala Cidadao', path: '/admin/fala-cidadao/demutran', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
+  { icon: FileWarning, label: 'IRO', path: '/admin/dashboard/:setorSlug/iro', allowedPapeis: ['gestor', 'admin_setor'] },
   { icon: NotebookPen, label: 'Anotacoes', path: '/admin/anotacoes/demutran', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
   { icon: BarChart3, label: 'Relatorios', path: '/admin/relatorios', allowedPapeis: ['super_admin'] },
   { icon: CarFront, label: 'Veiculos', path: '/admin/demutran/veiculos', allowedPapeis: ['gestor', 'admin_setor'] },
@@ -311,55 +313,69 @@ export const AdminLayout = ({ children, backPath, backLabel }: AdminLayoutProps)
     const hasModulosRestricted = !isSuperAdmin && userModulos && userModulos.length > 0;
 
     const filterItem = (item: MenuItem): MenuItem | null => {
-      if (item.path?.startsWith('/admin/demutran/')) {
+      let mappedItem = { ...item };
+      if (mappedItem.path && mappedItem.path.includes(':setorSlug') && profile?.setor_slug) {
+        mappedItem.path = mappedItem.path.replace(':setorSlug', profile.setor_slug);
+      }
+
+      if (mappedItem.label === 'IRO') {
+        const isChefeComGraduacao =
+          (profile?.papel === 'gestor' || profile?.papel === 'admin_setor') &&
+          !!profile?.graduacao_id;
+        if (!isChefeComGraduacao) {
+          return null;
+        }
+      }
+
+      if (mappedItem.path?.startsWith('/admin/demutran/')) {
         if (profile?.setor_slug && profile.setor_slug !== 'demutran' && !isSuperAdmin) {
           return null;
         }
       }
 
-      if (item.path?.startsWith('/admin/guarda-municipal/')) {
+      if (mappedItem.path?.startsWith('/admin/guarda-municipal/')) {
         if (profile?.setor_slug && profile.setor_slug !== 'guarda-municipal' && !isSuperAdmin) {
           return null;
         }
       }
 
-      if (item.path === '/admin/configuracoes-demutran') {
+      if (mappedItem.path === '/admin/configuracoes-demutran') {
         if (!isSuperAdmin && (!profile?.setor_slug || profile.setor_slug !== 'demutran')) {
           return null;
         }
       }
 
-      if (item.path === '/admin/configuracoes-guarda-municipal') {
+      if (mappedItem.path === '/admin/configuracoes-guarda-municipal') {
         if (!isSuperAdmin && (!profile?.setor_slug || profile.setor_slug !== 'guarda-municipal')) {
           return null;
         }
-        if (isSuperAdmin) return item;
+        if (isSuperAdmin) return mappedItem;
       }
 
-      if (item.children) {
-        const filteredChildren = item.children
+      if (mappedItem.children) {
+        const filteredChildren = mappedItem.children
           .map(filterItem)
           .filter(Boolean) as MenuItem[];
         if (filteredChildren.length === 0) return null;
-        return { ...item, children: filteredChildren };
+        return { ...mappedItem, children: filteredChildren };
       }
 
-      if (!item.allowedPapeis?.length) {
-        return item;
+      if (!mappedItem.allowedPapeis?.length) {
+        return mappedItem;
       }
 
       if (hasModulosRestricted) {
-        const modulo = moduloItemMap[item.label];
+        const modulo = moduloItemMap[mappedItem.label];
         if (modulo) {
-          return userModulos!.includes(modulo) ? item : null;
+          return userModulos!.includes(modulo) ? mappedItem : null;
         }
       }
 
-      if (isSuperAdmin && item.allowedPapeis.includes('super_admin')) {
-        return item;
+      if (isSuperAdmin && mappedItem.allowedPapeis.includes('super_admin')) {
+        return mappedItem;
       }
 
-      return hasPapel(...item.allowedPapeis) ? item : null;
+      return hasPapel(...mappedItem.allowedPapeis) ? mappedItem : null;
     };
 
     const filteredMenuItems = sourceMenuItems

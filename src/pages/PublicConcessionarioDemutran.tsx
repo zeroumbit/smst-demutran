@@ -433,7 +433,15 @@ const PublicConcessionarioDemutran = () => {
                           </div>
                         </div>
                         <Button type="submit" className="w-full" disabled={loading}>
-                          {loading ? 'Entrando...' : 'Acessar meus dados'}
+                          {loading ? 'Entrando...' : 'ENTRAR'}
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="w-full"
+                          onClick={() => window.location.href = '/demutran/concessionario/cadastro'}
+                        >
+                          Cadastre-se
                         </Button>
                       </form>
                     </CardContent>

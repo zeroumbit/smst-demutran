@@ -60,8 +60,8 @@ export async function getSignedUrl(urlOrPath: string, expiresInSeconds = 600): P
   return data.signedUrl;
 }
 
-export async function uploadDemutranAnexo(file: File, folder: 'credenciais' | 'recursos' | 'midias') {
-  const rules = folder === 'midias' ? PDF_UPLOAD_RULES : DOCUMENT_UPLOAD_RULES;
+export async function uploadDemutranAnexo(file: File, folder: 'credenciais' | 'recursos' | 'midias' | 'concessao') {
+  const rules = folder === 'midias' || folder === 'concessao' ? PDF_UPLOAD_RULES : DOCUMENT_UPLOAD_RULES;
   validateFileUpload(file, rules);
 
   const fileName = `${folder}/${sanitizeFileName(file.name)}`;

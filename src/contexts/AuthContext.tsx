@@ -160,24 +160,6 @@ async function fetchUserProfile(): Promise<AdminProfile | null> {
         return await buildGuardaProfile(authUserId, authUserEmail);
       }
 
-      // Guarda sem perfil admin: enriquecer com dados específicos
-      if (!profile.papel && !profile.legacy_admin) {
-        try {
-          const { data: guardaPerfil } = await supabase.rpc('buscar_guarda_por_usuario', { p_usuario_id: profile.user_id });
-          if (guardaPerfil) {
-            (profile as any).aceitou_lei_iro_at = (guardaPerfil as any).aceitou_lei_iro_at || null;
-          }
-        } catch {
-          // silent
-        }
-
-        if (!profile.aceitou_lei_iro_at) {
-          profile.aceitou_lei_iro_at = readLeiIroAccepted(profile.user_id);
-        } else {
-          persistLeiIroAccepted(profile.user_id, profile.aceitou_lei_iro_at);
-        }
-      }
-
       // Admin que tambem e guarda: verificar registro em guardas_usuarios
       if (profile.papel) {
         try {
@@ -192,6 +174,25 @@ async function fetchUserProfile(): Promise<AdminProfile | null> {
         }
       } else {
         (profile as any).tem_guarda = false;
+      }
+
+      // Enriquecer com dados de aceite da lei IRO para todos os guardas (comuns ou admins vinculados)
+      const isUserGuarda = (!profile.papel && !profile.legacy_admin) || (profile as any).tem_guarda;
+      if (isUserGuarda) {
+        try {
+          const { data: guardaPerfil } = await supabase.rpc('buscar_guarda_por_usuario', { p_usuario_id: profile.user_id });
+          if (guardaPerfil) {
+            (profile as any).aceitou_lei_iro_at = (guardaPerfil as any).aceitou_lei_iro_at || null;
+          }
+        } catch {
+          // silent
+        }
+
+        if (!profile.aceitou_lei_iro_at) {
+          profile.aceitou_lei_iro_at = readLeiIroAccepted(profile.user_id);
+        } else {
+          persistLeiIroAccepted(profile.user_id, profile.aceitou_lei_iro_at);
+        }
       }
 
       return profile;

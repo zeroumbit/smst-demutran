@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { GuardsLayout } from '@/components/admin/GuardsLayout';
+import { AdminLayout } from '@/components/admin/AdminLayout';
 import { supabase } from '@/lib/supabase';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth, getDashboardUrl } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -33,6 +34,7 @@ const horasDaSolicitacao = (t: string): number => {
 
 const GuardaIros = () => {
   const navigate = useNavigate();
+  const { setorSlug } = useParams<{ setorSlug?: string }>();
   const { user, profile } = useAuth();
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -54,15 +56,13 @@ const GuardaIros = () => {
     setLoading(true);
 
     try {
-      let setorId = profile?.setor_id;
-      if (!setorId) {
-        const { data: sData } = await supabase
-          .from('setores')
-          .select('id')
-          .eq('slug', 'guarda-municipal')
-          .maybeSingle();
-        if (sData) setorId = sData.id;
-      }
+      let setorId = '';
+      const { data: sData } = await supabase
+        .from('setores')
+        .select('id')
+        .eq('slug', 'guarda-municipal')
+        .maybeSingle();
+      if (sData) setorId = sData.id;
 
       const [opRes, candRes, guardaRes] = await Promise.all([
         supabase.from('iro_operacoes').select('*').eq('setor_id', setorId || '').eq('ativo', true).order('data_inicio', { ascending: false }),
@@ -94,12 +94,12 @@ const GuardaIros = () => {
       const { data: banco } = await supabase.from('iro_banco_horas').select('horas_excedentes').eq('usuario_id', user.user_id).maybeSingle();
 
       let valorHora = 0;
-      const guardaData = guardaRes.data as { graduacao_id?: string } | null;
-      if (guardaData?.graduacao_id) {
+      const graduacaoId = (guardaRes.data as { graduacao_id?: string } | null)?.graduacao_id || profile?.graduacao_id;
+      if (graduacaoId) {
         const { data: valorData } = await supabase
           .from('iro_valores_graduacao')
           .select('valor_hora')
-          .eq('graduacao_id', guardaData.graduacao_id)
+          .eq('graduacao_id', graduacaoId)
           .eq('ativo', true)
           .maybeSingle();
         if (valorData) valorHora = Number((valorData as any).valor_hora) || 0;
@@ -237,16 +237,27 @@ const GuardaIros = () => {
     void loadData();
   };
 
+  const isGuardaFlow = !setorSlug || setorSlug === 'guarda-municipal';
+  const Layout = isGuardaFlow
+    ? GuardsLayout
+    : ({ children }: { children: React.ReactNode }) => (
+        <AdminLayout backPath={`/admin/dashboard/${setorSlug}`} backLabel="Dashboard">
+          <div className="p-4 sm:p-6 lg:p-8">
+            {children}
+          </div>
+        </AdminLayout>
+      );
+
   if (loading) {
     return (
-      <GuardsLayout>
+      <Layout>
         <div className="rounded-2xl border border-slate-200 bg-white p-6 text-center text-sm text-slate-500 sm:p-8">Carregando...</div>
-      </GuardsLayout>
+      </Layout>
     );
   }
 
   return (
-    <GuardsLayout>
+    <Layout>
       <div className="space-y-4 sm:space-y-6">
         <section className="rounded-[28px] bg-[linear-gradient(135deg,_#0f172a_0%,_#1e293b_45%,_#2563eb_100%)] px-4 pb-4 pt-5 sm:px-6 sm:pb-5 sm:pt-6">
           <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
@@ -256,7 +267,7 @@ const GuardaIros = () => {
               <p className="mt-2 max-w-xl text-[14px] leading-6 text-white">Integração de Recursos Operacionais — Gerencie suas candidaturas e acompanhe suas horas.</p>
             </div>
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" className="min-h-10 gap-2 rounded-xl border-0 bg-white/20 text-white shadow-none hover:bg-white/30" onClick={() => navigate('/admin/perfil-guardas/guarda-municipal/iros/historico')}>
+              <Button variant="outline" size="sm" className="min-h-10 gap-2 rounded-xl border-0 bg-white/20 text-white shadow-none hover:bg-white/30" onClick={() => navigate(isGuardaFlow ? '/admin/perfil-guardas/guarda-municipal/iros/historico' : `/admin/dashboard/${setorSlug}/iro/historico`)}>
                 <History className="h-4 w-4" />
                 Histórico
               </Button>
@@ -517,7 +528,7 @@ const GuardaIros = () => {
           </div>
         </ResponsiveDialog>
       </div>
-    </GuardsLayout>
+    </Layout>
   );
 };
 

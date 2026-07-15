@@ -8,6 +8,7 @@ interface ProtectedRouteProps {
   requiredSetorSlug?: string;
   allowSuperAdmin?: boolean;
   requireGuarda?: boolean;
+  requireGraduacao?: boolean;
 }
 
 export const ProtectedRoute = ({
@@ -16,6 +17,7 @@ export const ProtectedRoute = ({
   requiredSetorSlug,
   allowSuperAdmin = true,
   requireGuarda,
+  requireGraduacao,
 }: ProtectedRouteProps) => {
   const { isAuthenticated, isLoading, canAccessAdmin, hasPapel, isSuperAdmin, profile, isGuarda, temGuarda } = useAuth();
   const { setorSlug } = useParams<{ setorSlug?: string }>();
@@ -40,11 +42,24 @@ export const ProtectedRoute = ({
     }
   }
 
-  if (requireGuarda) {
-    if (!isGuarda && !temGuarda) {
+  if (requireGraduacao && !isSuperAdmin) {
+    const temGraduacao = !!profile?.graduacao_id;
+    if (!temGraduacao) {
       return <Navigate to={getDashboardUrl(profile)} replace />;
     }
-    if (!profile?.aceitou_lei_iro_at && location.pathname !== '/admin/perfil-guardas/guarda-municipal/dashboard') {
+  }
+
+  if (requireGuarda) {
+    const isChefeComGraduacao =
+      (profile?.papel === 'gestor' || profile?.papel === 'admin_setor') &&
+      !!profile?.graduacao_id;
+
+    if (!isGuarda && !temGuarda && !isChefeComGraduacao) {
+      return <Navigate to={getDashboardUrl(profile)} replace />;
+    }
+
+    const isGuardaDeFato = isGuarda || temGuarda || profile?.setor_slug === 'guarda-municipal';
+    if (isGuardaDeFato && !profile?.aceitou_lei_iro_at && location.pathname !== '/admin/perfil-guardas/guarda-municipal/dashboard') {
       return <Navigate to="/admin/perfil-guardas/guarda-municipal/dashboard" replace />;
     }
     return <>{children}</>;
