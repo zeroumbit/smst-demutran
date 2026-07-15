@@ -435,7 +435,8 @@ const DemutranConcessionarios = () => {
       itemsQuery = itemsQuery.eq('setor_id', effectiveSetorId);
     }
 
-    itemsQuery = itemsQuery.order('numero_vaga', { ascending: true, nullsFirst: false }).order('categoria').order('titular_nome');
+    const categoriaOrder: Record<string, number> = { mototaxi: 1, carro_horario: 2 };
+    itemsQuery = itemsQuery.order('titular_nome');
 
     const [itemsResponse, accessResponse] = await Promise.all([
       itemsQuery,
@@ -445,7 +446,16 @@ const DemutranConcessionarios = () => {
     if (itemsResponse.error) {
       toast({ title: 'Erro ao carregar concessionarios', description: itemsResponse.error.message, variant: 'destructive' });
     } else {
-      setItems((itemsResponse.data || []) as DemutranConcessionario[]);
+      const sorted = ((itemsResponse.data || []) as DemutranConcessionario[]).sort((a, b) => {
+        const catA = categoriaOrder[a.categoria] ?? 3;
+        const catB = categoriaOrder[b.categoria] ?? 3;
+        if (catA !== catB) return catA - catB;
+        const vagaA = parseInt(a.numero_vaga as string, 10) || 99999;
+        const vagaB = parseInt(b.numero_vaga as string, 10) || 99999;
+        if (vagaA !== vagaB) return vagaA - vagaB;
+        return (a.titular_nome || '').localeCompare(b.titular_nome || '');
+      });
+      setItems(sorted);
       const nextMap: Record<string, boolean> = {};
       ((accessResponse.data || []) as Array<{ concessionario_id: string }>).forEach((row) => {
         nextMap[row.concessionario_id] = true;
