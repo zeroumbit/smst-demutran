@@ -453,6 +453,14 @@ const GuardaDashboard = () => {
       onOpenChange={(open) => { if (!open) setSelectedOperacao(null); }}
       title={selectedOperacao?.nome || 'Detalhes da operação'}
       description="Veja os detalhes da operação."
+      footer={
+        <div className="flex gap-2 w-full">
+          <Button variant="outline" className="flex-1 rounded-xl text-[13px] font-semibold" onClick={() => setSelectedOperacao(null)}>Cancelar</Button>
+          <Button className="flex-1 rounded-xl text-[13px] font-semibold" disabled={candidaturaEnviando} onClick={() => void handleCandidatar()}>
+            {candidaturaEnviando ? 'Enviando...' : 'Confirmar inscrição'}
+          </Button>
+        </div>
+      }
     >
       {selectedOperacao && (
         <div className="space-y-5 py-2">
@@ -498,14 +506,6 @@ const GuardaDashboard = () => {
               className="mt-2 h-12 rounded-xl border-slate-200 text-[15px] font-medium"
             />
           </div>
-          <Button
-            size="lg"
-            className="w-full rounded-xl text-[15px] font-bold shadow-sm"
-            disabled={candidaturaEnviando}
-            onClick={() => void handleCandidatar()}
-          >
-            {candidaturaEnviando ? 'Enviando...' : 'Confirmar inscrição'}
-          </Button>
         </div>
       )}
     </ResponsiveDialog>
