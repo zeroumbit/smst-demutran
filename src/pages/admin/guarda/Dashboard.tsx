@@ -75,6 +75,7 @@ const GuardaDashboard = () => {
   const [resumo, setResumo] = useState<ResumoGuarda>({ total_horas_mes: 0, total_reais: 0, horas_disponiveis: 0, banco_horas: 0, mes_anterior_horas: 0, mes_anterior_reais: 0 });
   const [ultimasCandidaturas, setUltimasCandidaturas] = useState<any[]>([]);
   const [operacoes, setOperacoes] = useState<IROOperacao[]>([]);
+  const [vagasPreenchidas, setVagasPreenchidas] = useState<Record<string, boolean>>({});
   const [guardaNome, setGuardaNome] = useState('');
   const [bannerVisible, setBannerVisible] = useState(() => bannerPodeExibir());
 
@@ -153,7 +154,7 @@ const GuardaDashboard = () => {
         if (sData) setorId = sData.id;
       }
 
-      const [opRes, candRes, bancoRes] = await Promise.all([
+      const [opRes, candRes, bancoRes, vagasCountRes] = await Promise.all([
         setorId
           ? supabase.from('iro_operacoes').select('*').eq('setor_id', setorId).eq('ativo', true).order('data_inicio', { ascending: false })
           : Promise.resolve({ data: [] }),
@@ -168,11 +169,24 @@ const GuardaDashboard = () => {
           .select('horas_excedentes')
           .eq('usuario_id', user.user_id)
           .maybeSingle(),
+        supabase.from('iro_candidaturas').select('operacao_id').in('status', ['pendente', 'confirmado', 'realizado']),
       ]);
 
       const hojeStr = new Date().toISOString().slice(0, 10);
       const validOps = (opRes.data || []).filter((op: any) => op.ativo && op.data_fim >= hojeStr) as IROOperacao[];
       setOperacoes(validOps);
+
+      const vagasCountMap = new Map<string, number>();
+      (vagasCountRes.data || []).forEach((v: any) => {
+        vagasCountMap.set(v.operacao_id, (vagasCountMap.get(v.operacao_id) || 0) + 1);
+      });
+      const vagasMap: Record<string, boolean> = {};
+      validOps.forEach((op: any) => {
+        const dias = Math.ceil((new Date(op.data_fim).getTime() - new Date(op.data_inicio).getTime()) / (1000 * 60 * 60 * 24)) + 1;
+        const totalVagas = op.vagas_por_dia * dias;
+        vagasMap[op.id] = (vagasCountMap.get(op.id) || 0) >= totalVagas;
+      });
+      setVagasPreenchidas(vagasMap);
 
       const lista = (candRes.data || []).map((c: any) => ({
         ...c,
@@ -400,12 +414,22 @@ const GuardaDashboard = () => {
                           <span className="text-slate-300 shrink-0">·</span>
                           <span className="flex items-center gap-1 shrink-0"><Clock className="h-3 w-3" />{op.horario_previsto.slice(0, 5)}</span>
                           <span className="text-slate-300 shrink-0">·</span>
-                          <Badge variant="outline" className="shrink-0 rounded-full text-[10px] font-bold px-2 py-0 bg-slate-100">{op.vagas_por_dia} vaga(s)</Badge>
+                          {vagasPreenchidas[op.id] ? (
+                            <Badge variant="outline" className="shrink-0 rounded-full bg-rose-50 text-rose-700 border-rose-200 text-[10px] font-bold px-2 py-0">Vagas preenchidas</Badge>
+                          ) : (
+                            <Badge variant="outline" className="shrink-0 rounded-full text-[10px] font-bold px-2 py-0 bg-slate-100">{op.vagas_por_dia} vaga(s)</Badge>
+                          )}
                         </div>
                       </div>
-                      <Button size="sm" variant="outline" className="mt-3 min-h-11 w-full rounded-xl text-[13px] font-semibold sm:ml-3 sm:mt-0 sm:min-h-10 sm:w-auto sm:shrink-0" onClick={() => { setSelectedOperacao(op); setCandidaturaData({ data_operacao: new Date().toISOString().slice(0, 10) }); }}>
-                        VER DETALHES
-                      </Button>
+                      {vagasPreenchidas[op.id] ? (
+                        <Button size="sm" disabled className="mt-3 min-h-11 w-full rounded-xl text-[13px] font-semibold sm:ml-3 sm:mt-0 sm:min-h-10 sm:w-auto sm:shrink-0 opacity-50 cursor-not-allowed">
+                          VAGAS PREENCHIDAS
+                        </Button>
+                      ) : (
+                        <Button size="sm" variant="outline" className="mt-3 min-h-11 w-full rounded-xl text-[13px] font-semibold sm:ml-3 sm:mt-0 sm:min-h-10 sm:w-auto sm:shrink-0" onClick={() => { setSelectedOperacao(op); setCandidaturaData({ data_operacao: new Date().toISOString().slice(0, 10) }); }}>
+                          VER DETALHES
+                        </Button>
+                      )}
                     </div>
                   ))}
                 </div>
