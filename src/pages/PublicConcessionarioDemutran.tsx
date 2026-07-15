@@ -176,11 +176,12 @@ const PublicConcessionarioDemutran = () => {
     ]);
 
     if (perfilError || !perfilData) {
+      console.error('loadPerfil error:', perfilError, perfilData);
       localStorage.removeItem(SESSION_KEY);
       setSessionToken(null);
       setPerfil(null);
       setNotificacoes([]);
-      return;
+      return false;
     }
 
     const profile = perfilData as DemutranConcessionario;
@@ -193,6 +194,7 @@ const PublicConcessionarioDemutran = () => {
     }
 
     void loadAlteracoes(token);
+    return true;
   };
 
   useEffect(() => {
@@ -242,7 +244,11 @@ const PublicConcessionarioDemutran = () => {
     localStorage.setItem(SESSION_KEY, token);
     setSessionToken(token);
     setLoginForm({ cpf: '', senha: '' });
-    await loadPerfil(token);
+    const ok = await loadPerfil(token);
+    if (!ok) {
+      toast({ title: 'Erro ao carregar perfil', description: 'Tente novamente ou contate o suporte.', variant: 'destructive' });
+      return;
+    }
     navigate('/demutran/concessionario/area', { replace: true });
     toast({ title: 'Acesso liberado' });
   };
