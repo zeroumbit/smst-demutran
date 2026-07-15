@@ -435,7 +435,7 @@ const DemutranConcessionarios = () => {
       itemsQuery = itemsQuery.eq('setor_id', effectiveSetorId);
     }
 
-    itemsQuery = itemsQuery.order('categoria').order('titular_nome');
+    itemsQuery = itemsQuery.order('numero_vaga', { ascending: true, nullsFirst: false }).order('categoria').order('titular_nome');
 
     const [itemsResponse, accessResponse] = await Promise.all([
       itemsQuery,
