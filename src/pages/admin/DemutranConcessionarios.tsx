@@ -898,7 +898,7 @@ const DemutranConcessionarios = () => {
     updateSnapshotForTab('acesso');
     setShowSenhaAcesso(true);
     setShowConfirmarSenha(true);
-    toast({ title: 'Dados de acesso alterados com sucesso.', description: `Senha atual: ${formData.senha_acesso}` });
+    toast({ title: 'Dados de acesso alterados com sucesso.' });
     loadData();
   };
 
