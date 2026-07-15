@@ -187,12 +187,7 @@ const App = () => (
                 <PublicCredencialDemutran />
               </SuspenseWrapper>
             } />
-            <Route path="/demutran/concessionario" element={
-              <SuspenseWrapper>
-                <PublicConcessionarioDemutran />
-              </SuspenseWrapper>
-            } />
-            <Route path="/demutran/concessionario/area" element={
+            <Route path="/demutran/concessionario/*" element={
               <SuspenseWrapper>
                 <PublicConcessionarioDemutran />
               </SuspenseWrapper>
