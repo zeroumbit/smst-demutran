@@ -35,6 +35,7 @@ import {
   ChartTooltipContent,
 } from '@/components/ui/chart';
 import { supabase } from '@/lib/supabase';
+import { getConcessionarioFinancialStatus } from '@/lib/demutranConcessionarioFinanceiro';
 import { useAuth } from '@/contexts/AuthContext';
 import type { AdminProfileRow, Setor } from '@/types/admin';
 
@@ -78,6 +79,7 @@ type DashboardState = {
   recursosDeferidos: number;
   pendingCredenciais: number;
   frotaAtiva: number;
+  concessionariosEmDebito: number;
   guardasAtivos: number;
   operacoesAtivasIro: number;
   candidaturasIro: number;
@@ -99,6 +101,7 @@ const initialState: DashboardState = {
   totalRecursos: 0,
   recursosDeferidos: 0,
   pendingCredenciais: 0,
+  concessionariosEmDebito: 0,
   frotaAtiva: 0,
   guardasAtivos: 0,
   operacoesAtivasIro: 0,
@@ -285,7 +288,7 @@ const Dashboard = () => {
           scopedFilter(supabase.from('veiculos_recolhidos').select('status', { count: 'exact', head: true }).neq('status', 'liberado')),
           scopedFilter(supabase.from('veiculos_recolhidos').select('status', { count: 'exact', head: true }).eq('status', 'liberado')),
           scopedFilter(supabase.from('demutran_veiculos_municipais').select('id', { count: 'exact', head: true }).eq('ativo', true)),
-          scopedFilter((supabase as any).from('demutran_concessionarios').select('categoria, ativo')),
+          scopedFilter((supabase as any).from('demutran_concessionarios').select('categoria, ativo, exercicio, ultimo_alvara')),
           scopedFilter(supabase.from('veiculos_recolhidos').select('created_at, data_liberacao')),
         ]);
 
@@ -297,6 +300,7 @@ const Dashboard = () => {
         liberados = veiculosLiberadosResponse.count || 0;
         frotaAtiva = frotaResponse.count || 0;
         concessionariosRows = ((concessionariosResponse.data || []) as any[]).filter(Boolean);
+        const concessionariosEmDebito = concessionariosRows.filter((c: any) => getConcessionarioFinancialStatus(c) === 'em_debito').length;
         const concessionariosTotal = concessionariosRows.length;
 
         const concessionariosMap = new Map<string, ConcessionarioBreakdown>([
@@ -509,6 +513,7 @@ const Dashboard = () => {
         vehicleMovement: movementMap,
         sectorHealth,
         concessionarios,
+        concessionariosEmDebito,
         pendingRecursos,
         totalRecursos,
         recursosDeferidos,
@@ -767,6 +772,28 @@ const Dashboard = () => {
                 </div>
               </CardContent>
             </Card>
+
+            <Link
+              to="/admin/demutran/concessionarios"
+              className="block rounded-[24px] border border-slate-200/80 bg-gradient-to-br from-white to-slate-50/80 p-5 shadow-[0_16px_38px_-30px_rgba(15,23,42,0.32)] transition-all hover:shadow-[0_20px_44px_-30px_rgba(37,99,235,0.35)] hover:border-brand-200/60"
+            >
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-4">
+                  <div className="rounded-2xl bg-rose-50 p-3 text-rose-600">
+                    <AlertTriangle className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-slate-900">Concessionários em débito</p>
+                    <p className="mt-0.5 text-sm text-slate-500">
+                      {state.concessionariosEmDebito} concessionário{state.concessionariosEmDebito !== 1 ? 's' : ''} com taxas pendentes — clique para gerenciar
+                    </p>
+                  </div>
+                </div>
+                <div className="rounded-xl bg-rose-50 p-2.5 text-rose-600">
+                  <span className="text-2xl font-extrabold">{state.concessionariosEmDebito}</span>
+                </div>
+              </div>
+            </Link>
           </section>
         )}
 
