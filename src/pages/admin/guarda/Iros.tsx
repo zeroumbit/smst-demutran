@@ -425,6 +425,12 @@ const GuardaIros = () => {
           onOpenChange={(open) => { if (!open) setSelectedOperacao(null); }}
           title={selectedOperacao?.nome || 'Detalhes da operação'}
           description="Veja os detalhes da operação."
+          footer={
+            <div className="flex gap-2 w-full">
+              <Button variant="outline" className="flex-1 rounded-xl text-[13px] font-semibold" onClick={() => setSelectedOperacao(null)}>Cancelar</Button>
+              <Button className="flex-1 rounded-xl text-[13px] font-semibold" onClick={() => void handleCandidatar()}>Confirmar candidatura</Button>
+            </div>
+          }
         >
           {selectedOperacao && (
             <div className="space-y-5 py-2">
@@ -462,10 +468,6 @@ const GuardaIros = () => {
               <div className="space-y-1.5">
                 <Label className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Data para candidatura</Label>
                 <Input type="date" value={candidaturaData.data_operacao} onChange={(e) => setCandidaturaData({ data_operacao: e.target.value })} min={selectedOperacao.data_inicio} max={selectedOperacao.data_fim} className="h-12 rounded-[18px] border-slate-200 text-[15px] font-medium" />
-              </div>
-              <div className="flex justify-end gap-2">
-                <Button variant="outline" className="rounded-xl text-[13px] font-semibold" onClick={() => setSelectedOperacao(null)}>Cancelar</Button>
-                <Button className="rounded-xl text-[13px] font-semibold" onClick={() => void handleCandidatar()}>Confirmar candidatura</Button>
               </div>
             </div>
           )}
