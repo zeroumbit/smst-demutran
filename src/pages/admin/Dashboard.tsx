@@ -261,6 +261,7 @@ const Dashboard = () => {
       let liberados = 0;
       let frotaAtiva = 0;
       let concessionariosRows: any[] = [];
+      let concessionariosEmDebito = 0;
       let concessionarios: ConcessionarioBreakdown[] = [];
 
       let guardasAtivos = 0;
@@ -300,7 +301,7 @@ const Dashboard = () => {
         liberados = veiculosLiberadosResponse.count || 0;
         frotaAtiva = frotaResponse.count || 0;
         concessionariosRows = ((concessionariosResponse.data || []) as any[]).filter(Boolean);
-        const concessionariosEmDebito = concessionariosRows.filter((c: any) => getConcessionarioFinancialStatus(c) === 'em_debito').length;
+        concessionariosEmDebito = concessionariosRows.filter((c: any) => getConcessionarioFinancialStatus(c) === 'em_debito').length;
         const concessionariosTotal = concessionariosRows.length;
 
         const concessionariosMap = new Map<string, ConcessionarioBreakdown>([
