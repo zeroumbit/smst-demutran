@@ -1,9 +1,8 @@
--- Add concession file fields to demutran_concessionarios
-ALTER TABLE public.demutran_concessionarios
-  ADD COLUMN IF NOT EXISTS concessao_arquivo_url text,
-  ADD COLUMN IF NOT EXISTS concessao_arquivo_nome text;
+-- Fix obter_perfil_concessionario: was broken in 20260625160000 migration
+-- using wrong table name (sessoes_concessionario) and wrong column names
+-- (session_token, expira_em). Correct table is demutran_concessionario_sessoes,
+-- columns are token (uuid) and expires_at.
 
--- Update RPC to return the new fields
 CREATE OR REPLACE FUNCTION public.obter_perfil_concessionario(_session_token text)
 RETURNS jsonb
 LANGUAGE plpgsql

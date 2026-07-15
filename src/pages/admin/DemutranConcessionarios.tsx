@@ -1,8 +1,16 @@
 import { ChangeEvent, useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, Bell, CheckCircle2, Download, Edit, Eye, EyeOff, FileSpreadsheet, IdCard, Loader2, Plus, Printer, Search, SlidersHorizontal, Upload, X } from 'lucide-react';
+import { AlertTriangle, Bell, CheckCircle2, Download, Edit, Eye, EyeOff, FileSpreadsheet, IdCard, Loader2, Plus, Printer, Save, Search, SlidersHorizontal, Upload, X } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { DataTable } from '@/components/admin/DataTable';
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+} from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -93,6 +101,33 @@ const arrecadacaoReference = {
     taxi: { quantidade: 105, atualizados: 98, pendentes: 7, arrecadado: 49328.9 },
   },
 } as const;
+
+const TAB_FIELDS: Record<string, (keyof FormData)[]> = {
+  concessao: [
+    'categoria', 'numero_vaga', 'taxi_grupo', 'estacionamento',
+    'ponto_referencia', 'aceita_notificacoes', 'concessao_arquivo_url',
+    'concessao_arquivo_nome', 'origem_planilha', 'observacoes', 'ativo',
+  ],
+  veiculo: [
+    'veiculo', 'placa', 'fabricacao', 'ultimo_alvara', 'exercicio', 'rota',
+  ],
+  pessoal: [
+    'titular_nome', 'cpf', 'email_notificacao', 'telefone_notificacao',
+    'cnh_numero', 'validade_cnh', 'atividade_remunerada', 'categoria_cnh',
+    'curso', 'inicio_atividade', 'motorista_auxiliar', 'cnh_auxiliar',
+    'validade_cnh_auxiliar', 'endereco',
+  ],
+  acesso: [
+    'senha_acesso', 'confirmar_senha_acesso',
+  ],
+};
+
+const TAB_SAVE_MESSAGES: Record<string, string> = {
+  concessao: 'Dados de concessão alterados com sucesso.',
+  veiculo: 'Dados do veículo alterados com sucesso.',
+  pessoal: 'Dados do concessionário alterados com sucesso.',
+  acesso: 'Dados de acesso alterados com sucesso.',
+};
 
 const initialForm: FormData = {
   categoria: 'mototaxi',
@@ -338,6 +373,10 @@ const DemutranConcessionarios = () => {
   const [editingItem, setEditingItem] = useState<DemutranConcessionario | null>(null);
   const [viewingItem, setViewingItem] = useState<DemutranConcessionario | null>(null);
   const [formData, setFormData] = useState<FormData>(initialForm);
+  const [activeTab, setActiveTab] = useState('concessao');
+  const [originalFormSnapshot, setOriginalFormSnapshot] = useState<FormData | null>(null);
+  const [savingTab, setSavingTab] = useState<string | null>(null);
+  const [unsavedDialogOpen, setUnsavedDialogOpen] = useState(false);
   const [showSenhaAcesso, setShowSenhaAcesso] = useState(false);
   const [showConfirmarSenha, setShowConfirmarSenha] = useState(false);
   const [notifyItem, setNotifyItem] = useState<DemutranConcessionario | null>(null);
@@ -470,6 +509,29 @@ const DemutranConcessionarios = () => {
     return entries.filter(([categoria]) => selectedCategoria === 'todas' || categoria === selectedCategoria);
   }, [selectedCategoria, selectedPeriodoArrecadacao]);
 
+  const hasUnsavedChanges = useMemo(() => {
+    if (!originalFormSnapshot) return false;
+    const keys = Object.keys(initialForm) as (keyof FormData)[];
+    return keys.some((key) => {
+      const a = formData[key];
+      const b = originalFormSnapshot[key];
+      if (typeof a === 'string' && typeof b === 'string') return a !== b;
+      return a !== b;
+    });
+  }, [formData, originalFormSnapshot]);
+
+  const updateSnapshotForTab = (tab: string) => {
+    setOriginalFormSnapshot((prev) => {
+      if (!prev) return prev;
+      const updated = { ...prev };
+      const fields = TAB_FIELDS[tab] || [];
+      for (const field of fields) {
+        (updated as any)[field] = formData[field];
+      }
+      return updated;
+    });
+  };
+
   const actualCountByCategoria = useMemo(() => {
     return items.reduce<Record<CategoriaConcessionario, number>>(
       (acc, item) => {
@@ -563,10 +625,45 @@ const DemutranConcessionarios = () => {
     setIsCustomReportDialogOpen(false);
   };
 
-  const resetAndCloseForm = () => {
+  const resetAndCloseForm = (skipConfirm = false) => {
+    if (!skipConfirm && editingItem && hasUnsavedChanges) {
+      setUnsavedDialogOpen(true);
+      return;
+    }
     setEditingItem(null);
     setFormData(initialForm);
+    setOriginalFormSnapshot(null);
+    setActiveTab('concessao');
     setIsDialogOpen(false);
+  };
+
+  const handleDialogOpenChange = (open: boolean) => {
+    if (!open) {
+      resetAndCloseForm();
+    }
+  };
+
+  const handleUnsavedSave = async () => {
+    setUnsavedDialogOpen(false);
+    if (editingItem) {
+      setSaving(true);
+      const payload = toPayload();
+      const { error } = await (supabase as any)
+        .from('demutran_concessionarios')
+        .update(payload)
+        .eq('id', editingItem.id);
+      setSaving(false);
+      if (!error) {
+        toast({ title: 'Concessionário atualizado' });
+        loadData();
+      }
+    }
+    resetAndCloseForm(true);
+  };
+
+  const handleUnsavedDiscard = () => {
+    setUnsavedDialogOpen(false);
+    resetAndCloseForm(true);
   };
 
   const toPayload = () => ({
@@ -677,14 +774,137 @@ const DemutranConcessionarios = () => {
     }
 
     setSaving(false);
-    toast({ title: editingItem ? 'Concessionario atualizado' : 'Concessionario cadastrado' });
+    toast({
+      title: editingItem ? 'Concessionario atualizado' : 'Concessionario cadastrado',
+      description: formData.senha_acesso ? `Senha de acesso: ${formData.senha_acesso}` : undefined,
+    });
     resetAndCloseForm();
+    loadData();
+  };
+
+  const saveTabFields = async (tab: string, payload: Record<string, unknown>) => {
+    if (!editingItem) return;
+    setSavingTab(tab);
+    const { error } = await (supabase as any)
+      .from('demutran_concessionarios')
+      .update({ ...payload, updated_at: new Date().toISOString() })
+      .eq('id', editingItem.id);
+    setSavingTab(null);
+    if (error) {
+      toast({ title: 'Erro ao salvar', description: error.message, variant: 'destructive' });
+      return false;
+    }
+    updateSnapshotForTab(tab);
+    toast({ title: TAB_SAVE_MESSAGES[tab] || 'Dados alterados com sucesso.' });
+    loadData();
+    return true;
+  };
+
+  const handleSaveConcessao = async () => {
+    if (!editingItem) return;
+    await saveTabFields('concessao', {
+      categoria: formData.categoria,
+      numero_vaga: formData.numero_vaga.trim() || null,
+      taxi_grupo: formData.taxi_grupo.trim() || null,
+      estacionamento: formData.estacionamento.trim() || null,
+      ponto_referencia: formData.ponto_referencia.trim() || null,
+      aceita_notificacoes: formData.aceita_notificacoes,
+      concessao_arquivo_url: formData.concessao_arquivo_url.trim() || null,
+      concessao_arquivo_nome: formData.concessao_arquivo_nome.trim() || null,
+      origem_planilha: formData.origem_planilha.trim() || null,
+      observacoes: formData.observacoes.trim() || null,
+      ativo: formData.ativo,
+    });
+  };
+
+  const handleSaveVeiculo = async () => {
+    if (!editingItem) return;
+
+    const originalVeiculo = (editingItem.veiculo || '').trim();
+    const originalPlaca = (editingItem.placa || '').trim();
+    const newVeiculo = formData.veiculo.trim();
+    const newPlaca = normalizePlate(formData.placa);
+
+    if (newVeiculo !== originalVeiculo || newPlaca !== originalPlaca) {
+      const proceed = await confirm({
+        title: 'Alterar dados do veículo',
+        description: 'Confirma a alteração dos dados do veículo?',
+        confirmText: 'Sim, confirmar',
+        cancelText: 'Cancelar',
+        variant: 'default',
+      });
+      if (!proceed) return;
+    }
+
+    await saveTabFields('veiculo', {
+      veiculo: formData.veiculo.trim() || null,
+      placa: normalizePlate(formData.placa) || null,
+      fabricacao: formData.fabricacao.trim() || null,
+      ultimo_alvara: formData.ultimo_alvara || null,
+      exercicio: formData.exercicio.trim() || null,
+      rota: formData.rota.trim() || null,
+    });
+  };
+
+  const handleSavePessoal = async () => {
+    if (!editingItem) return;
+    if (!formData.titular_nome.trim()) {
+      toast({ title: 'Campo obrigatório', description: 'Informe o nome do concessionário.', variant: 'destructive' });
+      return;
+    }
+    await saveTabFields('pessoal', {
+      titular_nome: formData.titular_nome.trim() || null,
+      cpf: normalizeCpf(formData.cpf) || null,
+      email_notificacao: formData.email_notificacao.trim() || null,
+      telefone_notificacao: formData.telefone_notificacao.trim() || null,
+      cnh_numero: formData.cnh_numero.trim() || null,
+      validade_cnh: formData.validade_cnh || null,
+      atividade_remunerada: formData.atividade_remunerada.trim() || null,
+      categoria_cnh: formData.categoria_cnh.trim() || null,
+      curso: formData.curso.trim() || null,
+      inicio_atividade: formData.inicio_atividade || null,
+      motorista_auxiliar: formData.motorista_auxiliar.trim() || null,
+      cnh_auxiliar: formData.cnh_auxiliar.trim() || null,
+      validade_cnh_auxiliar: formData.validade_cnh_auxiliar || null,
+      endereco: formData.endereco.trim() || null,
+    });
+  };
+
+  const handleSaveAcesso = async () => {
+    if (!editingItem) return;
+
+    if (formData.senha_acesso && formData.senha_acesso.length < 6) {
+      toast({ title: 'Senha inválida', description: 'A senha de acesso precisa ter ao menos 6 caracteres.', variant: 'destructive' });
+      return;
+    }
+    if (formData.senha_acesso !== formData.confirmar_senha_acesso) {
+      toast({ title: 'Senha não confere', description: 'Confirme a senha individual do concessionário.', variant: 'destructive' });
+      return;
+    }
+    if (!formData.senha_acesso) return;
+
+    setSavingTab('acesso');
+    const { data, error } = await (supabase as any).rpc('definir_acesso_concessionario', {
+      _concessionario_id: editingItem.id,
+      _senha: formData.senha_acesso,
+    });
+    setSavingTab(null);
+
+    if (error || data?.error) {
+      toast({ title: 'Erro ao configurar acesso', description: error?.message || data?.error || 'Não foi possível definir a senha.', variant: 'destructive' });
+      return;
+    }
+
+    updateSnapshotForTab('acesso');
+    setShowSenhaAcesso(true);
+    setShowConfirmarSenha(true);
+    toast({ title: 'Dados de acesso alterados com sucesso.', description: `Senha atual: ${formData.senha_acesso}` });
     loadData();
   };
 
   const handleEdit = (item: DemutranConcessionario) => {
     setEditingItem(item);
-    setFormData({
+    const data: FormData = {
       categoria: item.categoria,
       origem_planilha: item.origem_planilha || '',
       taxi_grupo: item.taxi_grupo || '',
@@ -718,7 +938,10 @@ const DemutranConcessionarios = () => {
       senha_acesso: '',
       confirmar_senha_acesso: '',
       ativo: item.ativo,
-    });
+    };
+    setFormData(data);
+    setOriginalFormSnapshot(JSON.parse(JSON.stringify(data)));
+    setActiveTab('concessao');
     setIsDialogOpen(true);
   };
 
@@ -1437,246 +1660,479 @@ const DemutranConcessionarios = () => {
 
         <ResponsiveDialog
           open={isDialogOpen}
-          onOpenChange={(open) => {
-            setIsDialogOpen(open);
-            if (!open) resetAndCloseForm();
-          }}
-          title={editingItem ? 'Editar concessionario' : 'Novo concessionario'}
-          description="Preencha os campos conforme a categoria e os dados da planilha."
-          onCancel={resetAndCloseForm}
-          onConfirm={handleSubmit}
-          confirmLabel={saving ? 'Salvando...' : editingItem ? 'Salvar alteracoes' : 'Cadastrar'}
+          onOpenChange={handleDialogOpenChange}
+          title={editingItem ? 'Editar concessionário' : 'Novo concessionário'}
+          description={editingItem ? 'Use as abas para navegar entre as seções. Cada aba pode ser salva individualmente.' : 'Preencha os campos conforme a categoria e os dados da planilha.'}
+          onCancel={editingItem ? undefined : () => resetAndCloseForm()}
+          onConfirm={editingItem ? undefined : handleSubmit}
+          confirmLabel={editingItem ? undefined : (saving ? 'Salvando...' : 'Cadastrar')}
         >
-          <div className="space-y-6 py-2">
-            <div className="space-y-3">
-              <h3 className="text-sm font-bold uppercase tracking-[0.12em] text-slate-500">Dados da concessao</h3>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <Field label="Categoria *">
-                  <select
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                    value={formData.categoria}
-                    onChange={(event) => setFormData((current) => ({ ...current, categoria: event.target.value as CategoriaConcessionario }))}
-                  >
-                    {categoriaOptions.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                </Field>
-                <Field label="Numero da vaga / bata">
-                  <Input value={formData.numero_vaga} onChange={(event) => setFormData((current) => ({ ...current, numero_vaga: event.target.value }))} placeholder="Ex: 123" />
-                </Field>
-              </div>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <Field label="Grupo do taxi">
-                  <Input
-                    value={formData.taxi_grupo}
-                    onChange={(event) => setFormData((current) => ({ ...current, taxi_grupo: event.target.value }))}
-                    placeholder="ASTAC, COOTAC ou DISTRITO"
-                  />
-                </Field>
-                <Field label="Estacionamento">
-                  <Input
-                    value={formData.estacionamento}
-                    onChange={(event) => setFormData((current) => ({ ...current, estacionamento: event.target.value }))}
-                    placeholder="Nome do estacionamento"
-                  />
-                </Field>
-              </div>
-              <Field label="Ponto / distrito / referencia">
-                <Input value={formData.ponto_referencia} onChange={(event) => setFormData((current) => ({ ...current, ponto_referencia: event.target.value }))} placeholder="Ex: Centro, Distrito Industrial" />
-              </Field>
-              <Field label="Nome do concessionario *">
-                <Input value={formData.titular_nome} onChange={(event) => setFormData((current) => ({ ...current, titular_nome: event.target.value }))} placeholder="Nome completo do concessionario" />
-              </Field>
-              <div className="grid gap-3 sm:grid-cols-3">
-                <Field label="CPF">
-                  <Input value={formData.cpf} onChange={(event) => setFormData((current) => ({ ...current, cpf: maskCpf(event.target.value) }))} placeholder="000.000.000-00" />
-                </Field>
-                <Field label="Email para notificacoes">
-                  <Input value={formData.email_notificacao} onChange={(event) => setFormData((current) => ({ ...current, email_notificacao: event.target.value }))} type="email" placeholder="concessionario@email.com" />
-                </Field>
-                <Field label="Telefone para notificacoes">
-                  <Input value={formData.telefone_notificacao} onChange={(event) => setFormData((current) => ({ ...current, telefone_notificacao: event.target.value }))} placeholder="(00) 00000-0000" />
-                </Field>
-              </div>
-            </div>
+          {editingItem ? (
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="py-2">
+              <TabsList className="grid w-full grid-cols-4">
+                <TabsTrigger value="concessao" className="text-xs">Concessão</TabsTrigger>
+                <TabsTrigger value="veiculo" className="text-xs">Veículo</TabsTrigger>
+                <TabsTrigger value="pessoal" className="text-xs">Pessoal</TabsTrigger>
+                <TabsTrigger value="acesso" className="text-xs">Acesso</TabsTrigger>
+              </TabsList>
 
-            <div className="space-y-3">
-              <h3 className="text-sm font-bold uppercase tracking-[0.12em] text-slate-500">Dados do veiculo</h3>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <Field label="Veiculo">
-                  <Input value={formData.veiculo} onChange={(event) => setFormData((current) => ({ ...current, veiculo: event.target.value }))} placeholder="Ex: Honda CG 150" />
-                </Field>
-                <Field label="Placa">
-                  <Input value={formData.placa} onChange={(event) => setFormData((current) => ({ ...current, placa: normalizePlate(event.target.value) }))} placeholder="ABC-1234" />
-                </Field>
-                <Field label="Fabricacao">
-                  <Input value={formData.fabricacao} onChange={(event) => setFormData((current) => ({ ...current, fabricacao: event.target.value }))} placeholder="Ex: 2020" />
-                </Field>
-                <Field label="Ultimo alvara">
-                  <Input type="date" value={formData.ultimo_alvara} onChange={(event) => setFormData((current) => ({ ...current, ultimo_alvara: event.target.value }))} />
-                </Field>
-              </div>
-              <Field label="Exercicio">
-                <Input value={formData.exercicio} onChange={(event) => setFormData((current) => ({ ...current, exercicio: event.target.value }))} placeholder="Ex: 2024" />
-              </Field>
-              <Field label="Rota">
-                <Input value={formData.rota} onChange={(event) => setFormData((current) => ({ ...current, rota: event.target.value }))} placeholder="Ex: Caninde - Fortaleza" />
-              </Field>
-            </div>
-
-            {editingItem && getConcessionarioFinancialStatus(editingItem) === 'em_debito' && (
-              <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <p className="text-sm font-semibold text-red-800">Taxas em débito</p>
-                    <p className="text-xs text-red-600">O concessionário está com o exercício pendente.</p>
+              <TabsContent value="concessao" className="space-y-6 pt-4">
+                <div className="space-y-3">
+                  <h3 className="text-sm font-bold uppercase tracking-[0.12em] text-slate-500">Dados da concessão</h3>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <Field label="Categoria *">
+                      <select
+                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                        value={formData.categoria}
+                        onChange={(event) => setFormData((current) => ({ ...current, categoria: event.target.value as CategoriaConcessionario }))}
+                      >
+                        {categoriaOptions.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    </Field>
+                    <Field label="Número da vaga / bata">
+                      <Input value={formData.numero_vaga} onChange={(event) => setFormData((current) => ({ ...current, numero_vaga: event.target.value }))} placeholder="Ex: 123" />
+                    </Field>
                   </div>
-                  <Button
-                    type="button"
-                    size="sm"
-                    className="shrink-0 bg-emerald-600 hover:bg-emerald-700 text-white"
-                    onClick={() => {
-                      handleOpenPaymentDialog(editingItem);
-                    }}
-                  >
-                    <CheckCircle2 className="w-4 h-4 mr-1" />
-                    Marcar como pago
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <Field label="Grupo do táxi">
+                      <Input
+                        value={formData.taxi_grupo}
+                        onChange={(event) => setFormData((current) => ({ ...current, taxi_grupo: event.target.value }))}
+                        placeholder="ASTAC, COOTAC ou DISTRITO"
+                      />
+                    </Field>
+                    <Field label="Estacionamento">
+                      <Input
+                        value={formData.estacionamento}
+                        onChange={(event) => setFormData((current) => ({ ...current, estacionamento: event.target.value }))}
+                        placeholder="Nome do estacionamento"
+                      />
+                    </Field>
+                  </div>
+                  <Field label="Ponto / distrito / referência">
+                    <Input value={formData.ponto_referencia} onChange={(event) => setFormData((current) => ({ ...current, ponto_referencia: event.target.value }))} placeholder="Ex: Centro, Distrito Industrial" />
+                  </Field>
+                </div>
+
+                <div className="space-y-3">
+                  <h3 className="text-sm font-bold uppercase tracking-[0.12em] text-slate-500">Observações</h3>
+                  <Field label="Observações">
+                    <Textarea rows={3} value={formData.observacoes} onChange={(event) => setFormData((current) => ({ ...current, observacoes: event.target.value }))} placeholder="Informações adicionais sobre o concessionário" />
+                  </Field>
+                </div>
+
+                <div className="space-y-3">
+                  <h3 className="text-sm font-bold uppercase tracking-[0.12em] text-slate-500">Notificações</h3>
+                  <div className="flex items-center gap-3 rounded-md border border-border px-3 py-2">
+                    <Switch checked={formData.aceita_notificacoes} onCheckedChange={(checked) => setFormData((current) => ({ ...current, aceita_notificacoes: checked }))} />
+                    <span className="text-sm text-muted-foreground">{formData.aceita_notificacoes ? 'Recebe notificações pelo portal' : 'Notificações desativadas para o concessionário'}</span>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <h3 className="text-sm font-bold uppercase tracking-[0.12em] text-slate-500">Documento da concessão</h3>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <Field label="URL do arquivo">
+                      <Input value={formData.concessao_arquivo_url} onChange={(event) => setFormData((current) => ({ ...current, concessao_arquivo_url: event.target.value }))} placeholder="https://..." />
+                    </Field>
+                    <Field label="Nome do arquivo">
+                      <Input value={formData.concessao_arquivo_nome} onChange={(event) => setFormData((current) => ({ ...current, concessao_arquivo_nome: event.target.value }))} placeholder="Ex: concessao.pdf" />
+                    </Field>
+                  </div>
+                  {formData.concessao_arquivo_url && (
+                    <a href={formData.concessao_arquivo_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-sm text-blue-600 hover:text-blue-800 underline">
+                      {formData.concessao_arquivo_nome || 'Abrir arquivo'}
+                    </a>
+                  )}
+                </div>
+
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3 rounded-md border border-border px-3 py-2">
+                    <Switch checked={formData.ativo} onCheckedChange={(checked) => setFormData((current) => ({ ...current, ativo: checked }))} />
+                    <span className="text-sm text-muted-foreground">{formData.ativo ? 'Cadastro ativo' : 'Cadastro inativo'}</span>
+                  </div>
+                  {formData.origem_planilha && (
+                    <p className="text-xs text-muted-foreground">
+                      Origem da planilha: {formData.origem_planilha}
+                    </p>
+                  )}
+                </div>
+
+                <div className="flex justify-end gap-2 border-t pt-4">
+                  <Button onClick={handleSaveConcessao} disabled={savingTab === 'concessao'} className="gap-2">
+                    {savingTab === 'concessao' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                    {savingTab === 'concessao' ? 'Salvando...' : 'Salvar alterações'}
                   </Button>
                 </div>
-              </div>
-            )}
+              </TabsContent>
 
-            <div className="space-y-3">
-              <h3 className="text-sm font-bold uppercase tracking-[0.12em] text-slate-500">Dados pessoais</h3>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <Field label="Numero da CNH">
-                  <Input value={formData.cnh_numero} onChange={(event) => setFormData((current) => ({ ...current, cnh_numero: event.target.value }))} placeholder="Numero do documento" />
-                </Field>
-                <Field label="Validade da CNH">
-                  <Input type="date" value={formData.validade_cnh} onChange={(event) => setFormData((current) => ({ ...current, validade_cnh: event.target.value }))} />
-                </Field>
-                <Field label="Atividade remunerada">
-                  <Input value={formData.atividade_remunerada} onChange={(event) => setFormData((current) => ({ ...current, atividade_remunerada: event.target.value }))} placeholder="Ex: Motorista de taxi" />
-                </Field>
-                <Field label="Categoria CNH">
-                  <Input value={formData.categoria_cnh} onChange={(event) => setFormData((current) => ({ ...current, categoria_cnh: event.target.value }))} placeholder="Ex: A, B, AB" />
-                </Field>
-                <Field label="Curso">
-                  <Input value={formData.curso} onChange={(event) => setFormData((current) => ({ ...current, curso: event.target.value }))} placeholder="Ex: Curso de condutor" />
-                </Field>
-                <Field label="Inicio da atividade">
-                  <Input type="date" value={formData.inicio_atividade} onChange={(event) => setFormData((current) => ({ ...current, inicio_atividade: event.target.value }))} />
-                </Field>
-                <Field label="Motorista auxiliar">
-                  <Input value={formData.motorista_auxiliar} onChange={(event) => setFormData((current) => ({ ...current, motorista_auxiliar: event.target.value }))} placeholder="Nome completo" />
-                </Field>
-                <Field label="CNH auxiliar / registro">
-                  <Input value={formData.cnh_auxiliar} onChange={(event) => setFormData((current) => ({ ...current, cnh_auxiliar: event.target.value }))} placeholder="Numero do documento" />
-                </Field>
-                <Field label="Validade CNH auxiliar">
-                  <Input type="date" value={formData.validade_cnh_auxiliar} onChange={(event) => setFormData((current) => ({ ...current, validade_cnh_auxiliar: event.target.value }))} />
-                </Field>
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              <h3 className="text-sm font-bold uppercase tracking-[0.12em] text-slate-500">Endereco</h3>
-              <Field label="Endereco">
-                <Input value={formData.endereco} onChange={(event) => setFormData((current) => ({ ...current, endereco: event.target.value }))} placeholder="Rua, numero, bairro, cidade" />
-              </Field>
-            </div>
-
-            <div className="space-y-3">
-              <h3 className="text-sm font-bold uppercase tracking-[0.12em] text-slate-500">Dados de notificacao</h3>
-              <div className="flex items-center gap-3 rounded-md border border-border px-3 py-2">
-                <Switch checked={formData.aceita_notificacoes} onCheckedChange={(checked) => setFormData((current) => ({ ...current, aceita_notificacoes: checked }))} />
-                <span className="text-sm text-muted-foreground">{formData.aceita_notificacoes ? 'Recebe notificacoes pelo portal' : 'Notificacoes desativadas para o concessionario'}</span>
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              <h3 className="text-sm font-bold uppercase tracking-[0.12em] text-slate-500">Observacoes</h3>
-              <Field label="Observacoes">
-                <Textarea rows={3} value={formData.observacoes} onChange={(event) => setFormData((current) => ({ ...current, observacoes: event.target.value }))} placeholder="Informacoes adicionais sobre o concessionario" />
-              </Field>
-            </div>
-
-            <div className="space-y-3">
-              <h3 className="text-sm font-bold uppercase tracking-[0.12em] text-slate-500">Documento da concessao</h3>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <Field label="URL do arquivo">
-                  <Input value={formData.concessao_arquivo_url} onChange={(event) => setFormData((current) => ({ ...current, concessao_arquivo_url: event.target.value }))} placeholder="https://..." />
-                </Field>
-                <Field label="Nome do arquivo">
-                  <Input value={formData.concessao_arquivo_nome} onChange={(event) => setFormData((current) => ({ ...current, concessao_arquivo_nome: event.target.value }))} placeholder="Ex: concessao.pdf" />
-                </Field>
-              </div>
-              {formData.concessao_arquivo_url && (
-                <a href={formData.concessao_arquivo_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-sm text-blue-600 hover:text-blue-800 underline">
-                  {formData.concessao_arquivo_nome || 'Abrir arquivo'}
-                </a>
-              )}
-            </div>
-
-            <div className="space-y-3">
-              <h3 className="text-sm font-bold uppercase tracking-[0.12em] text-slate-500">Dados de acesso</h3>
-              <div className={`rounded-2xl border px-4 py-3 text-sm ${editingItem && accessMap[editingItem.id] ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : 'border-amber-200 bg-amber-50 text-amber-800'}`}>
-                {editingItem
-                  ? accessMap[editingItem.id]
-                    ? 'Este concessionario ja possui acesso ativo. Preencha a senha abaixo apenas se quiser redefinir.'
-                    : 'Este concessionario ainda nao possui acesso. Defina uma senha para liberar o login publico por CPF + senha.'
-                  : 'Defina agora a senha individual para liberar o primeiro acesso publico do concessionario.'}
-              </div>
-              <div className="grid gap-4 md:grid-cols-2">
-                <Field label={editingItem ? 'Senha de acesso' : 'Senha de acesso *'}>
-                  <div className="relative">
-                    <Input
-                      type={showSenhaAcesso ? 'text' : 'password'}
-                      value={formData.senha_acesso}
-                      onChange={(event) => setFormData((current) => ({ ...current, senha_acesso: event.target.value }))}
-                      placeholder={editingItem ? 'Digite para criar ou redefinir a senha' : 'Minimo 6 caracteres'}
-                      className="pr-10"
-                    />
-                    <button type="button" onClick={() => setShowSenhaAcesso(!showSenhaAcesso)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" aria-label={showSenhaAcesso ? 'Ocultar senha' : 'Mostrar senha'}>
-                      {showSenhaAcesso ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
+              <TabsContent value="veiculo" className="space-y-6 pt-4">
+                {editingItem && getConcessionarioFinancialStatus(editingItem) === 'em_debito' && (
+                  <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-semibold text-red-800">Taxas em débito</p>
+                        <p className="text-xs text-red-600">O concessionário está com o exercício pendente.</p>
+                      </div>
+                      <Button type="button" size="sm" className="shrink-0 bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => handleOpenPaymentDialog(editingItem)}>
+                        <CheckCircle2 className="w-4 h-4 mr-1" />
+                        Marcar como pago
+                      </Button>
+                    </div>
                   </div>
-                </Field>
-                <Field label={editingItem ? 'Confirmar senha de acesso' : 'Confirmar senha *'}>
-                  <div className="relative">
-                    <Input
-                      type={showConfirmarSenha ? 'text' : 'password'}
-                      value={formData.confirmar_senha_acesso}
-                      onChange={(event) => setFormData((current) => ({ ...current, confirmar_senha_acesso: event.target.value }))}
-                      placeholder="Repita a senha"
-                      className="pr-10"
-                    />
-                    <button type="button" onClick={() => setShowConfirmarSenha(!showConfirmarSenha)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" aria-label={showConfirmarSenha ? 'Ocultar senha' : 'Mostrar senha'}>
-                      {showConfirmarSenha ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
-                  </div>
-                </Field>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Essa senha pode ser temporaria ou definitiva. Sempre que o DEMUTRAN alterar essa senha, o novo acesso passa a valer para o concessionario.
-              </p>
-            </div>
+                )}
 
-            <div className="space-y-3">
-              <div className="flex items-center gap-3 rounded-md border border-border px-3 py-2">
-                <Switch checked={formData.ativo} onCheckedChange={(checked) => setFormData((current) => ({ ...current, ativo: checked }))} />
-                <span className="text-sm text-muted-foreground">{formData.ativo ? 'Cadastro ativo' : 'Cadastro inativo'}</span>
-              </div>
-              {formData.origem_planilha && (
+                <div className="space-y-3">
+                  <h3 className="text-sm font-bold uppercase tracking-[0.12em] text-slate-500">Dados do veículo</h3>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <Field label="Veículo">
+                      <Input value={formData.veiculo} onChange={(event) => setFormData((current) => ({ ...current, veiculo: event.target.value }))} placeholder="Ex: Honda CG 150" />
+                    </Field>
+                    <Field label="Placa">
+                      <Input value={formData.placa} onChange={(event) => setFormData((current) => ({ ...current, placa: normalizePlate(event.target.value) }))} placeholder="ABC-1234" />
+                    </Field>
+                    <Field label="Fabricação">
+                      <Input value={formData.fabricacao} onChange={(event) => setFormData((current) => ({ ...current, fabricacao: event.target.value }))} placeholder="Ex: 2020" />
+                    </Field>
+                    <Field label="Último alvará">
+                      <Input type="date" value={formData.ultimo_alvara} onChange={(event) => setFormData((current) => ({ ...current, ultimo_alvara: event.target.value }))} />
+                    </Field>
+                  </div>
+                  <Field label="Exercício">
+                    <Input value={formData.exercicio} onChange={(event) => setFormData((current) => ({ ...current, exercicio: event.target.value }))} placeholder="Ex: 2024" />
+                  </Field>
+                  <Field label="Rota">
+                    <Input value={formData.rota} onChange={(event) => setFormData((current) => ({ ...current, rota: event.target.value }))} placeholder="Ex: Canindé - Fortaleza" />
+                  </Field>
+                </div>
+
+                <div className="flex justify-end gap-2 border-t pt-4">
+                  <Button onClick={handleSaveVeiculo} disabled={savingTab === 'veiculo'} className="gap-2">
+                    {savingTab === 'veiculo' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                    {savingTab === 'veiculo' ? 'Salvando...' : 'Salvar alterações'}
+                  </Button>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="pessoal" className="space-y-6 pt-4">
+                <div className="space-y-3">
+                  <h3 className="text-sm font-bold uppercase tracking-[0.12em] text-slate-500">Dados pessoais</h3>
+                  <Field label="Nome do concessionário *">
+                    <Input value={formData.titular_nome} onChange={(event) => setFormData((current) => ({ ...current, titular_nome: event.target.value }))} placeholder="Nome completo do concessionário" />
+                  </Field>
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    <Field label="CPF">
+                      <Input value={formData.cpf} onChange={(event) => setFormData((current) => ({ ...current, cpf: maskCpf(event.target.value) }))} placeholder="000.000.000-00" />
+                    </Field>
+                    <Field label="Email do concessionário">
+                      <Input value={formData.email_notificacao} onChange={(event) => setFormData((current) => ({ ...current, email_notificacao: event.target.value }))} type="email" placeholder="concessionario@email.com" />
+                    </Field>
+                    <Field label="Telefone do concessionário">
+                      <Input value={formData.telefone_notificacao} onChange={(event) => setFormData((current) => ({ ...current, telefone_notificacao: event.target.value }))} placeholder="(00) 00000-0000" />
+                    </Field>
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <Field label="Número da CNH">
+                      <Input value={formData.cnh_numero} onChange={(event) => setFormData((current) => ({ ...current, cnh_numero: event.target.value }))} placeholder="Número do documento" />
+                    </Field>
+                    <Field label="Validade da CNH">
+                      <Input type="date" value={formData.validade_cnh} onChange={(event) => setFormData((current) => ({ ...current, validade_cnh: event.target.value }))} />
+                    </Field>
+                    <Field label="Atividade remunerada">
+                      <Input value={formData.atividade_remunerada} onChange={(event) => setFormData((current) => ({ ...current, atividade_remunerada: event.target.value }))} placeholder="Ex: Motorista de táxi" />
+                    </Field>
+                    <Field label="Categoria CNH">
+                      <Input value={formData.categoria_cnh} onChange={(event) => setFormData((current) => ({ ...current, categoria_cnh: event.target.value }))} placeholder="Ex: A, B, AB" />
+                    </Field>
+                    <Field label="Curso">
+                      <Input value={formData.curso} onChange={(event) => setFormData((current) => ({ ...current, curso: event.target.value }))} placeholder="Ex: Curso de condutor" />
+                    </Field>
+                    <Field label="Início da atividade">
+                      <Input type="date" value={formData.inicio_atividade} onChange={(event) => setFormData((current) => ({ ...current, inicio_atividade: event.target.value }))} />
+                    </Field>
+                    <Field label="Motorista auxiliar">
+                      <Input value={formData.motorista_auxiliar} onChange={(event) => setFormData((current) => ({ ...current, motorista_auxiliar: event.target.value }))} placeholder="Nome completo" />
+                    </Field>
+                    <Field label="CNH auxiliar / registro">
+                      <Input value={formData.cnh_auxiliar} onChange={(event) => setFormData((current) => ({ ...current, cnh_auxiliar: event.target.value }))} placeholder="Número do documento" />
+                    </Field>
+                    <Field label="Validade CNH auxiliar">
+                      <Input type="date" value={formData.validade_cnh_auxiliar} onChange={(event) => setFormData((current) => ({ ...current, validade_cnh_auxiliar: event.target.value }))} />
+                    </Field>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <h3 className="text-sm font-bold uppercase tracking-[0.12em] text-slate-500">Endereço</h3>
+                  <Field label="Endereço">
+                    <Input value={formData.endereco} onChange={(event) => setFormData((current) => ({ ...current, endereco: event.target.value }))} placeholder="Rua, número, bairro, cidade" />
+                  </Field>
+                </div>
+
+                <div className="flex justify-end gap-2 border-t pt-4">
+                  <Button onClick={handleSavePessoal} disabled={savingTab === 'pessoal'} className="gap-2">
+                    {savingTab === 'pessoal' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                    {savingTab === 'pessoal' ? 'Salvando...' : 'Salvar alterações'}
+                  </Button>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="acesso" className="space-y-6 pt-4">
+                <div className={`rounded-2xl border px-4 py-3 text-sm ${editingItem && accessMap[editingItem.id] ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : 'border-amber-200 bg-amber-50 text-amber-800'}`}>
+                  {editingItem
+                    ? accessMap[editingItem.id]
+                      ? 'Este concessionário já possui acesso ativo. Preencha a senha abaixo apenas se quiser redefinir.'
+                      : 'Este concessionário ainda não possui acesso. Defina uma senha para liberar o login público por CPF + senha.'
+                    : 'Defina agora a senha individual para liberar o primeiro acesso público do concessionário.'}
+                </div>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <Field label={editingItem ? 'Senha de acesso' : 'Senha de acesso *'}>
+                    <div className="relative">
+                      <Input
+                        type={showSenhaAcesso ? 'text' : 'password'}
+                        value={formData.senha_acesso}
+                        onChange={(event) => setFormData((current) => ({ ...current, senha_acesso: event.target.value }))}
+                        placeholder={editingItem ? 'Digite para criar ou redefinir a senha' : 'Mínimo 6 caracteres'}
+                        className="pr-10"
+                      />
+                      <button type="button" onClick={() => setShowSenhaAcesso(!showSenhaAcesso)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" aria-label={showSenhaAcesso ? 'Ocultar senha' : 'Mostrar senha'}>
+                        {showSenhaAcesso ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
+                  </Field>
+                  <Field label={editingItem ? 'Confirmar senha de acesso' : 'Confirmar senha *'}>
+                    <div className="relative">
+                      <Input
+                        type={showConfirmarSenha ? 'text' : 'password'}
+                        value={formData.confirmar_senha_acesso}
+                        onChange={(event) => setFormData((current) => ({ ...current, confirmar_senha_acesso: event.target.value }))}
+                        placeholder="Repita a senha"
+                        className="pr-10"
+                      />
+                      <button type="button" onClick={() => setShowConfirmarSenha(!showConfirmarSenha)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" aria-label={showConfirmarSenha ? 'Ocultar senha' : 'Mostrar senha'}>
+                        {showConfirmarSenha ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
+                  </Field>
+                </div>
                 <p className="text-xs text-muted-foreground">
-                  Origem da planilha: {formData.origem_planilha}
+                  Essa senha pode ser temporária ou definitiva. Sempre que o DEMUTRAN alterar essa senha, o novo acesso passa a valer para o concessionário.
                 </p>
-              )}
+
+                <div className="flex justify-end gap-2 border-t pt-4">
+                  <Button onClick={handleSaveAcesso} disabled={savingTab === 'acesso' || !formData.senha_acesso} className="gap-2">
+                    {savingTab === 'acesso' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                    {savingTab === 'acesso' ? 'Salvando...' : 'Salvar alterações'}
+                  </Button>
+                </div>
+              </TabsContent>
+            </Tabs>
+          ) : (
+            <div className="space-y-6 py-2">
+              <div className="space-y-3">
+                <h3 className="text-sm font-bold uppercase tracking-[0.12em] text-slate-500">Dados da concessão</h3>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <Field label="Categoria *">
+                    <select
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                      value={formData.categoria}
+                      onChange={(event) => setFormData((current) => ({ ...current, categoria: event.target.value as CategoriaConcessionario }))}
+                    >
+                      {categoriaOptions.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+                  <Field label="Número da vaga / bata">
+                    <Input value={formData.numero_vaga} onChange={(event) => setFormData((current) => ({ ...current, numero_vaga: event.target.value }))} placeholder="Ex: 123" />
+                  </Field>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <Field label="Grupo do táxi">
+                    <Input value={formData.taxi_grupo} onChange={(event) => setFormData((current) => ({ ...current, taxi_grupo: event.target.value }))} placeholder="ASTAC, COOTAC ou DISTRITO" />
+                  </Field>
+                  <Field label="Estacionamento">
+                    <Input value={formData.estacionamento} onChange={(event) => setFormData((current) => ({ ...current, estacionamento: event.target.value }))} placeholder="Nome do estacionamento" />
+                  </Field>
+                </div>
+                <Field label="Ponto / distrito / referência">
+                  <Input value={formData.ponto_referencia} onChange={(event) => setFormData((current) => ({ ...current, ponto_referencia: event.target.value }))} placeholder="Ex: Centro, Distrito Industrial" />
+                </Field>
+              </div>
+
+              <div className="space-y-3">
+                <h3 className="text-sm font-bold uppercase tracking-[0.12em] text-slate-500">Dados do veículo</h3>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <Field label="Veículo">
+                    <Input value={formData.veiculo} onChange={(event) => setFormData((current) => ({ ...current, veiculo: event.target.value }))} placeholder="Ex: Honda CG 150" />
+                  </Field>
+                  <Field label="Placa">
+                    <Input value={formData.placa} onChange={(event) => setFormData((current) => ({ ...current, placa: normalizePlate(event.target.value) }))} placeholder="ABC-1234" />
+                  </Field>
+                  <Field label="Fabricação">
+                    <Input value={formData.fabricacao} onChange={(event) => setFormData((current) => ({ ...current, fabricacao: event.target.value }))} placeholder="Ex: 2020" />
+                  </Field>
+                  <Field label="Último alvará">
+                    <Input type="date" value={formData.ultimo_alvara} onChange={(event) => setFormData((current) => ({ ...current, ultimo_alvara: event.target.value }))} />
+                  </Field>
+                </div>
+                <Field label="Exercício">
+                  <Input value={formData.exercicio} onChange={(event) => setFormData((current) => ({ ...current, exercicio: event.target.value }))} placeholder="Ex: 2024" />
+                </Field>
+                <Field label="Rota">
+                  <Input value={formData.rota} onChange={(event) => setFormData((current) => ({ ...current, rota: event.target.value }))} placeholder="Ex: Canindé - Fortaleza" />
+                </Field>
+              </div>
+
+              <div className="space-y-3">
+                <h3 className="text-sm font-bold uppercase tracking-[0.12em] text-slate-500">Dados pessoais</h3>
+                <Field label="Nome do concessionário *">
+                  <Input value={formData.titular_nome} onChange={(event) => setFormData((current) => ({ ...current, titular_nome: event.target.value }))} placeholder="Nome completo do concessionário" />
+                </Field>
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <Field label="CPF">
+                    <Input value={formData.cpf} onChange={(event) => setFormData((current) => ({ ...current, cpf: maskCpf(event.target.value) }))} placeholder="000.000.000-00" />
+                  </Field>
+                  <Field label="Email do concessionário">
+                    <Input value={formData.email_notificacao} onChange={(event) => setFormData((current) => ({ ...current, email_notificacao: event.target.value }))} type="email" placeholder="concessionario@email.com" />
+                  </Field>
+                  <Field label="Telefone do concessionário">
+                    <Input value={formData.telefone_notificacao} onChange={(event) => setFormData((current) => ({ ...current, telefone_notificacao: event.target.value }))} placeholder="(00) 00000-0000" />
+                  </Field>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <Field label="Número da CNH">
+                    <Input value={formData.cnh_numero} onChange={(event) => setFormData((current) => ({ ...current, cnh_numero: event.target.value }))} placeholder="Número do documento" />
+                  </Field>
+                  <Field label="Validade da CNH">
+                    <Input type="date" value={formData.validade_cnh} onChange={(event) => setFormData((current) => ({ ...current, validade_cnh: event.target.value }))} />
+                  </Field>
+                  <Field label="Atividade remunerada">
+                    <Input value={formData.atividade_remunerada} onChange={(event) => setFormData((current) => ({ ...current, atividade_remunerada: event.target.value }))} placeholder="Ex: Motorista de táxi" />
+                  </Field>
+                  <Field label="Categoria CNH">
+                    <Input value={formData.categoria_cnh} onChange={(event) => setFormData((current) => ({ ...current, categoria_cnh: event.target.value }))} placeholder="Ex: A, B, AB" />
+                  </Field>
+                  <Field label="Curso">
+                    <Input value={formData.curso} onChange={(event) => setFormData((current) => ({ ...current, curso: event.target.value }))} placeholder="Ex: Curso de condutor" />
+                  </Field>
+                  <Field label="Início da atividade">
+                    <Input type="date" value={formData.inicio_atividade} onChange={(event) => setFormData((current) => ({ ...current, inicio_atividade: event.target.value }))} />
+                  </Field>
+                  <Field label="Motorista auxiliar">
+                    <Input value={formData.motorista_auxiliar} onChange={(event) => setFormData((current) => ({ ...current, motorista_auxiliar: event.target.value }))} placeholder="Nome completo" />
+                  </Field>
+                  <Field label="CNH auxiliar / registro">
+                    <Input value={formData.cnh_auxiliar} onChange={(event) => setFormData((current) => ({ ...current, cnh_auxiliar: event.target.value }))} placeholder="Número do documento" />
+                  </Field>
+                  <Field label="Validade CNH auxiliar">
+                    <Input type="date" value={formData.validade_cnh_auxiliar} onChange={(event) => setFormData((current) => ({ ...current, validade_cnh_auxiliar: event.target.value }))} />
+                  </Field>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <h3 className="text-sm font-bold uppercase tracking-[0.12em] text-slate-500">Endereço</h3>
+                <Field label="Endereço">
+                  <Input value={formData.endereco} onChange={(event) => setFormData((current) => ({ ...current, endereco: event.target.value }))} placeholder="Rua, número, bairro, cidade" />
+                </Field>
+              </div>
+
+              <div className="space-y-3">
+                <h3 className="text-sm font-bold uppercase tracking-[0.12em] text-slate-500">Observações</h3>
+                <Field label="Observações">
+                  <Textarea rows={3} value={formData.observacoes} onChange={(event) => setFormData((current) => ({ ...current, observacoes: event.target.value }))} placeholder="Informações adicionais sobre o concessionário" />
+                </Field>
+              </div>
+
+              <div className="space-y-3">
+                <h3 className="text-sm font-bold uppercase tracking-[0.12em] text-slate-500">Documento da concessão</h3>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <Field label="URL do arquivo">
+                    <Input value={formData.concessao_arquivo_url} onChange={(event) => setFormData((current) => ({ ...current, concessao_arquivo_url: event.target.value }))} placeholder="https://..." />
+                  </Field>
+                  <Field label="Nome do arquivo">
+                    <Input value={formData.concessao_arquivo_nome} onChange={(event) => setFormData((current) => ({ ...current, concessao_arquivo_nome: event.target.value }))} placeholder="Ex: concessao.pdf" />
+                  </Field>
+                </div>
+                {formData.concessao_arquivo_url && (
+                  <a href={formData.concessao_arquivo_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-sm text-blue-600 hover:text-blue-800 underline">
+                    {formData.concessao_arquivo_nome || 'Abrir arquivo'}
+                  </a>
+                )}
+              </div>
+
+              <div className="space-y-3">
+                <h3 className="text-sm font-bold uppercase tracking-[0.12em] text-slate-500">Dados de acesso</h3>
+                <div className={`rounded-2xl border px-4 py-3 text-sm ${editingItem && accessMap[editingItem.id] ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : 'border-amber-200 bg-amber-50 text-amber-800'}`}>
+                  {editingItem
+                    ? accessMap[editingItem.id]
+                      ? 'Este concessionário já possui acesso ativo. Preencha a senha abaixo apenas se quiser redefinir.'
+                      : 'Este concessionário ainda não possui acesso. Defina uma senha para liberar o login público por CPF + senha.'
+                    : 'Defina agora a senha individual para liberar o primeiro acesso público do concessionário.'}
+                </div>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <Field label={editingItem ? 'Senha de acesso' : 'Senha de acesso *'}>
+                    <div className="relative">
+                      <Input
+                        type={showSenhaAcesso ? 'text' : 'password'}
+                        value={formData.senha_acesso}
+                        onChange={(event) => setFormData((current) => ({ ...current, senha_acesso: event.target.value }))}
+                        placeholder={editingItem ? 'Digite para criar ou redefinir a senha' : 'Mínimo 6 caracteres'}
+                        className="pr-10"
+                      />
+                      <button type="button" onClick={() => setShowSenhaAcesso(!showSenhaAcesso)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" aria-label={showSenhaAcesso ? 'Ocultar senha' : 'Mostrar senha'}>
+                        {showSenhaAcesso ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
+                  </Field>
+                  <Field label={editingItem ? 'Confirmar senha de acesso' : 'Confirmar senha *'}>
+                    <div className="relative">
+                      <Input
+                        type={showConfirmarSenha ? 'text' : 'password'}
+                        value={formData.confirmar_senha_acesso}
+                        onChange={(event) => setFormData((current) => ({ ...current, confirmar_senha_acesso: event.target.value }))}
+                        placeholder="Repita a senha"
+                        className="pr-10"
+                      />
+                      <button type="button" onClick={() => setShowConfirmarSenha(!showConfirmarSenha)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" aria-label={showConfirmarSenha ? 'Ocultar senha' : 'Mostrar senha'}>
+                        {showConfirmarSenha ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
+                  </Field>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Essa senha pode ser temporária ou definitiva. Sempre que o DEMUTRAN alterar essa senha, o novo acesso passa a valer para o concessionário.
+                </p>
+              </div>
+
+              <div className="space-y-3">
+                <h3 className="text-sm font-bold uppercase tracking-[0.12em] text-slate-500">Notificações</h3>
+                <div className="flex items-center gap-3 rounded-md border border-border px-3 py-2">
+                  <Switch checked={formData.aceita_notificacoes} onCheckedChange={(checked) => setFormData((current) => ({ ...current, aceita_notificacoes: checked }))} />
+                  <span className="text-sm text-muted-foreground">{formData.aceita_notificacoes ? 'Recebe notificações pelo portal' : 'Notificações desativadas para o concessionário'}</span>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <div className="flex items-center gap-3 rounded-md border border-border px-3 py-2">
+                  <Switch checked={formData.ativo} onCheckedChange={(checked) => setFormData((current) => ({ ...current, ativo: checked }))} />
+                  <span className="text-sm text-muted-foreground">{formData.ativo ? 'Cadastro ativo' : 'Cadastro inativo'}</span>
+                </div>
+                {formData.origem_planilha && (
+                  <p className="text-xs text-muted-foreground">
+                    Origem da planilha: {formData.origem_planilha}
+                  </p>
+                )}
+              </div>
             </div>
-          </div>
+          )}
         </ResponsiveDialog>
 
         <ResponsiveDialog
@@ -1758,6 +2214,27 @@ const DemutranConcessionarios = () => {
           </>
         )}
       </div>
+      <AlertDialog open={unsavedDialogOpen} onOpenChange={(val) => { if (!val) setUnsavedDialogOpen(false); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Alterações não salvas</AlertDialogTitle>
+            <AlertDialogDescription>
+              Existem alterações que ainda não foram salvas. Deseja salvar antes de fechar?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <Button variant="outline" onClick={handleUnsavedDiscard}>
+              Descartar
+            </Button>
+            <Button variant="outline" onClick={() => setUnsavedDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleUnsavedSave}>
+              Salvar
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       {confirmDialog}
 
       <ResponsiveDialog
