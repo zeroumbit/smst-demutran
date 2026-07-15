@@ -69,7 +69,7 @@ const GuardaIros = () => {
         supabase.from('iro_operacoes').select('*').eq('setor_id', setorId || '').eq('ativo', true).order('data_inicio', { ascending: false }),
         supabase.from('iro_candidaturas').select('*, iro_operacoes!inner(nome)').eq('usuario_id', user.user_id).order('created_at', { ascending: false }),
         supabase.rpc('buscar_guarda_por_usuario', { p_usuario_id: user.user_id }),
-        supabase.from('iro_candidaturas').select('operacao_id').in('status', ['confirmado', 'realizado']),
+        supabase.from('iro_candidaturas').select('operacao_id').in('status', ['pendente', 'confirmado', 'realizado']),
       ]);
 
       const hojeStr = new Date().toISOString().slice(0, 10);
