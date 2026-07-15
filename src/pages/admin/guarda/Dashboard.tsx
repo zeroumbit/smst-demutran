@@ -5,8 +5,11 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { ResponsiveDialog } from '@/components/ui/responsive-dialog';
 import { toast } from '@/hooks/use-toast';
-import { Calendar, Hourglass, Banknote, ChevronRight, Clock, FileWarning, TrendingUp, X, Sparkles, AlertTriangle, Shield } from 'lucide-react';
+import { Calendar, Hourglass, Banknote, ChevronRight, Clock, FileWarning, TrendingUp, X, Sparkles, AlertTriangle, Shield, Gavel, CheckCircle2 } from 'lucide-react';
 import type { IROOperacao } from '@/types/admin';
 import { cn } from '@/lib/utils';
 
@@ -60,6 +63,11 @@ const fmtDateBR = (d: string | null | undefined): string => {
   return `${day}/${m}/${y}`;
 };
 
+const horasDaSolicitacao = (t: string): number => {
+  if (t === 'imediato') return 0;
+  return parseInt(t) || 0;
+};
+
 const GuardaDashboard = () => {
   const navigate = useNavigate();
   const { user, profile, logout, markLeiIroAccepted } = useAuth();
@@ -69,6 +77,10 @@ const GuardaDashboard = () => {
   const [operacoes, setOperacoes] = useState<IROOperacao[]>([]);
   const [guardaNome, setGuardaNome] = useState('');
   const [bannerVisible, setBannerVisible] = useState(() => bannerPodeExibir());
+
+  const [selectedOperacao, setSelectedOperacao] = useState<IROOperacao | null>(null);
+  const [candidaturaData, setCandidaturaData] = useState({ data_operacao: new Date().toISOString().slice(0, 10) });
+  const [candidaturaEnviando, setCandidaturaEnviando] = useState(false);
 
   const [exibirModalLei, setExibirModalLei] = useState(false);
   const [termoAceito, setTermoAceito] = useState(false);
@@ -206,6 +218,29 @@ const GuardaDashboard = () => {
       // silent
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleCandidatar = async () => {
+    if (!selectedOperacao || !candidaturaData.data_operacao || !user?.user_id) return;
+    setCandidaturaEnviando(true);
+    const { data, error } = await supabase.rpc('candidatar_se_iro', {
+      p_operacao_id: selectedOperacao.id,
+      p_usuario_id: user.user_id,
+      p_data: candidaturaData.data_operacao,
+    });
+    setCandidaturaEnviando(false);
+    if (error) {
+      toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+      return;
+    }
+    const r = data as { sucesso: boolean; mensagem: string };
+    if (r.sucesso) {
+      toast({ title: 'Inscrição realizada com sucesso!' });
+      setSelectedOperacao(null);
+      void loadData();
+    } else {
+      toast({ title: 'Erro', description: r.mensagem, variant: 'destructive' });
     }
   };
 
@@ -348,19 +383,15 @@ const GuardaDashboard = () => {
             <div className="rounded-[32px] border border-slate-200/80 bg-white px-4 py-4 shadow-[0_4px_20px_-8px_rgba(15,23,42,0.08)] sm:px-5">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-sm font-bold uppercase tracking-[0.08em] text-slate-600">Operações disponíveis</h2>
-                <button onClick={() => navigate('/admin/perfil-guardas/guarda-municipal/iros')} className="flex items-center gap-1 text-xs font-semibold text-slate-500 hover:text-slate-700">
-                  <span className="hidden sm:inline">Ver todas</span>
-                  <ChevronRight className="h-4 w-4" />
-                </button>
               </div>
               {operacoes.length === 0 ? (
                 <div className="flex flex-col items-center gap-3 py-8 text-center">
                   <FileWarning className="h-10 w-10 text-slate-300" />
                   <p className="text-sm text-slate-400">Nenhuma operação disponível no momento.</p>
                 </div>
-              ) : (
+              ) : operacoes.length === 1 ? (
                 <div className="space-y-2">
-                  {operacoes.slice(0, 5).map((op) => (
+                  {operacoes.map((op) => (
                     <div key={op.id} className="rounded-xl bg-slate-50 px-4 py-3 sm:flex sm:items-center sm:justify-between">
                       <div className="min-w-0 flex-1">
                         <p className="text-sm font-semibold text-slate-800 truncate">{op.nome}</p>
@@ -372,11 +403,19 @@ const GuardaDashboard = () => {
                           <Badge variant="outline" className="shrink-0 rounded-full text-[10px] font-bold px-2 py-0 bg-slate-100">{op.vagas_por_dia} vaga(s)</Badge>
                         </div>
                       </div>
-                      <Button size="sm" variant="outline" className="mt-3 min-h-11 w-full rounded-xl text-[13px] font-semibold sm:ml-3 sm:mt-0 sm:min-h-10 sm:w-auto sm:shrink-0" onClick={() => navigate('/admin/perfil-guardas/guarda-municipal/iros')}>
+                      <Button size="sm" variant="outline" className="mt-3 min-h-11 w-full rounded-xl text-[13px] font-semibold sm:ml-3 sm:mt-0 sm:min-h-10 sm:w-auto sm:shrink-0" onClick={() => { setSelectedOperacao(op); setCandidaturaData({ data_operacao: new Date().toISOString().slice(0, 10) }); }}>
                         VER DETALHES
                       </Button>
                     </div>
                   ))}
+                </div>
+              ) : (
+                <div className="flex flex-col items-center gap-4 py-6 text-center">
+                  <p className="text-sm text-slate-500">{operacoes.length} operaç{operacoes.length === 1 ? 'ão' : 'ões'} disponíve{operacoes.length === 1 ? 'l' : 'is'}</p>
+                  <Button size="default" className="min-h-12 w-full max-w-xs rounded-xl text-[14px] font-bold" onClick={() => navigate('/admin/perfil-guardas/guarda-municipal/iros')}>
+                    VER OPERAÇÕES DISPONÍVEIS
+                    <ChevronRight className="h-5 w-5 ml-1" />
+                  </Button>
                 </div>
               )}
             </div>
@@ -384,6 +423,68 @@ const GuardaDashboard = () => {
         )}
       </div>
     </GuardsLayout>
+
+    <ResponsiveDialog
+      open={Boolean(selectedOperacao)}
+      onOpenChange={(open) => { if (!open) setSelectedOperacao(null); }}
+      title={selectedOperacao?.nome || 'Detalhes da operação'}
+      description="Veja os detalhes da operação."
+    >
+      {selectedOperacao && (
+        <div className="space-y-5 py-2">
+          <div className="flex items-start gap-3 rounded-2xl border border-orange-200 bg-gradient-to-br from-orange-50 to-amber-50 p-4 text-sm text-orange-800 shadow-sm">
+            <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-orange-500" />
+            <p className="font-medium">Só aceite se realmente poder estar no dia da operação.</p>
+          </div>
+          {horasDaSolicitacao(selectedOperacao.tempo_solicitacao) >= 48 && (
+            <div className="flex items-start gap-3 rounded-2xl border border-amber-200 bg-gradient-to-br from-amber-50 to-yellow-50 p-4 text-sm text-amber-800 shadow-sm">
+              <Gavel className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
+              <p className="font-medium">Esta operação segue a <strong>Lei nº 2.739/2025</strong>. Desistência deve ser comunicada ao chefe imediato com 24h de antecedência.</p>
+            </div>
+          )}
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <h4 className="mb-4 text-xs font-bold uppercase tracking-[0.1em] text-slate-500">Informações da operação</h4>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-xl bg-slate-50 p-3.5">
+                <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-slate-400">Horário</p>
+                <p className="mt-1 text-base font-bold text-slate-800">{selectedOperacao.horario_previsto.slice(0, 5)}</p>
+              </div>
+              <div className="rounded-xl bg-slate-50 p-3.5">
+                <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-slate-400">Vagas p/ dia</p>
+                <p className="mt-1 text-base font-bold text-slate-800">{selectedOperacao.vagas_por_dia}</p>
+              </div>
+              <div className="rounded-xl bg-slate-50 p-3.5">
+                <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-slate-400">Carga horária</p>
+                <p className="mt-1 text-base font-bold text-slate-800">{selectedOperacao.horas_por_dia}h/dia</p>
+              </div>
+              <div className="rounded-xl bg-slate-50 p-3.5">
+                <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-slate-400">Período</p>
+                <p className="mt-1 text-base font-bold text-slate-800">{fmtDateBR(selectedOperacao.data_inicio)} - {fmtDateBR(selectedOperacao.data_fim)}</p>
+              </div>
+            </div>
+          </div>
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <Label className="text-xs font-bold uppercase tracking-[0.1em] text-slate-500">Data da operação</Label>
+            <Input
+              type="date"
+              value={candidaturaData.data_operacao}
+              onChange={(e) => setCandidaturaData({ data_operacao: e.target.value })}
+              min={selectedOperacao.data_inicio}
+              max={selectedOperacao.data_fim}
+              className="mt-2 h-12 rounded-xl border-slate-200 text-[15px] font-medium"
+            />
+          </div>
+          <Button
+            size="lg"
+            className="w-full rounded-xl text-[15px] font-bold shadow-sm"
+            disabled={candidaturaEnviando}
+            onClick={() => void handleCandidatar()}
+          >
+            {candidaturaEnviando ? 'Enviando...' : 'Confirmar inscrição'}
+          </Button>
+        </div>
+      )}
+    </ResponsiveDialog>
 
     {exibirModalLei && (
       <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4 overflow-y-auto animate-fade-in">

@@ -43,6 +43,7 @@ const GuardaIros = () => {
   const [minhasCandidaturas, setMinhasCandidaturas] = useState<IROCandidatura[]>([]);
   const [resumo, setResumo] = useState({ total_horas_mes: 0, total_reais: 0, horas_disponiveis: 0, banco_horas: 0, mes_anterior_horas: 0, mes_anterior_reais: 0 });
 
+  const [vagasPreenchidas, setVagasPreenchidas] = useState<Record<string, boolean>>({});
   const [selectedOperacao, setSelectedOperacao] = useState<IROOperacao | null>(null);
   const [candidaturaData, setCandidaturaData] = useState({ data_operacao: new Date().toISOString().slice(0, 10) });
 
@@ -64,10 +65,11 @@ const GuardaIros = () => {
         .maybeSingle();
       if (sData) setorId = sData.id;
 
-      const [opRes, candRes, guardaRes] = await Promise.all([
+      const [opRes, candRes, guardaRes, vagasCountRes] = await Promise.all([
         supabase.from('iro_operacoes').select('*').eq('setor_id', setorId || '').eq('ativo', true).order('data_inicio', { ascending: false }),
         supabase.from('iro_candidaturas').select('*, iro_operacoes!inner(nome)').eq('usuario_id', user.user_id).order('created_at', { ascending: false }),
         supabase.rpc('buscar_guarda_por_usuario', { p_usuario_id: user.user_id }),
+        supabase.from('iro_candidaturas').select('operacao_id').in('status', ['confirmado', 'realizado']),
       ]);
 
       const hojeStr = new Date().toISOString().slice(0, 10);
@@ -75,6 +77,18 @@ const GuardaIros = () => {
       setOperacoes(validOps);
       const lista = (candRes.data || []).map((c: any) => ({ ...c, operacao_nome: c.iro_operacoes?.nome || '' }));
       setMinhasCandidaturas(lista);
+
+      const vagasCountMap = new Map<string, number>();
+      (vagasCountRes.data || []).forEach((v: any) => {
+        vagasCountMap.set(v.operacao_id, (vagasCountMap.get(v.operacao_id) || 0) + 1);
+      });
+      const vagasPreenchidasMap: Record<string, boolean> = {};
+      validOps.forEach((op: any) => {
+        const dias = Math.ceil((new Date(op.data_fim).getTime() - new Date(op.data_inicio).getTime()) / (1000 * 60 * 60 * 24)) + 1;
+        const totalVagas = op.vagas_por_dia * dias;
+        vagasPreenchidasMap[op.id] = (vagasCountMap.get(op.id) || 0) >= totalVagas;
+      });
+      setVagasPreenchidas(vagasPreenchidasMap);
 
       const now = new Date();
       const firstDay = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
@@ -342,12 +356,18 @@ const GuardaIros = () => {
               Nenhuma operação disponível no momento.
             </div>
           ) : (
-            <div className="native-scrollbar -mx-1 flex snap-x snap-mandatory gap-3 overflow-x-auto px-1 pb-1 sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+            <div className="native-scrollbar -mx-1 flex snap-x snap-mandatory gap-3 overflow-x-auto px-1 pb-1 sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0 md:grid-cols-3 lg:grid-cols-4">
               {filteredOperacoes.map((op) => (
                 <article key={op.id} className="flex min-w-[84%] snap-start flex-col rounded-2xl border border-slate-200/80 bg-white px-4 py-4 shadow-[0_4px_20px_-8px_rgba(15,23,42,0.08)] active:scale-[0.99] sm:min-w-0 sm:px-5">
-                  <Badge variant="outline" className="self-start rounded-full bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px] font-bold">
-                    {op.vagas_por_dia} vaga(s)/dia
-                  </Badge>
+                  {vagasPreenchidas[op.id] ? (
+                    <Badge variant="outline" className="self-start rounded-full bg-rose-50 text-rose-700 border-rose-200 text-[10px] font-bold">
+                      Vagas preenchidas
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline" className="self-start rounded-full bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px] font-bold">
+                      {op.vagas_por_dia} vaga(s)/dia
+                    </Badge>
+                  )}
                   <h3 className="mt-2 text-[15px] font-bold text-slate-900 line-clamp-2 leading-snug">{op.nome}</h3>
                   {op.descricao && <p className="text-[13px] leading-5 text-slate-500 mt-0.5 line-clamp-2">{op.descricao}</p>}
                   <div className="mt-auto pt-3 space-y-1.5 text-[13px] text-slate-500">
@@ -355,9 +375,15 @@ const GuardaIros = () => {
                     <span className="flex items-center gap-1.5"><Clock className="h-3.5 w-3.5 shrink-0" />{op.horario_previsto.slice(0, 5)}</span>
                     <span className="flex items-center gap-1.5"><Hourglass className="h-3.5 w-3.5 shrink-0" />{op.horas_por_dia}h/dia</span>
                   </div>
-                  <Button size="sm" className="mt-3 min-h-11 w-full rounded-xl text-[13px] font-semibold sm:min-h-10" onClick={() => { setSelectedOperacao(op); setCandidaturaData({ data_operacao: new Date().toISOString().slice(0, 10) }); }}>
-                    VER DETALHES
-                  </Button>
+                  {vagasPreenchidas[op.id] ? (
+                    <Button size="sm" disabled className="mt-3 min-h-11 w-full rounded-xl text-[13px] font-semibold sm:min-h-10 opacity-50 cursor-not-allowed">
+                      VAGAS PREENCHIDAS
+                    </Button>
+                  ) : (
+                    <Button size="sm" className="mt-3 min-h-11 w-full rounded-xl text-[13px] font-semibold sm:min-h-10" onClick={() => { setSelectedOperacao(op); setCandidaturaData({ data_operacao: new Date().toISOString().slice(0, 10) }); }}>
+                      VER DETALHES
+                    </Button>
+                  )}
                 </article>
               ))}
             </div>
