@@ -1,6 +1,7 @@
 import { ReactNode, ComponentType, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useAdminNotifications } from '@/hooks/use-admin-notifications';
 import { Button } from '@/components/ui/button';
 import {
   FileWarning,
@@ -9,6 +10,7 @@ import {
   Shield,
   NotebookPen,
   ClipboardList,
+  CalendarDays,
   X,
 } from 'lucide-react';
 import guardaLogo from '@/guarda.png';
@@ -62,6 +64,7 @@ const moveNavItemBeforeLabel = (items: NavItem[], itemLabel: string, beforeLabel
 
 const navItems: NavItem[] = [
   { icon: HouseIcon, label: 'Home', path: '/admin/perfil-guardas/guarda-municipal/dashboard' },
+  { icon: CalendarDays, label: 'Escalas', path: '/admin/perfil-guardas/guarda-municipal/escalas' },
   { icon: FileWarning, label: 'IROs', path: '/admin/perfil-guardas/guarda-municipal/iros' },
   { icon: ClipboardList, label: 'Fiscalizacao', path: '/admin/perfil-guardas/guarda-municipal/fiscalizacao/infracoes' },
   { icon: NotebookPen, label: 'Anotacoes', path: '/admin/perfil-guardas/guarda-municipal/anotacoes' },
@@ -78,6 +81,7 @@ export const GuardsLayout = ({ children }: GuardsLayoutProps) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { logout, profile } = useAuth();
+  useAdminNotifications(profile?.user_id);
 
   const handleLogout = async () => {
     await logout();

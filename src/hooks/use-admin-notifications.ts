@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import { syncPushSubscription } from '@/lib/pushNotifications';
 import type { AdminNotification } from '@/types/admin';
 
 const POLL_INTERVAL = 30000;
@@ -53,8 +54,15 @@ export function useAdminNotifications(userId: string | undefined) {
   const permGranted = useRef(false);
 
   useEffect(() => {
-    requestNotificationPermission().then((ok) => { permGranted.current = ok; });
-  }, []);
+    requestNotificationPermission().then((ok) => {
+      permGranted.current = ok;
+      if (ok && userId) {
+        syncPushSubscription().catch((error) => {
+          console.warn('Nao foi possivel registrar push nativo:', error);
+        });
+      }
+    });
+  }, [userId]);
 
   const loadNotifications = useCallback(async () => {
     if (!userId) return;

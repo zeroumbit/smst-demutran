@@ -70,6 +70,7 @@ const AdminFiscalizacaoCategorias = React.lazy(() => import("./pages/admin/Fisca
 const AdminConfiguracoesGuarda = React.lazy(() => import("./pages/admin/ConfiguracoesGuarda"));
 const AdminFrotaGuarda = React.lazy(() => import("./modules/frota-guarda/pages/FrotaGuardaPage"));
 const AdminEquipesGuarda = React.lazy(() => import("./modules/equipes-guarda/pages/EquipesGuardaPage"));
+const AdminEscalasGuarda = React.lazy(() => import("./modules/escalas/pages/EscalasAdminPage"));
 const GuardaDashboard = React.lazy(() => import("./pages/admin/guarda/Dashboard"));
 const GuardaIros = React.lazy(() => import("./pages/admin/guarda/Iros"));
 const GuardaIrosHistorico = React.lazy(() => import("./pages/admin/guarda/IrosHistorico"));
@@ -78,6 +79,7 @@ const GuardaFiscalizacaoInfracaoDetalhe = React.lazy(() => import("./pages/admin
 const GuardaFiscalizacaoCategorias = React.lazy(() => import("./pages/admin/guarda/FiscalizacaoCategorias"));
 const GuardaPerfil = React.lazy(() => import("./pages/admin/guarda/Perfil"));
 const GuardaCadastro = React.lazy(() => import("./pages/guardas/Cadastro"));
+const GuardaMinhasEscalas = React.lazy(() => import("./modules/escalas/pages/MinhasEscalasPage"));
 const AdminFalaCidadao = React.lazy(() => import("./pages/admin/FalaCidadao"));
 const AdminRelatorios = React.lazy(() => import("./pages/admin/Relatorios"));
 const AdminMinhasAnotacoes = React.lazy(() => import("./pages/admin/MinhasAnotacoes"));
@@ -593,6 +595,13 @@ const App = () => (
                 </ProtectedRoute>
               </SuspenseWrapper>
             } />
+            <Route path="/admin/guardas/guarda-municipal/escalas/*" element={
+              <SuspenseWrapper>
+                <ProtectedRoute allowedPapeis={['super_admin', 'gestor', 'admin_setor', 'tecnico']} requiredSetorSlug="guarda-municipal">
+                  <AdminEscalasGuarda />
+                </ProtectedRoute>
+              </SuspenseWrapper>
+            } />
             <Route path="/admin/configuracoes-guarda-municipal" element={
               <SuspenseWrapper>
                 <ProtectedRoute allowedPapeis={['super_admin', 'gestor', 'admin_setor']} requiredSetorSlug="guarda-municipal">
@@ -669,6 +678,13 @@ const App = () => (
               <SuspenseWrapper>
                 <ProtectedRoute requireGuarda>
                   <GuardaIros />
+                </ProtectedRoute>
+              </SuspenseWrapper>
+            } />
+            <Route path="/admin/perfil-guardas/guarda-municipal/escalas" element={
+              <SuspenseWrapper>
+                <ProtectedRoute requireGuarda>
+                  <GuardaMinhasEscalas />
                 </ProtectedRoute>
               </SuspenseWrapper>
             } />

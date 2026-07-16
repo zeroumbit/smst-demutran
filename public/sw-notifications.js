@@ -1,3 +1,30 @@
+self.addEventListener('push', (event) => {
+  let payload = {};
+
+  try {
+    payload = event.data ? event.data.json() : {};
+  } catch {
+    payload = { mensagem: event.data ? event.data.text() : '' };
+  }
+
+  const title = payload.titulo || payload.title || 'SMST Caninde';
+  const options = {
+    body: payload.mensagem || payload.body || '',
+    icon: payload.icon || '/pwa-icon-192.png',
+    badge: payload.badge || '/pwa-icon-192.png',
+    tag: payload.notificationId || payload.id || `smst-${Date.now()}`,
+    renotify: true,
+    silent: false,
+    data: {
+      url: payload.link || payload.url || '/admin/dashboard',
+      notificationId: payload.notificationId || payload.id || null,
+      payload,
+    },
+  };
+
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
 

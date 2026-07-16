@@ -6,13 +6,18 @@ import {
   CalendarClock,
   CarFront,
   CheckCircle2,
+  Clock,
   FileText,
   History,
+  Hourglass,
   Pencil,
   Plus,
+  RefreshCcw,
   Search,
   Settings2,
+  Users,
   Wrench,
+  X,
 } from 'lucide-react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { Badge } from '@/components/ui/badge';
@@ -195,6 +200,8 @@ function FrotaListaPage() {
     return result;
   }, [data]);
 
+  const [section, setSection] = useState<'geral' | 'frota'>('geral');
+
   const resetCategoriaForm = () => {
     setEditingCategoriaId(null);
     setCategoriaForm({ nome: '', descricao: '', ordem: '0', ativo: true });
@@ -240,98 +247,178 @@ function FrotaListaPage() {
   return (
     <AdminLayout>
       <div className="space-y-6">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <p className="text-sm font-bold uppercase tracking-[0.16em] text-slate-400">Guarda Municipal</p>
-            <h1 className="mt-1 text-3xl font-black tracking-tight text-slate-950">Frota da Guarda</h1>
-            <p className="mt-2 max-w-2xl text-sm text-slate-500">
-              Controle operacional das viaturas, disponibilidade, manutencoes e historico de uso da corporacao.
-            </p>
+        <section className="rounded-[34px] bg-[linear-gradient(135deg,_#0f172a_0%,_#1e293b_45%,_#2563eb_100%)] px-5 py-6 text-white sm:px-6">
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+            <div className="min-w-0 flex-1">
+              <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-sky-100/70">Guarda Municipal</p>
+              <h1 className="mt-3 text-[34px] font-black tracking-[-0.08em]">Frota da Guarda</h1>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-100">
+                Controle operacional das viaturas, disponibilidade, manutenções e histórico de uso da corporação.
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button type="button" variant="outline" size="sm" className="border-white/20 bg-white/10 text-white hover:bg-white/20" onClick={() => setCategoriasOpen(true)}>
+                <Settings2 className="mr-2 h-4 w-4" />
+                Categorias
+              </Button>
+              <Button asChild size="sm" className="gap-2">
+                <Link to={`${basePath}/novo`}>
+                  <Plus className="h-4 w-4" />
+                  Nova viatura
+                </Link>
+              </Button>
+            </div>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <Button type="button" variant="outline" className="gap-2" onClick={() => setCategoriasOpen(true)}>
-              <Settings2 className="h-4 w-4" />
-              Categorias
-            </Button>
-            <Button asChild className="gap-2">
-              <Link to={`${basePath}/novo`}>
-                <Plus className="h-4 w-4" />
-                Nova viatura
-              </Link>
-            </Button>
+
+          <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
+            <StatCard label="Total" value={String(stats.TOTAL)} icon={CarFront} />
+            <StatCard label="Disponíveis" value={String(stats.DISPONIVEL)} icon={CheckCircle2} />
+            <StatCard label="Em serviço" value={String(stats.EM_SERVICO)} icon={CalendarClock} />
+            <StatCard label="Manutenção" value={String(stats.EM_MANUTENCAO)} icon={Wrench} />
+            <StatCard label="Indisponíveis" value={String(stats.INDISPONIVEL)} icon={AlertTriangle} />
+            <StatCard label="Inativos" value={String(stats.INATIVO)} icon={History} />
           </div>
-        </div>
+        </section>
 
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
-          <MetricCard title="Total" value={stats.TOTAL} icon={CarFront} />
-          <MetricCard title="Disponiveis" value={stats.DISPONIVEL} icon={CheckCircle2} tone="emerald" />
-          <MetricCard title="Em servico" value={stats.EM_SERVICO} icon={CalendarClock} tone="blue" />
-          <MetricCard title="Manutencao" value={stats.EM_MANUTENCAO} icon={Wrench} tone="amber" />
-          <MetricCard title="Indisponiveis" value={stats.INDISPONIVEL} icon={AlertTriangle} tone="rose" />
-          <MetricCard title="Inativos" value={stats.INATIVO} icon={History} tone="slate" />
-        </div>
-
-        <div className="grid gap-3 rounded-lg border border-slate-200 bg-white p-3 lg:grid-cols-[1fr_180px_220px_180px]">
-          <div className="flex items-center gap-2 rounded-md border border-slate-200 px-3">
-            <Search className="h-4 w-4 text-slate-400" />
-            <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar por prefixo, placa, marca ou modelo" className="border-0 px-0 shadow-none focus-visible:ring-0" />
-          </div>
-          <Select value={status} onValueChange={setStatus}>
-            <SelectTrigger><SelectValue placeholder="Status" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todos">Todos os status</SelectItem>
-              {statusOptions.map((item) => <SelectItem key={item} value={item}>{statusLabels[item]}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Select value={categoria} onValueChange={setCategoria}>
-            <SelectTrigger><SelectValue placeholder="Categoria" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todos">Todas categorias</SelectItem>
-              {categorias.map((item) => <SelectItem key={item.id} value={item.id}>{item.nome}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Select value={grupamento} onValueChange={setGrupamento}>
-            <SelectTrigger><SelectValue placeholder="Grupamento" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todos">Todos</SelectItem>
-              {grupamentos.map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        </div>
-
-        {isLoading ? (
-          <div className="rounded-lg border border-slate-200 bg-white p-8 text-center text-slate-500">Carregando frota...</div>
-        ) : (
-          <div className="grid gap-3 xl:grid-cols-2">
-            {filtered.map((veiculo) => (
-              <button
-                key={veiculo.id}
-                type="button"
-                onClick={() => navigate(`${basePath}/${veiculo.id}`)}
-                className="rounded-lg border border-slate-200 bg-white p-4 text-left shadow-sm transition hover:border-brand-200 hover:shadow-md"
-              >
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="rounded-md bg-slate-950 px-3 py-1 text-lg font-black tracking-wide text-white">{veiculo.prefixo}</span>
-                      <Badge variant="outline" className={cn('rounded-full', statusClasses[veiculo.status])}>{statusLabels[veiculo.status]}</Badge>
-                    </div>
-                    <p className="mt-3 text-lg font-bold text-slate-900">{[veiculo.marca, veiculo.modelo].filter(Boolean).join(' ') || 'Veiculo sem modelo'}</p>
-                    <p className="mt-1 text-sm text-slate-500">{veiculo.placa} - {veiculo.categoria?.nome || 'Sem categoria'} - {veiculo.grupamento || 'Frota geral'}</p>
-                  </div>
-                  <div className="text-left sm:text-right">
-                    <p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-400">Quilometragem</p>
-                    <p className="mt-1 text-base font-bold text-slate-800">{formatKm(veiculo.quilometragem_atual)}</p>
-                  </div>
+        {section === 'frota' && (
+          <Card className="rounded-[24px] border-slate-200">
+            <CardContent className="space-y-4 px-5 py-5">
+              <div className="grid gap-4 lg:grid-cols-[1fr_180px_220px_180px]">
+                <div className="flex items-center gap-2 rounded-md border border-slate-200 px-3">
+                  <Search className="h-4 w-4 shrink-0 text-slate-400" />
+                  <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar por prefixo, placa, marca ou modelo" className="border-0 px-0 shadow-none focus-visible:ring-0" />
                 </div>
+                <Select value={status} onValueChange={setStatus}>
+                  <SelectTrigger><SelectValue placeholder="Status" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todos">Todos os status</SelectItem>
+                    {statusOptions.map((item) => <SelectItem key={item} value={item}>{statusLabels[item]}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                <Select value={categoria} onValueChange={setCategoria}>
+                  <SelectTrigger><SelectValue placeholder="Categoria" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todos">Todas categorias</SelectItem>
+                    {categorias.map((item) => <SelectItem key={item.id} value={item.id}>{item.nome}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                <Select value={grupamento} onValueChange={setGrupamento}>
+                  <SelectTrigger><SelectValue placeholder="Grupamento" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todos">Todos</SelectItem>
+                    {grupamentos.map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        <div className="flex items-center justify-between gap-3">
+          <div className="inline-flex rounded-[26px] bg-slate-100/80 p-1.5">
+            {(['geral', 'frota'] as const).map((key) => (
+              <button
+                key={key}
+                onClick={() => setSection(key)}
+                className={cn(
+                  'rounded-[20px] px-5 py-2.5 text-sm font-bold tracking-[-0.02em] transition-all',
+                  section === key
+                    ? 'bg-white text-slate-950 shadow-[0_10px_24px_-18px_rgba(15,23,42,0.55)]'
+                    : 'text-slate-500 hover:text-slate-700',
+                )}
+              >
+                {key === 'geral' ? 'Visão Geral' : 'Frota'}
               </button>
             ))}
-            {filtered.length === 0 && (
-              <div className="rounded-lg border border-dashed border-slate-200 bg-white p-10 text-center text-slate-500 xl:col-span-2">
-                Nenhuma viatura encontrada.
+          </div>
+        </div>
+
+        {section === 'geral' && (
+          <div className="grid gap-4 xl:grid-cols-2">
+            <div className="rounded-[34px] border border-slate-200 bg-white p-5 shadow-sm">
+              <h3 className="text-sm font-bold uppercase tracking-[0.16em] text-slate-500">Resumo da Frota</h3>
+              <div className="mt-4 space-y-3">
+                {[
+                  { label: 'Viaturas disponíveis', value: stats.DISPONIVEL, total: stats.TOTAL },
+                  { label: 'Viaturas em serviço', value: stats.EM_SERVICO, total: stats.TOTAL },
+                  { label: 'Viaturas em manutenção', value: stats.EM_MANUTENCAO, total: stats.TOTAL },
+                  { label: 'Viaturas inativas', value: stats.INATIVO, total: stats.TOTAL },
+                ].map((item) => (
+                  <div key={item.label} className="space-y-1">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-slate-600">{item.label}</span>
+                      <span className="font-bold text-slate-900">{item.value}</span>
+                    </div>
+                    <div className="h-2 rounded-full bg-slate-100">
+                      <div
+                        className="h-2 rounded-full bg-brand-600 transition-all"
+                        style={{ width: `${item.total > 0 ? (item.value / item.total) * 100 : 0}%` }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="rounded-[34px] border border-slate-200 bg-white p-5 shadow-sm">
+              <h3 className="text-sm font-bold uppercase tracking-[0.16em] text-slate-500">Últimas Viaturas</h3>
+              <div className="mt-4 space-y-2">
+                {data.slice(0, 5).length === 0 ? (
+                  <p className="text-sm text-slate-500">Nenhuma viatura cadastrada.</p>
+                ) : (
+                  data.slice(0, 5).map((veiculo) => (
+                    <button
+                      key={veiculo.id}
+                      type="button"
+                      onClick={() => navigate(`${basePath}/${veiculo.id}`)}
+                      className="flex w-full items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-left transition hover:border-brand-200"
+                    >
+                      <div className="min-w-0">
+                        <span className="text-sm font-bold text-slate-900">{veiculo.prefixo}</span>
+                        <span className="ml-2 text-xs text-slate-500">{veiculo.placa}</span>
+                      </div>
+                      <Badge variant="outline" className={cn('rounded-full shrink-0', statusClasses[veiculo.status])}>{statusLabels[veiculo.status]}</Badge>
+                    </button>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {section === 'frota' && (
+          <>
+            {isLoading ? (
+              <div className="rounded-[24px] border border-slate-200 bg-white p-8 text-center text-sm text-slate-500">Carregando frota...</div>
+            ) : filtered.length === 0 ? (
+              <div className="rounded-[24px] border border-dashed border-slate-300 px-5 py-8 text-center text-sm text-slate-500">Nenhuma viatura encontrada.</div>
+            ) : (
+              <div className="grid gap-3 xl:grid-cols-2">
+                {filtered.map((veiculo) => (
+                  <button
+                    key={veiculo.id}
+                    type="button"
+                    onClick={() => navigate(`${basePath}/${veiculo.id}`)}
+                    className="rounded-[34px] border border-slate-200 bg-white p-5 text-left shadow-sm transition hover:border-brand-200 hover:shadow-md"
+                  >
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="rounded-md bg-slate-950 px-3 py-1 text-lg font-black tracking-wide text-white">{veiculo.prefixo}</span>
+                          <Badge variant="outline" className={cn('rounded-full', statusClasses[veiculo.status])}>{statusLabels[veiculo.status]}</Badge>
+                        </div>
+                        <p className="mt-3 text-lg font-bold text-slate-900">{[veiculo.marca, veiculo.modelo].filter(Boolean).join(' ') || 'Veículo sem modelo'}</p>
+                        <p className="mt-1 text-sm text-slate-500">{veiculo.placa} - {veiculo.categoria?.nome || 'Sem categoria'} - {veiculo.grupamento || 'Frota geral'}</p>
+                      </div>
+                      <div className="text-left sm:text-right">
+                        <p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-400">Quilometragem</p>
+                        <p className="mt-1 text-base font-bold text-slate-800">{formatKm(veiculo.quilometragem_atual)}</p>
+                      </div>
+                    </div>
+                  </button>
+                ))}
               </div>
             )}
-          </div>
+          </>
         )}
 
         <ResponsiveDialog
@@ -797,23 +884,15 @@ function Field({ label, value, onChange, type = 'text', placeholder }: { label: 
   );
 }
 
-function MetricCard({ title, value, icon: Icon, tone = 'brand' }: { title: string; value: number; icon: typeof CarFront; tone?: 'brand' | 'emerald' | 'blue' | 'amber' | 'rose' | 'slate' }) {
-  const tones = {
-    brand: 'bg-brand-50 text-brand-700',
-    emerald: 'bg-emerald-50 text-emerald-700',
-    blue: 'bg-blue-50 text-blue-700',
-    amber: 'bg-amber-50 text-amber-700',
-    rose: 'bg-rose-50 text-rose-700',
-    slate: 'bg-slate-100 text-slate-600',
-  };
+function StatCard({ label, value, icon: Icon }: { label: string; value: string; icon: typeof CarFront }) {
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-4">
-      <div className="flex items-center justify-between gap-2">
-        <div>
-          <p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-400">{title}</p>
-          <p className="mt-1 text-3xl font-black text-slate-950">{value}</p>
-        </div>
-        <div className={cn('rounded-md p-2', tones[tone])}><Icon className="h-5 w-5" /></div>
+    <div className="flex items-center gap-4 rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur-sm">
+      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-white/10">
+        <Icon className="h-6 w-6 text-white" />
+      </div>
+      <div className="min-w-0">
+        <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-white/60">{label}</p>
+        <p className="mt-0.5 text-2xl font-black tracking-tight text-white">{value}</p>
       </div>
     </div>
   );
