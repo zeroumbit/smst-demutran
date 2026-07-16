@@ -36,6 +36,7 @@ import {
   Shield,
   NotebookPen,
   ClipboardList,
+  Wrench,
 } from 'lucide-react';
 
 const HouseIcon: ComponentType<{ className?: string }> = ({ className }) => (
@@ -136,6 +137,8 @@ const guardaMenuItems: MenuItem[] = [
   { icon: FileWarning, label: 'IROs', path: '/admin/iros/guarda-municipal', allowedPapeis: ['gestor', 'admin_setor', 'tecnico'] },
   { icon: ClipboardList, label: 'Fiscalizacao', path: '/admin/fiscalizacao/infracoes', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
   { icon: Shield, label: 'Guardas', path: '/admin/guardas/guarda-municipal', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
+  { icon: CarFront, label: 'Frota da Guarda', path: '/admin/guardas/guarda-municipal/frota', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
+  { icon: Users, label: 'Equipes', path: '/admin/guardas/guarda-municipal/equipes', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
   { icon: ImageIcon, label: 'Midias', path: '/admin/midias/guarda-municipal', allowedPapeis: ['gestor', 'admin_setor'] },
   { icon: Users, label: 'Equipe', path: '/admin/equipe/guarda-municipal', allowedPapeis: ['gestor', 'admin_setor'] },
   { icon: Settings2, label: 'Configuracoes', path: '/admin/configuracoes-guarda-municipal', allowedPapeis: ['super_admin', 'gestor', 'admin_setor'] },
@@ -147,6 +150,8 @@ const guardaBottomNavItems: MenuItem[] = [
   { icon: HouseIcon, label: 'Home', path: '/admin/dashboard/guarda-municipal', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
   { icon: FileWarning, label: 'IROs', path: '/admin/iros/guarda-municipal', allowedPapeis: ['gestor', 'admin_setor', 'tecnico'] },
   { icon: ClipboardList, label: 'Fiscalizacao', path: '/admin/fiscalizacao/infracoes', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
+  { icon: CarFront, label: 'Frota', path: '/admin/guardas/guarda-municipal/frota', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
+  { icon: Users, label: 'Equipes', path: '/admin/guardas/guarda-municipal/equipes', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
   { icon: NotebookPen, label: 'Anotacoes', path: '/admin/anotacoes/guarda-municipal', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
   { icon: Shield, label: 'Guarda', path: '/admin/guardas/guarda-municipal', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
   { icon: Settings2, label: 'Config', path: '/admin/configuracoes-guarda-municipal', allowedPapeis: ['super_admin', 'gestor', 'admin_setor'] },
@@ -161,6 +166,9 @@ const moduloItemMap: Record<string, ModuloSistema> = {
   Documentos: 'documentos',
   Midias: 'midias',
   Fiscalizacao: 'fiscalizacao',
+  'Frota da Guarda': 'guarda_frota',
+  Frota: 'guarda_frota',
+  Equipes: 'guarda_equipes',
 };
 
 const papelLabels: Record<string, string> = {
@@ -202,6 +210,10 @@ const moduloIconMap: Record<string, React.ComponentType<{ className?: string }>>
   eventos: Calendar,
   documentos: FileText,
   fiscalizacao: ClipboardList,
+  guarda_frota: CarFront,
+  frota_guarda: CarFront,
+  guarda_equipes: Users,
+  manutencoes: Wrench,
 };
 
 export const AdminLayout = ({ children, backPath, backLabel }: AdminLayoutProps) => {

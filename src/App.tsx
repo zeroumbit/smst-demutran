@@ -68,6 +68,8 @@ const AdminFiscalizacaoInfracoes = React.lazy(() => import("./pages/admin/Fiscal
 const AdminFiscalizacaoInfracaoDetalhe = React.lazy(() => import("./pages/admin/FiscalizacaoInfracaoDetalhe"));
 const AdminFiscalizacaoCategorias = React.lazy(() => import("./pages/admin/FiscalizacaoCategorias"));
 const AdminConfiguracoesGuarda = React.lazy(() => import("./pages/admin/ConfiguracoesGuarda"));
+const AdminFrotaGuarda = React.lazy(() => import("./modules/frota-guarda/pages/FrotaGuardaPage"));
+const AdminEquipesGuarda = React.lazy(() => import("./modules/equipes-guarda/pages/EquipesGuardaPage"));
 const GuardaDashboard = React.lazy(() => import("./pages/admin/guarda/Dashboard"));
 const GuardaIros = React.lazy(() => import("./pages/admin/guarda/Iros"));
 const GuardaIrosHistorico = React.lazy(() => import("./pages/admin/guarda/IrosHistorico"));
@@ -553,6 +555,41 @@ const App = () => (
               <SuspenseWrapper>
                 <ProtectedRoute allowedPapeis={['super_admin', 'gestor', 'admin_setor', 'tecnico']} requiredSetorSlug="guarda-municipal">
                   <AdminGuardasMunicipais />
+                </ProtectedRoute>
+              </SuspenseWrapper>
+            } />
+            <Route path="/admin/guardas/guarda-municipal/frota" element={
+              <SuspenseWrapper>
+                <ProtectedRoute allowedPapeis={['super_admin', 'gestor', 'admin_setor', 'tecnico']} requiredSetorSlug="guarda-municipal">
+                  <AdminFrotaGuarda />
+                </ProtectedRoute>
+              </SuspenseWrapper>
+            } />
+            <Route path="/admin/guardas/guarda-municipal/frota/novo" element={
+              <SuspenseWrapper>
+                <ProtectedRoute allowedPapeis={['super_admin', 'gestor', 'admin_setor', 'tecnico']} requiredSetorSlug="guarda-municipal">
+                  <AdminFrotaGuarda />
+                </ProtectedRoute>
+              </SuspenseWrapper>
+            } />
+            <Route path="/admin/guardas/guarda-municipal/frota/:id" element={
+              <SuspenseWrapper>
+                <ProtectedRoute allowedPapeis={['super_admin', 'gestor', 'admin_setor', 'tecnico']} requiredSetorSlug="guarda-municipal">
+                  <AdminFrotaGuarda />
+                </ProtectedRoute>
+              </SuspenseWrapper>
+            } />
+            <Route path="/admin/guardas/guarda-municipal/frota/:id/editar" element={
+              <SuspenseWrapper>
+                <ProtectedRoute allowedPapeis={['super_admin', 'gestor', 'admin_setor', 'tecnico']} requiredSetorSlug="guarda-municipal">
+                  <AdminFrotaGuarda />
+                </ProtectedRoute>
+              </SuspenseWrapper>
+            } />
+            <Route path="/admin/guardas/guarda-municipal/equipes" element={
+              <SuspenseWrapper>
+                <ProtectedRoute allowedPapeis={['super_admin', 'gestor', 'admin_setor', 'tecnico']} requiredSetorSlug="guarda-municipal">
+                  <AdminEquipesGuarda />
                 </ProtectedRoute>
               </SuspenseWrapper>
             } />

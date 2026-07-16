@@ -10,7 +10,10 @@ export type ModuloSistema =
   | 'midias'
   | 'iros'
   | 'guardas'
-  | 'fiscalizacao';
+  | 'fiscalizacao'
+  | 'guarda_frota'
+  | 'guarda_equipes'
+  | 'frota_guarda';
 
 export const MODULOS_DEMUTRAN: { value: ModuloSistema; label: string }[] = [
   { value: 'veiculos', label: 'Veículos' },
@@ -25,6 +28,8 @@ export const MODULOS_DEMUTRAN: { value: ModuloSistema; label: string }[] = [
 export const MODULOS_GUARDA: { value: ModuloSistema; label: string }[] = [
   { value: 'iros', label: 'IROs' },
   { value: 'guardas', label: 'Guardas' },
+  { value: 'guarda_frota', label: 'Frota da Guarda' },
+  { value: 'guarda_equipes', label: 'Equipes da Guarda' },
   { value: 'fiscalizacao', label: 'Fiscalização' },
   { value: 'midias', label: 'Mídias' },
 ];

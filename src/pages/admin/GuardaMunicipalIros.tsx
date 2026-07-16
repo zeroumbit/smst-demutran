@@ -342,15 +342,10 @@ const GuardaMunicipalIros = () => {
       );
       setGuardasAtivos(guardas.sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')));
       setValoresGraduacao(valores);
-
-      if (selectedOperacao) {
-        const updated = operacoesData.find((item) => item.id === selectedOperacao.id);
-        if (updated) setSelectedOperacao(updated);
-      }
     } finally {
       setLoading(false);
     }
-  }, [podeVerTudo, selectedOperacao, setorId, user]);
+  }, [podeVerTudo, setorId, user]);
 
   useEffect(() => {
     void loadData();
