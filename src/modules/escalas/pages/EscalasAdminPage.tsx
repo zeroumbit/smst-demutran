@@ -396,9 +396,9 @@ export default function EscalasAdminPage() {
               <div className="rounded-[34px] border border-slate-200 bg-white p-5 shadow-sm">
                 <div className="space-y-3">
                   <h3 className="text-sm font-bold uppercase tracking-[0.16em] text-slate-500">Escalas</h3>
-                  <div className="flex items-center gap-2 rounded-md border border-slate-200 px-3">
+                  <div className="flex items-center gap-2 rounded-md border border-slate-200 bg-white px-3 transition focus-within:border-brand-500/50 focus-within:ring-2 focus-within:ring-brand-500/20">
                     <Search className="h-4 w-4 shrink-0 text-slate-400" />
-                    <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar escala" className="border-0 px-0 shadow-none focus-visible:ring-0" />
+                    <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar escala" className="border-0 bg-transparent px-0 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0" />
                   </div>
                 </div>
                 <div className="mt-4 space-y-2">

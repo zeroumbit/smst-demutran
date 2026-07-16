@@ -284,9 +284,9 @@ function FrotaListaPage() {
           <Card className="rounded-[24px] border-slate-200">
             <CardContent className="space-y-4 px-5 py-5">
               <div className="grid gap-4 lg:grid-cols-[1fr_180px_220px_180px]">
-                <div className="flex items-center gap-2 rounded-md border border-slate-200 px-3">
+                <div className="flex items-center gap-2 rounded-md border border-slate-200 bg-white px-3 transition focus-within:border-brand-500/50 focus-within:ring-2 focus-within:ring-brand-500/20">
                   <Search className="h-4 w-4 shrink-0 text-slate-400" />
-                  <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar por prefixo, placa, marca ou modelo" className="border-0 px-0 shadow-none focus-visible:ring-0" />
+                  <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar por prefixo, placa, marca ou modelo" className="border-0 bg-transparent px-0 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0" />
                 </div>
                 <Select value={status} onValueChange={setStatus}>
                   <SelectTrigger><SelectValue placeholder="Status" /></SelectTrigger>
