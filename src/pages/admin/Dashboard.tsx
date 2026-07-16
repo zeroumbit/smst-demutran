@@ -667,7 +667,7 @@ const Dashboard = () => {
 
         <section className="w-full">
           <Card className="overflow-hidden rounded-[28px] border border-slate-200/80 bg-white shadow-[0_12px_32px_-22px_rgba(15,23,42,0.2)]">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0">
+            <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
               <div>
                 <CardTitle className="font-heading text-[1.35rem] font-bold uppercase tracking-[-0.02em] text-slate-800">
                   {isGuardaScope ? 'Escalas Mensais - IRO' : 'Fluxo mensal - Demutran'}
