@@ -542,45 +542,44 @@ const Dashboard = () => {
     <AdminLayout>
       <div className="space-y-8 p-1">
         <section className="space-y-6">
-          <div className="overflow-hidden rounded-[32px] border border-slate-200/70 bg-[linear-gradient(118deg,_#17233c_0%,_#6c778c_48%,_#dfe7f5_100%)] shadow-[0_28px_60px_-34px_rgba(15,23,42,0.55)]">
-              <div className="flex flex-col gap-6 xl:flex-row xl:items-center xl:justify-between">
-              <div className="space-y-5 px-6 py-8 text-white lg:px-8 lg:py-9">
-                <div className="flex flex-wrap items-center gap-2">
-                  <Badge className="rounded-full border border-white/15 bg-brand-700/50 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.2em] text-white" variant="outline">
+          <div className="overflow-hidden rounded-3xl border border-slate-200/70 bg-[linear-gradient(118deg,_#17233c_0%,_#6c778c_48%,_#dfe7f5_100%)] shadow-[0_20px_40px_-20px_rgba(15,23,42,0.3)] md:rounded-[32px] md:shadow-[0_28px_60px_-34px_rgba(15,23,42,0.55)]">
+            <div className="flex flex-col gap-4 md:gap-6 xl:flex-row xl:items-center xl:justify-between">
+              <div className="space-y-4 px-4 py-5 text-white md:space-y-5 md:px-8 md:py-9">
+                <div className="flex items-center gap-2 overflow-x-auto pb-1 native-scrollbar whitespace-nowrap">
+                  <Badge className="flex-shrink-0 rounded-full border border-white/15 bg-brand-700/50 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.2em] text-white md:px-3 md:py-1 md:text-[11px]" variant="outline">
                     {isSuperAdmin ? 'Centro operacional' : 'Setor em foco'}
                   </Badge>
                   {profile?.setor_nome && !isSuperAdmin && (
-                    <Badge className="rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-white/90" variant="outline">
+                    <Badge className="flex-shrink-0 rounded-full border border-white/15 bg-white/10 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-white/90 md:px-3 md:py-1 md:text-[11px]" variant="outline">
                       {profile.setor_nome}
                     </Badge>
                   )}
-                  <Badge className="rounded-full border border-emerald-400/20 bg-emerald-500/20 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.2em] text-emerald-200" variant="outline">
+                  <Badge className="flex-shrink-0 rounded-full border border-emerald-400/20 bg-emerald-500/20 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.2em] text-emerald-200 md:px-3 md:py-1 md:text-[11px]" variant="outline">
                     Dados integrados
                   </Badge>
                 </div>
 
                 <div>
-                  <h1 className="font-heading text-[2rem] font-extrabold tracking-[-0.06em] text-white lg:text-[3.15rem]">
+                  <h1 className="font-heading text-xl font-extrabold tracking-[-0.04em] text-white sm:text-2xl md:text-[2rem] md:tracking-[-0.06em] lg:text-[3.15rem]">
                     {panelTitle}
                   </h1>
-                  <p className="mt-3 max-w-3xl text-[14px] leading-7 text-slate-200/82">
+                  <p className="mt-2 hidden max-w-3xl text-[14px] leading-6 text-slate-200/82 md:block md:mt-3 md:leading-7">
                     {panelDescription}
                   </p>
                 </div>
 
-                <div className="flex flex-wrap gap-3">
+                <div className="flex gap-2 overflow-x-auto pb-1 native-scrollbar whitespace-nowrap">
                   {state.alerts.length > 0 ? state.alerts.slice(0, 2).map((alert) => (
-                    <div key={alert} className="rounded-full border border-white/12 bg-white/10 px-4 py-2 text-xs font-semibold text-white/90 backdrop-blur">
+                    <div key={alert} className="flex-shrink-0 rounded-full border border-white/12 bg-white/10 px-3 py-1.5 text-[10px] font-semibold text-white/90 backdrop-blur md:px-4 md:py-2 md:text-xs">
                       {alert}
                     </div>
                   )) : (
-                    <div className="rounded-full border border-white/12 bg-white/10 px-4 py-2 text-xs font-semibold text-white/90 backdrop-blur">
+                    <div className="flex-shrink-0 rounded-full border border-white/12 bg-white/10 px-3 py-1.5 text-[10px] font-semibold text-white/90 backdrop-blur md:px-4 md:py-2 md:text-xs">
                       Nenhum alerta critico identificado neste momento.
                     </div>
                   )}
                 </div>
               </div>
-
             </div>
           </div>
 

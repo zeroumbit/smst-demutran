@@ -342,20 +342,20 @@ export default function EscalasAdminPage() {
   return (
     <AdminLayout>
       <div className="space-y-6">
-        <section className="rounded-[34px] bg-[linear-gradient(135deg,_#0f172a_0%,_#1e293b_45%,_#2563eb_100%)] px-5 py-6 text-white sm:px-6">
-          <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+        <section className="rounded-2xl bg-[linear-gradient(135deg,_#0f172a_0%,_#1e293b_45%,_#2563eb_100%)] px-4 py-5 text-white md:rounded-[34px] md:px-6 md:py-6">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div className="min-w-0 flex-1">
-              <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-sky-100/70">Guarda Municipal</p>
-              <h1 className="mt-3 text-[34px] font-black tracking-[-0.08em]">Escalas de Servico</h1>
-              <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-100">Gestao oficial de escalas, publicacao, ciencia, viaturas, equipes e trocas de servico.</p>
+              <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-sky-100/70 md:text-[11px]">Guarda Municipal</p>
+              <h1 className="mt-2 text-xl font-black tracking-[-0.05em] sm:text-2xl md:mt-3 md:text-[34px] md:tracking-[-0.08em]">Escalas de Servico</h1>
+              <p className="mt-1.5 hidden max-w-3xl text-[13px] leading-5 text-slate-100 md:block md:mt-2 md:text-sm md:leading-6">Gestao oficial de escalas, publicacao, ciencia, viaturas, equipes e trocas de servico.</p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <Button variant="outline" size="sm" onClick={exportExcel} className="border-white/20 bg-white/10 text-white hover:bg-white/20"><FileDown className="mr-2 h-4 w-4" />Excel</Button>
-              <Button size="sm" onClick={() => openEscalaForm(null)} className="gap-2"><Plus className="h-4 w-4" />Nova escala</Button>
+              <Button variant="outline" size="sm" onClick={exportExcel} className="h-9 border-white/20 bg-white/10 text-xs text-white hover:bg-white/20 md:h-10 md:text-sm"><FileDown className="mr-1.5 h-4 w-4" />Excel</Button>
+              <Button size="sm" onClick={() => openEscalaForm(null)} className="h-9 gap-1.5 text-xs md:h-10 md:text-sm md:gap-2"><Plus className="h-4 w-4" />Nova escala</Button>
             </div>
           </div>
 
-          <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-6 md:mt-6">
             <StatCardEscalas label="Em servico agora" value={String(stats.emServico)} icon={Shield} />
             <StatCardEscalas label="Escalados hoje" value={String(stats.escaladosHoje)} icon={Users} />
             <StatCardEscalas label="Proximos servicos" value={String(stats.futuras)} icon={CalendarDays} />

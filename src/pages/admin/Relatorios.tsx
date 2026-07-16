@@ -5,16 +5,16 @@ const Relatorios = () => {
   return (
     <AdminLayout>
       <div className="space-y-8 p-1">
-        <section className="rounded-[32px] border border-slate-200/70 bg-[linear-gradient(118deg,_#17233c_0%,_#6c778c_48%,_#dfe7f5_100%)] shadow-[0_28px_60px_-34px_rgba(15,23,42,0.55)]">
-          <div className="flex flex-col gap-6 xl:flex-row xl:items-center xl:justify-between">
-            <div className="space-y-5 px-6 py-8 text-white lg:px-8 lg:py-9">
+        <section className="rounded-2xl border border-slate-200/70 bg-[linear-gradient(118deg,_#17233c_0%,_#6c778c_48%,_#dfe7f5_100%)] shadow-[0_20px_40px_-20px_rgba(15,23,42,0.3)] md:rounded-[32px] md:shadow-[0_28px_60px_-34px_rgba(15,23,42,0.55)]">
+          <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+            <div className="space-y-3 px-4 py-5 text-white md:space-y-5 md:px-8 md:py-9">
               <div className="flex items-center gap-3">
-                <BarChart3 className="h-8 w-8 text-white/80" />
-                <h1 className="text-[28px] font-black tracking-[-0.06em] sm:text-[34px]">
+                <BarChart3 className="h-6 w-6 text-white/80 md:h-8 md:w-8" />
+                <h1 className="text-xl font-black tracking-[-0.05em] sm:text-2xl md:text-[28px] md:tracking-[-0.06em] lg:text-[34px]">
                   Relatorios
                 </h1>
               </div>
-              <p className="max-w-2xl text-[15px] leading-relaxed text-white/70">
+              <p className="mt-1.5 hidden max-w-2xl text-[14px] leading-relaxed text-white/70 md:block md:mt-3 md:text-[15px]">
                 Visualize dados consolidados de todos os setores da secretaria. 
                 Relatorios de veiculos, IROs, patrulhas ROPE, GMAM e muito mais.
               </p>

@@ -299,8 +299,8 @@ const Configuracoes = () => {
             <div className="flex items-center justify-between gap-4">
               <div className="min-w-0">
                 <p className="text-[10px] md:text-[11px] font-bold uppercase tracking-[0.24em] text-sky-100/70">Administracao</p>
-                <h1 className="mt-1 md:mt-3 text-2xl md:text-[38px] font-black tracking-[-0.05em] md:tracking-[-0.07em] text-white">Configuracoes</h1>
-                <p className="mt-1 max-w-xl text-xs md:text-[14px] leading-relaxed text-white/85">
+                <h1 className="mt-1 md:mt-3 text-xl sm:text-2xl md:text-[38px] font-black tracking-[-0.05em] md:tracking-[-0.07em] text-white">Configuracoes</h1>
+                <p className="mt-1.5 hidden max-w-xl text-xs md:text-[14px] leading-relaxed text-white/85 md:block md:mt-2">
                   Gerencie as taxas de servicos e meios de pagamento de forma nativa e segura.
                 </p>
               </div>

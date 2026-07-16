@@ -93,21 +93,21 @@ const ConfiguracoesGuarda = () => {
   return (
     <AdminLayout>
       <div className="space-y-6">
-        <section className="rounded-[34px] bg-[linear-gradient(135deg,_#0f172a_0%,_#1e293b_45%,_#2563eb_100%)] px-5 py-6 text-white sm:px-6">
-          <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-            <div>
-              <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-sky-100/70">Guarda Municipal</p>
-              <h1 className="mt-3 text-[34px] font-black tracking-[-0.08em]">Configurações</h1>
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-100">
+        <section className="rounded-2xl bg-[linear-gradient(135deg,_#0f172a_0%,_#1e293b_45%,_#2563eb_100%)] px-4 py-5 text-white md:rounded-[34px] md:px-6 md:py-6">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+             <div>
+              <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-sky-100/70 md:text-[11px]">Guarda Municipal</p>
+              <h1 className="mt-2 text-xl font-black tracking-[-0.05em] sm:text-2xl md:mt-3 md:text-[34px] md:tracking-[-0.08em]">Configurações</h1>
+              <p className="mt-1.5 hidden max-w-2xl text-[13px] leading-5 text-slate-100 md:block md:mt-2 md:text-sm md:leading-6">
                 Configure os valores de hora IRO por graduação dos guardas municipais.
               </p>
             </div>
-            <Button variant="outline" className="border-white/20 bg-white/10 text-white hover:bg-white/20" onClick={() => void loadData()}>
+            <Button variant="outline" className="h-10 border-white/20 bg-white/10 text-xs text-white hover:bg-white/20 md:h-11 md:text-sm" onClick={() => void loadData()}>
               <RefreshCcw className="mr-2 h-4 w-4" />
               Atualizar
             </Button>
           </div>
-          <div className="mt-6 grid gap-3 sm:grid-cols-2">
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 md:mt-6">
             <StatCard label="Graduações configuradas" value={String(items.filter((i) => i.ativo).length)} icon={ShieldCheck} />
             <StatCard label="Total de graduações" value={String(graduacoes.length)} icon={Settings2} />
           </div>

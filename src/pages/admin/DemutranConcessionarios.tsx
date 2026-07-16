@@ -1340,13 +1340,13 @@ const DemutranConcessionarios = () => {
   return (
     <AdminLayout>
       <div className="space-y-6">
-        <section className="rounded-[34px] bg-[linear-gradient(135deg,_#0f172a_0%,_#1e293b_46%,_#2563eb_100%)]">
-          <div className="space-y-6 px-5 pb-5 pt-6 sm:px-6">
+        <section className="rounded-2xl bg-[linear-gradient(135deg,_#0f172a_0%,_#1e293b_46%,_#2563eb_100%)] md:rounded-[34px]">
+          <div className="space-y-4 px-4 pb-4 pt-5 md:space-y-6 md:px-6 md:pb-5 md:pt-6">
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0">
-                <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-sky-100/70">Permissoes de trafego</p>
-                <h1 className="mt-3 text-[32px] font-black tracking-[-0.07em] text-white sm:text-[38px]">Concessionarios</h1>
-                <p className="mt-2 max-w-xl text-[14px] leading-6 text-white">
+                <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-sky-100/70 md:text-[11px]">Permissoes de trafego</p>
+                <h1 className="mt-2 text-xl font-black tracking-[-0.05em] text-white sm:text-2xl md:mt-3 md:text-[32px] md:tracking-[-0.07em] lg:text-[38px]">Concessionarios</h1>
+                <p className="mt-1.5 hidden max-w-xl text-[13px] leading-5 text-white md:block md:mt-2 md:text-[14px] md:leading-6">
                   Cadastre, consulte, edite e importe em massa os permissionarios do DEMUTRAN.
                 </p>
               </div>

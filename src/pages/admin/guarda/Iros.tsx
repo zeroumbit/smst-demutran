@@ -273,21 +273,21 @@ const GuardaIros = () => {
   return (
     <Layout>
       <div className="space-y-4 sm:space-y-6">
-        <section className="rounded-[28px] bg-[linear-gradient(135deg,_#0f172a_0%,_#1e293b_45%,_#2563eb_100%)] px-4 pb-4 pt-5 sm:px-6 sm:pb-5 sm:pt-6">
+        <section className="rounded-2xl bg-[linear-gradient(135deg,_#0f172a_0%,_#1e293b_45%,_#2563eb_100%)] px-4 py-4 text-white sm:rounded-[28px] sm:px-6 sm:py-5">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-sky-100/70">Guarda Municipal</p>
-              <h1 className="mt-2 text-[26px] font-black leading-tight text-white sm:mt-3 sm:text-[34px]">IROs</h1>
+              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-sky-100/70 sm:text-[11px]">Guarda Municipal</p>
+              <h1 className="mt-2 text-xl font-black leading-tight text-white sm:text-2xl md:mt-3 md:text-[26px] lg:text-[34px]">IROs</h1>
             </div>
             <div className="flex gap-2 mt-2 shrink-0">
-              <Button variant="outline" size="sm" className="min-h-10 gap-2 rounded-xl border-0 bg-white/20 text-white shadow-none hover:bg-white/30" onClick={() => navigate(isGuardaFlow ? '/admin/perfil-guardas/guarda-municipal/iros/historico' : `/admin/dashboard/${setorSlug}/iro/historico`)}>
-                <History className="h-4 w-4" />
-                <span className="hidden sm:inline">Histórico</span>
+              <Button variant="outline" size="sm" className="min-h-9 h-9 gap-1.5 rounded-xl border-0 bg-white/20 text-xs text-white shadow-none hover:bg-white/30 md:min-h-10 md:h-10 md:text-sm" onClick={() => navigate(isGuardaFlow ? '/admin/perfil-guardas/guarda-municipal/iros/historico' : `/admin/dashboard/${setorSlug}/iro/historico`)}>
+                <History className="h-3.5 w-3.5 md:h-4 md:w-4" />
+                <span>Histórico</span>
               </Button>
             </div>
           </div>
-          <p className="mt-2 max-w-xl text-[14px] leading-6 text-white">Gerencie suas operações e horas IRO.</p>
-          <div className="mt-4 flex gap-2 overflow-x-auto pb-1 sm:hidden">
+          <p className="mt-1.5 hidden max-w-xl text-[13px] leading-5 text-white md:block md:mt-2 md:text-[14px] md:leading-6">Gerencie suas operações e horas IRO.</p>
+          <div className="mt-3 flex gap-2 overflow-x-auto pb-1 native-scrollbar whitespace-nowrap sm:hidden">
             <Badge variant="outline" className="whitespace-nowrap rounded-full border-white/15 bg-white/10 px-3 py-1 text-[11px] font-bold text-white">
               Candidatura rápida
             </Badge>

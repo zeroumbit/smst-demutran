@@ -446,15 +446,15 @@ export function NotesWorkspace({ variant }: NotesWorkspaceProps) {
 
   return (
     <div className="space-y-6">
-      <section className="overflow-hidden rounded-[30px] border border-slate-200 bg-[linear-gradient(135deg,_rgba(15,23,42,0.98)_0%,_rgba(15,118,110,0.94)_55%,_rgba(45,212,191,0.88)_100%)] text-white shadow-[0_28px_56px_-34px_rgba(15,23,42,0.5)]">
-        <div className="flex flex-col gap-6 px-6 py-7 sm:px-8 sm:py-8 lg:flex-row lg:items-end lg:justify-between">
+      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-[linear-gradient(135deg,_rgba(15,23,42,0.98)_0%,_rgba(15,118,110,0.94)_55%,_rgba(45,212,191,0.88)_100%)] text-white shadow-[0_20px_40px_-20px_rgba(15,23,42,0.3)] md:rounded-[30px] md:shadow-[0_28px_56px_-34px_rgba(15,23,42,0.5)]">
+        <div className="flex flex-col gap-4 px-4 py-5 md:px-8 md:py-8 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-3xl">
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.18em] text-white/80">
-              <NotebookPen className="h-3.5 w-3.5" />
+            <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.18em] text-white/80 md:px-3 md:py-1 md:text-[11px]">
+              <NotebookPen className="h-3 w-3 md:h-3.5 md:w-3.5" />
               {audienceLabel}
             </div>
-            <h1 className="mt-4 text-[32px] font-black tracking-[-0.06em] sm:text-[40px]">Anotacoes</h1>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-white/80 sm:text-[15px]">
+            <h1 className="mt-2 text-xl font-black tracking-[-0.05em] text-white sm:text-2xl md:mt-4 md:text-[32px] md:tracking-[-0.06em] lg:text-[40px]">Anotacoes</h1>
+            <p className="mt-1.5 hidden max-w-2xl text-[13px] leading-5 text-white/80 md:block md:mt-3 md:text-sm md:leading-6">
               {boardSubtitle}
             </p>
           </div>

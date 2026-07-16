@@ -247,21 +247,21 @@ function FrotaListaPage() {
   return (
     <AdminLayout>
       <div className="space-y-6">
-        <section className="rounded-[34px] bg-[linear-gradient(135deg,_#0f172a_0%,_#1e293b_45%,_#2563eb_100%)] px-5 py-6 text-white sm:px-6">
-          <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+        <section className="rounded-2xl bg-[linear-gradient(135deg,_#0f172a_0%,_#1e293b_45%,_#2563eb_100%)] px-4 py-5 text-white md:rounded-[34px] md:px-6 md:py-6">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div className="min-w-0 flex-1">
-              <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-sky-100/70">Guarda Municipal</p>
-              <h1 className="mt-3 text-[34px] font-black tracking-[-0.08em]">Frota da Guarda</h1>
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-100">
+              <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-sky-100/70 md:text-[11px]">Guarda Municipal</p>
+              <h1 className="mt-2 text-xl font-black tracking-[-0.05em] sm:text-2xl md:mt-3 md:text-[34px] md:tracking-[-0.08em]">Frota da Guarda</h1>
+              <p className="mt-1.5 hidden max-w-2xl text-[13px] leading-5 text-slate-100 md:block md:mt-2 md:text-sm md:leading-6">
                 Controle operacional das viaturas, disponibilidade, manutenções e histórico de uso da corporação.
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <Button type="button" variant="outline" size="sm" className="border-white/20 bg-white/10 text-white hover:bg-white/20" onClick={() => setCategoriasOpen(true)}>
+              <Button type="button" variant="outline" size="sm" className="h-9 border-white/20 bg-white/10 text-xs text-white hover:bg-white/20 md:h-10 md:text-sm" onClick={() => setCategoriasOpen(true)}>
                 <Settings2 className="mr-2 h-4 w-4" />
                 Categorias
               </Button>
-              <Button asChild size="sm" className="gap-2">
+              <Button asChild size="sm" className="h-9 gap-1.5 text-xs md:h-10 md:text-sm md:gap-2">
                 <Link to={`${basePath}/novo`}>
                   <Plus className="h-4 w-4" />
                   Nova viatura
