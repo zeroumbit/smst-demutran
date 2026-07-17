@@ -5,7 +5,7 @@ import { formatarPontuacaoFiscalizacao } from '../../utils/fiscalizacao.formatte
 
 export function CabecalhoFicha({ infracao }: { infracao: FiscalizacaoInfracao }) {
   return (
-    <section className="rounded-2xl bg-[linear-gradient(135deg,_#0f172a_0%,_#1f2937_45%,_#0f766e_100%)] px-4 py-5 text-white md:rounded-[30px] md:px-6 md:py-6">
+    <section className="rounded-[24px] bg-[linear-gradient(135deg,_#0f172a_0%,_#1f2937_45%,_#0f766e_100%)] px-4 py-5 text-white md:rounded-[30px] md:px-6 md:py-6">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 overflow-x-auto pb-1 native-scrollbar whitespace-nowrap">

@@ -342,7 +342,7 @@ export default function EscalasAdminPage() {
   return (
     <AdminLayout>
       <div className="space-y-6">
-        <section className="rounded-2xl bg-[linear-gradient(135deg,_#0f172a_0%,_#1e293b_45%,_#2563eb_100%)] px-4 py-5 text-white md:rounded-[34px] md:px-6 md:py-6">
+        <section className="rounded-[24px] bg-[linear-gradient(135deg,_#0f172a_0%,_#1e293b_45%,_#2563eb_100%)] px-4 py-5 text-white md:rounded-[34px] md:px-6 md:py-6">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div className="min-w-0 flex-1">
               <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-sky-100/70 md:text-[11px]">Guarda Municipal</p>
@@ -355,7 +355,7 @@ export default function EscalasAdminPage() {
             </div>
           </div>
 
-          <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-6 md:mt-6">
+          <div className="mt-4 flex gap-3 overflow-x-auto native-scrollbar snap-x-mandatory md:grid md:grid-cols-2 xl:grid-cols-6 md:mt-6 md:overflow-x-visible">
             <StatCardEscalas label="Em servico agora" value={String(stats.emServico)} icon={Shield} />
             <StatCardEscalas label="Escalados hoje" value={String(stats.escaladosHoje)} icon={Users} />
             <StatCardEscalas label="Proximos servicos" value={String(stats.futuras)} icon={CalendarDays} />
@@ -801,7 +801,7 @@ function ConfigView({ title, items, icon: Icon, onCreate, onEdit }: { title: str
 
 function StatCardEscalas({ label, value, icon: Icon }: { label: string; value: string; icon: typeof Shield }) {
   return (
-    <div className="flex items-center gap-4 rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur-sm">
+    <div className="flex min-w-[75vw] snap-start items-center gap-4 rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur-sm md:min-w-0">
       <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-white/10">
         <Icon className="h-6 w-6 text-white" />
       </div>

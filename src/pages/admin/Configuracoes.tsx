@@ -294,7 +294,7 @@ const Configuracoes = () => {
     <AdminLayout>
       <div className="space-y-6">
         {/* HEAD BAR ADAPTATIVA (APP BAR) */}
-        <section className="rounded-2xl md:rounded-[34px] bg-[linear-gradient(135deg,_#0f172a_0%,_#1e293b_46%,_#2563eb_100%)] shadow-md">
+        <section className="rounded-[24px] md:rounded-[34px] bg-[linear-gradient(135deg,_#0f172a_0%,_#1e293b_46%,_#2563eb_100%)] shadow-md">
           <div className="space-y-4 md:space-y-6 px-4 py-5 md:px-6 md:pb-5 md:pt-6">
             <div className="flex items-center justify-between gap-4">
               <div className="min-w-0">

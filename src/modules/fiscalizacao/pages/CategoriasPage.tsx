@@ -43,7 +43,7 @@ export function FiscalizacaoCategoriasPage({ scope }: { scope: 'admin' | 'guarda
 
   return (
     <div className="space-y-6">
-      <section className="rounded-2xl bg-[linear-gradient(140deg,_#111827_0%,_#1d4ed8_50%,_#14b8a6_100%)] px-4 py-5 text-white md:rounded-[30px] md:px-6 md:py-6">
+      <section className="rounded-[24px] bg-[linear-gradient(140deg,_#111827_0%,_#1d4ed8_50%,_#14b8a6_100%)] px-4 py-5 text-white md:rounded-[30px] md:px-6 md:py-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-white/65 md:text-[11px]">Fiscalização de Trânsito</p>

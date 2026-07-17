@@ -446,7 +446,7 @@ export function NotesWorkspace({ variant }: NotesWorkspaceProps) {
 
   return (
     <div className="space-y-6">
-      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-[linear-gradient(135deg,_rgba(15,23,42,0.98)_0%,_rgba(15,118,110,0.94)_55%,_rgba(45,212,191,0.88)_100%)] text-white shadow-[0_20px_40px_-20px_rgba(15,23,42,0.3)] md:rounded-[30px] md:shadow-[0_28px_56px_-34px_rgba(15,23,42,0.5)]">
+      <section className="overflow-hidden rounded-[24px] border border-slate-200 bg-[linear-gradient(135deg,_rgba(15,23,42,0.98)_0%,_rgba(15,118,110,0.94)_55%,_rgba(45,212,191,0.88)_100%)] text-white shadow-[0_20px_40px_-20px_rgba(15,23,42,0.3)] md:rounded-[30px] md:shadow-[0_28px_56px_-34px_rgba(15,23,42,0.5)]">
         <div className="flex flex-col gap-4 px-4 py-5 md:px-8 md:py-8 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-3xl">
             <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.18em] text-white/80 md:px-3 md:py-1 md:text-[11px]">

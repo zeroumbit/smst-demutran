@@ -9,6 +9,7 @@ import {
   CheckCircle2,
   FileText,
   ImageIcon,
+  MessageSquare,
   Newspaper,
   ShieldCheck,
   UserPlus,
@@ -86,6 +87,13 @@ type DashboardState = {
   totalBancoHoras: number;
   demandasFalaCidadaoCount: number;
   distribuicaoGraduacoes: Array<{ label: string; total: number }>;
+  frotaAtiva: number;
+  frotaDisponivel: number;
+  frotaEmServico: number;
+  frotaEmManutencao: number;
+  equipesAtivas: number;
+  noticiasSetor: number;
+  eventosSetor: number;
 };
 
 const initialState: DashboardState = {
@@ -109,6 +117,12 @@ const initialState: DashboardState = {
   totalBancoHoras: 0,
   demandasFalaCidadaoCount: 0,
   distribuicaoGraduacoes: [],
+  frotaDisponivel: 0,
+  frotaEmServico: 0,
+  frotaEmManutencao: 0,
+  equipesAtivas: 0,
+  noticiasSetor: 0,
+  eventosSetor: 0,
 };
 
 const monthFormatter = new Intl.DateTimeFormat('pt-BR', { month: 'short' });
@@ -271,6 +285,12 @@ const Dashboard = () => {
       let demandasFalaCidadaoCount = 0;
       let distribuicaoGraduacoes: Array<{ label: string; total: number }> = [];
       let movementMap = buildLastSixMonths();
+      let equipesAtivas = 0;
+      let frotaDisponivel = 0;
+      let frotaEmServico = 0;
+      let frotaEmManutencao = 0;
+      let noticiasSetor = 0;
+      let eventosSetor = 0;
 
       if (isDemutranScope) {
         const [
@@ -351,7 +371,12 @@ const Dashboard = () => {
           iroBancoHorasResponse,
           falaDemandasCountResponse,
           guardasGraduacoesResponse,
-          candidaturasSeriesResponse
+          candidaturasSeriesResponse,
+          frotaVeiculosResponse,
+          frotaStatusResponse,
+          equipesResponse,
+          noticiasGuardaResponse,
+          eventosGuardaResponse,
         ] = await Promise.all([
           supabase.from('guardas_municipais').select('*', { count: 'exact', head: true }).eq('ativo', true),
           supabase.from('iro_operacoes').select('*', { count: 'exact', head: true }).eq('ativo', true),
@@ -361,13 +386,31 @@ const Dashboard = () => {
             ? supabase.from('fala_demandas').select('*', { count: 'exact', head: true }).eq('secretaria_atual_id', secretariaGmId).in('status', ['recebido', 'analise'])
             : Promise.resolve({ count: 0, error: null }),
           supabase.from('guardas_municipais').select('id, guarda_municipal_graduacoes(nome)').eq('ativo', true),
-          usuarioFilter(supabase.from('iro_candidaturas').select('created_at, data_operacao, status'))
+          usuarioFilter(supabase.from('iro_candidaturas').select('created_at, data_operacao, status')),
+          supabase.from('guarda_frota_veiculos').select('*', { count: 'exact', head: true }).eq('ativo', true),
+          supabase.from('guarda_frota_veiculos').select('status').eq('ativo', true),
+          supabase.from('guarda_equipes').select('*', { count: 'exact', head: true }).eq('ativo', true),
+          targetSetorId 
+            ? supabase.from('noticias').select('*', { count: 'exact', head: true }).eq('setor_id', targetSetorId).eq('ativo', true)
+            : Promise.resolve({ count: 0, error: null }),
+          targetSetorId
+            ? supabase.from('eventos').select('*', { count: 'exact', head: true }).eq('setor_id', targetSetorId).eq('ativo', true)
+            : Promise.resolve({ count: 0, error: null }),
         ]);
 
         guardasAtivos = guardasCountResponse.count || 0;
         operacoesAtivasIro = iroOperacoesCountResponse.count || 0;
         candidaturasIro = iroCandidaturasCountResponse.count || 0;
         demandasFalaCidadaoCount = falaDemandasCountResponse.count || 0;
+        frotaAtiva = frotaVeiculosResponse.count || 0;
+        equipesAtivas = equipesResponse.count || 0;
+        noticiasSetor = noticiasGuardaResponse.count || 0;
+        eventosSetor = eventosGuardaResponse.count || 0;
+
+        const frotaStatusRows = (frotaStatusResponse.data || []) as Array<{ status: string }>;
+        frotaDisponivel = frotaStatusRows.filter(r => r.status === 'DISPONIVEL').length;
+        frotaEmServico = frotaStatusRows.filter(r => r.status === 'EM_SERVICO').length;
+        frotaEmManutencao = frotaStatusRows.filter(r => r.status === 'EM_MANUTENCAO').length;
 
         const horasExcedentesData = iroBancoHorasResponse.data || [];
         totalBancoHoras = horasExcedentesData.reduce((acc: number, curr: any) => acc + Number(curr.horas_excedentes || 0), 0);
@@ -398,6 +441,18 @@ const Dashboard = () => {
             }
           }
         });
+
+        if (isSuperAdmin && !isGuardaScope && !isDemutranScope) {
+          const [guardasSistemaCount, frotaSistemaCount, equipesSistemaCount] = await Promise.all([
+            supabase.from('guardas_municipais').select('*', { count: 'exact', head: true }).eq('ativo', true),
+            supabase.from('guarda_frota_veiculos').select('*', { count: 'exact', head: true }).eq('ativo', true),
+            supabase.from('guarda_equipes').select('*', { count: 'exact', head: true }).eq('ativo', true),
+          ]);
+          guardasAtivos = guardasSistemaCount.count || 0;
+          frotaAtiva = frotaSistemaCount.count || 0;
+          equipesAtivas = equipesSistemaCount.count || 0;
+          frotaDisponivel = 0; // não detalhamos status na visão geral
+        }
       }
 
       const setorRows = (setoresResponse.data || []) as Array<Pick<Setor, 'id' | 'nome' | 'ativo'>>;
@@ -463,9 +518,9 @@ const Dashboard = () => {
       const serviceStatus: ServiceStatus[] = isGuardaScope
         ? [
             { label: 'Efetivo Ativo', value: guardasAtivos, tone: 'success' },
-            { label: 'Operações IRO', value: operacoesAtivasIro, tone: 'neutral' },
-            { label: 'Escalas IRO', value: candidaturasIro, tone: 'neutral' },
-            { label: 'Horas no Banco', value: totalBancoHoras, tone: totalBancoHoras > 100 ? 'warning' : 'neutral' },
+            { label: 'Frota da Guarda', value: frotaAtiva, tone: frotaAtiva > 0 ? 'neutral' : 'warning' },
+            { label: 'Equipes Ativas', value: equipesAtivas, tone: equipesAtivas > 0 ? 'neutral' : 'warning' },
+            { label: 'Operações IRO', value: operacoesAtivasIro, tone: operacoesAtivasIro > 0 ? 'warning' : 'neutral' },
           ]
         : isDemutranScope
           ? [
@@ -526,6 +581,12 @@ const Dashboard = () => {
         totalBancoHoras,
         demandasFalaCidadaoCount,
         distribuicaoGraduacoes,
+        frotaDisponivel,
+        frotaEmServico,
+        frotaEmManutencao,
+        equipesAtivas,
+        noticiasSetor,
+        eventosSetor,
       });
     };
 
@@ -558,6 +619,11 @@ const Dashboard = () => {
                     Dados integrados
                   </Badge>
                 </div>
+                {profile?.name && (
+                  <p className="text-xs font-medium text-white/60">
+                    Operador: <span className="font-semibold text-white/90">{profile.name}</span>
+                  </p>
+                )}
 
                 <div>
                   <h1 className="font-heading text-xl font-extrabold tracking-[-0.04em] text-white sm:text-2xl md:text-[2rem] md:tracking-[-0.06em] lg:text-[3.15rem]">
@@ -583,9 +649,9 @@ const Dashboard = () => {
             </div>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <div className="flex gap-4 overflow-x-auto native-scrollbar snap-x-mandatory md:grid md:grid-cols-2 xl:grid-cols-4 md:overflow-x-visible">
             {state.serviceStatus.slice(0, 4).map((item) => (
-              <div key={item.label} className="rounded-[24px] border border-slate-200/80 bg-white p-5 shadow-[0_16px_38px_-30px_rgba(15,23,42,0.32)]">
+              <div key={item.label} className="min-w-[75vw] snap-start md:min-w-0 rounded-[24px] border border-slate-200/80 bg-white p-5 shadow-[0_16px_38px_-30px_rgba(15,23,42,0.32)]">
                 <div className="flex items-center justify-between gap-3">
                   <p className="max-w-[12rem] text-[11px] font-bold uppercase leading-4 tracking-[0.05em] text-[#8ea0bd]">{item.label}</p>
                   <span className={`inline-flex rounded-2xl border px-2 py-1 text-[10px] font-bold ${serviceToneBadge[item.tone]}`}>
@@ -600,11 +666,13 @@ const Dashboard = () => {
                   {isGuardaScope
                     ? item.label.toLowerCase().includes('efetivo')
                       ? 'Guardas municipais ativos e cadastrados'
-                      : item.label.toLowerCase().includes('operações')
-                        ? 'Operações ativas de reforço (IRO)'
-                        : item.label.toLowerCase().includes('escalas')
-                          ? 'Candidaturas confirmadas para reforço'
-                          : 'Total acumulado de horas excedentes'
+                      : item.label.toLowerCase().includes('frota')
+                        ? 'Veículos operacionais da Guarda'
+                        : item.label.toLowerCase().includes('equipes')
+                          ? 'Equipes de trabalho ativas'
+                          : item.label.toLowerCase().includes('operações')
+                            ? 'Operações ativas de reforço (IRO)'
+                            : 'Total acumulado de horas excedentes'
                     : item.label.toLowerCase().includes('apreendidos')
                       ? 'Veiculos retidos no deposito municipal'
                       : item.label.toLowerCase().includes('liberados')
@@ -617,6 +685,85 @@ const Dashboard = () => {
             ))}
           </div>
         </section>
+
+        {isSuperAdmin && !urlSetorSlug && (
+          <section>
+            <h2 className="font-heading mb-5 text-[1rem] font-bold uppercase tracking-[-0.02em] text-slate-700">Módulos do Sistema</h2>
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+              <Card className="overflow-hidden rounded-[28px] border border-slate-200/80 bg-white shadow-[0_12px_32px_-22px_rgba(15,23,42,0.2)]">
+                <CardContent className="p-5">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">Guarda Municipal</p>
+                      <p className="mt-3 text-3xl font-extrabold tracking-[-0.05em] text-slate-900">{state.guardasAtivos}</p>
+                      <p className="mt-1 text-xs leading-5 text-slate-500">Guardas ativos no sistema</p>
+                    </div>
+                    <div className="rounded-2xl border border-blue-100 bg-blue-50 p-3 text-blue-600">
+                      <ShieldCheck className="h-5 w-5" />
+                    </div>
+                  </div>
+                  <div className="mt-4 flex gap-4 border-t border-slate-100 pt-3 text-xs text-slate-500">
+                    <span>{state.frotaAtiva} viaturas</span>
+                    <span>{state.equipesAtivas} equipes</span>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="overflow-hidden rounded-[28px] border border-slate-200/80 bg-white shadow-[0_12px_32px_-22px_rgba(15,23,42,0.2)]">
+                <CardContent className="p-5">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">DEMUTRAN</p>
+                      <p className="mt-3 text-3xl font-extrabold tracking-[-0.05em] text-slate-900">{state.frotaAtiva}</p>
+                      <p className="mt-1 text-xs leading-5 text-slate-500">Frota municipal ativa</p>
+                    </div>
+                    <div className="rounded-2xl border border-rose-100 bg-rose-50 p-3 text-rose-600">
+                      <CarFront className="h-5 w-5" />
+                    </div>
+                  </div>
+                  <div className="mt-4 flex gap-4 border-t border-slate-100 pt-3 text-xs text-slate-500">
+                    <span>{state.pendingCredenciais} credenciais</span>
+                    <span>{state.pendingRecursos} recursos</span>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="overflow-hidden rounded-[28px] border border-slate-200/80 bg-white shadow-[0_12px_32px_-22px_rgba(15,23,42,0.2)]">
+                <CardContent className="p-5">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">Fala Cidadão</p>
+                      <p className="mt-3 text-3xl font-extrabold tracking-[-0.05em] text-slate-900">{state.demandasFalaCidadaoCount}</p>
+                      <p className="mt-1 text-xs leading-5 text-slate-500">Demandas pendentes</p>
+                    </div>
+                    <div className="rounded-2xl border border-amber-100 bg-amber-50 p-3 text-amber-600">
+                      <MessageSquare className="h-5 w-5" />
+                    </div>
+                  </div>
+                  <div className="mt-4 flex gap-4 border-t border-slate-100 pt-3 text-xs text-slate-500">
+                    <span>Ouvidoria ativa</span>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="overflow-hidden rounded-[28px] border border-slate-200/80 bg-white shadow-[0_12px_32px_-22px_rgba(15,23,42,0.2)]">
+                <CardContent className="p-5">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">Conteúdo</p>
+                      <p className="mt-3 text-3xl font-extrabold tracking-[-0.05em] text-slate-900">{state.noticiasAtivas + state.eventosAtivos + state.galeriaAtiva + state.documentosAtivos}</p>
+                      <p className="mt-1 text-xs leading-5 text-slate-500">Publicações ativas no total</p>
+                    </div>
+                    <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-3 text-emerald-600">
+                      <Newspaper className="h-5 w-5" />
+                    </div>
+                  </div>
+                  <div className="mt-4 flex gap-4 border-t border-slate-100 pt-3 text-xs text-slate-500">
+                    <span>{state.noticiasAtivas} notícias</span>
+                    <span>{state.eventosAtivos} eventos</span>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </section>
+        )}
 
         {papel === 'gestor' && (
           <Link
@@ -798,56 +945,60 @@ const Dashboard = () => {
         )}
 
         {isGuardaScope && (
-          <section className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
+          <section className="grid gap-6 xl:grid-cols-[1fr_1fr]">
             <Card className="overflow-hidden rounded-[28px] border border-slate-200/80 bg-white shadow-[0_12px_32px_-22px_rgba(15,23,42,0.2)]">
               <CardHeader>
-                <CardTitle className="font-heading text-[1.35rem] font-bold uppercase tracking-[-0.02em] text-slate-800">Efetivo por Graduação</CardTitle>
+                <CardTitle className="font-heading text-[1.35rem] font-bold uppercase tracking-[-0.02em] text-slate-800">Frota da Guarda</CardTitle>
                 <CardDescription className="mt-1 text-sm leading-6 text-[#89a0bf]">
-                  Distribuição dos guardas ativos de acordo com suas graduações de carreira.
+                  Situação dos veículos operacionais da Guarda Municipal.
                 </CardDescription>
               </CardHeader>
-              <CardContent className="grid gap-3">
-                {state.distribuicaoGraduacoes.map((item) => (
-                  <div key={item.label} className="rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-3">
-                    <div className="flex items-center justify-between gap-3">
-                      <p className="text-sm font-bold text-slate-900">{item.label}</p>
-                      <Badge variant="outline" className="rounded-full bg-white text-slate-700">{item.total} ativos</Badge>
-                    </div>
-                  </div>
-                ))}
-                {state.distribuicaoGraduacoes.length === 0 && (
-                  <p className="text-sm text-slate-500 text-center py-4">Nenhum guarda municipal ativo cadastrado.</p>
-                )}
+              <CardContent className="grid gap-3 md:grid-cols-3">
+                <div className="rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-4">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">Disponíveis</p>
+                  <p className="mt-2 text-3xl font-extrabold tracking-[-0.05em] text-emerald-600">{state.frotaDisponivel}</p>
+                  <p className="mt-2 text-sm leading-6 text-slate-500">Viaturas prontas para uso</p>
+                </div>
+                <div className="rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-4">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">Em Serviço</p>
+                  <p className="mt-2 text-3xl font-extrabold tracking-[-0.05em] text-blue-600">{state.frotaEmServico}</p>
+                  <p className="mt-2 text-sm leading-6 text-slate-500">Viaturas em operação</p>
+                </div>
+                <div className="rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-4">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">Em Manutenção</p>
+                  <p className="mt-2 text-3xl font-extrabold tracking-[-0.05em] text-amber-600">{state.frotaEmManutencao}</p>
+                  <p className="mt-2 text-sm leading-6 text-slate-500">Viaturas em oficina</p>
+                </div>
               </CardContent>
             </Card>
 
             <Card className="overflow-hidden rounded-[28px] border border-slate-200/80 bg-white shadow-[0_12px_32px_-22px_rgba(15,23,42,0.2)]">
               <CardHeader>
-                <CardTitle className="font-heading text-[1.35rem] font-bold uppercase tracking-[-0.02em] text-slate-800">IRO e Banco de Horas</CardTitle>
+                <CardTitle className="font-heading text-[1.35rem] font-bold uppercase tracking-[-0.02em] text-slate-800">Conteúdo e Operação</CardTitle>
                 <CardDescription className="mt-1 text-sm leading-6 text-[#89a0bf]">
-                  Métricas consolidadas do módulo de Indenização de Reforço Operacional.
+                  Publicações e atividades do setor da Guarda Municipal.
                 </CardDescription>
               </CardHeader>
               <CardContent className="grid gap-3 md:grid-cols-2">
                 <div className="rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-4">
-                  <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">Operações IRO</p>
-                  <p className="mt-2 text-3xl font-extrabold tracking-[-0.05em] text-blue-600">{state.operacoesAtivasIro}</p>
-                  <p className="mt-2 text-sm leading-6 text-slate-500">Operações ativas de reforço cadastradas</p>
+                  <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">Notícias</p>
+                  <p className="mt-2 text-3xl font-extrabold tracking-[-0.05em] text-blue-600">{state.noticiasSetor}</p>
+                  <p className="mt-2 text-sm leading-6 text-slate-500">Notícias publicadas do setor</p>
                 </div>
                 <div className="rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-4">
-                  <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">Escalas Confirmadas</p>
+                  <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">Eventos</p>
+                  <p className="mt-2 text-3xl font-extrabold tracking-[-0.05em] text-emerald-600">{state.eventosSetor}</p>
+                  <p className="mt-2 text-sm leading-6 text-slate-500">Eventos cadastrados no setor</p>
+                </div>
+                <div className="rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-4">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">Equipes</p>
+                  <p className="mt-2 text-3xl font-extrabold tracking-[-0.05em] text-purple-600">{state.equipesAtivas}</p>
+                  <p className="mt-2 text-sm leading-6 text-slate-500">Equipes de trabalho ativas</p>
+                </div>
+                <div className="rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-4">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">Escalas IRO</p>
                   <p className="mt-2 text-3xl font-extrabold tracking-[-0.05em] text-emerald-600">{state.candidaturasIro}</p>
-                  <p className="mt-2 text-sm leading-6 text-slate-500">Total de candidaturas de reforço confirmadas</p>
-                </div>
-                <div className="rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-4">
-                  <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">Banco de Horas</p>
-                  <p className="mt-2 text-3xl font-extrabold tracking-[-0.05em] text-amber-600">{state.totalBancoHoras}h</p>
-                  <p className="mt-2 text-sm leading-6 text-slate-500">Total de horas extras registradas no banco</p>
-                </div>
-                <div className="rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-4">
-                  <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">Demandas Ouvidoria</p>
-                  <p className="mt-2 text-3xl font-extrabold tracking-[-0.05em] text-rose-600">{state.demandasFalaCidadaoCount}</p>
-                  <p className="mt-2 text-sm leading-6 text-slate-500">Solicitações Ouvidoria (Fala Cidadão) pendentes</p>
+                  <p className="mt-2 text-sm leading-6 text-slate-500">Candidaturas de reforço confirmadas</p>
                 </div>
               </CardContent>
             </Card>
@@ -902,6 +1053,37 @@ const Dashboard = () => {
                       </p>
                     </div>
                   </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="overflow-hidden rounded-[28px] border border-slate-200/80 bg-white shadow-[0_12px_32px_-22px_rgba(15,23,42,0.2)]">
+              <CardHeader>
+                <CardTitle className="font-heading text-[1.35rem] font-bold uppercase tracking-[-0.02em] text-slate-800">IRO e Banco de Horas</CardTitle>
+                <CardDescription className="mt-1 text-sm leading-6 text-[#89a0bf]">
+                  Métricas consolidadas do módulo de Indenização de Reforço Operacional.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="grid gap-3 md:grid-cols-2">
+                <div className="rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-4">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">Operações IRO</p>
+                  <p className="mt-2 text-3xl font-extrabold tracking-[-0.05em] text-blue-600">{state.operacoesAtivasIro}</p>
+                  <p className="mt-2 text-sm leading-6 text-slate-500">Operações ativas de reforço cadastradas</p>
+                </div>
+                <div className="rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-4">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">Escalas Confirmadas</p>
+                  <p className="mt-2 text-3xl font-extrabold tracking-[-0.05em] text-emerald-600">{state.candidaturasIro}</p>
+                  <p className="mt-2 text-sm leading-6 text-slate-500">Total de candidaturas de reforço confirmadas</p>
+                </div>
+                <div className="rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-4">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">Banco de Horas</p>
+                  <p className="mt-2 text-3xl font-extrabold tracking-[-0.05em] text-amber-600">{state.totalBancoHoras}h</p>
+                  <p className="mt-2 text-sm leading-6 text-slate-500">Total de horas extras registradas no banco</p>
+                </div>
+                <div className="rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-4">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">Demandas Ouvidoria</p>
+                  <p className="mt-2 text-3xl font-extrabold tracking-[-0.05em] text-rose-600">{state.demandasFalaCidadaoCount}</p>
+                  <p className="mt-2 text-sm leading-6 text-slate-500">Solicitações Ouvidoria (Fala Cidadão) pendentes</p>
                 </div>
               </CardContent>
             </Card>

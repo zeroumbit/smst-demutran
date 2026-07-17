@@ -82,7 +82,7 @@ export default function MinhasEscalasPage() {
   return (
     <GuardsLayout>
       <div className="space-y-5">
-        <section className="rounded-2xl bg-[linear-gradient(135deg,_#0f172a_0%,_#1e293b_48%,_#2563eb_100%)] p-4 text-white sm:rounded-[28px] sm:p-6">
+        <section className="rounded-[24px] bg-[linear-gradient(135deg,_#0f172a_0%,_#1e293b_48%,_#2563eb_100%)] p-4 text-white sm:rounded-[28px] sm:p-6">
           <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-sky-100/70 sm:text-[11px]">Guarda Municipal</p>
           <h1 className="mt-2 text-xl font-black text-white sm:text-2xl md:text-3xl">Minhas Escalas</h1>
           <p className="mt-1.5 hidden text-[13px] text-white/80 md:block md:mt-2 md:text-sm">Servicos publicados, ciencia e trocas de servico.</p>
