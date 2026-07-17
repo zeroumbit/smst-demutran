@@ -1,4 +1,4 @@
-import React, { Component, Suspense } from "react";
+import React, { Component, Suspense, useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -9,6 +9,15 @@ import { ProtectedRoute } from "@/components/admin/ProtectedRoute";
 import { ConsentBar } from "@/components/shared/ConsentBar";
 import { PwaStatus } from "@/components/pwa/PwaStatus";
 import { ThemeProvider } from "@/components/ThemeProvider";
+
+const ADMIN_PREFIX = import.meta.env.VITE_ADMIN_DOMAIN_PREFIX as string | undefined;
+const isAdminDomain = () => {
+  const prefix = ADMIN_PREFIX || "admin.";
+  return (
+    window.location.hostname === prefix.replace(".", "") ||
+    window.location.hostname.startsWith(prefix)
+  );
+};
 
 // Lazy load public pages
 const Index = React.lazy(() => import("./pages/Index"));
@@ -159,7 +168,14 @@ const SuspenseWrapper = ({ children }: { children: React.ReactNode }) => (
   </Suspense>
 );
 
-const App = () => (
+const App = () => {
+  useEffect(() => {
+    if (isAdminDomain() && window.location.pathname === "/") {
+      window.location.replace("/admin/login");
+    }
+  }, []);
+
+  return (
   <AppErrorBoundary>
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
@@ -745,6 +761,7 @@ const App = () => (
       </ThemeProvider>
     </QueryClientProvider>
   </AppErrorBoundary>
-);
+  );
+};
 
 export default App;

@@ -6,6 +6,5 @@
     </linearGradient>
   </defs>
   <rect width="512" height="512" rx="96" fill="url(#bg)"/>
-  <path d="M256 80 L400 160 L400 280 C400 368 336 432 256 448 C176 432 112 368 112 280 L112 160 Z" fill="none" stroke="white" stroke-width="24" stroke-linejoin="round"/>
-  <path d="M208 260 L240 292 L304 228" fill="none" stroke="white" stroke-width="20" stroke-linecap="round" stroke-linejoin="round"/>
+  <image href="/pwa-icon-512.png" x="56" y="56" width="400" height="400" preserveAspectRatio="xMidYMid meet"/>
 </svg>
