@@ -289,17 +289,17 @@ const GuardaDashboard = () => {
     <>
       <GuardsLayout>
       <div className="space-y-4 sm:space-y-6">
-        <section className="rounded-[34px] bg-[linear-gradient(135deg,_#0f172a_0%,_#1e293b_45%,_#2563eb_100%)] px-4 pb-4 pt-5 sm:px-6 sm:pb-5 sm:pt-6">
-          <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+        <section className="rounded-2xl bg-[linear-gradient(135deg,_#0f172a_0%,_#1e293b_45%,_#2563eb_100%)] px-4 py-4 text-white sm:rounded-[34px] sm:px-6 sm:py-5">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div className="min-w-0">
-              <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-sky-100/70">Guarda Municipal</p>
-              <h1 className="mt-2 text-[26px] font-black leading-tight text-white sm:mt-3 sm:text-[34px]">
+              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-sky-100/70 sm:text-[11px]">Guarda Municipal</p>
+              <h1 className="mt-2 text-xl font-black leading-tight text-white sm:text-2xl md:mt-3 md:text-[26px] lg:text-[34px]">
                 {guardaNome ? `Olá, ${guardaNome.split(' ')[0]}!` : 'Dashboard'}
               </h1>
-              <p className="mt-2 max-w-xl text-[14px] leading-6 text-white">Resumo do mês de {mesAtual}.</p>
+              <p className="mt-1.5 hidden max-w-xl text-[13px] leading-5 text-white md:block md:mt-2 md:text-[14px] md:leading-6">Resumo do mês de {mesAtual}.</p>
             </div>
           </div>
-          <div className="mt-4 flex snap-x snap-mandatory gap-2 overflow-x-auto pb-1 sm:hidden">
+          <div className="mt-3 flex snap-x snap-mandatory gap-2 overflow-x-auto pb-1 native-scrollbar whitespace-nowrap sm:hidden">
             <Badge variant="outline" className="snap-start whitespace-nowrap rounded-full border-white/15 bg-white/10 px-3 py-1 text-[11px] font-bold text-white">
               Painel pessoal
             </Badge>

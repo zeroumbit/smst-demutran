@@ -1,6 +1,7 @@
 import { ReactNode, ComponentType, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useAdminNotifications } from '@/hooks/use-admin-notifications';
 import { Button } from '@/components/ui/button';
 import {
   FileWarning,
@@ -9,6 +10,7 @@ import {
   Shield,
   NotebookPen,
   ClipboardList,
+  CalendarDays,
   X,
 } from 'lucide-react';
 import guardaLogo from '@/guarda.png';
@@ -44,6 +46,7 @@ type NavItem = {
 
 const ANOTACOES_LABEL = 'Anotacoes';
 const PERFIL_LABEL = 'Perfil';
+const FISCALIZACAO_LABEL = 'Fiscalizacao';
 
 const moveNavItemBeforeLabel = (items: NavItem[], itemLabel: string, beforeLabel: string) => {
   const fromIndex = items.findIndex((item) => item.label === itemLabel);
@@ -62,6 +65,7 @@ const moveNavItemBeforeLabel = (items: NavItem[], itemLabel: string, beforeLabel
 
 const navItems: NavItem[] = [
   { icon: HouseIcon, label: 'Home', path: '/admin/perfil-guardas/guarda-municipal/dashboard' },
+  { icon: CalendarDays, label: 'Escalas', path: '/admin/perfil-guardas/guarda-municipal/escalas' },
   { icon: FileWarning, label: 'IROs', path: '/admin/perfil-guardas/guarda-municipal/iros' },
   { icon: ClipboardList, label: 'Fiscalizacao', path: '/admin/perfil-guardas/guarda-municipal/fiscalizacao/infracoes' },
   { icon: NotebookPen, label: 'Anotacoes', path: '/admin/perfil-guardas/guarda-municipal/anotacoes' },
@@ -78,6 +82,7 @@ export const GuardsLayout = ({ children }: GuardsLayoutProps) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { logout, profile } = useAuth();
+  useAdminNotifications(profile?.user_id);
 
   const handleLogout = async () => {
     await logout();
@@ -85,6 +90,7 @@ export const GuardsLayout = ({ children }: GuardsLayoutProps) => {
   };
 
   const visibleNavItems = moveNavItemBeforeLabel(navItems, ANOTACOES_LABEL, PERFIL_LABEL);
+  const mobileNavItems = visibleNavItems.filter(item => item.label !== FISCALIZACAO_LABEL);
   const isActive = (path: string) => location.pathname === path || location.pathname.startsWith(path + '/');
   const [menuModalOpen, setMenuModalOpen] = useState(false);
 
@@ -150,7 +156,7 @@ export const GuardsLayout = ({ children }: GuardsLayoutProps) => {
       {/* ─── Mobile bottom tab bar ─── */}
       <nav className="fixed bottom-0 left-0 right-0 z-50 px-3 pb-[calc(0.7rem+env(safe-area-inset-bottom))] pt-2 lg:hidden pointer-events-none">
         <div className="mx-auto grid max-w-5xl grid-cols-5 gap-2 rounded-[24px] bg-white/90 p-1.5 shadow-[0_14px_34px_-24px_rgba(15,23,42,0.3)] ring-1 ring-slate-200/70 backdrop-blur-xl pointer-events-auto">
-          {visibleNavItems.map((item) => {
+          {mobileNavItems.map((item) => {
             const Icon = item.icon;
             const active = isActive(item.path);
 
@@ -166,9 +172,13 @@ export const GuardsLayout = ({ children }: GuardsLayoutProps) => {
                   <div className={`flex items-center justify-center rounded-xl p-1.5 transition-colors ${
                     active ? 'bg-white shadow-[0_8px_18px_-14px_rgba(37,99,235,0.55)]' : ''
                   }`}>
-                    <Icon className={`h-5 w-5 ${
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`h-5 w-5 ${
                       active ? 'text-brand-600' : 'text-slate-400'
-                    }`} />
+                    }`}>
+                      <path d="M4 5h16"/>
+                      <path d="M4 12h16"/>
+                      <path d="M4 19h16"/>
+                    </svg>
                   </div>
                   <span className={`max-w-full truncate text-[10px] font-bold ${
                     active ? 'text-brand-600' : 'text-slate-400'
