@@ -15,7 +15,7 @@ const tabs = [
   { value: 'eventos', label: 'Eventos', icon: Calendar },
   { value: 'galeria', label: 'Galeria', icon: ImageIcon },
   { value: 'banners', label: 'Banners', icon: Images },
-  { value: 'equipe', label: 'Equipe', icon: Users },
+  { value: 'equipe', label: 'Equipe do Setor', icon: Users },
   { value: 'conteudos', label: 'Conteudos', icon: FileText },
 ];
 
@@ -47,7 +47,7 @@ const MidiasPage = () => {
   return (
     <AdminLayout>
       <div className="space-y-6">
-        <section className="rounded-2xl bg-[linear-gradient(135deg,_#0f172a_0%,_#1e293b_46%,_#2563eb_100%)] md:rounded-[34px]">
+        <section className="rounded-[24px] bg-[linear-gradient(135deg,_#0f172a_0%,_#1e293b_46%,_#2563eb_100%)] md:rounded-[34px]">
           <div className="space-y-4 px-4 pb-4 pt-5 md:space-y-6 md:px-6 md:pb-5 md:pt-6">
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0">

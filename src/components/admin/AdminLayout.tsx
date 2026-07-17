@@ -135,14 +135,13 @@ const guardaMenuItems: MenuItem[] = [
   { icon: HouseIcon, label: 'Dashboard', path: '/admin/dashboard/guarda-municipal', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
   { icon: MessageSquareText, label: 'Fala Cidadao', path: '/admin/fala-cidadao/guarda-municipal', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
   { icon: NotebookPen, label: 'Anotacoes', path: '/admin/anotacoes/guarda-municipal', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
+  { icon: ImageIcon, label: 'Midias', path: '/admin/midias/guarda-municipal', allowedPapeis: ['gestor', 'admin_setor'] },
   { icon: FileWarning, label: 'IROs', path: '/admin/iros/guarda-municipal', allowedPapeis: ['gestor', 'admin_setor', 'tecnico'] },
   { icon: ClipboardList, label: 'Fiscalizacao', path: '/admin/fiscalizacao/infracoes', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
   { icon: Shield, label: 'Guardas', path: '/admin/guardas/guarda-municipal', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
   { icon: CalendarDays, label: 'Escalas', path: '/admin/guardas/guarda-municipal/escalas', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
   { icon: CarFront, label: 'Frota da Guarda', path: '/admin/guardas/guarda-municipal/frota', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
   { icon: Users, label: 'Equipes', path: '/admin/guardas/guarda-municipal/equipes', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
-  { icon: ImageIcon, label: 'Midias', path: '/admin/midias/guarda-municipal', allowedPapeis: ['gestor', 'admin_setor'] },
-  { icon: Users, label: 'Equipe', path: '/admin/equipe/guarda-municipal', allowedPapeis: ['gestor', 'admin_setor'] },
   { icon: Settings2, label: 'Configuracoes', path: '/admin/configuracoes-guarda-municipal', allowedPapeis: ['super_admin', 'gestor', 'admin_setor'] },
   { icon: Users, label: 'Usuarios', path: '/admin/usuarios/guarda-municipal', allowedPapeis: ['super_admin', 'gestor'] },
   { icon: UserCircle2, label: 'Perfil', path: '/admin/perfil/guarda-municipal', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
@@ -395,7 +394,9 @@ export const AdminLayout = ({ children, backPath, backLabel }: AdminLayoutProps)
       .map(filterItem)
       .filter(Boolean) as MenuItem[];
 
-    return moveMenuItemBeforeLabel(filteredMenuItems, ANOTACOES_LABEL, PERFIL_LABEL);
+    let items = moveMenuItemBeforeLabel(filteredMenuItems, ANOTACOES_LABEL, PERFIL_LABEL);
+    items = moveMenuItemBeforeLabel(items, 'Midias', PERFIL_LABEL);
+    return items;
   }, [hasPapel, sectorContext, isSuperAdmin, profile?.setor_slug, profile?.modulos]);
 
   const visibleBottomNavItems = useMemo(() => {

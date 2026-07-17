@@ -60,7 +60,7 @@ export function FiscalizacaoInfracoesPage({ scope }: { scope: 'admin' | 'guarda'
 
   return (
     <div className="space-y-6">
-      <section className="rounded-2xl bg-[linear-gradient(140deg,_#111827_0%,_#0f766e_48%,_#f59e0b_100%)] px-4 py-5 text-white md:rounded-[32px] md:px-6 md:py-6">
+      <section className="rounded-[24px] bg-[linear-gradient(140deg,_#111827_0%,_#0f766e_48%,_#f59e0b_100%)] px-4 py-5 text-white md:rounded-[32px] md:px-6 md:py-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div className="min-w-0 flex-1">
             <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-white/65 md:text-[11px]">Fiscalização de Trânsito</p>

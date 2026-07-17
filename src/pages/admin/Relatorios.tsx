@@ -5,7 +5,7 @@ const Relatorios = () => {
   return (
     <AdminLayout>
       <div className="space-y-8 p-1">
-        <section className="rounded-2xl border border-slate-200/70 bg-[linear-gradient(118deg,_#17233c_0%,_#6c778c_48%,_#dfe7f5_100%)] shadow-[0_20px_40px_-20px_rgba(15,23,42,0.3)] md:rounded-[32px] md:shadow-[0_28px_60px_-34px_rgba(15,23,42,0.55)]">
+        <section className="rounded-[24px] border border-slate-200/70 bg-[linear-gradient(118deg,_#17233c_0%,_#6c778c_48%,_#dfe7f5_100%)] shadow-[0_20px_40px_-20px_rgba(15,23,42,0.3)] md:rounded-[32px] md:shadow-[0_28px_60px_-34px_rgba(15,23,42,0.55)]">
           <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
             <div className="space-y-3 px-4 py-5 text-white md:space-y-5 md:px-8 md:py-9">
               <div className="flex items-center gap-3">
