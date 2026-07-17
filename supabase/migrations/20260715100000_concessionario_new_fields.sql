@@ -10,10 +10,19 @@ ALTER TABLE public.demutran_concessionarios
   ADD COLUMN IF NOT EXISTS numero text,
   ADD COLUMN IF NOT EXISTS bairro_distrito text;
 
--- Migrate existing endereco data into logradouro
-UPDATE public.demutran_concessionarios
-SET logradouro = endereco
-WHERE endereco IS NOT NULL AND logradouro IS NULL;
+-- Migrate existing endereco data into logradouro if the column exists
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 
+    FROM information_schema.columns 
+    WHERE table_schema = 'public' 
+      AND table_name = 'demutran_concessionarios' 
+      AND column_name = 'endereco'
+  ) THEN
+    EXECUTE 'UPDATE public.demutran_concessionarios SET logradouro = endereco WHERE endereco IS NOT NULL AND logradouro IS NULL';
+  END IF;
+END $$;
 
 -- Drop old endereco column
 ALTER TABLE public.demutran_concessionarios

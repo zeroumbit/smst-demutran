@@ -94,6 +94,8 @@ type DashboardState = {
   equipesAtivas: number;
   noticiasSetor: number;
   eventosSetor: number;
+  frotaMunicipalAtiva: number;
+  veiculosApreendidosTotal: number;
 };
 
 const initialState: DashboardState = {
@@ -123,6 +125,8 @@ const initialState: DashboardState = {
   equipesAtivas: 0,
   noticiasSetor: 0,
   eventosSetor: 0,
+  frotaMunicipalAtiva: 0,
+  veiculosApreendidosTotal: 0,
 };
 
 const monthFormatter = new Intl.DateTimeFormat('pt-BR', { month: 'short' });
@@ -442,16 +446,89 @@ const Dashboard = () => {
           }
         });
 
+        let iroOperacoesSistema = 0;
+        let iroBancoHorasSistema = 0;
+        let falaDemandasSistema = 0;
+        let veiculosApreendidosSistema = 0;
+        let veiculosLiberadosSistema = 0;
+        let credenciaisPendentesSistema = 0;
+        let recursosPendentesSistema = 0;
+        let concessionariosSistema: any[] = [];
+        let frotaManutencaoSistema = 0;
+        let frotaMunicipalAtiva = 0;
+
         if (isSuperAdmin && !isGuardaScope && !isDemutranScope) {
-          const [guardasSistemaCount, frotaSistemaCount, equipesSistemaCount] = await Promise.all([
+          const [
+            guardasSistemaCount,
+            frotaSistemaCount,
+            frotaStatusSistema,
+            equipesSistemaCount,
+            iroOperacoesCount,
+            iroBancoHorasData,
+            falaDemandasCount,
+            veiculosRecolhidosApreendidos,
+            veiculosRecolhidosLiberados,
+            credenciaisCount,
+            recursosCount,
+            concessionariosData,
+            frotaMunicipalCount,
+            veiculosSeriesSistema,
+          ] = await Promise.all([
             supabase.from('guardas_municipais').select('*', { count: 'exact', head: true }).eq('ativo', true),
             supabase.from('guarda_frota_veiculos').select('*', { count: 'exact', head: true }).eq('ativo', true),
+            supabase.from('guarda_frota_veiculos').select('status').eq('ativo', true),
             supabase.from('guarda_equipes').select('*', { count: 'exact', head: true }).eq('ativo', true),
+            supabase.from('iro_operacoes').select('*', { count: 'exact', head: true }).eq('ativo', true),
+            supabase.from('iro_banco_horas').select('horas_excedentes'),
+            supabase.from('fala_demandas').select('*', { count: 'exact', head: true }).in('status', ['recebido', 'analise']),
+            supabase.from('veiculos_recolhidos').select('*', { count: 'exact', head: true }).neq('status', 'liberado'),
+            supabase.from('veiculos_recolhidos').select('*', { count: 'exact', head: true }).eq('status', 'liberado'),
+            supabase.from('demutran_credenciais_solicitacoes').select('*', { count: 'exact', head: true }).in('status', ['pendente', 'em_analise']),
+            supabase.from('demutran_recursos').select('*', { count: 'exact', head: true }).in('status', ['pendente', 'em_analise']),
+            supabase.from('demutran_concessionarios').select('categoria, ativo, exercicio, ultimo_alvara'),
+            supabase.from('demutran_veiculos_municipais').select('*', { count: 'exact', head: true }).eq('ativo', true),
+            supabase.from('veiculos_recolhidos').select('created_at, data_liberacao'),
           ]);
           guardasAtivos = guardasSistemaCount.count || 0;
           frotaAtiva = frotaSistemaCount.count || 0;
           equipesAtivas = equipesSistemaCount.count || 0;
-          frotaDisponivel = 0; // não detalhamos status na visão geral
+          iroOperacoesSistema = iroOperacoesCount.count || 0;
+          iroBancoHorasSistema = (iroBancoHorasData.data || []).reduce((acc: number, curr: any) => acc + Number(curr.horas_excedentes || 0), 0);
+          falaDemandasSistema = falaDemandasCount.count || 0;
+          veiculosApreendidosSistema = veiculosRecolhidosApreendidos.count || 0;
+          veiculosLiberadosSistema = veiculosRecolhidosLiberados.count || 0;
+          credenciaisPendentesSistema = credenciaisCount.count || 0;
+          recursosPendentesSistema = recursosCount.count || 0;
+          concessionariosSistema = (concessionariosData.data || []) as any[];
+          frotaMunicipalAtiva = frotaMunicipalCount.count || 0;
+
+          const frotaStatusRows = (frotaStatusSistema.data || []) as Array<{ status: string }>;
+          frotaDisponivel = frotaStatusRows.filter(r => r.status === 'DISPONIVEL').length;
+          frotaEmServico = frotaStatusRows.filter(r => r.status === 'EM_SERVICO').length;
+          frotaManutencaoSistema = frotaStatusRows.filter(r => r.status === 'EM_MANUTENCAO').length;
+
+          pendingCredenciais = credenciaisPendentesSistema;
+          pendingRecursos = recursosPendentesSistema;
+          demandasFalaCidadaoCount = falaDemandasSistema;
+          operacoesAtivasIro = iroOperacoesSistema;
+          totalBancoHoras = iroBancoHorasSistema;
+
+          const movementLookup = new Map(movementMap.map((item) => [item.key, item]));
+          (veiculosSeriesSistema.data || []).forEach((row: any) => {
+            if (row.created_at) {
+              const createdAt = new Date(row.created_at);
+              const key = `${createdAt.getFullYear()}-${String(createdAt.getMonth() + 1).padStart(2, '0')}`;
+              const target = movementLookup.get(key);
+              if (target) target.apreendidos += 1;
+            }
+            if (row.data_liberacao) {
+              const releasedAt = new Date(row.data_liberacao);
+              const key = `${releasedAt.getFullYear()}-${String(releasedAt.getMonth() + 1).padStart(2, '0')}`;
+              const target = movementLookup.get(key);
+              if (target) target.liberados += 1;
+            }
+          });
+          movementMap = Array.from(movementLookup.values());
         }
       }
 
@@ -482,11 +559,13 @@ const Dashboard = () => {
         : [];
 
       const alerts: string[] = [];
-      if (isSuperAdmin && !isGuardaScope && !isDemutranScope && sectorsNeedingAttention.length > 0) {
-        alerts.push(`${sectorsNeedingAttention.length} setor(es) exigem atencao imediata.`);
-      }
-
-      if (isGuardaScope) {
+      if (isSuperAdmin && !isGuardaScope && !isDemutranScope) {
+        if (sectorsNeedingAttention.length > 0) alerts.push(`${sectorsNeedingAttention.length} setor(es) exigem atencao imediata.`);
+        if (veiculosApreendidosSistema > 0) alerts.push(`${veiculosApreendidosSistema} veiculo(s) apreendido(s) no patio.`);
+        if (frotaManutencaoSistema > 0) alerts.push(`${frotaManutencaoSistema} veiculo(s) da frota da Guarda em manutencao.`);
+        if (iroOperacoesSistema > 0) alerts.push(`${iroOperacoesSistema} operacao(oes) de IRO ativa(s).`);
+        if (falaDemandasSistema > 0) alerts.push(`${falaDemandasSistema} demanda(s) de ouvidoria pendente(s).`);
+      } else if (isGuardaScope) {
         if (operacoesAtivasIro > 0) alerts.push(`${operacoesAtivasIro} operação(ões) de IRO ativa(s) no momento.`);
         if (candidaturasIro > 0) alerts.push(`${candidaturasIro} escala(s) de reforço confirmada(s).`);
         if (demandasFalaCidadaoCount > 0) alerts.push(`${demandasFalaCidadaoCount} solicitação(ões) de ouvidoria pendente(s).`);
@@ -505,8 +584,8 @@ const Dashboard = () => {
         ? [
             { label: 'Setores ativos', value: String(activeSetores), helper: `${setorRows.length} setores cadastrados`, icon: Building2, tone: 'blue' },
             { label: 'Gestores ativos', value: String(activeGestores), helper: `${totalOperators} operadores administrativos`, icon: ShieldCheck, tone: 'green' },
-            { label: 'Documentos publicados', value: String(documentosAtivos), helper: `${noticiasAtivas} noticias e ${eventosAtivos} eventos ativos`, icon: FileText, tone: 'amber' },
-            { label: 'Operacao DEMUTRAN', value: String(apreendidos + liberados + pendingCredenciais + pendingRecursos + concessionariosRows.length), helper: 'Apreensoes, liberacoes, credenciais, recursos e concessionarios', icon: CarFront, tone: 'rose' },
+            { label: 'Guardas ativos', value: String(guardasAtivos), helper: `${equipesAtivas} equipes em operacao`, icon: Users, tone: 'blue' },
+            { label: 'Veiculos apreendidos', value: String(veiculosApreendidosSistema), helper: `${veiculosLiberadosSistema} ja liberados no total`, icon: CarFront, tone: 'rose' },
           ]
         : [
             { label: 'Equipe ativa', value: String(activeProfiles.length), helper: 'Perfis administrativos em operacao', icon: Users, tone: 'blue' },
@@ -532,10 +611,10 @@ const Dashboard = () => {
               { label: 'Concessionarios ativos', value: concessionariosRows.filter(c => c.ativo).length, tone: concessionariosRows.filter(c => c.ativo).length > 0 ? 'neutral' : 'warning' },
             ]
           : [
-              { label: 'Noticias ativas', value: noticiasAtivas, tone: 'neutral' },
-              { label: 'Eventos ativos', value: eventosAtivos, tone: 'neutral' },
-              { label: 'Galeria ativa', value: galeriaAtiva, tone: 'neutral' },
-              { label: 'Documentos ativos', value: documentosAtivos, tone: 'neutral' },
+              { label: 'Veiculos apreendidos', value: veiculosApreendidosSistema, tone: veiculosApreendidosSistema > 0 ? 'warning' : 'success' },
+              { label: 'Frota em manutencao', value: frotaManutencaoSistema, tone: frotaManutencaoSistema > 0 ? 'warning' : 'neutral' },
+              { label: 'Operacoes IRO ativas', value: iroOperacoesSistema, tone: iroOperacoesSistema > 0 ? 'warning' : 'neutral' },
+              { label: 'Demandas Ouvidoria', value: falaDemandasSistema, tone: falaDemandasSistema > 0 ? 'warning' : 'success' },
             ];
 
       const criticalCount = sectorsNeedingAttention.length;
@@ -587,6 +666,8 @@ const Dashboard = () => {
         equipesAtivas,
         noticiasSetor,
         eventosSetor,
+        frotaMunicipalAtiva,
+        veiculosApreendidosTotal: veiculosApreendidosSistema,
       });
     };
 
@@ -704,7 +785,7 @@ const Dashboard = () => {
                   </div>
                   <div className="mt-4 flex gap-4 border-t border-slate-100 pt-3 text-xs text-slate-500">
                     <span>{state.frotaAtiva} viaturas</span>
-                    <span>{state.equipesAtivas} equipes</span>
+                    <span>{state.operacoesAtivasIro} IRO ativas</span>
                   </div>
                 </CardContent>
               </Card>
@@ -713,8 +794,8 @@ const Dashboard = () => {
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">DEMUTRAN</p>
-                      <p className="mt-3 text-3xl font-extrabold tracking-[-0.05em] text-slate-900">{state.frotaAtiva}</p>
-                      <p className="mt-1 text-xs leading-5 text-slate-500">Frota municipal ativa</p>
+                      <p className="mt-3 text-3xl font-extrabold tracking-[-0.05em] text-slate-900">{state.veiculosApreendidosTotal}</p>
+                      <p className="mt-1 text-xs leading-5 text-slate-500">Veículos apreendidos no pátio</p>
                     </div>
                     <div className="rounded-2xl border border-rose-100 bg-rose-50 p-3 text-rose-600">
                       <CarFront className="h-5 w-5" />
@@ -732,14 +813,14 @@ const Dashboard = () => {
                     <div>
                       <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">Fala Cidadão</p>
                       <p className="mt-3 text-3xl font-extrabold tracking-[-0.05em] text-slate-900">{state.demandasFalaCidadaoCount}</p>
-                      <p className="mt-1 text-xs leading-5 text-slate-500">Demandas pendentes</p>
+                      <p className="mt-1 text-xs leading-5 text-slate-500">Demandas pendentes de ouvidoria</p>
                     </div>
                     <div className="rounded-2xl border border-amber-100 bg-amber-50 p-3 text-amber-600">
                       <MessageSquare className="h-5 w-5" />
                     </div>
                   </div>
                   <div className="mt-4 flex gap-4 border-t border-slate-100 pt-3 text-xs text-slate-500">
-                    <span>Ouvidoria ativa</span>
+                    <span>{state.totalBancoHoras}h banco de horas</span>
                   </div>
                 </CardContent>
               </Card>

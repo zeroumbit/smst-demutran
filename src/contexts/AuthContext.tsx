@@ -56,14 +56,26 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 async function buildGuardaProfile(userId: string, email: string): Promise<AdminProfile | null> {
-  let guardaNome = 'Guarda Municipal';
+  let guardaNome = '';
   let guardaSetorId: string | null = null;
   let aceitouLeiIroAt: string | null = null;
+
+  // Primeiro, tenta carregar o nome de exibição/apelido dos metadados da conta auth do Supabase
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user?.user_metadata?.name) {
+      guardaNome = user.user_metadata.name;
+    }
+  } catch {
+    // silent fallback
+  }
 
   try {
     const { data: guardaPerfil } = await supabase.rpc('buscar_guarda_por_usuario', { p_usuario_id: userId });
     if (guardaPerfil) {
-      guardaNome = (guardaPerfil as any).nome || guardaNome;
+      if (!guardaNome) {
+        guardaNome = (guardaPerfil as any).nome || 'Guarda Municipal';
+      }
       aceitouLeiIroAt = (guardaPerfil as any).aceitou_lei_iro_at || null;
     }
   } catch {
@@ -80,13 +92,19 @@ async function buildGuardaProfile(userId: string, email: string): Promise<AdminP
           .eq('id', gu.guarda_id)
           .single();
         if (gm) {
-          guardaNome = (gm as any).nome || guardaNome;
+          if (!guardaNome) {
+            guardaNome = (gm as any).nome || 'Guarda Municipal';
+          }
           aceitouLeiIroAt = (gm as any).aceitou_lei_iro_at || null;
         }
       }
     } catch {
       // silent
     }
+  }
+
+  if (!guardaNome) {
+    guardaNome = 'Guarda Municipal';
   }
 
   try {

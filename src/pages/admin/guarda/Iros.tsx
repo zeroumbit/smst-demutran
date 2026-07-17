@@ -42,6 +42,7 @@ const GuardaIros = () => {
   const [operacoes, setOperacoes] = useState<IROOperacao[]>([]);
   const [minhasCandidaturas, setMinhasCandidaturas] = useState<IROCandidatura[]>([]);
   const [resumo, setResumo] = useState({ total_horas_mes: 0, total_reais: 0, horas_disponiveis: 0, banco_horas: 0, mes_anterior_horas: 0, mes_anterior_reais: 0 });
+  const [setorNome, setSetorNome] = useState('Guarda Municipal');
 
   const [vagasPreenchidas, setVagasPreenchidas] = useState<Record<string, boolean>>({});
   const [selectedOperacao, setSelectedOperacao] = useState<IROOperacao | null>(null);
@@ -57,20 +58,34 @@ const GuardaIros = () => {
     setLoading(true);
 
     try {
+      const setorSlugAtual = setorSlug || 'guarda-municipal';
       let setorId = '';
       const { data: sData } = await supabase
         .from('setores')
-        .select('id')
-        .eq('slug', 'guarda-municipal')
+        .select('id, nome')
+        .eq('slug', setorSlugAtual)
         .maybeSingle();
-      if (sData) setorId = sData.id;
+      if (sData) {
+        setorId = sData.id;
+        setSetorNome((sData as any).nome || 'Guarda Municipal');
+      }
 
-      const [opRes, candRes, guardaRes, vagasCountRes] = await Promise.all([
-        supabase.from('iro_operacoes').select('*').eq('setor_id', setorId || '').eq('ativo', true).order('data_inicio', { ascending: false }),
+      const opQuery = supabase.from('iro_operacoes').select('*').eq('ativo', true).order('data_inicio', { ascending: false });
+      if (setorId) opQuery.eq('setor_id', setorId);
+
+      const promises: Promise<any>[] = [
+        opQuery,
         supabase.from('iro_candidaturas').select('*, iro_operacoes!inner(nome)').eq('usuario_id', user.user_id).order('created_at', { ascending: false }),
-        supabase.rpc('buscar_guarda_por_usuario', { p_usuario_id: user.user_id }),
         supabase.from('iro_candidaturas').select('operacao_id').in('status', ['pendente', 'confirmado', 'realizado']),
-      ]);
+      ];
+
+      if (isGuardaFlow) {
+        promises.push(supabase.rpc('buscar_guarda_por_usuario', { p_usuario_id: user.user_id }));
+      } else {
+        promises.push(Promise.resolve({ data: null }));
+      }
+
+      const [opRes, candRes, vagasCountRes, guardaRes] = await Promise.all(promises);
 
       const hojeStr = new Date().toISOString().slice(0, 10);
       const validOps = (opRes.data || []).filter((op: any) => op.ativo && op.data_fim >= hojeStr) as IROOperacao[];
@@ -105,25 +120,30 @@ const GuardaIros = () => {
         .filter((c: any) => ['confirmado', 'realizado'].includes(c.status) && c.data_operacao >= firstDayAnterior && c.data_operacao <= lastDayAnterior)
         .reduce((acc: number, c: any) => acc + Number(c.horas_trabalhadas || 0), 0);
 
-      const { data: banco } = await supabase.from('iro_banco_horas').select('horas_excedentes').eq('usuario_id', user.user_id).maybeSingle();
-
+      let bancoHoras = 0;
       let valorHora = 0;
-      const graduacaoId = (guardaRes.data as { graduacao_id?: string } | null)?.graduacao_id || profile?.graduacao_id;
-      if (graduacaoId) {
-        const { data: valorData } = await supabase
-          .from('iro_valores_graduacao')
-          .select('valor_hora')
-          .eq('graduacao_id', graduacaoId)
-          .eq('ativo', true)
-          .maybeSingle();
-        if (valorData) valorHora = Number((valorData as any).valor_hora) || 0;
+
+      if (isGuardaFlow) {
+        const { data: banco } = await supabase.from('iro_banco_horas').select('horas_excedentes').eq('usuario_id', user.user_id).maybeSingle();
+        bancoHoras = banco ? Number((banco as any).horas_excedentes) : 0;
+
+        const graduacaoId = (guardaRes?.data as { graduacao_id?: string } | null)?.graduacao_id || profile?.graduacao_id;
+        if (graduacaoId) {
+          const { data: valorData } = await supabase
+            .from('iro_valores_graduacao')
+            .select('valor_hora')
+            .eq('graduacao_id', graduacaoId)
+            .eq('ativo', true)
+            .maybeSingle();
+          if (valorData) valorHora = Number((valorData as any).valor_hora) || 0;
+        }
       }
 
       setResumo({
         total_horas_mes: horasMes,
         total_reais: horasMes * valorHora,
         horas_disponiveis: 0,
-        banco_horas: banco ? Number((banco as any).horas_excedentes) : 0,
+        banco_horas: bancoHoras,
         mes_anterior_horas: horasMesAnterior,
         mes_anterior_reais: horasMesAnterior * valorHora,
       });
@@ -276,7 +296,7 @@ const GuardaIros = () => {
         <section className="rounded-[24px] bg-[linear-gradient(135deg,_#0f172a_0%,_#1e293b_45%,_#2563eb_100%)] px-4 py-4 text-white sm:rounded-[28px] sm:px-6 sm:py-5">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-sky-100/70 sm:text-[11px]">Guarda Municipal</p>
+              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-sky-100/70 sm:text-[11px]">{setorNome}</p>
               <h1 className="mt-2 text-xl font-black leading-tight text-white sm:text-2xl md:mt-3 md:text-[26px] lg:text-[34px]">IROs</h1>
             </div>
             <div className="flex gap-2 mt-2 shrink-0">

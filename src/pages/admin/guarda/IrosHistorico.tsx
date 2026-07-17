@@ -82,6 +82,7 @@ const GuardaIrosHistorico = () => {
   }, [candidaturas, search, mesFilter, anoFilter]);
 
   const isGuardaFlow = !setorSlug || setorSlug === 'guarda-municipal';
+  const setorNome = isGuardaFlow ? 'Guarda Municipal' : (setorSlug ? setorSlug.charAt(0).toUpperCase() + setorSlug.slice(1) : 'Guarda Municipal');
   const Layout = isGuardaFlow
     ? GuardsLayout
     : ({ children }: { children: React.ReactNode }) => (

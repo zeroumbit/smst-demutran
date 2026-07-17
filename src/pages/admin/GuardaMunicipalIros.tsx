@@ -41,6 +41,8 @@ type ManualFormState = {
   operacao_id: string;
   quantidade_horas: string;
   motivo: string;
+  operacao_nome: string;
+  data_operacao: string;
 };
 
 type OperacaoFormState = {
@@ -185,6 +187,8 @@ const manualFormInitial = (): ManualFormState => ({
   operacao_id: '',
   quantidade_horas: '',
   motivo: '',
+  operacao_nome: '',
+  data_operacao: '',
 });
 
 const BASE_IROS = '/admin/iros/guarda-municipal';
@@ -555,7 +559,9 @@ const GuardaMunicipalIros = () => {
       manualForm.usuario_id !== initial.usuario_id ||
       manualForm.operacao_id !== initial.operacao_id ||
       manualForm.quantidade_horas !== initial.quantidade_horas ||
-      manualForm.motivo.trim() !== initial.motivo
+      manualForm.motivo.trim() !== initial.motivo ||
+      manualForm.operacao_nome !== initial.operacao_nome ||
+      manualForm.data_operacao !== initial.data_operacao
     );
   }, [manualForm]);
 
@@ -575,7 +581,6 @@ const GuardaMunicipalIros = () => {
     const operacao = selectedManualOperacao;
 
     if (!guarda) errors.push('Selecione um guarda ativo.');
-    if (!operacao) errors.push('Selecione uma operação.');
 
     const horas = Number(manualForm.quantidade_horas);
     if (!manualForm.quantidade_horas || isNaN(horas) || horas <= 0) {
@@ -589,7 +594,8 @@ const GuardaMunicipalIros = () => {
       errors.push('O motivo precisa ter no mínimo 10 caracteres.');
     }
 
-    const monthKey = operacao?.data_inicio?.slice(0, 7) || '';
+    const dataRef = operacao?.data_inicio || manualForm.data_operacao || '';
+    const monthKey = dataRef.slice(0, 7);
     const existingHours = monthKey
       ? candidaturas
           .filter(
@@ -606,13 +612,13 @@ const GuardaMunicipalIros = () => {
     const nearLimit = totalHours >= LIMITE_IRO_MES * 0.8;
     const availableHours = Math.max(LIMITE_IRO_MES - existingHours, 0);
 
-    if (operacao && candidaturas.some(
+    if (dataRef && candidaturas.some(
       (item) =>
         item.usuario_id === manualForm.usuario_id &&
-        item.data_operacao === operacao.data_inicio &&
+        item.data_operacao === dataRef &&
         ['confirmado', 'realizado'].includes(item.status),
     )) {
-      errors.push(`Já existe IRO confirmada/realizada na data de início da operação (${fmtDateBR(operacao.data_inicio)}).`);
+      errors.push(`Já existe IRO confirmada/realizada na data ${fmtDateBR(dataRef)}.`);
     }
 
     if (exceedsLimit) {
@@ -622,7 +628,7 @@ const GuardaMunicipalIros = () => {
     const estimatedValue = horas * Number(guarda?.valor_hora || 0);
 
     return {
-      valid: errors.length === 0 && !!guarda && !!operacao && horas > 0,
+      valid: errors.length === 0 && !!guarda && horas > 0,
       errors,
       guarda,
       operacao,
@@ -926,10 +932,12 @@ const GuardaMunicipalIros = () => {
     setManualSaving(true);
     try {
       const { data, error } = await supabase.rpc('lancar_iro_extra', {
-        p_operacao_id: manualForm.operacao_id,
         p_usuario_id: manualForm.usuario_id,
         p_quantidade_horas: Number(manualForm.quantidade_horas),
         p_motivo: manualForm.motivo.trim(),
+        p_operacao_id: manualForm.operacao_id || null,
+        p_operacao_nome: manualForm.operacao_nome.trim() || null,
+        p_data_operacao: manualForm.data_operacao || null,
       });
 
       if (error) {
@@ -1629,7 +1637,7 @@ const GuardaMunicipalIros = () => {
               </div>
 
               <div className="space-y-2">
-                <Label>Em qual operação</Label>
+                <Label>Em qual operação <span className="text-xs font-normal text-slate-400">(opcional)</span></Label>
                 <SearchableSelect
                   open={operacaoComboboxOpen}
                   onOpenChange={setOperacaoComboboxOpen}
@@ -1656,6 +1664,27 @@ const GuardaMunicipalIros = () => {
                     ),
                   }))}
                 />
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>Nome da operação <span className="text-xs font-normal text-slate-400">(opcional)</span></Label>
+                  <Input
+                    value={manualForm.operacao_nome}
+                    onChange={(event) => setManualForm((current) => ({ ...current, operacao_nome: event.target.value }))}
+                    placeholder="Ex.: Patrulhamento extraordinário"
+                  />
+                  <p className="text-xs text-slate-500">Use quando a operação não estiver cadastrada no sistema.</p>
+                </div>
+                <div className="space-y-2">
+                  <Label>Data da operação <span className="text-xs font-normal text-slate-400">(opcional)</span></Label>
+                  <Input
+                    type="date"
+                    value={manualForm.data_operacao}
+                    onChange={(event) => setManualForm((current) => ({ ...current, data_operacao: event.target.value }))}
+                  />
+                  <p className="text-xs text-slate-500">Data de referência para a IRO extra.</p>
+                </div>
               </div>
 
               <div className="space-y-2">
@@ -1720,7 +1749,7 @@ const GuardaMunicipalIros = () => {
                   <SummaryCard
                     title="Valor Estimado"
                     value={formatCurrency(manualPreview.estimatedValue)}
-                    subtitle={manualPreview.operacao ? `Baseado na operação "${manualPreview.operacao.nome}"` : 'Selecione uma operação'}
+                    subtitle={manualPreview.operacao ? `Baseado na operação "${manualPreview.operacao.nome}"` : manualForm.operacao_nome ? `Baseado em "${manualForm.operacao_nome}"` : 'Informe uma operação para referência'}
                   />
                 </div>
               </div>

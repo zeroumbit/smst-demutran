@@ -330,15 +330,6 @@ export const AdminLayout = ({ children, backPath, backLabel }: AdminLayoutProps)
         mappedItem.path = mappedItem.path.replace(':setorSlug', profile.setor_slug);
       }
 
-      if (mappedItem.label === 'IRO') {
-        const isChefeComGraduacao =
-          (profile?.papel === 'gestor' || profile?.papel === 'admin_setor') &&
-          !!profile?.graduacao_id;
-        if (!isChefeComGraduacao) {
-          return null;
-        }
-      }
-
       if (mappedItem.path?.startsWith('/admin/demutran/')) {
         if (profile?.setor_slug && profile.setor_slug !== 'demutran' && !isSuperAdmin) {
           return null;
