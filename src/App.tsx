@@ -49,6 +49,8 @@ const NotFound = React.lazy(() => import("./pages/NotFound"));
 
 // Lazy load admin pages
 const Login = React.lazy(() => import("./pages/admin/Login"));
+const ResetPassword = React.lazy(() => import("./pages/admin/ResetPassword"));
+const EsqueciSenha = React.lazy(() => import("./pages/admin/EsqueciSenha"));
 const Dashboard = React.lazy(() => import("./pages/admin/Dashboard"));
 const AdminNoticias = React.lazy(() => import("./pages/admin/Noticias"));
 const AdminEventos = React.lazy(() => import("./pages/admin/Eventos"));
@@ -327,6 +329,16 @@ const App = () => {
             <Route path="/admin/login" element={
               <SuspenseWrapper>
                 <Login />
+              </SuspenseWrapper>
+            } />
+            <Route path="/admin/esqueci-senha" element={
+              <SuspenseWrapper>
+                <EsqueciSenha />
+              </SuspenseWrapper>
+            } />
+            <Route path="/admin/reset-password" element={
+              <SuspenseWrapper>
+                <ResetPassword />
               </SuspenseWrapper>
             } />
             <Route path="/admin/dashboard" element={

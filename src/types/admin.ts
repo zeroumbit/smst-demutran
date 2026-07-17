@@ -265,6 +265,11 @@ export interface VeiculoRecolhido {
   ano: string | null;
   cor: string | null;
   modelo: string | null;
+  marca: string | null;
+  fabricacao: string | null;
+  ano_fabricacao: string | null;
+  ano_modelo: string | null;
+  rota: string | null;
   municipio: string | null;
   proprietario_nome: string;
   proprietario_cpf_cnpj: string | null;

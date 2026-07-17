@@ -1330,10 +1330,15 @@ const GuardaMunicipalIros = () => {
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div className="min-w-0 flex-1">
               <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-sky-100/70 md:text-[11px]">Guarda Municipal</p>
-              <h1 className="mt-2 text-xl font-black tracking-[-0.05em] sm:text-2xl md:mt-3 md:text-[34px] md:tracking-[-0.08em]">IRO</h1>
+              <div className="flex items-center gap-3">
+                <h1 className="mt-2 text-xl font-black tracking-[-0.05em] sm:text-2xl md:mt-3 md:text-[34px] md:tracking-[-0.08em]">IRO</h1>
+                <button onClick={() => void loadData()} className="flex size-9 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white backdrop-blur-sm transition-all active:scale-90 hover:bg-white/20 md:hidden">
+                  <RefreshCcw className="size-4" />
+                </button>
+              </div>
               <p className="mt-1.5 hidden max-w-2xl text-[13px] leading-5 text-slate-100 md:block md:mt-2 md:text-sm md:leading-6">Gerencie operações, candidaturas e lançamentos manuais de IRO.</p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="hidden items-center gap-2 md:flex">
               <Button variant="outline" className="h-10 border-white/20 bg-white/10 text-xs text-white hover:bg-white/20 md:h-11 md:text-sm" onClick={() => void loadData()}>
                 <RefreshCcw className="mr-2 h-4 w-4" />
                 Atualizar
@@ -1341,11 +1346,21 @@ const GuardaMunicipalIros = () => {
             </div>
           </div>
 
-          <div className="mt-4 grid gap-3 sm:grid-cols-4 md:mt-6">
-            <StatCard label="Operações ativas" value={String(stats.operacoesAtivas)} icon={Calendar} />
-            <StatCard label="Candidaturas no mês" value={String(stats.candidaturasMes)} icon={Users} />
-            <StatCard label="Horas no mês" value={`${stats.horasMes}h`} icon={Clock} />
-            <StatCard label="Banco de horas" value={`${stats.totalBancoHoras}h`} icon={Hourglass} />
+          <div className="mt-4 md:mt-6">
+            <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-none sm:grid sm:grid-cols-4 sm:gap-3 sm:overflow-visible sm:pb-0" style={{ WebkitOverflowScrolling: 'touch', scrollSnapType: 'x mandatory' }}>
+              <div className="min-w-[155px] snap-start sm:min-w-0">
+                <StatCard label="Operações ativas" value={String(stats.operacoesAtivas)} icon={Calendar} />
+              </div>
+              <div className="min-w-[155px] snap-start sm:min-w-0">
+                <StatCard label="Candidaturas no mês" value={String(stats.candidaturasMes)} icon={Users} />
+              </div>
+              <div className="min-w-[155px] snap-start sm:min-w-0">
+                <StatCard label="Horas no mês" value={`${stats.horasMes}h`} icon={Clock} />
+              </div>
+              <div className="min-w-[155px] snap-start sm:min-w-0">
+                <StatCard label="Banco de horas" value={`${stats.totalBancoHoras}h`} icon={Hourglass} />
+              </div>
+            </div>
           </div>
         </section>
 
@@ -1454,7 +1469,7 @@ const GuardaMunicipalIros = () => {
 
           <div className="flex flex-wrap justify-end gap-2">
             {!isMinhaIrosView && section === 'operacoes' && canLaunchManual && (
-              <Button onClick={() => setManualDialogOpen(true)} className="border-emerald-600 bg-emerald-600 text-white hover:bg-emerald-700">
+              <Button onClick={() => setManualDialogOpen(true)} className="max-sm:hidden border-emerald-600 bg-emerald-600 text-white hover:bg-emerald-700">
                 <Plus className="mr-2 h-4 w-4" />
                 IROs Extras
               </Button>
@@ -1887,10 +1902,19 @@ const GuardaMunicipalIros = () => {
         </ResponsiveDialog>
       </div>
 
-      {section === 'operacoes' && canManageOperacoes && (
-        <button onClick={openCreateOperacao} className="fixed bottom-24 right-5 z-50 flex size-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-[0_8px_28px_-6px_rgba(37,99,235,0.55)] transition-all active:scale-90 sm:hidden">
-          <Plus className="h-7 w-7" />
-        </button>
+      {section === 'operacoes' && (
+        <>
+          {!isMinhaIrosView && canLaunchManual && (
+            <button onClick={() => setManualDialogOpen(true)} className="fixed bottom-44 right-5 z-50 flex size-14 items-center justify-center rounded-full border-2 border-emerald-500 bg-emerald-600 text-white shadow-[0_8px_28px_-6px_rgba(16,185,129,0.55)] transition-all active:scale-90 sm:hidden">
+              <Plus className="h-7 w-7" />
+            </button>
+          )}
+          {canManageOperacoes && (
+            <button onClick={openCreateOperacao} className="fixed bottom-24 right-5 z-50 flex size-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-[0_8px_28px_-6px_rgba(37,99,235,0.55)] transition-all active:scale-90 sm:hidden">
+              <Plus className="h-7 w-7" />
+            </button>
+          )}
+        </>
       )}
 
       <ResponsiveDialog
@@ -1935,14 +1959,14 @@ const GuardaMunicipalIros = () => {
 
 function StatCard({ label, value, icon: Icon }: { label: string; value: string; icon: typeof Calendar }) {
   return (
-    <div className="rounded-[22px] bg-white/10 p-4 backdrop-blur-sm">
-      <div className="flex items-start justify-between gap-3">
+    <div className="rounded-[22px] bg-white/10 p-3 backdrop-blur-sm md:p-4">
+      <div className="flex items-start justify-between gap-2 md:gap-3">
         <div>
-          <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-white/70">{label}</p>
-          <p className="mt-2 text-3xl font-black tracking-[-0.05em] text-white">{value}</p>
+          <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/70 md:text-[11px]">{label}</p>
+          <p className="mt-1 text-2xl font-black tracking-[-0.05em] text-white md:mt-2 md:text-3xl">{value}</p>
         </div>
-        <div className="rounded-[18px] bg-white/15 p-3 text-white">
-          <Icon className="h-5 w-5" />
+        <div className="rounded-full bg-white/15 p-2 text-white md:rounded-[18px] md:p-3">
+          <Icon className="size-4 md:size-5" />
         </div>
       </div>
     </div>
