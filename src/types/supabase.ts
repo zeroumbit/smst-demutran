@@ -1528,7 +1528,7 @@ export type Database = {
         }
       }
       autenticar_concessionario: {
-        Args: { _cpf: string; _senha: string }
+        Args: { _email: string; _senha: string }
         Returns: {
           concessionario: Json
           session_token: string
@@ -1540,6 +1540,10 @@ export type Database = {
           session_token: string
           usuario: Json
         }[]
+      }
+      get_guarda_iro_management_access: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
       }
       buscar_global_admin: {
         Args: { _limite_por_modulo?: number; _termo: string }

@@ -9,6 +9,7 @@ interface ProtectedRouteProps {
   allowSuperAdmin?: boolean;
   requireGuarda?: boolean;
   requireGraduacao?: boolean;
+  allowGuardaIroManagement?: boolean;
 }
 
 export const ProtectedRoute = ({
@@ -18,6 +19,7 @@ export const ProtectedRoute = ({
   allowSuperAdmin = true,
   requireGuarda,
   requireGraduacao,
+  allowGuardaIroManagement = false,
 }: ProtectedRouteProps) => {
   const { isAuthenticated, isLoading, canAccessAdmin, hasPapel, isSuperAdmin, profile, isGuarda, temGuarda } = useAuth();
   const { setorSlug } = useParams<{ setorSlug?: string }>();
@@ -84,7 +86,12 @@ export const ProtectedRoute = ({
       return <Navigate to={getDashboardUrl(profile)} replace />;
     }
 
-    if (!isSuperAdmin && profile?.setor_slug !== requiredSetorSlug) {
+    const hasGuardaIroManagementAccess =
+      allowGuardaIroManagement &&
+      requiredSetorSlug === 'guarda-municipal' &&
+      profile?.can_manage_guarda_iros === true;
+
+    if (!isSuperAdmin && profile?.setor_slug !== requiredSetorSlug && !hasGuardaIroManagementAccess) {
       return <Navigate to={getDashboardUrl(profile)} replace />;
     }
   }

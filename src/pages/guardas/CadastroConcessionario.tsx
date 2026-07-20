@@ -190,7 +190,7 @@ const CadastroConcessionario = () => {
 
       toast({
         title: 'Conta criada com sucesso!',
-        description: 'Agora faça login com seu CPF e a senha que definiu.',
+        description: 'Agora faça login com seu e-mail e a senha que definiu.',
       });
       navigate('/demutran/concessionario');
     } catch (err) {
