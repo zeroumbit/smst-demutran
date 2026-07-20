@@ -607,7 +607,7 @@ const GuardaIros = () => {
                     return Array.from(grupos.entries()).map(([mes, grupoDatas]) => (
                       <div key={mes}>
                         <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.08em] text-slate-500">{mes}</p>
-                        <div className="flex flex-wrap gap-1.5">
+                        <div className="grid grid-cols-4 gap-1.5 min-[400px]:grid-cols-5 sm:grid-cols-7">
                           {grupoDatas.map((data) => {
                             const dt = new Date(data + 'T00:00:00');
                             const isFds = dt.getDay() === 0 || dt.getDay() === 6;
@@ -630,7 +630,7 @@ const GuardaIros = () => {
                                   })
                                 }
                                 className={cn(
-                                  'flex min-w-12 flex-col items-center rounded-lg px-2.5 py-1.5 text-xs transition-colors',
+                                  'flex flex-col items-center rounded-lg px-2.5 py-1.5 text-xs transition-colors',
                                   isSelected ? 'bg-primary text-primary-foreground shadow-sm' : isFds ? 'bg-red-50 text-red-500 hover:bg-red-100' : 'bg-white text-slate-600 hover:bg-slate-100',
                                   (semVaga || jaCandidatado) && 'cursor-not-allowed bg-slate-100 text-slate-300 line-through hover:bg-slate-100',
                                 )}
