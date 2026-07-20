@@ -997,6 +997,19 @@ const GuardaMunicipalIros = () => {
       return;
     }
 
+    const hoje = new Date();
+    const dataOp = new Date(item.data_operacao + 'T00:00:00');
+    const diffHours = (dataOp.getTime() - hoje.getTime()) / (1000 * 60 * 60);
+
+    if (diffHours < 24) {
+      toast({
+        title: 'Cancelamento bloqueado',
+        description: 'Desistências com menos de 24h da operação devem ser informadas diretamente ao supervisor/chefe de setor e não podem ser feitas pelo sistema.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     const { error } = await supabase.from('iro_candidaturas').update({ status: 'cancelado' }).eq('id', item.id);
     if (error) {
       toast({ title: 'Erro', description: error.message, variant: 'destructive' });
@@ -1338,7 +1351,7 @@ const GuardaMunicipalIros = () => {
               <Button size="sm" variant="outline" onClick={() => { setDetalhesCandidatura(item); setDetalhesCandidaturaOpen(true); }}>
                 Detalhes
               </Button>
-              {item.status !== 'cancelado' && item.data_operacao >= todayStr() && (
+              {item.status !== 'cancelado' && item.data_operacao > todayStr() && (
                 <Button size="sm" variant="outline" className="border-red-200 text-red-600 hover:bg-red-50" onClick={() => void handleCancelarCandidatura(item)}>
                   Cancelar
                 </Button>
@@ -1852,7 +1865,7 @@ const GuardaMunicipalIros = () => {
                             {valorHoraPorUsuario.has(item.usuario_id) && <span className="ml-1 font-semibold text-emerald-600">{formatCurrency(item.horas_trabalhadas * (valorHoraPorUsuario.get(item.usuario_id) || 0))}</span>}
                           </span>
                         </div>
-                        {item.usuario_id === user?.user_id && item.status !== 'cancelado' && !item.adicionado_manual && (
+                        {item.usuario_id === user?.user_id && item.status !== 'cancelado' && !item.adicionado_manual && item.data_operacao > todayStr() && (
                           <Button size="sm" variant="outline" className="h-7 border-red-200 text-xs text-red-600" onClick={() => void handleCancelarCandidatura(item)}>
                             Cancelar
                           </Button>
