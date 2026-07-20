@@ -251,6 +251,9 @@ const GuardaMunicipalIros = () => {
   const { setorId, profile, user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const iroSetorId = profile?.can_manage_guarda_iros && profile.guarda_setor_id
+    ? profile.guarda_setor_id
+    : setorId;
 
   const [loading, setLoading] = useState(true);
   const [section, setSection] = useState<Section>('operacoes');
@@ -275,6 +278,9 @@ const GuardaMunicipalIros = () => {
 
   const [candidaturaResultado, setCandidaturaResultado] = useState<{ sucesso: boolean; mensagem: string; operacaoNome?: string; dataOperacao?: string; horas?: number; totalMes?: number } | null>(null);
   const [candidaturaResultadoAberto, setCandidaturaResultadoAberto] = useState(false);
+
+  const [detalhesCandidatura, setDetalhesCandidatura] = useState<IROCandidatura | null>(null);
+  const [detalhesCandidaturaOpen, setDetalhesCandidaturaOpen] = useState(false);
 
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [operacaoToDelete, setOperacaoToDelete] = useState<IROOperacao | null>(null);
@@ -318,7 +324,7 @@ const GuardaMunicipalIros = () => {
     setLoading(true);
     try {
       const applySetorFilter = <T extends { eq: (column: string, value: string) => T }>(query: T): T =>
-        setorId ? query.eq('setor_id', setorId) : query;
+        iroSetorId ? query.eq('setor_id', iroSetorId) : query;
 
       const [opRes, candRes, bhRes, notifRes, userRes, valoresRes, guardasRes] = await Promise.all([
         applySetorFilter(supabase.from('iro_operacoes').select('*').order('data_inicio', { ascending: false })),
@@ -392,7 +398,7 @@ const GuardaMunicipalIros = () => {
     } finally {
       setLoading(false);
     }
-  }, [podeVerTudo, setorId, user]);
+  }, [iroSetorId, podeVerTudo, user]);
 
   useEffect(() => {
     void loadData();
@@ -820,7 +826,7 @@ const GuardaMunicipalIros = () => {
     }
 
     const payload = {
-      setor_id: setorId,
+      setor_id: iroSetorId,
       nome: operacaoForm.nome,
       descricao: operacaoForm.descricao || null,
       horario_previsto: operacaoForm.horario_previsto,
@@ -1327,10 +1333,17 @@ const GuardaMunicipalIros = () => {
               </Button>
             </>
           )}
-          {item.usuario_id === user?.user_id && item.status !== 'cancelado' && !item.adicionado_manual && (
-            <Button size="sm" variant="outline" className="border-red-200 text-red-600 hover:bg-red-50" onClick={() => void handleCancelarCandidatura(item)}>
-              Cancelar
-            </Button>
+          {item.usuario_id === user?.user_id && !item.adicionado_manual && (
+            <>
+              <Button size="sm" variant="outline" onClick={() => { setDetalhesCandidatura(item); setDetalhesCandidaturaOpen(true); }}>
+                Detalhes
+              </Button>
+              {item.status !== 'cancelado' && item.data_operacao >= todayStr() && (
+                <Button size="sm" variant="outline" className="border-red-200 text-red-600 hover:bg-red-50" onClick={() => void handleCancelarCandidatura(item)}>
+                  Cancelar
+                </Button>
+              )}
+            </>
           )}
         </div>
       </div>
@@ -2404,6 +2417,55 @@ const GuardaMunicipalIros = () => {
           </Button>
         </div>
       </ResponsiveDialog>
+
+        <ResponsiveDialog
+          open={detalhesCandidaturaOpen}
+          onOpenChange={(open) => { if (!open) { setDetalhesCandidaturaOpen(false); setDetalhesCandidatura(null); } }}
+          title="Detalhes da candidatura"
+          description={detalhesCandidatura?.operacao_nome || ''}
+        >
+          {detalhesCandidatura && (
+            <div className="space-y-5 py-2">
+              <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="rounded-xl bg-slate-50 p-3.5">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-slate-400">Data</p>
+                    <p className="mt-1 text-base font-bold text-slate-800">{fmtDateBR(detalhesCandidatura.data_operacao)}</p>
+                  </div>
+                  <div className="rounded-xl bg-slate-50 p-3.5">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-slate-400">Horas</p>
+                    <p className="mt-1 text-base font-bold text-slate-800">{detalhesCandidatura.horas_trabalhadas}h</p>
+                  </div>
+                  <div className="rounded-xl bg-slate-50 p-3.5">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-slate-400">Status</p>
+                    <Badge variant="outline" className={cn('mt-1 text-[11px] font-bold px-3 py-1', STATUS_CANDIDATURA_VARIANT[detalhesCandidatura.status])}>
+                      {detalhesCandidatura.adicionado_manual && detalhesCandidatura.status !== 'cancelado' ? 'finalizada' : detalhesCandidatura.status}
+                    </Badge>
+                  </div>
+                  <div className="rounded-xl bg-slate-50 p-3.5">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-slate-400">Valor estimado</p>
+                    <p className="mt-1 text-base font-bold text-slate-800">
+                      {valorHoraPorUsuario.has(detalhesCandidatura.usuario_id)
+                        ? formatCurrency(detalhesCandidatura.horas_trabalhadas * (valorHoraPorUsuario.get(detalhesCandidatura.usuario_id) || 0))
+                        : '—'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {detalhesCandidatura.observacao && (
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-slate-500 mb-1">Observação</p>
+                  <p className="text-sm text-slate-700">{detalhesCandidatura.observacao}</p>
+                </div>
+              )}
+
+              <Button className="w-full" variant="outline" onClick={() => { setDetalhesCandidaturaOpen(false); setDetalhesCandidatura(null); }}>
+                Fechar
+              </Button>
+            </div>
+          )}
+        </ResponsiveDialog>
 
       {confirmDialog}
     </AdminLayout>
