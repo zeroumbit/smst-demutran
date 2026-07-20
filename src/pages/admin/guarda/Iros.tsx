@@ -435,12 +435,12 @@ const GuardaIros = () => {
                 <div key={c.id} className="flex flex-col gap-3 rounded-2xl border border-slate-200/80 bg-white px-4 py-4 shadow-[0_4px_20px_-8px_rgba(15,23,42,0.08)] active:scale-[0.99] sm:flex-row sm:items-center sm:justify-between sm:px-5">
                   <div className="min-w-0">
                     <p className="text-[15px] font-bold text-slate-900">{c.operacao_nome}</p>
-                    <p className="mt-0.5 text-[13px] leading-5 text-slate-500">
-                      {fmtDateBR(c.data_operacao)} &middot; {c.horas_trabalhadas}h &middot;
+                    <div className="mt-0.5 text-[13px] leading-5 text-slate-500">
+                      <span>{fmtDateBR(c.data_operacao)} &middot; {c.horas_trabalhadas}h &middot;</span>
                     <Badge variant="outline" className={cn('ml-1.5 rounded-full text-[11px] font-bold px-3 py-1', c.status === 'confirmado' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200')}>
                         {c.adicionado_manual && c.status !== 'cancelado' ? 'finalizada' : c.status}
                       </Badge>
-                    </p>
+                    </div>
                   </div>
                   <div className="flex items-center gap-2">
                     <Button size="sm" variant="outline" className="min-h-10 rounded-xl text-[13px] font-semibold" onClick={() => { setSelectedCandidatura(c); setCandidaturaDetalhesAberto(true); }}>
