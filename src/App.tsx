@@ -569,14 +569,14 @@ const App = () => {
             } />
             <Route path="/admin/dashboard/:setorSlug/iro" element={
               <SuspenseWrapper>
-                <ProtectedRoute allowedPapeis={['gestor', 'admin_setor']}>
+                <ProtectedRoute allowedPapeis={['gestor', 'admin_setor']} requireGraduacao>
                   <GuardaIros />
                 </ProtectedRoute>
               </SuspenseWrapper>
             } />
             <Route path="/admin/dashboard/:setorSlug/iro/historico" element={
               <SuspenseWrapper>
-                <ProtectedRoute allowedPapeis={['gestor', 'admin_setor']}>
+                <ProtectedRoute allowedPapeis={['gestor', 'admin_setor']} requireGraduacao>
                   <GuardaIrosHistorico />
                 </ProtectedRoute>
               </SuspenseWrapper>

@@ -42,10 +42,10 @@ const GuardaIrosHistorico = () => {
     setLoading(true);
     const { data } = await supabase
       .from('iro_candidaturas')
-      .select('*, iro_operacoes!inner(nome)')
+      .select('*, iro_operacoes(nome)')
       .eq('usuario_id', user.user_id)
       .order('data_operacao', { ascending: false });
-    setCandidaturas(((data || []) as Array<IROCandidatura & { iro_operacoes?: { nome?: string | null } | null }>).map((c) => ({ ...c, operacao_nome: c.iro_operacoes?.nome || '' })));
+    setCandidaturas(((data || []) as Array<IROCandidatura & { iro_operacoes?: { nome?: string | null } | null }>).map((c) => ({ ...c, operacao_nome: c.operacao_nome || c.iro_operacoes?.nome || 'IRO extra' })));
     setLoading(false);
   }, [user?.user_id]);
 
@@ -169,8 +169,8 @@ const GuardaIrosHistorico = () => {
                     <p className="mt-1 text-xs leading-5 text-slate-500">Motivo: {c.motivo_manual}</p>
                   )}
                 </div>
-                <Badge variant="outline" className={cn('w-fit rounded-full px-3 py-1 text-[11px] font-bold', STATUS_VARIANT[c.status])}>
-                  {c.status}
+                <Badge variant="outline" className={cn('w-fit rounded-full px-3 py-1 text-[11px] font-bold', STATUS_VARIANT[c.adicionado_manual && c.status !== 'cancelado' ? 'realizado' : c.status])}>
+                  {c.adicionado_manual && c.status !== 'cancelado' ? 'finalizada' : c.status}
                 </Badge>
               </div>
             ))}

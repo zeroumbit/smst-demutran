@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ResponsiveDialog } from '@/components/ui/responsive-dialog';
 import { toast } from '@/hooks/use-toast';
-import { Calendar, Hourglass, Banknote, ChevronRight, Clock, FileWarning, TrendingUp, X, Sparkles, AlertTriangle, Shield, Gavel, CheckCircle2 } from 'lucide-react';
+import { Calendar, Hourglass, Banknote, ChevronRight, Clock, FileWarning, TrendingUp, X, Sparkles, Info, Shield, Gavel, CheckCircle2 } from 'lucide-react';
 import type { IROOperacao } from '@/types/admin';
 import { cn } from '@/lib/utils';
 
@@ -144,15 +144,13 @@ const GuardaDashboard = () => {
         setGuardaNome((guardaData as any).nome || '');
       }
 
-      let setorId = profile?.setor_id;
-      if (!setorId) {
-        const { data: sData } = await supabase
-          .from('setores')
-          .select('id')
-          .eq('slug', 'guarda-municipal')
-          .maybeSingle();
-        if (sData) setorId = sData.id;
-      }
+      let setorId = '';
+      const { data: sData } = await supabase
+        .from('setores')
+        .select('id')
+        .eq('slug', 'guarda-municipal')
+        .maybeSingle();
+      if (sData) setorId = sData.id;
 
       const [opRes, candRes, bancoRes, vagasCountRes] = await Promise.all([
         setorId
@@ -160,7 +158,7 @@ const GuardaDashboard = () => {
           : Promise.resolve({ data: [] }),
         supabase
           .from('iro_candidaturas')
-          .select('*, iro_operacoes!inner(nome)')
+          .select('*, iro_operacoes(nome)')
           .eq('usuario_id', user.user_id)
           .in('status', ['confirmado', 'realizado'])
           .order('data_operacao', { ascending: false }),
@@ -190,7 +188,7 @@ const GuardaDashboard = () => {
 
       const lista = (candRes.data || []).map((c: any) => ({
         ...c,
-        operacao_nome: c.iro_operacoes?.nome || '',
+        operacao_nome: c.operacao_nome || c.iro_operacoes?.nome || 'IRO extra',
       }));
       setUltimasCandidaturas(lista.slice(0, 5));
 
@@ -264,8 +262,11 @@ const GuardaDashboard = () => {
     if (!user?.user_id) return;
 
     const channel = supabase
-      .channel('iro_operacoes_realtime')
+      .channel(`iro_dashboard_guarda_${user.user_id}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'iro_operacoes' }, () => void loadData())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'iro_candidaturas', filter: `usuario_id=eq.${user.user_id}` }, () => void loadData())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'iro_banco_horas', filter: `usuario_id=eq.${user.user_id}` }, () => void loadData())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'iro_valores_graduacao' }, () => void loadData())
       .subscribe();
 
     const interval = setInterval(() => void loadData(), 600000);
@@ -336,7 +337,7 @@ const GuardaDashboard = () => {
             'relative rounded-[20px] border p-4 pr-11 shadow-sm sm:p-5 sm:pr-12',
             resumo.total_horas_mes === 0
               ? 'bg-gradient-to-br from-emerald-50 to-green-50 border-emerald-200'
-              : 'bg-gradient-to-br from-amber-50 to-yellow-50 border-amber-200',
+              : 'bg-gradient-to-br from-blue-50 to-sky-50 border-blue-200',
           )}>
             <button
               onClick={() => { setBannerVisible(false); bannerRegistrarDismiss(); }}
@@ -348,12 +349,12 @@ const GuardaDashboard = () => {
               {resumo.total_horas_mes === 0 ? (
                 <Sparkles className="mt-0.5 h-6 w-6 shrink-0 text-emerald-500" />
               ) : (
-                <AlertTriangle className="mt-0.5 h-6 w-6 shrink-0 text-amber-500" />
+                <Info className="mt-0.5 h-6 w-6 shrink-0 text-blue-500" />
               )}
               <div className="space-y-1">
                 <p className={cn(
                   'text-sm font-bold leading-5',
-                  resumo.total_horas_mes === 0 ? 'text-emerald-800' : 'text-amber-800',
+                  resumo.total_horas_mes === 0 ? 'text-emerald-800' : 'text-blue-800',
                 )}>
                   {guardaNome?.split(' ')[0] || 'Guarda'}, {resumo.total_horas_mes === 0
                     ? `esse mês você não fez nenhuma hora IRO, ainda pode fazer ${LIMITE_IRO_MES}h.`
@@ -362,7 +363,7 @@ const GuardaDashboard = () => {
                 </p>
                 <p className={cn(
                   'text-xs',
-                  resumo.total_horas_mes === 0 ? 'text-emerald-600' : 'text-amber-600',
+                  resumo.total_horas_mes === 0 ? 'text-emerald-600' : 'text-blue-600',
                 )}>
                   Limite mensal de {LIMITE_IRO_MES}h de IRO.
                 </p>

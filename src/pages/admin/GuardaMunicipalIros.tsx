@@ -23,7 +23,7 @@ import { maskCpf } from '@/lib/masks';
 import type { IROBancoHoras, IROCandidatura, IRONotificacao, IROOperacao } from '@/types/admin';
 
 type Section = 'operacoes' | 'candidaturas' | 'banco-horas' | 'notificacoes' | 'relatorios';
-type IROViewMode = 'minhas' | 'gerenciar';
+type IROViewMode = 'minhas' | 'gerenciar' | 'extras';
 
 type GuardaOption = {
   usuario_id: string;
@@ -39,6 +39,13 @@ type GuardaOption = {
 type ManualFormState = {
   usuario_id: string;
   operacao_id: string;
+  quantidade_horas: string;
+  motivo: string;
+  operacao_nome: string;
+  data_operacao: string;
+};
+
+type ExtraEditFormState = {
   quantidade_horas: string;
   motivo: string;
   operacao_nome: string;
@@ -191,6 +198,13 @@ const manualFormInitial = (): ManualFormState => ({
   data_operacao: '',
 });
 
+const extraEditFormInitial = (): ExtraEditFormState => ({
+  quantidade_horas: '',
+  motivo: '',
+  operacao_nome: '',
+  data_operacao: '',
+});
+
 const BASE_IROS = '/admin/iros/guarda-municipal';
 const LIMITE_IRO_MES = 72;
 
@@ -250,6 +264,10 @@ const GuardaMunicipalIros = () => {
   const [manualDialogOpen, setManualDialogOpen] = useState(false);
   const [manualSaving, setManualSaving] = useState(false);
   const [manualForm, setManualForm] = useState<ManualFormState>(manualFormInitial);
+  const [extraEditDialogOpen, setExtraEditDialogOpen] = useState(false);
+  const [extraEditSaving, setExtraEditSaving] = useState(false);
+  const [extraEditing, setExtraEditing] = useState<IROCandidatura | null>(null);
+  const [extraEditForm, setExtraEditForm] = useState<ExtraEditFormState>(extraEditFormInitial);
   const [guardaComboboxOpen, setGuardaComboboxOpen] = useState(false);
   const [operacaoComboboxOpen, setOperacaoComboboxOpen] = useState(false);
 
@@ -264,7 +282,11 @@ const GuardaMunicipalIros = () => {
     profile?.papel === 'admin_setor' ||
     (profile?.papel === 'tecnico' && profile?.modulos?.includes('iros'));
   const canManageOperacoes = podeVerTudo;
-  const canLaunchManual = podeVerTudo;
+  const canManageIroExtras =
+    profile?.papel === 'super_admin' ||
+    profile?.papel === 'gestor' ||
+    ((profile?.papel === 'admin_setor' || profile?.papel === 'tecnico') && profile?.modulos?.includes('iros'));
+  const canLaunchManual = canManageIroExtras;
 
   const subPath = location.pathname.replace(BASE_IROS, '').replace(/\/+$/, '');
   const isNovaOperacao = subPath === '/nova-operacao';
@@ -280,8 +302,8 @@ const GuardaMunicipalIros = () => {
       const [opRes, candRes, bhRes, notifRes, userRes, valoresRes, guardasRes] = await Promise.all([
         applySetorFilter(supabase.from('iro_operacoes').select('*').order('data_inicio', { ascending: false })),
         podeVerTudo
-          ? supabase.from('iro_candidaturas').select('*, iro_operacoes!inner(nome)').order('created_at', { ascending: false })
-          : supabase.from('iro_candidaturas').select('*, iro_operacoes!inner(nome)').eq('usuario_id', user!.user_id).order('created_at', { ascending: false }),
+          ? supabase.from('iro_candidaturas').select('*, iro_operacoes(nome)').order('created_at', { ascending: false })
+          : supabase.from('iro_candidaturas').select('*, iro_operacoes(nome)').eq('usuario_id', user!.user_id).order('created_at', { ascending: false }),
         podeVerTudo
           ? supabase.from('iro_banco_horas').select('*').order('created_at', { ascending: false })
           : supabase.from('iro_banco_horas').select('*').eq('usuario_id', user!.user_id).order('created_at', { ascending: false }),
@@ -334,7 +356,7 @@ const GuardaMunicipalIros = () => {
         .filter(Boolean) as GuardaOption[];
 
       setOperacoes(operacoesData);
-      setCandidaturas(((candRes.data || []) as IROCandidaturaRow[]).map((item) => ({ ...item, operacao_nome: item.iro_operacoes?.nome || '' })));
+      setCandidaturas(((candRes.data || []) as IROCandidaturaRow[]).map((item) => ({ ...item, operacao_nome: item.operacao_nome || item.iro_operacoes?.nome || 'IRO extra' })));
       setBancoHoras((bhRes.data || []) as IROBancoHoras[]);
       setNotificacoes((notifRes.data || []) as IRONotificacao[]);
       setUsuarios(
@@ -418,7 +440,8 @@ const GuardaMunicipalIros = () => {
   );
 
   const isMinhaIrosView = podeVerTudo && viewMode === 'minhas';
-  const activeSection = isMinhaIrosView ? 'candidaturas' : section;
+  const isExtrasIrosView = podeVerTudo && viewMode === 'extras';
+  const activeSection = isMinhaIrosView || isExtrasIrosView ? 'candidaturas' : section;
 
   const meuBancoHoras = useMemo(
     () => bancoHoras.find((item) => item.usuario_id === user?.user_id) || null,
@@ -478,7 +501,13 @@ const GuardaMunicipalIros = () => {
 
   const filteredCandidaturas = useMemo(() => {
     const term = search.trim().toLowerCase();
-    const base = isMinhaIrosView ? minhasCandidaturas : podeVerTudo ? candidaturas : minhasCandidaturas;
+    const base = isMinhaIrosView
+      ? minhasCandidaturas
+      : isExtrasIrosView
+        ? candidaturas.filter((item) => item.adicionado_manual)
+        : podeVerTudo
+          ? candidaturas
+          : minhasCandidaturas;
     return base.filter((item) => {
       if (term && !`${item.operacao_nome} ${usuarioMap.get(item.usuario_id) || ''}`.toLowerCase().includes(term)) return false;
       if (statusFilter === 'manuais' && !item.adicionado_manual) return false;
@@ -486,7 +515,7 @@ const GuardaMunicipalIros = () => {
       if (!['todas', 'manuais', 'automaticas'].includes(statusFilter) && item.status !== statusFilter) return false;
       return true;
     });
-  }, [candidaturas, isMinhaIrosView, minhasCandidaturas, podeVerTudo, search, statusFilter, usuarioMap]);
+  }, [candidaturas, isExtrasIrosView, isMinhaIrosView, minhasCandidaturas, podeVerTudo, search, statusFilter, usuarioMap]);
 
   const candidaturasAgrupadas = useMemo(() => {
     if (!podeVerTudo || viewMode !== 'gerenciar') return [];
@@ -662,6 +691,12 @@ const GuardaMunicipalIros = () => {
     setOperacaoComboboxOpen(false);
   };
 
+  const resetExtraEditDialog = () => {
+    setExtraEditing(null);
+    setExtraEditForm(extraEditFormInitial());
+    setExtraEditDialogOpen(false);
+  };
+
   const handleManualDialogChange = async (open: boolean) => {
     if (!open && manualFormDirty) {
       const shouldClose = await confirm({
@@ -687,10 +722,10 @@ const GuardaMunicipalIros = () => {
     }));
     const { data } = await supabase
       .from('iro_candidaturas')
-      .select('*, iro_operacoes!inner(nome)')
+      .select('*, iro_operacoes(nome)')
       .eq('operacao_id', item.id)
       .order('created_at', { ascending: false });
-    setOperacaoCandidaturas(((data || []) as IROCandidaturaRow[]).map((entry) => ({ ...entry, operacao_nome: entry.iro_operacoes?.nome || '' })));
+    setOperacaoCandidaturas(((data || []) as IROCandidaturaRow[]).map((entry) => ({ ...entry, operacao_nome: entry.operacao_nome || entry.iro_operacoes?.nome || 'IRO extra' })));
   };
 
   const openCreateOperacao = () => {
@@ -965,6 +1000,104 @@ const GuardaMunicipalIros = () => {
     }
   };
 
+  const openEditExtra = (item: IROCandidatura) => {
+    setExtraEditing(item);
+    setExtraEditForm({
+      quantidade_horas: String(item.horas_trabalhadas || ''),
+      motivo: item.motivo_manual || '',
+      operacao_nome: item.operacao_nome || '',
+      data_operacao: item.data_operacao || todayStr(),
+    });
+    setExtraEditDialogOpen(true);
+  };
+
+  const handleSalvarEdicaoExtra = async () => {
+    if (!extraEditing) return;
+
+    const horas = Number(extraEditForm.quantidade_horas);
+    if (!Number.isFinite(horas) || horas <= 0) {
+      toast({ title: 'Horas inválidas', description: 'Informe uma quantidade de horas maior que zero.', variant: 'destructive' });
+      return;
+    }
+
+    if (!extraEditForm.data_operacao) {
+      toast({ title: 'Data obrigatória', description: 'Informe a data da IRO extra.', variant: 'destructive' });
+      return;
+    }
+
+    if (extraEditForm.motivo.trim().length < 10) {
+      toast({ title: 'Motivo obrigatório', description: 'Informe uma justificativa com no mínimo 10 caracteres.', variant: 'destructive' });
+      return;
+    }
+
+    setExtraEditSaving(true);
+    try {
+      const { data, error } = await supabase.rpc('editar_iro_extra', {
+        p_candidatura_id: extraEditing.id,
+        p_quantidade_horas: horas,
+        p_motivo: extraEditForm.motivo.trim(),
+        p_operacao_nome: extraEditForm.operacao_nome.trim() || null,
+        p_data_operacao: extraEditForm.data_operacao,
+      });
+
+      if (error) {
+        toast({ title: 'Erro ao editar IRO extra', description: error.message, variant: 'destructive' });
+        return;
+      }
+
+      const result = data as { mensagem?: string };
+      toast({ title: 'IRO extra atualizada', description: result?.mensagem || 'O lançamento extra foi atualizado.' });
+      resetExtraEditDialog();
+      await loadData();
+    } finally {
+      setExtraEditSaving(false);
+    }
+  };
+
+  const handleCancelarExtra = async (item: IROCandidatura) => {
+    const confirmed = await confirm({
+      title: 'Cancelar IRO extra',
+      description: `Confirma o cancelamento da IRO extra de ${usuarioMap.get(item.usuario_id) || 'guarda'} em ${fmtDateBR(item.data_operacao)}?`,
+    });
+    if (!confirmed) return;
+
+    const { data, error } = await supabase.rpc('cancelar_iro_extra', {
+      p_candidatura_id: item.id,
+      p_motivo: `Cancelada pela gestão da Guarda em ${new Date().toLocaleString('pt-BR')}.`,
+    });
+
+    if (error) {
+      toast({ title: 'Erro ao cancelar IRO extra', description: error.message, variant: 'destructive' });
+      return;
+    }
+
+    const result = data as { mensagem?: string };
+    toast({ title: 'IRO extra cancelada', description: result?.mensagem || 'O lançamento extra foi cancelado.' });
+    await loadData();
+  };
+
+  const handleExcluirExtra = async (item: IROCandidatura) => {
+    const confirmed = await confirm({
+      title: 'Excluir IRO extra',
+      description: `Confirma a exclusão definitiva da IRO extra de ${usuarioMap.get(item.usuario_id) || 'guarda'} em ${fmtDateBR(item.data_operacao)}? A auditoria será preservada.`,
+    });
+    if (!confirmed) return;
+
+    const { data, error } = await supabase.rpc('excluir_iro_extra', {
+      p_candidatura_id: item.id,
+      p_motivo: `Excluída pela gestão da Guarda em ${new Date().toLocaleString('pt-BR')}.`,
+    });
+
+    if (error) {
+      toast({ title: 'Erro ao excluir IRO extra', description: error.message, variant: 'destructive' });
+      return;
+    }
+
+    const result = data as { mensagem?: string };
+    toast({ title: 'IRO extra excluída', description: result?.mensagem || 'O lançamento extra foi excluído.' });
+    await loadData();
+  };
+
   const sectionStatusOptions = useMemo(() => {
     if (activeSection === 'operacoes') {
       return [
@@ -975,14 +1108,20 @@ const GuardaMunicipalIros = () => {
     }
 
     if (activeSection === 'candidaturas') {
-      return [
+      const options = [
         { value: 'todas', label: 'Todos' },
         { value: 'confirmado', label: 'Confirmado' },
         { value: 'realizado', label: 'Realizado' },
         { value: 'cancelado', label: 'Cancelado' },
-        { value: 'manuais', label: 'Apenas manuais' },
-        { value: 'automaticas', label: 'Apenas automáticas' },
       ];
+
+      return isExtrasIrosView
+        ? options
+        : [
+            ...options,
+            { value: 'manuais', label: 'Apenas manuais' },
+            { value: 'automaticas', label: 'Apenas automáticas' },
+          ];
     }
 
     if (activeSection === 'notificacoes') {
@@ -996,7 +1135,7 @@ const GuardaMunicipalIros = () => {
     if (activeSection === 'relatorios') return [];
 
     return [{ value: 'todas', label: 'Todos' }];
-  }, [activeSection]);
+  }, [activeSection, isExtrasIrosView]);
 
   const renderOperacaoCard = (item: IROOperacao) => (
     <article key={item.id} className="rounded-[34px] border border-slate-200 bg-white p-5 shadow-sm">
@@ -1094,11 +1233,32 @@ const GuardaMunicipalIros = () => {
           )}
         </div>
 
-        {item.usuario_id === user?.user_id && item.status !== 'cancelado' && !item.adicionado_manual && (
-          <Button size="sm" variant="outline" className="border-red-200 text-red-600 hover:bg-red-50" onClick={() => void handleCancelarCandidatura(item)}>
-            Cancelar
-          </Button>
-        )}
+        <div className="flex flex-wrap justify-end gap-2">
+          {isExtrasIrosView && item.adicionado_manual && canLaunchManual && (
+            <>
+              {item.status !== 'cancelado' && (
+                <>
+                  <Button size="sm" variant="outline" onClick={() => openEditExtra(item)}>
+                    <Pencil className="mr-1.5 h-4 w-4" />
+                    Editar
+                  </Button>
+                  <Button size="sm" variant="outline" className="border-red-200 text-red-600 hover:bg-red-50" onClick={() => void handleCancelarExtra(item)}>
+                    Cancelar
+                  </Button>
+                </>
+              )}
+              <Button size="sm" variant="outline" className="border-red-200 text-red-700 hover:bg-red-50" onClick={() => void handleExcluirExtra(item)}>
+                <Trash2 className="mr-1.5 h-4 w-4" />
+                Excluir
+              </Button>
+            </>
+          )}
+          {item.usuario_id === user?.user_id && item.status !== 'cancelado' && !item.adicionado_manual && (
+            <Button size="sm" variant="outline" className="border-red-200 text-red-600 hover:bg-red-50" onClick={() => void handleCancelarCandidatura(item)}>
+              Cancelar
+            </Button>
+          )}
+        </div>
       </div>
     </article>
   );
@@ -1390,17 +1550,30 @@ const GuardaMunicipalIros = () => {
                   variant={viewMode === 'gerenciar' ? 'default' : 'outline'}
                   onClick={() => {
                     setViewMode('gerenciar');
+                    setSection('operacoes');
                     setSearch('');
                     setStatusFilter('todas');
                   }}
                 >
                   Gerenciar IROs
                 </Button>
+                <Button
+                  variant={viewMode === 'extras' ? 'default' : 'outline'}
+                  onClick={() => {
+                    setViewMode('extras');
+                    setSearch('');
+                    setStatusFilter('todas');
+                  }}
+                >
+                  Gerenciar IROs Extras
+                </Button>
               </div>
               <p className="mt-3 text-sm text-slate-500">
                 {viewMode === 'minhas'
                   ? 'Veja apenas as IROs em que você mesmo se candidatou.'
-                  : 'Acompanhe operações, candidaturas, banco de horas, notificações e relatórios do setor.'}
+                  : viewMode === 'extras'
+                    ? 'Veja somente as IROs extras lançadas manualmente, com opção de editar ou cancelar.'
+                    : 'Acompanhe operações, candidaturas, banco de horas, notificações e relatórios do setor.'}
               </p>
             </CardContent>
           </Card>
@@ -1416,7 +1589,9 @@ const GuardaMunicipalIros = () => {
                     value={search}
                     onChange={(event) => setSearch(event.target.value)}
                     placeholder={
-                      activeSection === 'operacoes'
+                      isExtrasIrosView
+                        ? 'Buscar IROs extras...'
+                        : activeSection === 'operacoes'
                         ? 'Buscar operações...'
                         : activeSection === 'candidaturas'
                           ? 'Buscar candidaturas...'
@@ -1447,10 +1622,10 @@ const GuardaMunicipalIros = () => {
         )}
 
         <div className="flex items-center justify-between gap-3">
-          {isMinhaIrosView ? (
+          {isMinhaIrosView || isExtrasIrosView ? (
             <div className="rounded-[26px] bg-slate-100/80 p-1.5">
               <div className="rounded-[20px] bg-white px-4 py-2.5 text-sm font-bold tracking-[-0.02em] text-slate-950 shadow-[0_10px_24px_-18px_rgba(15,23,42,0.55)]">
-                Minhas Candidaturas
+                {isExtrasIrosView ? 'IROs Extras' : 'Minhas Candidaturas'}
               </div>
             </div>
           ) : (
@@ -1476,13 +1651,23 @@ const GuardaMunicipalIros = () => {
           )}
 
           <div className="flex flex-wrap justify-end gap-2">
-            {!isMinhaIrosView && section === 'operacoes' && canLaunchManual && (
+            {isExtrasIrosView && canLaunchManual && (
               <Button onClick={() => setManualDialogOpen(true)} className="max-sm:hidden border-emerald-600 bg-emerald-600 text-white hover:bg-emerald-700">
                 <Plus className="mr-2 h-4 w-4" />
-                IROs Extras
+                Nova IRO Extra
               </Button>
             )}
-            {!isMinhaIrosView && section === 'operacoes' && canManageOperacoes && (
+            {!isMinhaIrosView && !isExtrasIrosView && section === 'operacoes' && canLaunchManual && (
+              <Button onClick={() => {
+                setViewMode('extras');
+                setSearch('');
+                setStatusFilter('todas');
+              }} className="max-sm:hidden border-emerald-600 bg-emerald-600 text-white hover:bg-emerald-700">
+                <Plus className="mr-2 h-4 w-4" />
+                Gerenciar IROs Extras
+              </Button>
+            )}
+            {!isMinhaIrosView && !isExtrasIrosView && section === 'operacoes' && canManageOperacoes && (
               <Button onClick={openCreateOperacao} className="max-sm:hidden">
                 <Plus className="mr-2 h-4 w-4" />
                 Nova Operação
@@ -1809,6 +1994,73 @@ const GuardaMunicipalIros = () => {
         </ResponsiveDialog>
 
         <ResponsiveDialog
+          open={extraEditDialogOpen}
+          onOpenChange={(open) => {
+            if (!open) resetExtraEditDialog();
+            else setExtraEditDialogOpen(true);
+          }}
+          title="Editar IRO Extra"
+          description={extraEditing ? `${usuarioMap.get(extraEditing.usuario_id) || 'Guarda'} • ${fmtDateBR(extraEditing.data_operacao)}` : 'Atualize o lançamento extra.'}
+        >
+          <div className="space-y-5 py-2">
+            <section className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+              A alteração recalcula automaticamente o banco de horas do guarda e registra auditoria do ajuste.
+            </section>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label>Data da IRO Extra</Label>
+                <Input
+                  type="date"
+                  value={extraEditForm.data_operacao}
+                  onChange={(event) => setExtraEditForm((current) => ({ ...current, data_operacao: event.target.value }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Quantidade de horas</Label>
+                <Input
+                  type="number"
+                  min={0.5}
+                  step={0.5}
+                  value={extraEditForm.quantidade_horas}
+                  onChange={(event) => setExtraEditForm((current) => ({ ...current, quantidade_horas: event.target.value }))}
+                  placeholder="Ex.: 8"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Nome da operação ou referência</Label>
+              <Input
+                value={extraEditForm.operacao_nome}
+                onChange={(event) => setExtraEditForm((current) => ({ ...current, operacao_nome: event.target.value }))}
+                placeholder="Ex.: IRO extra - apoio operacional"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Motivo / justificativa</Label>
+              <Textarea
+                rows={4}
+                value={extraEditForm.motivo}
+                onChange={(event) => setExtraEditForm((current) => ({ ...current, motivo: event.target.value }))}
+                placeholder="Descreva o motivo da alteração..."
+              />
+              <p className="text-xs text-slate-500">Mínimo de 10 caracteres.</p>
+            </div>
+
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={resetExtraEditDialog} disabled={extraEditSaving}>
+                Cancelar
+              </Button>
+              <Button onClick={() => void handleSalvarEdicaoExtra()} disabled={extraEditSaving || extraEditForm.motivo.trim().length < 10}>
+                {extraEditSaving ? 'Salvando...' : 'Salvar alterações'}
+              </Button>
+            </div>
+          </div>
+        </ResponsiveDialog>
+
+        <ResponsiveDialog
           open={operacaoDialogOpen}
           onOpenChange={(open) => {
             if (!open) resetOperacaoDialog();
@@ -1933,12 +2185,17 @@ const GuardaMunicipalIros = () => {
 
       {section === 'operacoes' && (
         <>
-          {!isMinhaIrosView && canLaunchManual && (
+          {isExtrasIrosView && canLaunchManual && (
             <button onClick={() => setManualDialogOpen(true)} className="fixed bottom-44 right-5 z-50 flex size-14 items-center justify-center rounded-full border-2 border-emerald-500 bg-emerald-600 text-white shadow-[0_8px_28px_-6px_rgba(16,185,129,0.55)] transition-all active:scale-90 sm:hidden">
               <Plus className="h-7 w-7" />
             </button>
           )}
-          {canManageOperacoes && (
+          {!isMinhaIrosView && !isExtrasIrosView && canLaunchManual && (
+            <button onClick={() => setViewMode('extras')} className="fixed bottom-44 right-5 z-50 flex size-14 items-center justify-center rounded-full border-2 border-emerald-500 bg-emerald-600 text-white shadow-[0_8px_28px_-6px_rgba(16,185,129,0.55)] transition-all active:scale-90 sm:hidden">
+              <Plus className="h-7 w-7" />
+            </button>
+          )}
+          {!isMinhaIrosView && !isExtrasIrosView && canManageOperacoes && (
             <button onClick={openCreateOperacao} className="fixed bottom-24 right-5 z-50 flex size-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-[0_8px_28px_-6px_rgba(37,99,235,0.55)] transition-all active:scale-90 sm:hidden">
               <Plus className="h-7 w-7" />
             </button>

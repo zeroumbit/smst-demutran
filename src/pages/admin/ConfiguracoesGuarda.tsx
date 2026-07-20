@@ -128,35 +128,31 @@ const ConfiguracoesGuarda = () => {
             Nenhum valor configurado. Clique em "Novo valor" para começar.
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {items.map((item) => (
-              <article key={item.id} className="rounded-[34px] border border-slate-200 bg-white p-5 shadow-sm">
-                <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                  <div className="flex flex-col gap-2">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className={`rounded-full border px-3 py-0.5 text-xs font-bold ${item.ativo ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-slate-300 bg-slate-100 text-slate-500'}`}>
-                        {item.ativo ? 'Ativo' : 'Inativo'}
-                      </span>
-                    </div>
-                    <h2 className="text-lg font-bold text-slate-900">{item.graduacao_nome || 'Graduação'}</h2>
-                    <p className="flex items-center gap-1 text-sm text-slate-600">
-                      <DollarSign className="h-4 w-4" />
-                      <strong className="text-slate-900">R$ {item.valor_hora.toFixed(2).replace('.', ',')}</strong> / hora IRO
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Button variant="outline" size="sm" onClick={() => openEdit(item)}>
-                      <Pencil className="mr-1.5 h-4 w-4" />
-                      Editar
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={() => void handleToggleAtivo(item)}>
-                      {item.ativo ? 'Desativar' : 'Ativar'}
-                    </Button>
-                    <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700" onClick={() => void handleDelete(item)}>
-                      <Trash2 className="mr-1.5 h-4 w-4" />
-                      Excluir
-                    </Button>
-                  </div>
+              <article key={item.id} className="flex min-h-[220px] flex-col rounded-[22px] border border-slate-200 bg-white p-5 shadow-sm">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className={`rounded-full border px-3 py-0.5 text-xs font-bold ${item.ativo ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-slate-300 bg-slate-100 text-slate-500'}`}>
+                    {item.ativo ? 'Ativo' : 'Inativo'}
+                  </span>
+                </div>
+                <h2 className="mb-2 mt-3 text-lg font-bold text-slate-900">{item.graduacao_nome || 'Graduação'}</h2>
+                <p className="flex items-center gap-1 text-sm text-slate-600">
+                  <DollarSign className="h-4 w-4" />
+                  <strong className="text-slate-900">R$ {item.valor_hora.toFixed(2).replace('.', ',')}</strong> / hora IRO
+                </p>
+                <div className="mt-auto flex flex-wrap items-center gap-2 border-t border-slate-100 pt-4">
+                  <Button variant="outline" size="sm" onClick={() => openEdit(item)}>
+                    <Pencil className="mr-1.5 h-4 w-4" />
+                    Editar
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => void handleToggleAtivo(item)}>
+                    {item.ativo ? 'Desativar' : 'Ativar'}
+                  </Button>
+                  <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700" onClick={() => void handleDelete(item)}>
+                    <Trash2 className="mr-1.5 h-4 w-4" />
+                    Excluir
+                  </Button>
                 </div>
               </article>
             ))}

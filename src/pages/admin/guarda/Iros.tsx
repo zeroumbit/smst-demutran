@@ -52,13 +52,18 @@ const GuardaIros = () => {
   const [candidaturaParaCancelar, setCandidaturaParaCancelar] = useState<IROCandidatura | null>(null);
   const [candidaturaResultado, setCandidaturaResultado] = useState<{ sucesso: boolean; mensagem: string; operacaoNome?: string; dataOperacao?: string; horas?: number; totalMes?: number } | null>(null);
   const [candidaturaResultadoAberto, setCandidaturaResultadoAberto] = useState(false);
+  const [selectedCandidatura, setSelectedCandidatura] = useState<IROCandidatura | null>(null);
+  const [candidaturaDetalhesAberto, setCandidaturaDetalhesAberto] = useState(false);
+  const [valorHoraState, setValorHoraState] = useState(0);
 
   const loadData = async () => {
     if (!user?.user_id) { setLoading(false); return; }
     setLoading(true);
 
     try {
-      const setorSlugAtual = setorSlug || 'guarda-municipal';
+      // As operacoes de IRO sao centralizadas na Guarda Municipal. O slug da
+      // rota identifica apenas o painel do chefe que esta se candidatando.
+      const setorSlugAtual = 'guarda-municipal';
       let setorId = '';
       const { data: sData } = await supabase
         .from('setores')
@@ -75,7 +80,7 @@ const GuardaIros = () => {
 
       const promises: Promise<any>[] = [
         opQuery,
-        supabase.from('iro_candidaturas').select('*, iro_operacoes!inner(nome)').eq('usuario_id', user.user_id).order('created_at', { ascending: false }),
+        supabase.from('iro_candidaturas').select('*, iro_operacoes(*)').eq('usuario_id', user.user_id).order('created_at', { ascending: false }),
         supabase.from('iro_candidaturas').select('operacao_id').in('status', ['pendente', 'confirmado', 'realizado']),
       ];
 
@@ -90,7 +95,13 @@ const GuardaIros = () => {
       const hojeStr = new Date().toISOString().slice(0, 10);
       const validOps = (opRes.data || []).filter((op: any) => op.ativo && op.data_fim >= hojeStr) as IROOperacao[];
       setOperacoes(validOps);
-      const lista = (candRes.data || []).map((c: any) => ({ ...c, operacao_nome: c.iro_operacoes?.nome || '' }));
+      const lista = (candRes.data || []).map((c: any) => ({
+        ...c,
+        ...(c.iro_operacoes || {}),
+        status: c.adicionado_manual && c.status !== 'cancelado' ? 'realizado' : c.status,
+        operacao_nome: c.operacao_nome || c.iro_operacoes?.nome || 'IRO extra',
+        iro_operacoes: c.iro_operacoes,
+      }));
       setMinhasCandidaturas(lista);
 
       const vagasCountMap = new Map<string, number>();
@@ -123,22 +134,21 @@ const GuardaIros = () => {
       let bancoHoras = 0;
       let valorHora = 0;
 
-      if (isGuardaFlow) {
-        const { data: banco } = await supabase.from('iro_banco_horas').select('horas_excedentes').eq('usuario_id', user.user_id).maybeSingle();
-        bancoHoras = banco ? Number((banco as any).horas_excedentes) : 0;
+      const { data: banco } = await supabase.from('iro_banco_horas').select('horas_excedentes').eq('usuario_id', user.user_id).maybeSingle();
+      bancoHoras = banco ? Number((banco as any).horas_excedentes) : 0;
 
-        const graduacaoId = (guardaRes?.data as { graduacao_id?: string } | null)?.graduacao_id || profile?.graduacao_id;
-        if (graduacaoId) {
-          const { data: valorData } = await supabase
-            .from('iro_valores_graduacao')
-            .select('valor_hora')
-            .eq('graduacao_id', graduacaoId)
-            .eq('ativo', true)
-            .maybeSingle();
-          if (valorData) valorHora = Number((valorData as any).valor_hora) || 0;
-        }
+      const graduacaoId = (guardaRes?.data as { graduacao_id?: string } | null)?.graduacao_id || profile?.graduacao_id;
+      if (graduacaoId) {
+        const { data: valorData } = await supabase
+          .from('iro_valores_graduacao')
+          .select('valor_hora')
+          .eq('graduacao_id', graduacaoId)
+          .eq('ativo', true)
+          .maybeSingle();
+        if (valorData) valorHora = Number((valorData as any).valor_hora) || 0;
       }
 
+      setValorHoraState(valorHora);
       setResumo({
         total_horas_mes: horasMes,
         total_reais: horasMes * valorHora,
@@ -160,8 +170,11 @@ const GuardaIros = () => {
     if (!user?.user_id) return;
 
     const channel = supabase
-      .channel('iro_operacoes_realtime')
+      .channel(`iro_guarda_${user.user_id}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'iro_operacoes' }, () => void loadData())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'iro_candidaturas', filter: `usuario_id=eq.${user.user_id}` }, () => void loadData())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'iro_banco_horas', filter: `usuario_id=eq.${user.user_id}` }, () => void loadData())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'iro_valores_graduacao' }, () => void loadData())
       .subscribe();
 
     const interval = setInterval(() => void loadData(), 600000);
@@ -424,16 +437,21 @@ const GuardaIros = () => {
                     <p className="text-[15px] font-bold text-slate-900">{c.operacao_nome}</p>
                     <p className="mt-0.5 text-[13px] leading-5 text-slate-500">
                       {fmtDateBR(c.data_operacao)} &middot; {c.horas_trabalhadas}h &middot;
-                      <Badge variant="outline" className={cn('ml-1.5 rounded-full text-[11px] font-bold px-3 py-1', c.status === 'confirmado' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200')}>
-                        {c.status}
+                    <Badge variant="outline" className={cn('ml-1.5 rounded-full text-[11px] font-bold px-3 py-1', c.status === 'confirmado' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200')}>
+                        {c.adicionado_manual && c.status !== 'cancelado' ? 'finalizada' : c.status}
                       </Badge>
                     </p>
                   </div>
-                  {c.status !== 'realizado' && (
-                    <Button size="sm" variant="outline" className="min-h-10 w-full rounded-xl border-red-200 text-[13px] font-semibold text-red-600 hover:bg-red-50 sm:w-auto" onClick={() => void handleCancelar(c)}>
-                      Cancelar
+                  <div className="flex items-center gap-2">
+                    <Button size="sm" variant="outline" className="min-h-10 rounded-xl text-[13px] font-semibold" onClick={() => { setSelectedCandidatura(c); setCandidaturaDetalhesAberto(true); }}>
+                      Detalhes
                     </Button>
-                  )}
+                    {!c.adicionado_manual && c.status !== 'realizado' && (
+                      <Button size="sm" variant="outline" className="min-h-10 rounded-xl border-red-200 text-[13px] font-semibold text-red-600 hover:bg-red-50" onClick={() => void handleCancelar(c)}>
+                        Cancelar
+                      </Button>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
@@ -539,6 +557,89 @@ const GuardaIros = () => {
               </Button>
             </div>
           </div>
+        </ResponsiveDialog>
+
+        <ResponsiveDialog
+          open={candidaturaDetalhesAberto}
+          onOpenChange={(open) => { if (!open) { setCandidaturaDetalhesAberto(false); setSelectedCandidatura(null); } }}
+          title={selectedCandidatura?.operacao_nome || 'Detalhes da candidatura'}
+          description="Informações completas da sua candidatura IRO."
+        >
+          {selectedCandidatura && (
+            <div className="space-y-5 py-2">
+              <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <h4 className="mb-4 text-xs font-bold uppercase tracking-[0.1em] text-slate-500">Candidatura</h4>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="rounded-xl bg-slate-50 p-3.5">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-slate-400">Data</p>
+                    <p className="mt-1 text-base font-bold text-slate-800">{fmtDateBR(selectedCandidatura.data_operacao)}</p>
+                  </div>
+                  <div className="rounded-xl bg-slate-50 p-3.5">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-slate-400">Horas</p>
+                    <p className="mt-1 text-base font-bold text-slate-800">{selectedCandidatura.horas_trabalhadas}h</p>
+                  </div>
+                  <div className="rounded-xl bg-slate-50 p-3.5">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-slate-400">Status</p>
+                    <Badge variant="outline" className={cn('mt-1 text-[11px] font-bold px-3 py-1', selectedCandidatura.status === 'confirmado' ? 'bg-blue-50 text-blue-700 border-blue-200' : selectedCandidatura.status === 'realizado' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : selectedCandidatura.status === 'cancelado' ? 'bg-red-50 text-red-700 border-red-200' : 'bg-amber-50 text-amber-700 border-amber-200')}>
+                      {selectedCandidatura.adicionado_manual && selectedCandidatura.status !== 'cancelado' ? 'finalizada' : selectedCandidatura.status}
+                    </Badge>
+                  </div>
+                  <div className="rounded-xl bg-slate-50 p-3.5">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-slate-400">Valor hora</p>
+                    <p className="mt-1 text-base font-bold text-slate-800">R$ {valorHoraState.toFixed(2).replace('.', ',')}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <h4 className="mb-4 text-xs font-bold uppercase tracking-[0.1em] text-slate-500">Operação</h4>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="rounded-xl bg-slate-50 p-3.5">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-slate-400">Horário</p>
+                    <p className="mt-1 text-base font-bold text-slate-800">{(selectedCandidatura as any).horario_previsto?.slice(0, 5) || '--:--'}</p>
+                  </div>
+                  <div className="rounded-xl bg-slate-50 p-3.5">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-slate-400">Horas/dia</p>
+                    <p className="mt-1 text-base font-bold text-slate-800">{(selectedCandidatura as any).horas_por_dia || selectedCandidatura.horas_trabalhadas}h</p>
+                  </div>
+                  <div className="rounded-xl bg-slate-50 p-3.5">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-slate-400">Período</p>
+                    <p className="mt-1 text-base font-bold text-slate-800">{fmtDateBR((selectedCandidatura as any).data_inicio)} - {fmtDateBR((selectedCandidatura as any).data_fim)}</p>
+                  </div>
+                  <div className="rounded-xl bg-slate-50 p-3.5">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-slate-400">Vagas</p>
+                    <p className="mt-1 text-base font-bold text-slate-800">{(selectedCandidatura as any).vagas_por_dia || '-'}/dia</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-emerald-200 bg-gradient-to-br from-emerald-50 to-green-50 p-5">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-emerald-600">Total estimado</p>
+                    <p className="mt-1 text-2xl font-black text-emerald-800">
+                      R$ {(selectedCandidatura.horas_trabalhadas * valorHoraState).toFixed(2).replace('.', ',')}
+                    </p>
+                  </div>
+                  <DollarSign className="h-8 w-8 text-emerald-300" />
+                </div>
+                <p className="mt-1 text-[13px] text-emerald-600">
+                  {selectedCandidatura.horas_trabalhadas}h × R$ {valorHoraState.toFixed(2).replace('.', ',')}
+                </p>
+              </div>
+
+              {selectedCandidatura.observacao && (
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-slate-500 mb-1">Observação</p>
+                  <p className="text-sm text-slate-700">{selectedCandidatura.observacao}</p>
+                </div>
+              )}
+
+              <Button className="w-full" variant="outline" onClick={() => { setCandidaturaDetalhesAberto(false); setSelectedCandidatura(null); }}>
+                Fechar
+              </Button>
+            </div>
+          )}
         </ResponsiveDialog>
 
         <ResponsiveDialog
