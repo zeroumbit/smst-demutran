@@ -293,6 +293,7 @@ const Dashboard = () => {
       let frotaDisponivel = 0;
       let frotaEmServico = 0;
       let frotaEmManutencao = 0;
+      let frotaMunicipalAtiva = 0;
       let noticiasSetor = 0;
       let eventosSetor = 0;
 
@@ -455,7 +456,6 @@ const Dashboard = () => {
         let recursosPendentesSistema = 0;
         let concessionariosSistema: any[] = [];
         let frotaManutencaoSistema = 0;
-        let frotaMunicipalAtiva = 0;
 
         if (isSuperAdmin && !isGuardaScope && !isDemutranScope) {
           const [
