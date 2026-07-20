@@ -137,6 +137,7 @@ const guardaMenuItems: MenuItem[] = [
   { icon: NotebookPen, label: 'Anotacoes', path: '/admin/anotacoes/guarda-municipal', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
   { icon: ImageIcon, label: 'Midias', path: '/admin/midias/guarda-municipal', allowedPapeis: ['gestor', 'admin_setor'] },
   { icon: FileWarning, label: 'IROs', path: '/admin/iros/guarda-municipal', allowedPapeis: ['gestor', 'admin_setor', 'tecnico'] },
+  { icon: FileWarning, label: 'Minhas IROs', path: '/admin/iros/guarda-municipal/minhas-iro', allowedPapeis: ['gestor', 'admin_setor', 'tecnico'] },
   { icon: ClipboardList, label: 'Fiscalizacao', path: '/admin/fiscalizacao/infracoes', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
   { icon: Shield, label: 'Guardas', path: '/admin/guardas/guarda-municipal', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
   { icon: CalendarDays, label: 'Escalas', path: '/admin/guardas/guarda-municipal/escalas', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
@@ -399,7 +400,7 @@ export const AdminLayout = ({ children, backPath, backLabel }: AdminLayoutProps)
   }, [hasPapel, isSuperAdmin]);
 
   const showSectionSplit = sectorContext === 'guarda-municipal';
-  const pessoalLabels = new Set(['IROs', 'Escalas', 'Fiscalizacao', 'Perfil']);
+  const pessoalLabels = new Set(['IROs', 'Minhas IROs', 'Escalas', 'Fiscalizacao', 'Perfil']);
   const adminMenuItems = useMemo(
     () => showSectionSplit ? visibleMenuItems.filter(item => !pessoalLabels.has(item.label)) : visibleMenuItems,
     [visibleMenuItems, showSectionSplit],
