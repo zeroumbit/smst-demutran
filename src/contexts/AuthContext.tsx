@@ -161,6 +161,18 @@ async function fetchUserProfile(): Promise<AdminProfile | null> {
         // silent — sessão pode expirar, mas o perfil já foi carregado
       }
 
+      try {
+        const { data: iroAccess, error: iroAccessError } = await supabase.rpc('get_guarda_iro_management_access');
+        if (iroAccessError) throw iroAccessError;
+
+        const access = iroAccess as { can_manage?: boolean; setor_id?: string | null } | null;
+        profile.can_manage_guarda_iros = access?.can_manage === true;
+        profile.guarda_setor_id = access?.setor_id || null;
+      } catch {
+        profile.can_manage_guarda_iros = false;
+        profile.guarda_setor_id = null;
+      }
+
       let guardaVinculado = false;
       try {
         const { data: gu } = await supabase

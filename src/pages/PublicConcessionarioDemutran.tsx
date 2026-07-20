@@ -104,7 +104,7 @@ const PublicConcessionarioDemutran = () => {
   const [saving, setSaving] = useState(false);
   const [perfil, setPerfil] = useState<DemutranConcessionario | null>(null);
   const [notificacoes, setNotificacoes] = useState<DemutranConcessionarioNotificacao[]>([]);
-  const [loginForm, setLoginForm] = useState({ cpf: '', senha: '' });
+  const [loginForm, setLoginForm] = useState({ email: '', senha: '' });
   const [showSenha, setShowSenha] = useState(false);
   const [showNovaSenha, setShowNovaSenha] = useState(false);
   const [showConfirmarSenha, setShowConfirmarSenha] = useState(false);
@@ -218,15 +218,15 @@ const PublicConcessionarioDemutran = () => {
 
   const handleLogin = async (event: FormEvent) => {
     event.preventDefault();
-    if (!loginForm.cpf.trim() || !loginForm.senha.trim()) {
-      toast({ title: 'Preencha CPF e senha', variant: 'destructive' });
+    const email = loginForm.email.trim().toLowerCase();
+    if (!email || !loginForm.senha.trim()) {
+      toast({ title: 'Preencha e-mail e senha', variant: 'destructive' });
       return;
     }
 
     setLoading(true);
-    const cpfLimpo = loginForm.cpf.replace(/\D/g, '');
     const { data, error } = await (supabase as any).rpc('autenticar_concessionario', {
-      _cpf: cpfLimpo,
+      _email: email,
       _senha: loginForm.senha,
     });
     setLoading(false);
@@ -236,14 +236,14 @@ const PublicConcessionarioDemutran = () => {
     }
 
     if (error || !data?.length) {
-      toast({ title: 'Acesso nao autorizado', description: 'CPF ou senha invalidos.', variant: 'destructive' });
+      toast({ title: 'Acesso nao autorizado', description: 'E-mail ou senha invalidos.', variant: 'destructive' });
       return;
     }
 
     const token = data[0].session_token as string;
     localStorage.setItem(SESSION_KEY, token);
     setSessionToken(token);
-    setLoginForm({ cpf: '', senha: '' });
+    setLoginForm({ email: '', senha: '' });
     const ok = await loadPerfil(token);
     if (!ok) {
       toast({ title: 'Erro ao carregar perfil', description: 'Tente novamente ou contate o suporte.', variant: 'destructive' });
@@ -410,14 +410,24 @@ const PublicConcessionarioDemutran = () => {
                     <CardContent>
                       <form onSubmit={handleLogin} className="space-y-4">
                         <div className="space-y-2">
-                          <Label>CPF</Label>
-                          <Input value={loginForm.cpf} maxLength={14} onChange={(event) => setLoginForm((current) => ({ ...current, cpf: maskCpf(event.target.value) }))} placeholder="000.000.000-00" />
+                          <Label htmlFor="concessionario-email">E-mail</Label>
+                          <Input
+                            id="concessionario-email"
+                            type="email"
+                            autoComplete="email"
+                            value={loginForm.email}
+                            maxLength={255}
+                            onChange={(event) => setLoginForm((current) => ({ ...current, email: event.target.value }))}
+                            placeholder="nome@exemplo.com"
+                            required
+                          />
                         </div>
                         <div className="space-y-2">
                           <Label>Senha</Label>
                           <div className="relative">
                             <Input
                               type={showSenha ? 'text' : 'password'}
+                              autoComplete="current-password"
                               value={loginForm.senha}
                               onChange={(event) => setLoginForm((current) => ({ ...current, senha: event.target.value }))}
                               className="pr-10"

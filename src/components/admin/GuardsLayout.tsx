@@ -44,31 +44,17 @@ type NavItem = {
   path: string;
 };
 
-const ANOTACOES_LABEL = 'Anotacoes';
-const PERFIL_LABEL = 'Perfil';
 const FISCALIZACAO_LABEL = 'Fiscalizacao';
 
-const moveNavItemBeforeLabel = (items: NavItem[], itemLabel: string, beforeLabel: string) => {
-  const fromIndex = items.findIndex((item) => item.label === itemLabel);
-  const toIndex = items.findIndex((item) => item.label === beforeLabel);
-
-  if (fromIndex === -1 || toIndex === -1 || fromIndex === toIndex) {
-    return items;
-  }
-
-  const reordered = [...items];
-  const [movedItem] = reordered.splice(fromIndex, 1);
-  const adjustedTargetIndex = reordered.findIndex((item) => item.label === beforeLabel);
-  reordered.splice(adjustedTargetIndex, 0, movedItem);
-  return reordered;
-};
-
-const navItems: NavItem[] = [
+const adminNavItems: NavItem[] = [
   { icon: HouseIcon, label: 'Home', path: '/admin/perfil-guardas/guarda-municipal/dashboard' },
-  { icon: CalendarDays, label: 'Escalas', path: '/admin/perfil-guardas/guarda-municipal/escalas' },
-  { icon: FileWarning, label: 'IROs', path: '/admin/perfil-guardas/guarda-municipal/iros' },
-  { icon: ClipboardList, label: 'Fiscalizacao', path: '/admin/perfil-guardas/guarda-municipal/fiscalizacao/infracoes' },
   { icon: NotebookPen, label: 'Anotacoes', path: '/admin/perfil-guardas/guarda-municipal/anotacoes' },
+];
+
+const pessoalNavItems: NavItem[] = [
+  { icon: FileWarning, label: 'IROs', path: '/admin/perfil-guardas/guarda-municipal/iros' },
+  { icon: CalendarDays, label: 'Escalas', path: '/admin/perfil-guardas/guarda-municipal/escalas' },
+  { icon: ClipboardList, label: 'Fiscalizacao', path: '/admin/perfil-guardas/guarda-municipal/fiscalizacao/infracoes' },
   { icon: UserCircle, label: 'Perfil', path: '/admin/perfil-guardas/guarda-municipal/perfil' },
 ];
 
@@ -89,10 +75,30 @@ export const GuardsLayout = ({ children }: GuardsLayoutProps) => {
     navigate('/admin/login');
   };
 
-  const visibleNavItems = moveNavItemBeforeLabel(navItems, ANOTACOES_LABEL, PERFIL_LABEL);
-  const mobileNavItems = visibleNavItems.filter(item => item.label !== FISCALIZACAO_LABEL);
+  const allNavItems = [...adminNavItems, ...pessoalNavItems];
+  const mobileNavItems = allNavItems.filter(item => item.label !== FISCALIZACAO_LABEL);
   const isActive = (path: string) => location.pathname === path || location.pathname.startsWith(path + '/');
   const [menuModalOpen, setMenuModalOpen] = useState(false);
+
+  const renderMobileModalLink = (item: NavItem) => {
+    const Icon = item.icon;
+    const active = isActive(item.path);
+    return (
+      <Link
+        key={item.path}
+        to={item.path}
+        onClick={() => setMenuModalOpen(false)}
+        className={`flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium transition-all ${
+          active
+            ? 'bg-brand-50 text-brand-700'
+            : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
+        }`}
+      >
+        <Icon className="h-5 w-5 shrink-0" />
+        <span>{item.label}</span>
+      </Link>
+    );
+  };
 
   return (
     <div className="min-h-screen bg-[#f3f6fb] text-slate-900">
@@ -110,8 +116,32 @@ export const GuardsLayout = ({ children }: GuardsLayoutProps) => {
           </div>
         </div>
 
-        <nav className="flex-1 space-y-1 px-3 py-5">
-          {visibleNavItems.map((item) => {
+        <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-5">
+          <span className="block px-4 pb-1 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+            Administrativos
+          </span>
+          {adminNavItems.map((item) => {
+            const Icon = item.icon;
+            const active = isActive(item.path);
+            return (
+              <Link
+                key={item.path}
+                to={item.path}
+                className={`flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium transition-all ${
+                  active
+                    ? 'bg-brand-50 text-brand-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.65)]'
+                    : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
+                }`}
+              >
+                <Icon className="h-5 w-5 shrink-0" />
+                <span>{item.label}</span>
+              </Link>
+            );
+          })}
+          <span className="mt-4 block px-4 pb-1 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+            Pessoal
+          </span>
+          {pessoalNavItems.map((item) => {
             const Icon = item.icon;
             const active = isActive(item.path);
             return (
@@ -160,7 +190,7 @@ export const GuardsLayout = ({ children }: GuardsLayoutProps) => {
             const Icon = item.icon;
             const active = isActive(item.path);
 
-            if (item.label === PERFIL_LABEL) {
+            if (item.label === 'Perfil') {
               return (
                 <button
                   key={item.path}
@@ -233,25 +263,14 @@ export const GuardsLayout = ({ children }: GuardsLayoutProps) => {
           </div>
 
           <nav className="flex-1 overflow-y-auto px-4 py-4 space-y-1">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              const active = isActive(item.path);
-              return (
-                <Link
-                  key={item.path}
-                  to={item.path}
-                  onClick={() => setMenuModalOpen(false)}
-                  className={`flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium transition-all ${
-                    active
-                      ? 'bg-brand-50 text-brand-700'
-                      : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
-                  }`}
-                >
-                  <Icon className="h-5 w-5 shrink-0" />
-                  <span>{item.label}</span>
-                </Link>
-              );
-            })}
+            <span className="block px-4 pb-1 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+              Administrativos
+            </span>
+            {adminNavItems.map((item) => renderMobileModalLink(item))}
+            <span className="mt-4 block px-4 pb-1 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+              Pessoal
+            </span>
+            {pessoalNavItems.map((item) => renderMobileModalLink(item))}
           </nav>
 
           <div className="border-t border-slate-200 p-4">

@@ -58,6 +58,8 @@ export interface AdminProfile {
   graduacao_id?: string | null;
   graduacao_nome?: string | null;
   aceitou_lei_iro_at?: string | null;
+  can_manage_guarda_iros?: boolean;
+  guarda_setor_id?: string | null;
 }
 
 export interface Setor {
