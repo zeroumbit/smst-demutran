@@ -2252,7 +2252,7 @@ const GuardaMunicipalIros = () => {
                   return Array.from(grupos.entries()).map(([mes, datas]) => (
                     <div key={mes}>
                       <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.08em] text-slate-500">{mes}</p>
-                      <div className="flex flex-wrap gap-1.5">
+                      <div className="grid grid-cols-4 gap-1.5 sm:grid-cols-7">
                         {datas.map((data) => {
                           const dt = new Date(data + 'T00:00:00');
                           const isFds = dt.getDay() === 0 || dt.getDay() === 6;
