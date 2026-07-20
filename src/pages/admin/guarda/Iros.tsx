@@ -58,6 +58,7 @@ const GuardaIros = () => {
   const [vagasPreenchidas, setVagasPreenchidas] = useState<Record<string, boolean>>({});
   const [vagasPorData, setVagasPorData] = useState<Record<string, number>>({});
   const [operacaoDatas, setOperacaoDatas] = useState<Record<string, string[]>>({});
+  const [minhasCandidaturasPorData, setMinhasCandidaturasPorData] = useState<Record<string, boolean>>({});
   const [selectedOperacao, setSelectedOperacao] = useState<IROOperacao | null>(null);
   const [datasSelecionadas, setDatasSelecionadas] = useState<string[]>([]);
 
@@ -130,13 +131,20 @@ const GuardaIros = () => {
       setOperacaoDatas(datasMap);
 
       const lista = (candRes.data || []).map((c: any) => ({
-        ...c,
         ...(c.iro_operacoes || {}),
+        ...c,
         status: c.adicionado_manual && c.status !== 'cancelado' ? 'realizado' : c.status,
         operacao_nome: c.operacao_nome || c.iro_operacoes?.nome || 'IRO extra',
         iro_operacoes: c.iro_operacoes,
       }));
       setMinhasCandidaturas(lista);
+      const minhasCandidaturasPorDataMap: Record<string, boolean> = {};
+      lista
+        .filter((c: any) => c.operacao_id && ['pendente', 'confirmado', 'realizado'].includes(c.status))
+        .forEach((c: any) => {
+          minhasCandidaturasPorDataMap[`${c.operacao_id}:${c.data_operacao}`] = true;
+        });
+      setMinhasCandidaturasPorData(minhasCandidaturasPorDataMap);
 
       const vagasCountMap = new Map<string, number>();
       (vagasCountRes.data || []).forEach((v: any) => {
@@ -568,7 +576,10 @@ const GuardaIros = () => {
                     variant="outline"
                     size="sm"
                     onClick={() => {
-                      const datas = (operacaoDatas[selectedOperacao.id] || []).filter((data) => (vagasPorData[`${selectedOperacao.id}:${data}`] || 0) > 0);
+                      const datas = (operacaoDatas[selectedOperacao.id] || []).filter((data) => {
+                        const key = `${selectedOperacao.id}:${data}`;
+                        return (vagasPorData[key] || 0) > 0 && !minhasCandidaturasPorData[key];
+                      });
                       setDatasSelecionadas(datas);
                     }}
                   >
@@ -601,13 +612,15 @@ const GuardaIros = () => {
                             const dt = new Date(data + 'T00:00:00');
                             const isFds = dt.getDay() === 0 || dt.getDay() === 6;
                             const isSelected = selected.has(data);
-                            const vagasDisponiveis = vagasPorData[`${selectedOperacao.id}:${data}`] ?? selectedOperacao.vagas_por_dia;
+                            const key = `${selectedOperacao.id}:${data}`;
+                            const vagasDisponiveis = vagasPorData[key] ?? selectedOperacao.vagas_por_dia;
+                            const jaCandidatado = minhasCandidaturasPorData[key];
                             const semVaga = vagasDisponiveis <= 0;
                             return (
                               <button
                                 key={data}
                                 type="button"
-                                disabled={semVaga}
+                                disabled={semVaga || jaCandidatado}
                                 onClick={() =>
                                   setDatasSelecionadas((prev) => {
                                     const set = new Set(prev);
@@ -619,12 +632,12 @@ const GuardaIros = () => {
                                 className={cn(
                                   'flex min-w-12 flex-col items-center rounded-lg px-2.5 py-1.5 text-xs transition-colors',
                                   isSelected ? 'bg-primary text-primary-foreground shadow-sm' : isFds ? 'bg-red-50 text-red-500 hover:bg-red-100' : 'bg-white text-slate-600 hover:bg-slate-100',
-                                  semVaga && 'cursor-not-allowed bg-slate-100 text-slate-300 line-through hover:bg-slate-100',
+                                  (semVaga || jaCandidatado) && 'cursor-not-allowed bg-slate-100 text-slate-300 line-through hover:bg-slate-100',
                                 )}
                               >
                                 <span className="text-sm font-bold leading-tight">{dt.getDate()}</span>
                                 <span className="text-[9px] leading-tight opacity-60">{['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'][dt.getDay()]}</span>
-                                <span className="mt-0.5 text-[9px] leading-tight opacity-70">{semVaga ? '0 vaga' : `${vagasDisponiveis} vaga(s)`}</span>
+                                <span className="mt-0.5 text-[9px] leading-tight opacity-70">{jaCandidatado ? 'inscrito' : semVaga ? '0 vaga' : `${vagasDisponiveis} vaga(s)`}</span>
                               </button>
                             );
                           })}
