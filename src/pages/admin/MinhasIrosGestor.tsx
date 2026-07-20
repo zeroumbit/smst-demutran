@@ -140,12 +140,12 @@ const MinhasIrosGestor = () => {
       setMinhasCandidaturasPorData(minhasCandidaturasPorDataMap);
 
       const { data: vagasCountData } = await supabase
-        .rpc('contar_candidaturas_por_data' as any, {})
-        .then((r) => r)
-        .catch(() => ({ data: [] }));
+        .from('iro_candidaturas')
+        .select('operacao_id, data_operacao')
+        .in('status', ['pendente', 'confirmado', 'realizado']);
 
       const vagasCountMap = new Map<string, number>();
-      (vagasCountData as any[] || []).forEach((v: any) => {
+      (vagasCountData || []).forEach((v: any) => {
         const key = `${v.operacao_id}:${v.data_operacao}`;
         vagasCountMap.set(key, (vagasCountMap.get(key) || 0) + 1);
       });
