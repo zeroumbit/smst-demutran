@@ -1637,16 +1637,6 @@ const GuardaMunicipalIros = () => {
             <CardContent className="px-5 py-4">
               <div className="flex flex-wrap gap-2">
                 <Button
-                  variant={viewMode === 'minhas' ? 'default' : 'outline'}
-                  onClick={() => {
-                    setViewMode('minhas');
-                    setSearch('');
-                    setStatusFilter('todas');
-                  }}
-                >
-                  Minhas IROs
-                </Button>
-                <Button
                   variant={viewMode === 'gerenciar' ? 'default' : 'outline'}
                   onClick={() => {
                     setViewMode('gerenciar');
@@ -1669,11 +1659,9 @@ const GuardaMunicipalIros = () => {
                 </Button>
               </div>
               <p className="mt-3 text-sm text-slate-500">
-                {viewMode === 'minhas'
-                  ? 'Veja apenas as IROs em que você mesmo se candidatou.'
-                  : viewMode === 'extras'
-                    ? 'Veja somente as IROs extras lançadas manualmente, com opção de editar ou cancelar.'
-                    : 'Acompanhe operações, candidaturas, banco de horas, notificações e relatórios do setor.'}
+                {viewMode === 'extras'
+                  ? 'Veja somente as IROs extras lançadas manualmente, com opção de editar ou cancelar.'
+                  : 'Acompanhe operações, candidaturas, banco de horas, notificações e relatórios do setor.'}
               </p>
             </CardContent>
           </Card>

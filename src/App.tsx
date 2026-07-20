@@ -4,7 +4,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { AuthProvider } from "@/contexts/AuthContext";
+import { AuthProvider, getDashboardUrl, useAuth } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/admin/ProtectedRoute";
 import { ConsentBar } from "@/components/shared/ConsentBar";
 import { PwaStatus } from "@/components/pwa/PwaStatus";
@@ -75,6 +75,7 @@ const AdminProfile = React.lazy(() => import("./pages/admin/Profile"));
 const AdminConfiguracoes = React.lazy(() => import("./pages/admin/Configuracoes"));
 const AdminGuardasMunicipais = React.lazy(() => import("./pages/admin/GuardasMunicipais"));
 const AdminGuardaMunicipalIros = React.lazy(() => import("./pages/admin/GuardaMunicipalIros"));
+const MinhasIrosGestor = React.lazy(() => import("./pages/admin/MinhasIrosGestor"));
 const AdminFiscalizacaoInfracoes = React.lazy(() => import("./pages/admin/FiscalizacaoInfracoes"));
 const AdminFiscalizacaoInfracaoDetalhe = React.lazy(() => import("./pages/admin/FiscalizacaoInfracaoDetalhe"));
 const AdminFiscalizacaoCategorias = React.lazy(() => import("./pages/admin/FiscalizacaoCategorias"));
@@ -95,6 +96,21 @@ const AdminFalaCidadao = React.lazy(() => import("./pages/admin/FalaCidadao"));
 const AdminRelatorios = React.lazy(() => import("./pages/admin/Relatorios"));
 const AdminMinhasAnotacoes = React.lazy(() => import("./pages/admin/MinhasAnotacoes"));
 const GuardaMinhasAnotacoes = React.lazy(() => import("./pages/admin/guarda/MinhasAnotacoes"));
+
+const IroDashboardRoute = () => {
+  const { profile } = useAuth();
+  const isGestaoGuarda = profile?.can_manage_guarda_iros === true;
+
+  if (isGestaoGuarda) {
+    return <Navigate to="/admin/iros/guarda-municipal" replace />;
+  }
+
+  if (!profile?.graduacao_id) {
+    return <Navigate to={getDashboardUrl(profile)} replace />;
+  }
+
+  return <GuardaIros />;
+};
 
 const queryClient = new QueryClient();
 
@@ -560,17 +576,32 @@ const App = () => {
                 </ProtectedRoute>
               </SuspenseWrapper>
             } />
+            <Route path="/admin/iros/guarda-municipal/minhas-iro" element={
+              <SuspenseWrapper>
+                <ProtectedRoute
+                  allowedPapeis={['gestor', 'admin_setor', 'tecnico']}
+                  requiredSetorSlug="guarda-municipal"
+                  allowGuardaIroManagement
+                >
+                  <MinhasIrosGestor />
+                </ProtectedRoute>
+              </SuspenseWrapper>
+            } />
             <Route path="/admin/iros/guarda-municipal/*" element={
               <SuspenseWrapper>
-                <ProtectedRoute allowedPapeis={['gestor', 'admin_setor', 'tecnico']} requiredSetorSlug="guarda-municipal">
+                <ProtectedRoute
+                  allowedPapeis={['gestor', 'admin_setor', 'tecnico']}
+                  requiredSetorSlug="guarda-municipal"
+                  allowGuardaIroManagement
+                >
                   <AdminGuardaMunicipalIros />
                 </ProtectedRoute>
               </SuspenseWrapper>
             } />
             <Route path="/admin/dashboard/:setorSlug/iro" element={
               <SuspenseWrapper>
-                <ProtectedRoute allowedPapeis={['gestor', 'admin_setor']} requireGraduacao>
-                  <GuardaIros />
+                <ProtectedRoute allowedPapeis={['gestor', 'admin_setor']}>
+                  <IroDashboardRoute />
                 </ProtectedRoute>
               </SuspenseWrapper>
             } />
