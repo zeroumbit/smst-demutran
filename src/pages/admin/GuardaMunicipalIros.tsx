@@ -61,6 +61,7 @@ type OperacaoFormState = {
   vagas_por_dia: number;
   horas_por_dia: number;
   tempo_solicitacao: IROOperacao['tempo_solicitacao'];
+  datas_selecionadas: string[];
 };
 
 type MonthSummary = {
@@ -167,27 +168,47 @@ const sectionLabels: Record<Section, string> = {
   relatorios: 'Relatórios',
 };
 
-const operacaoFormInitial = (): OperacaoFormState => ({
-  nome: '',
-  descricao: '',
-  horario_previsto: '08:00',
-  data_inicio: new Date().toISOString().slice(0, 10),
-  data_fim: new Date().toISOString().slice(0, 10),
-  vagas_por_dia: 1,
-  horas_por_dia: 8,
-  tempo_solicitacao: 'imediato',
-});
+const gerarIntervaloDatas = (inicio: string, fim: string): string[] => {
+  const dates: string[] = [];
+  const current = new Date(inicio + 'T00:00:00');
+  const end = new Date(fim + 'T00:00:00');
+  while (current <= end) {
+    dates.push(current.toISOString().slice(0, 10));
+    current.setDate(current.getDate() + 1);
+  }
+  return dates;
+};
 
-const normalizeOperacaoForm = (operacao?: Partial<IROOperacao> | null): OperacaoFormState => ({
-  nome: operacao?.nome ?? '',
-  descricao: operacao?.descricao ?? '',
-  horario_previsto: operacao?.horario_previsto?.slice(0, 5) || '08:00',
-  data_inicio: operacao?.data_inicio ?? todayStr(),
-  data_fim: operacao?.data_fim ?? todayStr(),
-  vagas_por_dia: Number.isFinite(operacao?.vagas_por_dia) ? Number(operacao?.vagas_por_dia) : 1,
-  horas_por_dia: Number.isFinite(operacao?.horas_por_dia) ? Number(operacao?.horas_por_dia) : 8,
-  tempo_solicitacao: operacao?.tempo_solicitacao ?? 'imediato',
-});
+const operacaoFormInitial = (): OperacaoFormState => {
+  const hoje = new Date().toISOString().slice(0, 10);
+  return {
+    nome: '',
+    descricao: '',
+    horario_previsto: '08:00',
+    data_inicio: hoje,
+    data_fim: hoje,
+    vagas_por_dia: 1,
+    horas_por_dia: 8,
+    tempo_solicitacao: 'imediato',
+    datas_selecionadas: [hoje],
+  };
+};
+
+const normalizeOperacaoForm = (operacao?: Partial<IROOperacao> | null, loadedDates?: string[]): OperacaoFormState => {
+  const inicio = operacao?.data_inicio ?? todayStr();
+  const fim = operacao?.data_fim ?? todayStr();
+  return {
+    nome: operacao?.nome ?? '',
+    descricao: operacao?.descricao ?? '',
+    horario_previsto: operacao?.horario_previsto?.slice(0, 5) || '08:00',
+    data_inicio: inicio,
+    data_fim: fim,
+    vagas_por_dia: Number.isFinite(operacao?.vagas_por_dia) ? Number(operacao?.vagas_por_dia) : 1,
+    horas_por_dia: Number.isFinite(operacao?.horas_por_dia) ? Number(operacao?.horas_por_dia) : 8,
+    tempo_solicitacao: operacao?.tempo_solicitacao ?? 'imediato',
+    datas_selecionadas: loadedDates ?? gerarIntervaloDatas(inicio, fim),
+  };
+};
 
 const manualFormInitial = (): ManualFormState => ({
   usuario_id: '',
@@ -398,6 +419,17 @@ const GuardaMunicipalIros = () => {
       setEditingOperacao(item);
       setOperacaoForm(normalizeOperacaoForm(item));
       setOperacaoDialogOpen(true);
+
+      supabase
+        .from('iro_operacao_datas')
+        .select('data')
+        .eq('operacao_id', item.id)
+        .order('data', { ascending: true })
+        .then(({ data: dates }) => {
+          if (dates && dates.length > 0) {
+            setOperacaoForm((prev) => ({ ...prev, datas_selecionadas: dates.map((d) => d.data) }));
+          }
+        });
     }
   }, [canManageOperacoes, editOperacaoId, isEditandoOperacao, isNovaOperacao, navigate, operacoes]);
 
@@ -732,7 +764,7 @@ const GuardaMunicipalIros = () => {
     navigate(`${BASE_IROS}/nova-operacao`);
   };
 
-  const openEditOperacao = (item: IROOperacao) => {
+  const openEditOperacao = async (item: IROOperacao) => {
     if (operacoesComConfirmados.has(item.id)) {
       toast({
         title: 'Operação bloqueada',
@@ -743,7 +775,14 @@ const GuardaMunicipalIros = () => {
     }
 
     setEditingOperacao(item);
-    setOperacaoForm(normalizeOperacaoForm(item));
+
+    const { data: dates } = await supabase
+      .from('iro_operacao_datas')
+      .select('data')
+      .eq('operacao_id', item.id)
+      .order('data', { ascending: true });
+
+    setOperacaoForm(normalizeOperacaoForm(item, (dates || []).map((d) => d.data)));
     setOperacaoDialogOpen(true);
   };
 
@@ -766,6 +805,15 @@ const GuardaMunicipalIros = () => {
       toast({
         title: 'Data inválida',
         description: 'A data de fim deve ser posterior ou igual à data de início.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (operacaoForm.datas_selecionadas.length === 0) {
+      toast({
+        title: 'Nenhum dia selecionado',
+        description: 'Selecione pelo menos um dia para a operação.',
         variant: 'destructive',
       });
       return;
@@ -797,13 +845,39 @@ const GuardaMunicipalIros = () => {
         });
         return;
       }
+
+      const { error: delErr } = await supabase.from('iro_operacao_datas').delete().eq('operacao_id', editingOperacao.id);
+      if (delErr) {
+        toast({ title: 'Erro ao atualizar datas', description: delErr.message, variant: 'destructive' });
+        return;
+      }
+
+      const datesToInsert = operacaoForm.datas_selecionadas.map((data) => ({ operacao_id: editingOperacao.id!, data }));
+      const { error: insErr } = await supabase.from('iro_operacao_datas').insert(datesToInsert);
+      if (insErr) {
+        toast({ title: 'Erro ao salvar datas', description: insErr.message, variant: 'destructive' });
+        return;
+      }
+
       toast({ title: 'Operação atualizada' });
     } else {
-      const { error } = await supabase.from('iro_operacoes').insert({ ...payload, created_by: profile?.perfil_id || null });
+      const { data: newOp, error } = await supabase.from('iro_operacoes').insert({ ...payload, created_by: profile?.perfil_id || null }).select('id');
       if (error) {
         toast({ title: 'Erro', description: error.message, variant: 'destructive' });
         return;
       }
+      if (!newOp || newOp.length === 0) {
+        toast({ title: 'Erro', description: 'Falha ao criar operação.', variant: 'destructive' });
+        return;
+      }
+
+      const datesToInsert = operacaoForm.datas_selecionadas.map((data) => ({ operacao_id: newOp[0].id, data }));
+      const { error: insErr } = await supabase.from('iro_operacao_datas').insert(datesToInsert);
+      if (insErr) {
+        toast({ title: 'Erro ao salvar datas', description: insErr.message, variant: 'destructive' });
+        return;
+      }
+
       toast({ title: 'Operação criada' });
     }
 
@@ -2119,6 +2193,99 @@ const GuardaMunicipalIros = () => {
                 <Input type="number" min={0.5} step={0.5} value={Number.isFinite(operacaoForm.horas_por_dia) ? operacaoForm.horas_por_dia : ''} onChange={(event) => setOperacaoForm((current) => ({ ...current, horas_por_dia: Number(event.target.value) }))} />
               </div>
             </div>
+
+            <div className="space-y-3 border-t border-slate-200 pt-4">
+              <div className="flex items-center justify-between">
+                <Label>Dias da operação</Label>
+                <span className="text-sm font-medium text-slate-500">{operacaoForm.datas_selecionadas.length} dia(s)</span>
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const datas = gerarIntervaloDatas(operacaoForm.data_inicio, operacaoForm.data_fim);
+                    setOperacaoForm((prev) => ({ ...prev, datas_selecionadas: datas.filter((d) => { const dia = new Date(d + 'T00:00:00').getDay(); return dia !== 0 && dia !== 6; }) }));
+                  }}
+                >
+                  Dias úteis
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const datas = gerarIntervaloDatas(operacaoForm.data_inicio, operacaoForm.data_fim);
+                    setOperacaoForm((prev) => ({ ...prev, datas_selecionadas: datas.filter((d) => { const dia = new Date(d + 'T00:00:00').getDay(); return dia === 0 || dia === 6; }) }));
+                  }}
+                >
+                  Fins de semana
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const datas = gerarIntervaloDatas(operacaoForm.data_inicio, operacaoForm.data_fim);
+                    setOperacaoForm((prev) => ({ ...prev, datas_selecionadas: datas }));
+                  }}
+                >
+                  Marcar todos
+                </Button>
+                <Button type="button" variant="outline" size="sm" onClick={() => setOperacaoForm((prev) => ({ ...prev, datas_selecionadas: [] }))}>
+                  Desmarcar todos
+                </Button>
+              </div>
+
+              <div className="max-h-64 space-y-3 overflow-y-auto rounded-xl border border-slate-200 bg-slate-50 p-3">
+                {(() => {
+                  const todas = gerarIntervaloDatas(operacaoForm.data_inicio, operacaoForm.data_fim);
+                  const grupos = new Map<string, string[]>();
+                  for (const d of todas) {
+                    const mes = new Date(d + 'T00:00:00').toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+                    if (!grupos.has(mes)) grupos.set(mes, []);
+                    grupos.get(mes)!.push(d);
+                  }
+                  const selected = new Set(operacaoForm.datas_selecionadas);
+                  return Array.from(grupos.entries()).map(([mes, datas]) => (
+                    <div key={mes}>
+                      <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.08em] text-slate-500">{mes}</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {datas.map((data) => {
+                          const dt = new Date(data + 'T00:00:00');
+                          const isFds = dt.getDay() === 0 || dt.getDay() === 6;
+                          const isSelected = selected.has(data);
+                          return (
+                            <button
+                              key={data}
+                              type="button"
+                              onClick={() =>
+                                setOperacaoForm((prev) => {
+                                  const set = new Set(prev.datas_selecionadas);
+                                  if (set.has(data)) set.delete(data);
+                                  else set.add(data);
+                                  return { ...prev, datas_selecionadas: [...set].sort() };
+                                })
+                              }
+                              className={cn(
+                                'flex flex-col items-center rounded-lg px-2.5 py-1.5 text-xs transition-colors',
+                                isSelected ? 'bg-primary text-primary-foreground shadow-sm' : isFds ? 'bg-red-50 text-red-400 hover:bg-red-100' : 'bg-white text-slate-600 hover:bg-slate-100',
+                              )}
+                            >
+                              <span className="text-sm font-bold leading-tight">{dt.getDate()}</span>
+                              <span className="text-[9px] leading-tight opacity-60">{['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'][dt.getDay()]}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ));
+                })()}
+              </div>
+            </div>
+
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={resetOperacaoDialog}>
                 Cancelar
