@@ -399,12 +399,13 @@ export const AdminLayout = ({ children, backPath, backLabel }: AdminLayoutProps)
   }, [hasPapel, isSuperAdmin]);
 
   const showSectionSplit = sectorContext === 'guarda-municipal';
+  const pessoalLabels = new Set(['IROs', 'Escalas', 'Fiscalizacao', 'Perfil']);
   const adminMenuItems = useMemo(
-    () => showSectionSplit ? visibleMenuItems.filter(item => item.label !== 'Perfil') : visibleMenuItems,
+    () => showSectionSplit ? visibleMenuItems.filter(item => !pessoalLabels.has(item.label)) : visibleMenuItems,
     [visibleMenuItems, showSectionSplit],
   );
   const pessoalMenuItems = useMemo(
-    () => showSectionSplit ? visibleMenuItems.filter(item => item.label === 'Perfil') : [],
+    () => showSectionSplit ? visibleMenuItems.filter(item => pessoalLabels.has(item.label)) : [],
     [visibleMenuItems, showSectionSplit],
   );
 
