@@ -146,7 +146,7 @@ export const GuardsLayout = ({ children }: GuardsLayoutProps) => {
       {/* ─── Main content ─── */}
       <div className="flex min-h-screen flex-col lg:pl-64">
 
-        <main className="native-app-scroll flex-1 px-3 py-3 pb-[calc(6.4rem+env(safe-area-inset-bottom))] pt-[env(safe-area-inset-top)] sm:px-4 sm:py-5 lg:p-8">
+        <main className="native-app-scroll flex-1 px-3 pb-[calc(6.4rem+env(safe-area-inset-bottom))] pt-[max(env(safe-area-inset-top),0.75rem)] sm:px-4 sm:py-5 lg:p-8">
           <div className="mx-auto w-full max-w-5xl">
           {children}
           </div>
