@@ -398,6 +398,16 @@ export const AdminLayout = ({ children, backPath, backLabel }: AdminLayoutProps)
     });
   }, [hasPapel, isSuperAdmin]);
 
+  const showSectionSplit = sectorContext === 'guarda-municipal';
+  const adminMenuItems = useMemo(
+    () => showSectionSplit ? visibleMenuItems.filter(item => item.label !== 'Perfil') : visibleMenuItems,
+    [visibleMenuItems, showSectionSplit],
+  );
+  const pessoalMenuItems = useMemo(
+    () => showSectionSplit ? visibleMenuItems.filter(item => item.label === 'Perfil') : [],
+    [visibleMenuItems, showSectionSplit],
+  );
+
   useEffect(() => {
     const autoExpand: Record<string, boolean> = {};
     visibleMenuItems.forEach((item) => {
@@ -565,7 +575,18 @@ export const AdminLayout = ({ children, backPath, backLabel }: AdminLayoutProps)
       </div>
 
       <nav className="flex-1 space-y-1 px-3">
-        {visibleMenuItems.map((item) => renderNavItem(item))}
+        {showSectionSplit && !sidebarCollapsed && (
+          <span className="block px-4 pb-1 pt-1 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+            Administrativos
+          </span>
+        )}
+        {adminMenuItems.map((item) => renderNavItem(item))}
+        {showSectionSplit && !sidebarCollapsed && pessoalMenuItems.length > 0 && (
+          <span className="mt-4 block px-4 pb-1 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+            Pessoal
+          </span>
+        )}
+        {pessoalMenuItems.map((item) => renderNavItem(item))}
       </nav>
 
       <div className="border-t border-slate-200 p-3">
@@ -809,7 +830,18 @@ export const AdminLayout = ({ children, backPath, backLabel }: AdminLayoutProps)
           </div>
 
           <nav className="flex-1 overflow-y-auto px-4 py-4 space-y-1">
-            {visibleMenuItems.map((item) => renderNavItem(item))}
+            {showSectionSplit && (
+              <span className="block px-4 pb-1 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                Administrativos
+              </span>
+            )}
+            {adminMenuItems.map((item) => renderNavItem(item))}
+            {showSectionSplit && pessoalMenuItems.length > 0 && (
+              <span className="mt-4 block px-4 pb-1 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                Pessoal
+              </span>
+            )}
+            {pessoalMenuItems.map((item) => renderNavItem(item))}
           </nav>
 
           <div className="border-t border-slate-200 p-4">
