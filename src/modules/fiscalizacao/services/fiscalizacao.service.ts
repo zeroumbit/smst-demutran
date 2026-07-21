@@ -7,13 +7,9 @@ import type {
   FiltroInfracao,
 } from '../types/fiscalizacao.types';
 
-type FiscalizacaoFilterQuery = {
-  eq: (column: string, value: unknown) => FiscalizacaoFilterQuery;
-  gte: (column: string, value: unknown) => FiscalizacaoFilterQuery;
-  lte: (column: string, value: unknown) => FiscalizacaoFilterQuery;
-  in: (column: string, values: readonly unknown[]) => FiscalizacaoFilterQuery;
-  or: (filters: string) => FiscalizacaoFilterQuery;
-};
+// O builder do Supabase muda de tipo a cada operador; preservar o builder concreto
+// evita perder métodos como order/range nas funções que apenas acrescentam filtros.
+type FiscalizacaoFilterQuery = any;
 
 const applyPontuacaoFilter = (query: FiscalizacaoFilterQuery, pontuacao: FiltroInfracao['pontuacao']) => {
   if (pontuacao === 'nao_computavel') return query.eq('pontuacao', 0);

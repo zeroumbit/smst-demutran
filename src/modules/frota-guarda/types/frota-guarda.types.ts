@@ -46,6 +46,7 @@ export type GuardaFrotaVeiculo = {
   combustivel: string | null;
   categoria_id: string | null;
   tipo_uso: string[];
+  vinculos: string[];
   grupamento: string | null;
   status: GuardaFrotaStatus;
   quilometragem_atual: number;
@@ -136,6 +137,7 @@ export type GuardaFrotaVeiculoPayload = {
   combustivel?: string | null;
   categoria_id?: string | null;
   tipo_uso?: string[];
+  vinculos?: string[];
   grupamento?: string | null;
   status?: GuardaFrotaStatus;
   quilometragem_atual?: number;

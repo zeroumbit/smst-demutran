@@ -20,7 +20,6 @@ async function showNativeNotification(notification: AdminNotification) {
     icon: '/pwa-icon-192.png',
     badge: '/pwa-icon-192.png',
     tag: notification.id,
-    renotify: true,
     silent: false,
     data: {
       url: '/admin/dashboard',
@@ -49,7 +48,7 @@ export function useAdminNotifications(userId: string | undefined) {
   const [notifications, setNotifications] = useState<AdminNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
-  const mountedRef = useRef(true);
+  const activeUserIdRef = useRef<string | null>(userId ?? null);
   const latestIdRef = useRef<string | null>(null);
   const permGranted = useRef(false);
 
@@ -66,6 +65,7 @@ export function useAdminNotifications(userId: string | undefined) {
 
   const loadNotifications = useCallback(async () => {
     if (!userId) return;
+    const requestedUserId = userId;
 
     const { data, error } = await supabase
       .from('admin_notifications')
@@ -74,7 +74,7 @@ export function useAdminNotifications(userId: string | undefined) {
       .order('created_at', { ascending: false })
       .limit(50);
 
-    if (!mountedRef.current) return;
+    if (activeUserIdRef.current !== requestedUserId) return;
 
     if (error) {
       console.error('Erro ao carregar notificacoes:', error);
@@ -84,7 +84,7 @@ export function useAdminNotifications(userId: string | undefined) {
 
     const items = data as AdminNotification[];
 
-    if (!mountedRef.current) return;
+    if (activeUserIdRef.current !== requestedUserId) return;
     setNotifications(items);
     setUnreadCount(items.filter((n) => !n.lida_em).length);
     setLoading(false);
@@ -99,7 +99,8 @@ export function useAdminNotifications(userId: string | undefined) {
   }, [userId]);
 
   useEffect(() => {
-    mountedRef.current = true;
+    activeUserIdRef.current = userId ?? null;
+    latestIdRef.current = null;
     setLoading(true);
 
     if (!userId) {
@@ -113,7 +114,9 @@ export function useAdminNotifications(userId: string | undefined) {
 
     const interval = setInterval(loadNotifications, POLL_INTERVAL);
     return () => {
-      mountedRef.current = false;
+      if (activeUserIdRef.current === userId) {
+        activeUserIdRef.current = null;
+      }
       clearInterval(interval);
     };
   }, [loadNotifications, userId]);

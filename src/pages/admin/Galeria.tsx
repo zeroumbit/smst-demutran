@@ -199,7 +199,7 @@ const Galeria = ({ layout = true }: { layout?: boolean } = {}) => {
                 <h3 className="font-semibold text-lg">{foto.titulo}</h3>
                 {foto.descricao && <p className="text-sm text-muted-foreground mt-1">{foto.descricao}</p>}
                 <p className="mt-2 text-xs text-muted-foreground">
-                  {setores.find((setor) => setor.id === foto.setor_id)?.nome || 'Global'}
+                  {foto.setor_id === effectiveSetorId ? 'DEMUTRAN' : 'Global'}
                 </p>
               </CardContent>
             </Card>

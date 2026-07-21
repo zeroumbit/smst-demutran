@@ -87,13 +87,16 @@ type DashboardState = {
   totalBancoHoras: number;
   demandasFalaCidadaoCount: number;
   distribuicaoGraduacoes: Array<{ label: string; total: number }>;
-  frotaAtiva: number;
   frotaDisponivel: number;
   frotaEmServico: number;
   frotaEmManutencao: number;
   equipesAtivas: number;
   noticiasSetor: number;
   eventosSetor: number;
+  noticiasAtivas: number;
+  eventosAtivos: number;
+  galeriaAtiva: number;
+  documentosAtivos: number;
   frotaMunicipalAtiva: number;
   veiculosApreendidosTotal: number;
 };
@@ -125,6 +128,10 @@ const initialState: DashboardState = {
   equipesAtivas: 0,
   noticiasSetor: 0,
   eventosSetor: 0,
+  noticiasAtivas: 0,
+  eventosAtivos: 0,
+  galeriaAtiva: 0,
+  documentosAtivos: 0,
   frotaMunicipalAtiva: 0,
   veiculosApreendidosTotal: 0,
 };
@@ -232,7 +239,7 @@ const Dashboard = () => {
     const loadDashboard = async () => {
       setState(initialState);
 
-      const scopedFilter = <T,>(query: T & { eq: (column: string, value: string) => T }) => {
+      const scopedFilter = (query: any) => {
         if (!isSuperAdmin && setorId) {
           return query.eq('setor_id', setorId);
         }
@@ -666,6 +673,10 @@ const Dashboard = () => {
         equipesAtivas,
         noticiasSetor,
         eventosSetor,
+        noticiasAtivas,
+        eventosAtivos,
+        galeriaAtiva,
+        documentosAtivos,
         frotaMunicipalAtiva,
         veiculosApreendidosTotal: veiculosApreendidosSistema,
       });

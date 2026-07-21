@@ -118,8 +118,7 @@ const CadastroGuarda = () => {
       console.error('Erro ao validar guarda:', err);
       setErroValidacao('Erro de conexão. Verifique sua internet e tente novamente.');
     } finally {
-      if (requestId !== validationRequestId.current) return;
-      if (validationStatus === 'validating') {
+      if (requestId === validationRequestId.current) {
         setValidationStatus((current) => current === 'validating' ? 'idle' : current);
       }
     }
@@ -271,11 +270,11 @@ const CadastroGuarda = () => {
                 <div className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="cpf" className="text-sm font-semibold text-slate-700">CPF</Label>
-                    <Input id="cpf" value={cpf} onChange={(e) => { setCpf(maskCpf(e.target.value)); resetValidacao(); }} placeholder="000.000.000-00" required disabled={passo === 'cadastro'} className="h-12 rounded-xl border-slate-300 bg-white px-4 text-base shadow-sm focus-visible:ring-2 focus-visible:ring-primary" />
+                    <Input id="cpf" value={cpf} onChange={(e) => { setCpf(maskCpf(e.target.value)); resetValidacao(); }} placeholder="000.000.000-00" required className="h-12 rounded-xl border-slate-300 bg-white px-4 text-base shadow-sm focus-visible:ring-2 focus-visible:ring-primary" />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="matricula" className="text-sm font-semibold text-slate-700">Matrícula</Label>
-                    <Input id="matricula" value={matricula} onChange={(e) => { setMatricula(e.target.value); resetValidacao(); }} placeholder="Ex.: 3180" required disabled={passo === 'cadastro'} className="h-12 rounded-xl border-slate-300 bg-white px-4 text-base shadow-sm focus-visible:ring-2 focus-visible:ring-primary" />
+                    <Input id="matricula" value={matricula} onChange={(e) => { setMatricula(e.target.value); resetValidacao(); }} placeholder="Ex.: 3180" required className="h-12 rounded-xl border-slate-300 bg-white px-4 text-base shadow-sm focus-visible:ring-2 focus-visible:ring-primary" />
                   </div>
                 </div>
 

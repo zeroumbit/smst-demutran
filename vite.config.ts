@@ -1,7 +1,7 @@
 import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
-import { VitePWA } from "vite-plugin-pwa";
+import { VitePWA, type ManifestOptions } from "vite-plugin-pwa";
 import { componentTagger } from "lovable-tagger";
 
 function htmlPwaTransform(isAdmin: boolean): Plugin {
@@ -35,20 +35,20 @@ function htmlPwaTransform(isAdmin: boolean): Plugin {
 }
 
 const sharedManifest = {
-  theme_color: "#1e40af" as const,
-  background_color: "#f6f8fc" as const,
-  display: "standalone" as const,
-  display_override: ["window-controls-overlay", "standalone", "minimal-ui"] as const,
-  orientation: "any" as const,
-  lang: "pt-BR" as const,
-  scope: "/" as const,
-  categories: ["government", "security", "transportation"] as const,
+  theme_color: "#1e40af",
+  background_color: "#f6f8fc",
+  display: "standalone",
+  display_override: ["window-controls-overlay", "standalone", "minimal-ui"],
+  orientation: "any",
+  lang: "pt-BR",
+  scope: "/",
+  categories: ["government", "security", "transportation"],
   icons: [
     { src: "pwa-icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
     { src: "pwa-icon-512.png", sizes: "512x512", type: "image/png", purpose: "any" },
     { src: "pwa-icon-maskable-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
-  ] as const,
-};
+  ],
+} satisfies Partial<ManifestOptions>;
 
 const publicManifest = {
   name: "SMST - Secretaria Municipal de Segurança Pública e Trânsito",

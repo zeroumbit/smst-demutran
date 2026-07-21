@@ -1,4 +1,4 @@
-import { ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
+import { ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useTheme } from 'next-themes';
 import { useAuth } from '@/contexts/AuthContext';
@@ -229,6 +229,7 @@ export const AdminLayout = ({ children, backPath, backLabel }: AdminLayoutProps)
   const [showSearchResults, setShowSearchResults] = useState(false);
   const [globalResults, setGlobalResults] = useState<GlobalSearchRow[]>([]);
   const [isSearchingGlobal, setIsSearchingGlobal] = useState(false);
+  const searchRequestRef = useRef(0);
   const location = useLocation();
   const navigate = useNavigate();
   const { theme, setTheme } = useTheme();
@@ -242,6 +243,7 @@ export const AdminLayout = ({ children, backPath, backLabel }: AdminLayoutProps)
 
   useEffect(() => {
     const term = searchQuery.trim();
+    const requestId = ++searchRequestRef.current;
     if (term.length < 2) {
       setGlobalResults([]);
       setIsSearchingGlobal(false);
@@ -255,12 +257,15 @@ export const AdminLayout = ({ children, backPath, backLabel }: AdminLayoutProps)
           _termo: term,
           _limite_por_modulo: 5,
         });
-        setGlobalResults((data as GlobalSearchRow[]) ?? []);
-        if (error) setGlobalResults([]);
+        if (requestId !== searchRequestRef.current) return;
+        setGlobalResults(error ? [] : ((data as GlobalSearchRow[]) ?? []));
       } catch {
+        if (requestId !== searchRequestRef.current) return;
         setGlobalResults([]);
       } finally {
-        setIsSearchingGlobal(false);
+        if (requestId === searchRequestRef.current) {
+          setIsSearchingGlobal(false);
+        }
       }
     }, 350);
 
@@ -285,12 +290,6 @@ export const AdminLayout = ({ children, backPath, backLabel }: AdminLayoutProps)
     }
     return groups;
   }, [globalResults]);
-
-  useEffect(() => {
-    if (!isLoading && !isAuthenticated && location.pathname !== '/admin/login') {
-      navigate('/admin/login');
-    }
-  }, [isAuthenticated, isLoading, navigate, location.pathname]);
 
   const sectorContext = useMemo(() => {
     if (isSuperAdmin) return null;
@@ -333,22 +332,21 @@ export const AdminLayout = ({ children, backPath, backLabel }: AdminLayoutProps)
       return;
     }
 
-    supabase.rpc('get_minha_onboarding_etapa').then(({ data, error }) => {
-      if (cancelled) return;
-      if (error) {
-        console.warn('Erro ao carregar etapa de onboarding do banco:', error.message);
-        // Se houver erro de banco (ex: migração não aplicada), não abrimos o onboarding por segurança
-        setOnboardingOpen(false);
-        return;
+    void (async () => {
+      try {
+        const { data, error } = await supabase.rpc('get_minha_onboarding_etapa');
+        if (cancelled) return;
+        if (error) {
+          console.warn('Erro ao carregar etapa de onboarding do banco:', error.message);
+          setOnboardingOpen(false);
+          return;
+        }
+        const etapa = (data as { tipo?: string; etapa?: number | null } | null)?.etapa;
+        if (etapa == null) setOnboardingOpen(true);
+      } finally {
+        if (!cancelled) setOnboardingLoading(false);
       }
-      const etapa = (data as { tipo?: string; etapa?: number | null } | null)?.etapa;
-      if (etapa == null) {
-        setOnboardingOpen(true);
-      }
-    }).catch(() => {
-    }).finally(() => {
-      if (!cancelled) setOnboardingLoading(false);
-    });
+    })();
     return () => { cancelled = true; };
   }, []);
 
@@ -376,7 +374,7 @@ export const AdminLayout = ({ children, backPath, backLabel }: AdminLayoutProps)
     const hasModulosRestricted = !isSuperAdmin && userModulos && userModulos.length > 0;
 
     const filterItem = (item: MenuItem): MenuItem | null => {
-      let mappedItem = { ...item };
+      const mappedItem = { ...item };
       if (mappedItem.path && mappedItem.path.includes(':setorSlug') && profile?.setor_slug) {
         mappedItem.path = mappedItem.path.replace(':setorSlug', profile.setor_slug);
       }

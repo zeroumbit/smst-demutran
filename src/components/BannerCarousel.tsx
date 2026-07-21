@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Card, CardContent } from './ui/card';
 import { Button } from './ui/button';
@@ -31,14 +31,9 @@ const BannerCarousel: React.FC<BannerCarouselProps> = ({ pagina }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [loading, setLoading] = useState(true);
 
-  // Carregar banners ativos da página específica
-  useEffect(() => {
-    fetchBanners();
-  }, [pagina]);
-
-  const fetchBanners = async () => {
+  const fetchBanners = useCallback(async () => {
     try {
-      let query = supabase
+      const query = supabase
         .from('banners')
         .select('*')
         .eq('ativo', true)
@@ -73,14 +68,19 @@ const BannerCarousel: React.FC<BannerCarouselProps> = ({ pagina }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [pagina]);
+
+  // Carregar banners ativos da página específica
+  useEffect(() => {
+    void fetchBanners();
+  }, [fetchBanners]);
 
   // Avançar para o próximo banner
-  const nextBanner = () => {
+  const nextBanner = useCallback(() => {
     setCurrentIndex((prevIndex) =>
       prevIndex === banners.length - 1 ? 0 : prevIndex + 1
     );
-  };
+  }, [banners.length]);
 
   // Voltar para o banner anterior
   const prevBanner = () => {
@@ -98,7 +98,7 @@ const BannerCarousel: React.FC<BannerCarouselProps> = ({ pagina }) => {
     }, 5000);
 
     return () => clearInterval(interval);
-  }, [banners.length]);
+  }, [banners.length, nextBanner]);
 
   if (loading || banners.length === 0) {
     return null; // Não mostrar nada se estiver carregando ou não tiver banners

@@ -28,7 +28,7 @@ const EventosExibicao = ({ paginaAtual = 'home' }: EventosExibicaoProps) => {
   useEffect(() => {
     const fetchEventos = async () => {
       try {
-        let query = supabase
+        const query = supabase
           .from('eventos')
           .select('*')
           .eq('ativo', true)

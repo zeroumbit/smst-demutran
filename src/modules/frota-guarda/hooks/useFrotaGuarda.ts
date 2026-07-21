@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { frotaGuardaService } from '../services/frota-guarda.service';
 import type { GuardaFrotaStatus, GuardaFrotaVeiculoPayload } from '../types/frota-guarda.types';
+import { escalasKeys } from '@/modules/escalas/hooks/useEscalas';
 
 export const frotaGuardaKeys = {
   root: ['frota-guarda'] as const,
@@ -71,7 +72,10 @@ export function useFrotaGuardaApoio(veiculoId?: string) {
 export function useFrotaGuardaMutations() {
   const queryClient = useQueryClient();
   const invalidate = async (id?: string) => {
-    await queryClient.invalidateQueries({ queryKey: frotaGuardaKeys.veiculos() });
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: frotaGuardaKeys.veiculos() }),
+      queryClient.invalidateQueries({ queryKey: escalasKeys.viaturas() }),
+    ]);
     if (id) {
       await queryClient.invalidateQueries({ queryKey: frotaGuardaKeys.veiculo(id) });
       await queryClient.invalidateQueries({ queryKey: frotaGuardaKeys.historico(id) });
@@ -97,15 +101,18 @@ export function useFrotaGuardaMutations() {
       onSuccess: (_, variables) => invalidate(variables.id),
     }),
     createIndisponibilidade: useMutation({
-      mutationFn: frotaGuardaService.createIndisponibilidade.bind(frotaGuardaService),
+      mutationFn: (payload: Parameters<typeof frotaGuardaService.createIndisponibilidade>[0]) =>
+        frotaGuardaService.createIndisponibilidade(payload),
       onSuccess: (_, variables) => invalidate(variables.veiculo_id),
     }),
     createManutencao: useMutation({
-      mutationFn: frotaGuardaService.createManutencao.bind(frotaGuardaService),
+      mutationFn: (payload: Parameters<typeof frotaGuardaService.createManutencao>[0]) =>
+        frotaGuardaService.createManutencao(payload),
       onSuccess: (_, variables) => invalidate(variables.veiculo_id),
     }),
     createDocumento: useMutation({
-      mutationFn: frotaGuardaService.createDocumento.bind(frotaGuardaService),
+      mutationFn: (payload: Parameters<typeof frotaGuardaService.createDocumento>[0]) =>
+        frotaGuardaService.createDocumento(payload),
       onSuccess: (_, variables) => invalidate(variables.veiculo_id),
     }),
     createCategoria: useMutation({

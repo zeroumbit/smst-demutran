@@ -30,11 +30,11 @@ export default function MinhasEscalasPage() {
     observacao: '',
   });
 
-  const now = new Date();
-  const futuras = useMemo(() => escalas.filter((escala) => isAfter(new Date(escala.data_inicio), now)).sort((a, b) => new Date(a.data_inicio).getTime() - new Date(b.data_inicio).getTime()), [escalas]);
+  const now = useMemo(() => new Date(), []);
+  const futuras = useMemo(() => escalas.filter((escala) => isAfter(new Date(escala.data_inicio), now)).sort((a, b) => new Date(a.data_inicio).getTime() - new Date(b.data_inicio).getTime()), [escalas, now]);
   const proxima = futuras[0] ?? null;
-  const historico = useMemo(() => escalas.filter((escala) => new Date(escala.data_fim) < now), [escalas]);
-  const semana = useMemo(() => futuras.filter((escala) => new Date(escala.data_inicio) <= addDays(now, 7)), [futuras]);
+  const historico = useMemo(() => escalas.filter((escala) => new Date(escala.data_fim) < now), [escalas, now]);
+  const semana = useMemo(() => futuras.filter((escala) => new Date(escala.data_inicio) <= addDays(now, 7)), [futuras, now]);
 
   const openTroca = (escala: GuardaEscala) => {
     setSelected(escala);
@@ -44,7 +44,8 @@ export default function MinhasEscalasPage() {
 
   const confirmar = async (escala: GuardaEscala) => {
     const result = await mutations.confirmarCiencia.mutateAsync(escala.id);
-    result.sucesso ? toast.success(result.mensagem) : toast.error(result.mensagem);
+    if (result.sucesso) toast.success(result.mensagem);
+    else toast.error(result.mensagem);
   };
 
   const solicitarTroca = async (event: FormEvent) => {
@@ -65,18 +66,21 @@ export default function MinhasEscalasPage() {
       motivo: trocaForm.motivo,
       observacao: trocaForm.observacao,
     });
-    result.sucesso ? toast.success(result.mensagem) : toast.error(result.mensagem);
+    if (result.sucesso) toast.success(result.mensagem);
+    else toast.error(result.mensagem);
     if (result.sucesso) setTrocaOpen(false);
   };
 
   const responderTroca = async (id: string, aceitar: boolean) => {
     const result = await mutations.responderTroca.mutateAsync({ id, aceitar });
-    result.sucesso ? toast.success(result.mensagem) : toast.error(result.mensagem);
+    if (result.sucesso) toast.success(result.mensagem);
+    else toast.error(result.mensagem);
   };
 
   const cancelarTroca = async (id: string) => {
     const result = await mutations.cancelarTroca.mutateAsync(id);
-    result.sucesso ? toast.success(result.mensagem) : toast.error(result.mensagem);
+    if (result.sucesso) toast.success(result.mensagem);
+    else toast.error(result.mensagem);
   };
 
   return (

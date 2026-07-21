@@ -42,10 +42,10 @@ const GuardaIrosHistorico = () => {
     setLoading(true);
     const { data } = await supabase
       .from('iro_candidaturas')
-      .select('*, iro_operacoes(nome)')
+      .select('*, iro_operacoes(nome, codigo)')
       .eq('usuario_id', user.user_id)
       .order('data_operacao', { ascending: false });
-    setCandidaturas(((data || []) as Array<IROCandidatura & { iro_operacoes?: { nome?: string | null } | null }>).map((c) => ({ ...c, operacao_nome: c.operacao_nome || c.iro_operacoes?.nome || 'IRO extra' })));
+    setCandidaturas(((data || []) as Array<IROCandidatura & { iro_operacoes?: { nome?: string | null; codigo?: string | null } | null }>).map((c) => ({ ...c, op_codigo: c.iro_operacoes?.codigo || null, operacao_nome: c.operacao_nome || (c.iro_operacoes?.codigo ? c.iro_operacoes.codigo + ' ' : '') + (c.iro_operacoes?.nome || 'IRO extra') })));
     setLoading(false);
   }, [user?.user_id]);
 

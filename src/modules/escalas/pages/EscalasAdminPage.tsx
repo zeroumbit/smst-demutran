@@ -246,19 +246,22 @@ export default function EscalasAdminPage() {
   const publicar = async () => {
     if (!selectedEscala) return;
     const result = await mutations.publicar.mutateAsync(selectedEscala.id);
-    result.sucesso ? toast.success(result.mensagem) : toast.error(result.mensagem);
+    if (result.sucesso) toast.success(result.mensagem);
+    else toast.error(result.mensagem);
   };
 
   const gerarRecorrencias = async () => {
     if (!selectedEscala) return;
     const result = await mutations.gerarRecorrencias.mutateAsync(selectedEscala.id);
-    result.sucesso ? toast.success(`${result.mensagem} Geradas: ${result.geradas ?? 0}.`) : toast.error(result.mensagem);
+    if (result.sucesso) toast.success(`${result.mensagem} Geradas: ${result.geradas ?? 0}.`);
+    else toast.error(result.mensagem);
   };
 
   const cancelar = async () => {
     if (!selectedEscala) return;
     const result = await mutations.cancelar.mutateAsync({ id: selectedEscala.id, motivo: cancelReason });
-    result.sucesso ? toast.success(result.mensagem) : toast.error(result.mensagem);
+    if (result.sucesso) toast.success(result.mensagem);
+    else toast.error(result.mensagem);
     setDialogMode(null);
     setCancelReason('');
   };
@@ -318,7 +321,8 @@ export default function EscalasAdminPage() {
   const decideTroca = async () => {
     if (!decisionTroca) return;
     const result = await mutations.aprovarTroca.mutateAsync({ id: decisionTroca.troca.id, aprovar: decisionTroca.aprovar, motivo: decisionReason });
-    result.sucesso ? toast.success(result.mensagem) : toast.error(result.mensagem);
+    if (result.sucesso) toast.success(result.mensagem);
+    else toast.error(result.mensagem);
     setDecisionTroca(null);
     setDecisionReason('');
     setDialogMode(null);
@@ -390,7 +394,7 @@ export default function EscalasAdminPage() {
           </Button>
         </div>
 
-        {view === 'escalas' && (
+        {view === 'dashboard' && (
           <>
             <div className="grid gap-6 xl:grid-cols-[390px_minmax(0,1fr)]">
               <div className="rounded-[34px] border border-slate-200 bg-white p-5 shadow-sm">

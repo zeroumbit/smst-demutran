@@ -1,11 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { escalasService } from '../services/escalas.service';
 import type { GuardaEscalaPayload } from '../types/escalas.types';
+import { useAuth } from '@/contexts/AuthContext';
 
 export const escalasKeys = {
   root: ['guarda-escalas'] as const,
   escalas: () => [...escalasKeys.root, 'escalas'] as const,
-  minhas: () => [...escalasKeys.root, 'minhas'] as const,
+  minhas: (userId?: string) => [...escalasKeys.root, 'minhas', userId || 'anonymous'] as const,
   tipos: () => [...escalasKeys.root, 'tipos'] as const,
   postos: () => [...escalasKeys.root, 'postos'] as const,
   guardas: () => [...escalasKeys.root, 'guardas'] as const,
@@ -20,7 +21,12 @@ export function useEscalas() {
 }
 
 export function useMinhasEscalas() {
-  return useQuery({ queryKey: escalasKeys.minhas(), queryFn: () => escalasService.listMinhasEscalas() });
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: escalasKeys.minhas(user?.user_id),
+    queryFn: () => escalasService.listMinhasEscalas(),
+    enabled: Boolean(user?.user_id),
+  });
 }
 
 export function useEscalasApoio() {
@@ -51,10 +57,10 @@ export function useEscalasMutations() {
     createEscala: useMutation({ mutationFn: (payload: GuardaEscalaPayload) => escalasService.createEscala(payload), onSuccess: invalidate }),
     updateEscala: useMutation({ mutationFn: ({ id, payload }: { id: string; payload: GuardaEscalaPayload }) => escalasService.updateEscala(id, payload), onSuccess: invalidate }),
     deleteDraft: useMutation({ mutationFn: (id: string) => escalasService.deleteDraft(id), onSuccess: invalidate }),
-    addAgente: useMutation({ mutationFn: escalasService.addAgente.bind(escalasService), onSuccess: invalidate }),
+    addAgente: useMutation({ mutationFn: (payload: Parameters<typeof escalasService.addAgente>[0]) => escalasService.addAgente(payload), onSuccess: invalidate }),
     updateAgente: useMutation({ mutationFn: ({ id, payload }: { id: string; payload: any }) => escalasService.updateAgente(id, payload), onSuccess: invalidate }),
     removeAgente: useMutation({ mutationFn: (id: string) => escalasService.removeAgente(id), onSuccess: invalidate }),
-    addViatura: useMutation({ mutationFn: escalasService.addViatura.bind(escalasService), onSuccess: invalidate }),
+    addViatura: useMutation({ mutationFn: (payload: Parameters<typeof escalasService.addViatura>[0]) => escalasService.addViatura(payload), onSuccess: invalidate }),
     removeViatura: useMutation({ mutationFn: (id: string) => escalasService.removeViatura(id), onSuccess: invalidate }),
     publicar: useMutation({ mutationFn: (id: string) => escalasService.publicar(id), onSuccess: invalidate }),
     gerarRecorrencias: useMutation({ mutationFn: (id: string) => escalasService.gerarRecorrencias(id), onSuccess: invalidate }),

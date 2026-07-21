@@ -1,1 +1,68 @@
-const { createClient } = require('@supabase/supabase-js');const { execSync } = require('child_process');const SUPABASE_URL = 'https://jpztntmwmrhdobxsyulj.supabase.co';const SUPABASE_SERVICE_ROLE_KEY = 'process.env.SUPABASE_SERVICE_ROLE_KEY';const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);async function fixStorage() {    console.log('🔄 Iniciando correção do Storage e Sincronização...');    try {        // 1. Verificar e criar bucket 'documentos'        console.log('📦 Verificando bucket "documentos"...');        const { data: buckets, error: listError } = await supabase.storage.listBuckets();        if (listError) {            throw new Error(`Erro ao listar buckets: ${listError.message}`);        }        const documentosBucket = buckets.find(b => b.id === 'documentos');        if (!documentosBucket) {            console.log('   Bucket "documentos" não encontrado. Criando...');            const { data, error: createError } = await supabase.storage.createBucket('documentos', {                public: true, // Mudando para true para facilitar leitura pública se necessário, ou manter false e usar policies                fileSizeLimit: 10485760,                allowedMimeTypes: ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.ms-excel']            });            if (createError) {                console.error(`❌ Erro ao criar bucket "documentos": ${createError.message}`);            } else {                console.log('✅ Bucket "documentos" criado com sucesso!');            }        } else {            console.log('✅ Bucket "documentos" já existe.');            // Opcional: Atualizar para public se necessário            if (documentosBucket.public === false) {                console.log('   Atualizando bucket "documentos" para público...');                await supabase.storage.updateBucket('documentos', { public: true });            }        }        // 2. Verificar e criar bucket 'imagens' (caso falte)        console.log('📦 Verificando bucket "imagens"...');        const imagensBucket = buckets.find(b => b.id === 'imagens');        if (!imagensBucket) {            console.log('   Bucket "imagens" não encontrado. Criando...');            const { data, error: createError } = await supabase.storage.createBucket('imagens', {                public: true,                fileSizeLimit: 5242880,                allowedMimeTypes: ['image/png', 'image/jpeg', 'image/webp']            });            if (createError) {                console.error(`❌ Erro ao criar bucket "imagens": ${createError.message}`);            } else {                console.log('✅ Bucket "imagens" criado com sucesso!');            }        } else {            console.log('✅ Bucket "imagens" já existe.');            if (imagensBucket.public === false) {                console.log('   Atualizando bucket "imagens" para público...');                await supabase.storage.updateBucket('imagens', { public: true });            }        }        // 3. Executar SQL para garantir Policies (via RPC ou instrução direta se possível, mas aqui vamos assumir que o bucket creation resolve o principal erro 404)        // O erro 404 "Bucket not found" geralmente é resolvido criando o bucket.        // As policies são para 403 Forbidden.        console.log('\n🔄 Sincronizando com GitHub...');        try {            execSync('git add .', { stdio: 'inherit' });            execSync('git commit -m "fix: create storage buckets and sync"', { stdio: 'inherit' });            execSync('git push origin master', { stdio: 'inherit' }); // Assumindo master ou main            console.log('✅ Código sincronizado com GitHub!');        } catch (gitError) {            console.log('⚠️  Erro no Git (pode ser que não haja mudanças ou erro de auth):', gitError.message);        }    } catch (error) {        console.error('❌ Erro fatal:', error.message);    }}fixStorage();
+const { createClient } = require('@supabase/supabase-js');
+
+const supabaseUrl = process.env.VITE_SUPABASE_URL;
+const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+if (!supabaseUrl || !serviceRoleKey) {
+  console.error('Defina VITE_SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY antes de executar.');
+  process.exit(1);
+}
+
+const supabase = createClient(supabaseUrl, serviceRoleKey);
+
+const bucketDefinitions = [
+  {
+    id: 'documentos',
+    options: {
+      public: true,
+      fileSizeLimit: 10 * 1024 * 1024,
+      allowedMimeTypes: [
+        'application/pdf',
+        'application/msword',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'application/vnd.ms-excel',
+      ],
+    },
+  },
+  {
+    id: 'imagens',
+    options: {
+      public: true,
+      fileSizeLimit: 5 * 1024 * 1024,
+      allowedMimeTypes: ['image/png', 'image/jpeg', 'image/webp'],
+    },
+  },
+];
+
+async function ensureBucket(existingBuckets, definition) {
+  const existing = existingBuckets.find((bucket) => bucket.id === definition.id);
+  if (!existing) {
+    const { error } = await supabase.storage.createBucket(definition.id, definition.options);
+    if (error) throw error;
+    console.log(`Bucket ${definition.id} criado.`);
+    return;
+  }
+
+  if (!existing.public) {
+    const { error } = await supabase.storage.updateBucket(definition.id, definition.options);
+    if (error) throw error;
+    console.log(`Bucket ${definition.id} atualizado.`);
+  }
+}
+
+async function fixStorage() {
+  try {
+    const { data: buckets, error } = await supabase.storage.listBuckets();
+    if (error) throw error;
+
+    for (const definition of bucketDefinitions) {
+      await ensureBucket(buckets, definition);
+    }
+  } catch (error) {
+    console.error('Não foi possível configurar o Storage:', error instanceof Error ? error.message : error);
+    process.exitCode = 1;
+  }
+}
+
+void fixStorage();

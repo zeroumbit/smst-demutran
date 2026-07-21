@@ -54,7 +54,7 @@ const getCellValue = <T,>(item: T, column: Column<T>): ReactNode => {
 };
 
 // Componente DataTable genérico e responsivo
-function DataTableComponent<T extends { id: string | number; ativo?: boolean }>({
+function DataTableComponent<T extends { id?: string | number; ativo?: boolean }>({
   data,
   columns,
   onEdit,
@@ -98,8 +98,8 @@ function DataTableComponent<T extends { id: string | number; ativo?: boolean }>(
             </TableRow>
           </TableHeader>
           <TableBody>
-            {data.map((item) => (
-              <TableRow key={item.id}>
+            {data.map((item, itemIndex) => (
+              <TableRow key={item.id ?? itemIndex}>
                 {columns.map((column, index) => (
                   <TableCell key={index} className={column.className}>
                     {getCellValue(item, column)}
@@ -167,8 +167,8 @@ function DataTableComponent<T extends { id: string | number; ativo?: boolean }>(
 
       {/* Visualização em Cartões para telas pequenas */}
       <div className="sm:hidden space-y-4">
-        {data.map((item) => (
-          <div key={item.id} className="bg-card border border-border rounded-lg p-4">
+        {data.map((item, itemIndex) => (
+          <div key={item.id ?? itemIndex} className="bg-card border border-border rounded-lg p-4">
             <div className="flex justify-between items-start">
               <div className="flex-1 space-y-2">
                 {columns.map((column, index) => {

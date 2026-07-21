@@ -29,7 +29,7 @@ const papelOptions: Array<{ value: PapelUsuario; label: string }> = [
   { value: 'tecnico', label: 'Administrativo' },
 ];
 
-const papelFilterOptions: Array<{ value: PapelUsuario; label: string }> = [
+const papelFilterOptions: Array<{ value: PapelUsuario | 'todos'; label: string }> = [
   { value: 'todos', label: 'Todos' },
   { value: 'gestor', label: 'Gestor de Setor' },
   { value: 'tecnico', label: 'Administrativo' },
@@ -622,7 +622,7 @@ const UsuariosPage = () => {
               )}
             </div>
             <div className="hidden overflow-hidden rounded-[22px] border border-border bg-card lg:block">
-              <DataTable
+              <DataTable<AdminProfileRow>
                 data={displayedUsuarios}
                 columns={columns}
                 onEdit={handleEdit}

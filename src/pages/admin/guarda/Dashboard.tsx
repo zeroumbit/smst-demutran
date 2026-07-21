@@ -474,7 +474,7 @@ const GuardaDashboard = () => {
                   {operacoes.map((op) => (
                     <div key={op.id} className="rounded-xl bg-slate-50 px-4 py-3 sm:flex sm:items-center sm:justify-between">
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-semibold text-slate-800 truncate">{op.nome}</p>
+                        <p className="text-sm font-semibold text-slate-800 truncate"><span className="text-slate-400 font-mono text-[12px] font-medium">{op.codigo}</span> {op.nome}</p>
                         <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-500">
                           <span className="flex items-center gap-1 shrink-0"><Calendar className="h-3 w-3" />{fmtDateBR(op.data_inicio)}</span>
                           <span className="text-slate-300 shrink-0">·</span>
@@ -517,7 +517,7 @@ const GuardaDashboard = () => {
     <ResponsiveDialog
       open={Boolean(selectedOperacao)}
       onOpenChange={(open) => { if (!open) { setSelectedOperacao(null); setDatasSelecionadas([]); } }}
-      title={selectedOperacao?.nome || 'Detalhes da operação'}
+      title={(selectedOperacao?.codigo ? selectedOperacao.codigo + ' - ' : '') + (selectedOperacao?.nome || 'Detalhes da operação')}
       description="Veja os detalhes da operação."
       footer={
         <div className="flex gap-2 w-full">
@@ -543,6 +543,10 @@ const GuardaDashboard = () => {
           <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <h4 className="mb-4 text-xs font-bold uppercase tracking-[0.1em] text-slate-500">Informações da operação</h4>
             <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-xl bg-slate-50 p-3.5">
+                <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-slate-400">Código</p>
+                <p className="mt-1 text-base font-bold text-slate-800 font-mono">{selectedOperacao.codigo}</p>
+              </div>
               <div className="rounded-xl bg-slate-50 p-3.5">
                 <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-slate-400">Horário</p>
                 <p className="mt-1 text-base font-bold text-slate-800">{selectedOperacao.horario_previsto.slice(0, 5)}</p>

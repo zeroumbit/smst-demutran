@@ -83,12 +83,20 @@ export const escalasService = {
     const ids = escalas.map((escala) => escala.id);
     if (ids.length === 0) return escalas;
 
-    const [{ data: guardas }, { data: agentes }, { data: viaturas }, { data: ciencias }] = await Promise.all([
+    const [guardasResult, agentesResult, viaturasResult, cienciasResult] = await Promise.all([
       supabase.from('guardas_municipais').select('id, matricula, nome, ativo, graduacao_id, guarda_municipal_graduacoes(nome)'),
       supabase.from('guarda_escala_agentes').select('*').in('escala_id', ids).order('created_at'),
       supabase.from('guarda_escala_viaturas').select('*, veiculo:guarda_frota_veiculos(id,prefixo,placa,modelo,marca,status)').in('escala_id', ids),
       supabase.from('guarda_escala_ciencias').select('*').in('escala_id', ids),
     ]);
+
+    const childError = guardasResult.error || agentesResult.error || viaturasResult.error || cienciasResult.error;
+    if (childError) throw childError;
+
+    const { data: guardas } = guardasResult;
+    const { data: agentes } = agentesResult;
+    const { data: viaturas } = viaturasResult;
+    const { data: ciencias } = cienciasResult;
 
     const guardasMap = new Map(((guardas || []) as GuardaRow[]).map((row) => [row.id, normalizeGuarda(row)]));
     const agentsByEscala = new Map<string, GuardaEscalaAgente[]>();

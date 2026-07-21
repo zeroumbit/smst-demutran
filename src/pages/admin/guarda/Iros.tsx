@@ -92,7 +92,7 @@ const GuardaIros = () => {
       const opQuery = supabase.from('iro_operacoes').select('*').eq('ativo', true).order('data_inicio', { ascending: false });
       if (setorId) opQuery.eq('setor_id', setorId);
 
-      const promises: Promise<any>[] = [
+      const promises: PromiseLike<any>[] = [
         opQuery,
         supabase.from('iro_candidaturas').select('*, iro_operacoes(*)').eq('usuario_id', user.user_id).order('created_at', { ascending: false }),
         supabase.from('iro_candidaturas').select('operacao_id, data_operacao').in('status', ['pendente', 'confirmado', 'realizado']),
@@ -134,7 +134,8 @@ const GuardaIros = () => {
         ...(c.iro_operacoes || {}),
         ...c,
         status: c.adicionado_manual && c.status !== 'cancelado' ? 'realizado' : c.status,
-        operacao_nome: c.operacao_nome || c.iro_operacoes?.nome || 'IRO extra',
+        operacao_nome: c.operacao_nome || (c.iro_operacoes?.codigo ? c.iro_operacoes.codigo + ' ' : '') + (c.iro_operacoes?.nome || 'IRO extra'),
+        operacao_codigo: c.iro_operacoes?.codigo || null,
         iro_operacoes: c.iro_operacoes,
       }));
       setMinhasCandidaturas(lista);
@@ -461,7 +462,7 @@ const GuardaIros = () => {
                       {op.vagas_por_dia} vaga(s)/dia
                     </Badge>
                   )}
-                  <h3 className="mt-2 text-[15px] font-bold text-slate-900 line-clamp-2 leading-snug">{op.nome}</h3>
+                  <h3 className="mt-2 text-[15px] font-bold text-slate-900 line-clamp-2 leading-snug"><span className="text-slate-400 font-mono text-[13px] font-medium">{op.codigo}</span> {op.nome}</h3>
                   {op.descricao && <p className="text-[13px] leading-5 text-slate-500 mt-0.5 line-clamp-2">{op.descricao}</p>}
                   <div className="mt-auto pt-3 space-y-1.5 text-[13px] text-slate-500">
                     <span className="flex items-center gap-1.5"><Calendar className="h-3.5 w-3.5 shrink-0" />{fmtDateBR(op.data_inicio)} - {fmtDateBR(op.data_fim)}</span>
@@ -495,6 +496,7 @@ const GuardaIros = () => {
                 <div key={c.id} className="flex flex-col gap-3 rounded-2xl border border-slate-200/80 bg-white px-4 py-4 shadow-[0_4px_20px_-8px_rgba(15,23,42,0.08)] active:scale-[0.99] sm:flex-row sm:items-center sm:justify-between sm:px-5">
                   <div className="min-w-0">
                     <p className="text-[15px] font-bold text-slate-900">{c.operacao_nome}</p>
+
                     <div className="mt-0.5 text-[13px] leading-5 text-slate-500">
                       <span>{fmtDateBR(c.data_operacao)} &middot; {c.horas_trabalhadas}h &middot;</span>
                     <Badge variant="outline" className={cn('ml-1.5 rounded-full text-[11px] font-bold px-3 py-1', c.status === 'confirmado' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200')}>
@@ -506,7 +508,7 @@ const GuardaIros = () => {
                     <Button size="sm" variant="outline" className="min-h-10 rounded-xl text-[13px] font-semibold" onClick={() => { setSelectedCandidatura(c); setCandidaturaDetalhesAberto(true); }}>
                       Detalhes
                     </Button>
-                    {!c.adicionado_manual && c.status !== 'realizado' && (
+                    {!c.adicionado_manual && c.status !== 'realizado' && c.data_operacao >= new Date().toISOString().slice(0, 10) && (
                       <Button size="sm" variant="outline" className="min-h-10 rounded-xl border-red-200 text-[13px] font-semibold text-red-600 hover:bg-red-50" onClick={() => void handleCancelar(c)}>
                         Cancelar
                       </Button>
@@ -521,7 +523,7 @@ const GuardaIros = () => {
         <ResponsiveDialog
           open={Boolean(selectedOperacao)}
           onOpenChange={(open) => { if (!open) { setSelectedOperacao(null); setDatasSelecionadas([]); } }}
-          title={selectedOperacao?.nome || 'Detalhes da operação'}
+          title={(selectedOperacao?.codigo ? selectedOperacao.codigo + ' - ' : '') + (selectedOperacao?.nome || 'Detalhes da operação')}
           description="Veja os detalhes da operação."
           footer={
             <div className="flex gap-2 w-full">
@@ -547,6 +549,10 @@ const GuardaIros = () => {
               <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                 <h4 className="mb-4 text-xs font-bold uppercase tracking-[0.1em] text-slate-500">Informações da operação</h4>
                 <div className="grid grid-cols-2 gap-3">
+                  <div className="rounded-xl bg-slate-50 p-3.5">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-slate-400">Código</p>
+                    <p className="mt-1 text-base font-bold text-slate-800 font-mono">{selectedOperacao.codigo}</p>
+                  </div>
                   <div className="rounded-xl bg-slate-50 p-3.5">
                     <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-slate-400">Horário</p>
                     <p className="mt-1 text-base font-bold text-slate-800">{selectedOperacao.horario_previsto.slice(0, 5)}</p>

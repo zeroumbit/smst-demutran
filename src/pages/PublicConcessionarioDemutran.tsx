@@ -1156,7 +1156,7 @@ function SummaryCard({
   value,
   variant = 'default',
 }: {
-  icon: typeof CreditCard;
+  icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
   label: string;
   value: string;
   variant?: 'success' | 'warning' | 'danger' | 'default';

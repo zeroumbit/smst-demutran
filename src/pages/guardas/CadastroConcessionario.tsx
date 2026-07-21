@@ -115,8 +115,7 @@ const CadastroConcessionario = () => {
       console.error('Erro ao validar concessionário:', err);
       setErroValidacao('Erro de conexão. Verifique sua internet e tente novamente.');
     } finally {
-      if (requestId !== validationRequestId.current) return;
-      if (validationStatus === 'validating') {
+      if (requestId === validationRequestId.current) {
         setValidationStatus((current) => current === 'validating' ? 'idle' : current);
       }
     }

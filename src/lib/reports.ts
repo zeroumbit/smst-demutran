@@ -182,7 +182,9 @@ export const openPdfPrintReport = (title: string, sections: ReportSheet[]) => {
     }, 2000);
   };
 
-  iframe.contentDocument!.readyState === 'complete' && iframe.onload!(new Event('load'));
+  if (iframe.contentDocument!.readyState === 'complete') {
+    iframe.onload!(new Event('load'));
+  }
 };
 
 export const printHtml = (title: string, contentHtml: string) => {
@@ -244,5 +246,7 @@ export const printHtml = (title: string, contentHtml: string) => {
     }, 2000);
   };
 
-  iframe.contentDocument!.readyState === 'complete' && iframe.onload!(new Event('load'));
+  if (iframe.contentDocument!.readyState === 'complete') {
+    iframe.onload!(new Event('load'));
+  }
 };

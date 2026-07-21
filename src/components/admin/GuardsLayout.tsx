@@ -94,23 +94,21 @@ export const GuardsLayout = ({ children }: GuardsLayoutProps) => {
       return;
     }
 
-    supabase.rpc('get_minha_onboarding_etapa').then(({ data, error }) => {
-      if (cancelled) return;
-      if (error) {
-        console.warn('Erro ao carregar etapa de onboarding do banco:', error.message);
-        // Se houver erro de banco (ex: migração não aplicada), não abrimos o onboarding por segurança
-        setOnboardingOpen(false);
-        return;
+    void (async () => {
+      try {
+        const { data, error } = await supabase.rpc('get_minha_onboarding_etapa');
+        if (cancelled) return;
+        if (error) {
+          console.warn('Erro ao carregar etapa de onboarding do banco:', error.message);
+          setOnboardingOpen(false);
+          return;
+        }
+        const etapa = (data as { tipo?: string; etapa?: number | null } | null)?.etapa;
+        if (etapa == null) setOnboardingOpen(true);
+      } finally {
+        if (!cancelled) setOnboardingLoading(false);
       }
-      const etapa = (data as { tipo?: string; etapa?: number | null } | null)?.etapa;
-      if (etapa == null) {
-        setOnboardingOpen(true);
-      }
-    }).catch(() => {
-      // fallback silencioso
-    }).finally(() => {
-      if (!cancelled) setOnboardingLoading(false);
-    });
+    })();
     return () => { cancelled = true; };
   }, []);
 

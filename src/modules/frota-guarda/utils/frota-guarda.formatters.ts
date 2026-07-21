@@ -42,6 +42,17 @@ export const tiposUso = [
   'Apoio',
 ];
 
+export const vinculos = [
+  'Guarda Municipal',
+  'GMAM',
+  'ROPE',
+  'GSU',
+  'Guarda Cidada',
+  'Defesa Civil',
+  'Jovem Guarda',
+  'Vinculo Geral',
+];
+
 export const grupamentos = [
   'Guarda Municipal',
   'GMAM',

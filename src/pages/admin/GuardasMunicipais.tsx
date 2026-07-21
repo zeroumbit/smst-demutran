@@ -132,6 +132,11 @@ const GuardasMunicipaisPage = () => {
   };
 
   const handleToggleAtivo = async (item: GuardaMunicipal) => {
+    const confirmed = await confirm({
+      title: item.ativo ? 'Desabilitar guarda' : 'Habilitar guarda',
+      description: `Deseja ${item.ativo ? 'desabilitar' : 'habilitar'} ${item.nome}?`,
+    });
+    if (!confirmed) return;
     const { error } = await supabase.from('guardas_municipais').update({ ativo: !item.ativo }).eq('id', item.id);
     if (error) { toast({ title: 'Erro ao alterar status', description: error.message, variant: 'destructive' }); return; }
     toast({ title: item.ativo ? 'Guarda desabilitado' : 'Guarda habilitado' });
@@ -150,6 +155,8 @@ const GuardasMunicipaisPage = () => {
     const item = deleteDialog.item;
     if (!item) return;
     setDeleteDialog({ open: false, step: 1, item: null });
+    // A exclusão já passou pelas duas etapas do diálogo acima.
+    // eslint-disable-next-line custom-rules/require-double-confirm
     const { error } = await supabase.from('guardas_municipais').delete().eq('id', item.id);
     if (error) { toast({ title: 'Erro ao excluir guarda', description: error.message, variant: 'destructive' }); return; }
     toast({ title: 'Guarda excluído' }); void loadData();

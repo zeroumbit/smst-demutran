@@ -16,7 +16,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useConfirmDialog } from '@/components/ui/use-confirm-dialog';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
-import { gerarRelatorioMensal, gerarRelatorioOperacao } from '@/lib/relatorio-iro';
+import { gerarRelatorioDetalhadoOperacao, gerarRelatorioMensal, gerarRelatorioOperacao } from '@/lib/relatorio-iro';
 import { supabase } from '@/lib/supabase';
 import { cn } from '@/lib/utils';
 import { maskCpf } from '@/lib/masks';
@@ -344,6 +344,16 @@ const GuardaMunicipalIros = () => {
           .select('usuario_id, guarda_id, guardas_municipais!inner(id, nome, matricula, cpf, graduacao_id, ativo, guarda_municipal_graduacoes(nome))'),
       ]);
 
+      const loadError =
+        opRes.error ||
+        candRes.error ||
+        bhRes.error ||
+        notifRes.error ||
+        userRes.error ||
+        valoresRes.error ||
+        guardasRes.error;
+      if (loadError) throw loadError;
+
       const valores = ((valoresRes.data || []) as ValorGraduacaoRow[]).map((item) => ({
         graduacao_id: item.graduacao_id,
         valor_hora: Number(item.valor_hora) || 0,
@@ -353,11 +363,16 @@ const GuardaMunicipalIros = () => {
       const operacoesData = (opRes.data || []) as IROOperacao[];
       const hoje = todayStr();
       const expired = operacoesData.filter((item) => item.ativo && item.data_fim < hoje);
-      for (const item of operacoesData) {
-        if (item.ativo && item.data_fim < hoje) item.ativo = false;
-      }
       if (expired.length > 0) {
-        void supabase.from('iro_operacoes').update({ ativo: false }).in('id', expired.map((item) => item.id));
+        const { error: expirationError } = await supabase
+          .from('iro_operacoes')
+          .update({ ativo: false })
+          .in('id', expired.map((item) => item.id));
+        if (expirationError) throw expirationError;
+
+        for (const item of expired) {
+          item.ativo = false;
+        }
       }
 
       const guardas = ((guardasRes.data || []) as GuardaJoinRow[])
@@ -395,6 +410,13 @@ const GuardaMunicipalIros = () => {
       );
       setGuardasAtivos(guardas.sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')));
       setValoresGraduacao(valores);
+    } catch (error) {
+      console.error('Erro ao carregar dados de IRO:', error);
+      toast({
+        title: 'Não foi possível carregar os dados de IRO',
+        description: 'Tente novamente. Nenhum dado parcial foi aplicado à tela.',
+        variant: 'destructive',
+      });
     } finally {
       setLoading(false);
     }
@@ -852,6 +874,8 @@ const GuardaMunicipalIros = () => {
         return;
       }
 
+      // Substituição técnica das datas da operação durante uma edição já confirmada pelo usuário.
+      // eslint-disable-next-line custom-rules/require-double-confirm
       const { error: delErr } = await supabase.from('iro_operacao_datas').delete().eq('operacao_id', editingOperacao.id);
       if (delErr) {
         toast({ title: 'Erro ao atualizar datas', description: delErr.message, variant: 'destructive' });
@@ -1248,7 +1272,7 @@ const GuardaMunicipalIros = () => {
             )}
           </div>
           <div>
-            <h2 className="text-lg font-bold text-slate-900">{item.nome}</h2>
+            <h2 className="text-lg font-bold text-slate-900"><span className="text-slate-400 font-mono text-sm font-medium">{item.codigo}</span> {item.nome}</h2>
             {item.descricao && <p className="mt-1 text-sm text-slate-600">{item.descricao}</p>}
           </div>
           <div className="flex flex-wrap gap-3 text-sm text-slate-500">
@@ -1351,7 +1375,7 @@ const GuardaMunicipalIros = () => {
               <Button size="sm" variant="outline" onClick={() => { setDetalhesCandidatura(item); setDetalhesCandidaturaOpen(true); }}>
                 Detalhes
               </Button>
-              {item.status !== 'cancelado' && item.data_operacao > todayStr() && (
+              {item.status !== 'cancelado' && item.data_operacao >= todayStr() && (
                 <Button size="sm" variant="outline" className="border-red-200 text-red-600 hover:bg-red-50" onClick={() => void handleCancelarCandidatura(item)}>
                   Cancelar
                 </Button>
@@ -1413,7 +1437,7 @@ const GuardaMunicipalIros = () => {
             <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
               <div className="flex-1 space-y-2">
                 <div className="flex flex-wrap items-center gap-2">
-                  <h3 className="text-lg font-bold text-slate-900">{operacao.nome}</h3>
+                  <h3 className="text-lg font-bold text-slate-900"><span className="text-slate-400 font-mono text-sm font-medium">{operacao.codigo}</span> {operacao.nome}</h3>
                   <Badge variant="outline" className={cn('rounded-full px-3 py-1 text-xs font-bold', operacao.ativo ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-slate-200 bg-slate-100 text-slate-500')}>
                     {operacao.ativo ? 'Ativa' : 'Inativa'}
                   </Badge>
@@ -1853,7 +1877,7 @@ const GuardaMunicipalIros = () => {
                             {valorHoraPorUsuario.has(item.usuario_id) && <span className="ml-1 font-semibold text-emerald-600">{formatCurrency(item.horas_trabalhadas * (valorHoraPorUsuario.get(item.usuario_id) || 0))}</span>}
                           </span>
                         </div>
-                        {item.usuario_id === user?.user_id && item.status !== 'cancelado' && !item.adicionado_manual && item.data_operacao > todayStr() && (
+                        {item.usuario_id === user?.user_id && item.status !== 'cancelado' && !item.adicionado_manual && item.data_operacao >= todayStr() && (
                           <Button size="sm" variant="outline" className="h-7 border-red-200 text-xs text-red-600" onClick={() => void handleCancelarCandidatura(item)}>
                             Cancelar
                           </Button>
@@ -2173,7 +2197,7 @@ const GuardaMunicipalIros = () => {
               </div>
               <div className="space-y-2">
                 <Label>Tempo para solicitação</Label>
-                <Select value={operacaoForm.tempo_solicitacao} onValueChange={(value) => setOperacaoForm((current) => ({ ...current, tempo_solicitacao: value }))}>
+                <Select value={operacaoForm.tempo_solicitacao} onValueChange={(value: OperacaoFormState['tempo_solicitacao']) => setOperacaoForm((current) => ({ ...current, tempo_solicitacao: value }))}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>

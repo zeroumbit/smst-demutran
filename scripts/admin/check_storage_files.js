@@ -1,1 +1,34 @@
-import { createClient } from '@supabase/supabase-js';const supabaseUrl = 'https://jpztntmwmrhdobxsyulj.supabase.co';const supabaseKey = 'process.env.VITE_SUPABASE_ANON_KEY';const supabase = createClient(supabaseUrl, supabaseKey);async function checkStorage() {  console.log('🔍 Verificando arquivos no bucket "imagens"...\n');  // Listar arquivos na RAIZ do bucket  console.log('📁 Listando raiz do bucket...');  const { data: rootData, error: rootError } = await supabase.storage    .from('imagens')    .list('', { limit: 100 });    if (rootError) {    console.error('❌ Erro ao listar raiz:', rootError.message);  } else {    console.log('✅ Arquivos na raiz do bucket:');    console.log(rootData?.map(f => `  - ${f.name} (${f.metadata?.size || 'N/A'} bytes)`).join('\n') || '  Nenhum arquivo encontrado');  }  // Listar arquivos em images/  console.log('\n📁 Listando pasta images/...');  const { data, error } = await supabase.storage    .from('imagens')    .list('images', { limit: 100 });  if (error) {    console.error('❌ Erro ao listar images/:', error.message);  } else {    console.log('✅ Arquivos em images/:');    console.log(data?.map(f => `  - ${f.name} (${f.metadata?.size || 'N/A'} bytes)`).join('\n') || '  Nenhum arquivo encontrado');  }  // Verificar URLs públicas  console.log('\n🔗 Testando URLs:');  const logoUrl = 'https://jpztntmwmrhdobxsyulj.supabase.co/storage/v1/object/public/imagens/images/logo.png';  const logoRootUrl = 'https://jpztntmwmrhdobxsyulj.supabase.co/storage/v1/object/public/imagens/logo.png';    console.log(`  - images/logo.png: ${logoUrl}`);  console.log(`  - logo.png (raiz): ${logoRootUrl}`);}checkStorage();
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseUrl = process.env.VITE_SUPABASE_URL;
+const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY;
+
+if (!supabaseUrl || !supabaseKey) {
+  console.error('Defina VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY antes de executar.');
+  process.exit(1);
+}
+
+const supabase = createClient(supabaseUrl, supabaseKey);
+
+async function listFolder(folder) {
+  const label = folder || 'raiz';
+  const { data, error } = await supabase.storage.from('imagens').list(folder, { limit: 100 });
+
+  if (error) {
+    console.error(`Erro ao listar ${label}:`, error.message);
+    return;
+  }
+
+  console.log(`Arquivos em ${label}:`);
+  console.log(
+    data?.map((file) => `  - ${file.name} (${file.metadata?.size || 'N/A'} bytes)`).join('\n') ||
+      '  Nenhum arquivo encontrado',
+  );
+}
+
+async function checkStorage() {
+  await listFolder('');
+  await listFolder('images');
+}
+
+void checkStorage();

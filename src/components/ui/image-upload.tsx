@@ -6,19 +6,23 @@ import { toast } from '@/hooks/use-toast';
 import { IMAGE_UPLOAD_RULES, validateFileUpload } from '@/lib/upload';
 
 interface ImageUploadProps {
+  id?: string;
   label?: string;
   value?: string;
   onChange?: (file: File | null) => void;
   onPreviewChange?: (preview: string | null) => void;
+  onRemove?: () => void;
   required?: boolean;
   className?: string;
 }
 
 export const ImageUpload: React.FC<ImageUploadProps> = ({
+  id,
   label = 'Imagem',
   value,
   onChange,
   onPreviewChange,
+  onRemove,
   required = false,
   className = ''
 }) => {
@@ -59,6 +63,7 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
     onChange?.(null);
     setImagePreview(null);
     onPreviewChange?.(null);
+    onRemove?.();
     // Limpar o valor do input
     const fileInput = document.getElementById('image-upload') as HTMLInputElement;
     if (fileInput) {
@@ -68,12 +73,12 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
 
   return (
     <div className={`space-y-2 ${className}`}>
-      <Label htmlFor="image-upload">
+      <Label htmlFor={id || 'image-upload'}>
         {label} {required && <span className="text-destructive">*</span>}
       </Label>
       <div className="space-y-3">
         <Input
-          id="image-upload"
+          id={id || 'image-upload'}
           type="file"
           accept="image/png,image/jpeg,image/webp"
           onChange={handleImageUpload}

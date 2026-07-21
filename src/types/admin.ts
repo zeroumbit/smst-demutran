@@ -149,6 +149,7 @@ export interface GuardaMunicipalIRO {
 
 export interface IROOperacao {
   id: string;
+  codigo: string;
   nome: string;
   descricao: string | null;
   horario_previsto: string;
@@ -337,6 +338,7 @@ export interface DemutranConcessionario {
   ponto_referencia: string | null;
   numero_vaga: string | null;
   titular_nome: string | null;
+  endereco?: string | null;
   logradouro: string | null;
   numero: string | null;
   bairro_distrito: string | null;

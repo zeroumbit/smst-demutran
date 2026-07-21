@@ -159,7 +159,7 @@ const parseLiberacaoDate = (value: string | null) => {
   const trimmed = value.trim().replace(/\/{2,}/g, '/');
   if (!trimmed) return null;
 
-  const match = trimmed.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/);
+  const match = trimmed.match(/(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})/);
   if (!match) {
     return null;
   }
@@ -190,7 +190,7 @@ const parseSpreadsheetDate = (value: unknown) => {
   }
   const asString = String(value).trim();
   if (!asString) return null;
-  const directMatch = asString.replace(/\/{2,}/g, '/').match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/);
+  const directMatch = asString.replace(/\/{2,}/g, '/').match(/(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})/);
   if (directMatch) {
     const [, day, month, year] = directMatch;
     return buildDateOnlyIso(day, month, year);

@@ -75,7 +75,8 @@ type FormData = {
   concessao_arquivo_nome: string;
 };
 
-type ParsedImportRow = Omit<DemutranConcessionario, 'id' | 'setor_id' | 'created_at' | 'updated_at'>;
+type ParsedImportRow = Partial<Omit<DemutranConcessionario, 'id' | 'setor_id' | 'created_at' | 'updated_at'>> &
+  Pick<DemutranConcessionario, 'categoria' | 'ativo' | 'importado_planilha'>;
 
 const categoriaOptions: Array<{ value: CategoriaConcessionario; label: string }> = [
   { value: 'mototaxi', label: 'Moto-taxi' },
@@ -523,7 +524,7 @@ const DemutranConcessionarios = () => {
   const filteredReferenceCards = useMemo(() => {
     const selected = arrecadacaoReference[selectedPeriodoArrecadacao];
     const entries = Object.entries(selected) as Array<
-      [CategoriaConcessionario, (typeof arrecadacaoReference)[keyof typeof arrecadacaoReference][CategoriaConcessionario]]
+      [CategoriaConcessionario, { quantidade: number; atualizados: number; pendentes: number; arrecadado: number }]
     >;
 
     return entries.filter(([categoria]) => selectedCategoria === 'todas' || categoria === selectedCategoria);
@@ -1591,7 +1592,7 @@ const DemutranConcessionarios = () => {
               )}
             </div>
             <div className="hidden overflow-hidden rounded-[22px] border border-border bg-card lg:block">
-              <DataTable
+              <DataTable<DemutranConcessionario>
                 data={filteredItems}
                 columns={columns}
                 onView={setViewingItem}

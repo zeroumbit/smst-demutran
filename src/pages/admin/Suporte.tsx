@@ -1,9 +1,10 @@
-import { Mail, MessageSquare, Info, LifeBuoy, ArrowUpRight } from 'lucide-react';
+import { Mail, MessageSquare, Info, LifeBuoy, ArrowUpRight, Copy, Check } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLocation } from 'react-router-dom';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { GuardsLayout } from '@/components/admin/GuardsLayout';
 import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
 
 export default function SuportePage() {
   const { profile } = useAuth();
@@ -17,11 +18,21 @@ export default function SuportePage() {
     window.open(url, '_blank');
   };
 
+  const suporteEmail = 'zeroumbit@gmail.com';
+
+  const handleCopyEmail = async () => {
+    try {
+      await navigator.clipboard.writeText(suporteEmail);
+      toast.success('E-mail copiado!');
+    } catch {
+      toast.error('Não foi possível copiar.');
+    }
+  };
+
   const handleEmailClick = () => {
-    const email = 'suporte@site-smst.com';
     const subject = 'Solicitação de Suporte - SMST Canindé';
     const body = `Olá, preciso de suporte.\n\nNome: ${profile?.name || ''}\nSetor: ${profile?.setor_nome || ''}\nPapel: ${profile?.papel || ''}\n\nDescrição detalhada do problema:\n`;
-    const url = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    const url = `mailto:${suporteEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
     window.open(url, '_blank');
   };
 
@@ -109,6 +120,14 @@ export default function SuportePage() {
               <p className="text-xs text-slate-500 leading-relaxed">
                 Abra um suporte por esse meio caso seu problema não seja emergência e possa esperar por no mínimo <strong>48 horas</strong>.
               </p>
+              <button
+                onClick={handleCopyEmail}
+                className="mt-2 inline-flex items-center gap-2 rounded-xl bg-slate-50 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-100 active:scale-[0.98] transition-all border border-slate-200 w-full sm:w-auto"
+              >
+                <Mail className="h-4 w-4 text-slate-400" />
+                <span className="select-all">{suporteEmail}</span>
+                <Copy className="h-3.5 w-3.5 text-slate-400 ml-auto shrink-0" />
+              </button>
             </div>
           </div>
           <div className="mt-6">

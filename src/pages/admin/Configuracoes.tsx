@@ -16,6 +16,7 @@ import { supabase } from '@/lib/supabase';
 import { sanitizeFileName, validateFileUpload, IMAGE_UPLOAD_RULES } from '@/lib/upload';
 import { cn } from '@/lib/utils';
 import type { Configuracao, PixChaveTipo } from '@/types/admin';
+import { useConfirmDialog } from '@/components/ui/use-confirm-dialog';
 
 type PixManualForm = {
   chave_tipo: PixChaveTipo;
@@ -61,6 +62,7 @@ type DemutranTaxa = {
 };
 
 const Configuracoes = () => {
+  const { confirm, confirmDialog } = useConfirmDialog();
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -152,7 +154,11 @@ const Configuracoes = () => {
   }
 
   async function handleDeleteTaxa(id: string) {
-    if (!confirm('Deseja realmente excluir esta taxa?')) return;
+    const confirmed = await confirm({
+      title: 'Excluir taxa',
+      description: 'Deseja realmente excluir esta taxa? Esta ação não pode ser desfeita.',
+    });
+    if (!confirmed) return;
     try {
       const { error } = await supabase
         .from('demutran_taxas')
@@ -690,6 +696,7 @@ const Configuracoes = () => {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+        {confirmDialog}
       </div>
     </AdminLayout>
   );

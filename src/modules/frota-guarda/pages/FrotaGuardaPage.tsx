@@ -51,6 +51,7 @@ import {
   statusClasses,
   statusLabels,
   tiposUso,
+  vinculos,
 } from '../utils/frota-guarda.formatters';
 
 const basePath = '/admin/guardas/guarda-municipal/frota';
@@ -75,6 +76,7 @@ const emptyForm = {
   combustivel: '',
   categoria_id: 'none',
   tipo_uso: [] as string[],
+  vinculos: [] as string[],
   grupamento: 'none',
   status: 'DISPONIVEL' as GuardaFrotaStatus,
   quilometragem_atual: '0',
@@ -102,6 +104,7 @@ function buildInitialForm(veiculo?: GuardaFrotaVeiculo | null) {
     combustivel: veiculo.combustivel || '',
     categoria_id: veiculo.categoria_id || 'none',
     tipo_uso: veiculo.tipo_uso || [],
+    vinculos: veiculo.vinculos || [],
     grupamento: veiculo.grupamento || 'none',
     status: veiculo.status,
     quilometragem_atual: String(veiculo.quilometragem_atual || 0),
@@ -129,6 +132,7 @@ function payloadFromForm(form: typeof emptyForm): GuardaFrotaVeiculoPayload {
     combustivel: form.combustivel.trim() || null,
     categoria_id: form.categoria_id === 'none' ? null : form.categoria_id,
     tipo_uso: form.tipo_uso,
+    vinculos: form.vinculos,
     grupamento: form.grupamento === 'none' ? null : form.grupamento,
     status: form.status,
     quilometragem_atual: Number(form.quilometragem_atual || 0),
@@ -567,10 +571,8 @@ function FrotaFormPage({ id, onDone }: { id?: string; onDone: (id?: string) => v
         <Card>
           <CardHeader><CardTitle>Identificacao operacional</CardTitle></CardHeader>
           <CardContent className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-2 md:col-span-2">
-              <Label>Veiculo base da Frota Municipal</Label>
+            <div className="hidden">
               <Select value={form.demutran_veiculo_id} onValueChange={handleBaseVehicle}>
-                <SelectTrigger><SelectValue placeholder="Opcional" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">Sem vinculo com DEMUTRAN</SelectItem>
                   {baseVehicles.map((item) => (
@@ -580,32 +582,32 @@ function FrotaFormPage({ id, onDone }: { id?: string; onDone: (id?: string) => v
               </Select>
             </div>
             <Field label="Prefixo *" value={form.prefixo} onChange={(value) => setForm({ ...form, prefixo: value.toUpperCase() })} placeholder="GM-01" />
-            <Field label="Placa *" value={form.placa} onChange={(value) => setForm({ ...form, placa: normalizePlate(value) })} />
-            <Field label="Renavam" value={form.renavam} onChange={(value) => setForm({ ...form, renavam: value })} />
-            <Field label="Chassi" value={form.chassi} onChange={(value) => setForm({ ...form, chassi: value.toUpperCase() })} />
-            <Field label="Patrimonio" value={form.patrimonio} onChange={(value) => setForm({ ...form, patrimonio: value })} />
-            <Field label="Identificacao interna" value={form.identificacao_interna} onChange={(value) => setForm({ ...form, identificacao_interna: value })} />
+            <Field label="Placa *" value={form.placa} onChange={(value) => setForm({ ...form, placa: normalizePlate(value) })} placeholder="ABC-1234" />
+            <Field label="Renavam" value={form.renavam} onChange={(value) => setForm({ ...form, renavam: value })} placeholder="Ex: 1234567890" />
+            <Field label="Chassi" value={form.chassi} onChange={(value) => setForm({ ...form, chassi: value.toUpperCase() })} placeholder="Ex: 9BD1234567890" />
+            <Field label="Patrimonio" value={form.patrimonio} onChange={(value) => setForm({ ...form, patrimonio: value })} placeholder="Número de patrimônio" />
+            <Field label="Identificacao interna" value={form.identificacao_interna} onChange={(value) => setForm({ ...form, identificacao_interna: value })} placeholder="Identificação interna" />
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader><CardTitle>Dados do veiculo</CardTitle></CardHeader>
           <CardContent className="grid gap-4 md:grid-cols-3">
-            <Field label="Marca" value={form.marca} onChange={(value) => setForm({ ...form, marca: value })} />
-            <Field label="Modelo" value={form.modelo} onChange={(value) => setForm({ ...form, modelo: value })} />
-            <Field label="Versao" value={form.versao} onChange={(value) => setForm({ ...form, versao: value })} />
-            <Field label="Ano fabricacao" type="number" value={form.ano_fabricacao} onChange={(value) => setForm({ ...form, ano_fabricacao: value })} />
-            <Field label="Ano modelo" type="number" value={form.ano_modelo} onChange={(value) => setForm({ ...form, ano_modelo: value })} />
-            <Field label="Cor" value={form.cor} onChange={(value) => setForm({ ...form, cor: value })} />
-            <Field label="Combustivel" value={form.combustivel} onChange={(value) => setForm({ ...form, combustivel: value })} />
-            <Field label="Quilometragem atual" type="number" value={form.quilometragem_atual} onChange={(value) => setForm({ ...form, quilometragem_atual: value })} />
-            <Field label="Foto principal (URL)" value={form.foto_principal_url} onChange={(value) => setForm({ ...form, foto_principal_url: value })} />
+            <Field label="Marca" value={form.marca} onChange={(value) => setForm({ ...form, marca: value })} placeholder="Ex: Toyota, Ford" />
+            <Field label="Modelo" value={form.modelo} onChange={(value) => setForm({ ...form, modelo: value })} placeholder="Ex: Hilux, Ranger" />
+            <Field label="Versao" value={form.versao} onChange={(value) => setForm({ ...form, versao: value })} placeholder="Ex: XLS, SRV" />
+            <Field label="Ano fabricacao" type="number" value={form.ano_fabricacao} onChange={(value) => setForm({ ...form, ano_fabricacao: value })} placeholder="Ex: 2020" />
+            <Field label="Ano modelo" type="number" value={form.ano_modelo} onChange={(value) => setForm({ ...form, ano_modelo: value })} placeholder="Ex: 2021" />
+            <Field label="Cor" value={form.cor} onChange={(value) => setForm({ ...form, cor: value })} placeholder="Ex: Branca" />
+            <Field label="Combustivel" value={form.combustivel} onChange={(value) => setForm({ ...form, combustivel: value })} placeholder="Ex: Gasolina, Diesel" />
+            <Field label="Quilometragem atual" type="number" value={form.quilometragem_atual} onChange={(value) => setForm({ ...form, quilometragem_atual: value })} placeholder="0" />
+            <Field label="Foto principal (URL)" value={form.foto_principal_url} onChange={(value) => setForm({ ...form, foto_principal_url: value })} placeholder="https://..." />
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader><CardTitle>Operacao</CardTitle></CardHeader>
-          <CardContent className="grid gap-4 md:grid-cols-2">
+          <CardContent className="grid gap-4 md:grid-cols-3">
             <div className="space-y-2">
               <Label>Categoria</Label>
               <Select value={form.categoria_id} onValueChange={(value) => setForm({ ...form, categoria_id: value })}>
@@ -635,7 +637,24 @@ function FrotaFormPage({ id, onDone }: { id?: string; onDone: (id?: string) => v
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
+            <div className="space-y-2 md:col-span-3">
+              <Label>Vinculos</Label>
+              <div className="grid gap-2 rounded-md border border-slate-200 p-3 sm:grid-cols-2">
+                {vinculos.map((item) => (
+                  <label key={item} className="flex items-center gap-2 text-sm text-slate-600">
+                    <Checkbox
+                      checked={form.vinculos.includes(item)}
+                      onCheckedChange={(checked) => setForm((current) => ({
+                        ...current,
+                        vinculos: checked ? [...current.vinculos, item] : current.vinculos.filter((value) => value !== item),
+                      }))}
+                    />
+                    {item}
+                  </label>
+                ))}
+              </div>
+            </div>
+            <div className="space-y-2 md:col-span-3">
               <Label>Tipos de uso</Label>
               <div className="grid gap-2 rounded-md border border-slate-200 p-3 sm:grid-cols-2">
                 {tiposUso.map((item) => (
@@ -652,14 +671,14 @@ function FrotaFormPage({ id, onDone }: { id?: string; onDone: (id?: string) => v
                 ))}
               </div>
             </div>
-            <div className="space-y-2 md:col-span-2">
+            <div className="space-y-2 md:col-span-3">
               <Label>Observacoes</Label>
-              <Textarea value={form.observacoes} onChange={(event) => setForm({ ...form, observacoes: event.target.value })} rows={3} />
+              <Textarea value={form.observacoes} onChange={(event) => setForm({ ...form, observacoes: event.target.value })} rows={3} placeholder="Observações sobre a viatura..." />
             </div>
             {form.status === 'INATIVO' && (
-              <div className="space-y-2 md:col-span-2">
+              <div className="space-y-2 md:col-span-3">
                 <Label>Motivo da inativacao</Label>
-                <Textarea value={form.motivo_inativacao} onChange={(event) => setForm({ ...form, motivo_inativacao: event.target.value })} rows={2} />
+                <Textarea value={form.motivo_inativacao} onChange={(event) => setForm({ ...form, motivo_inativacao: event.target.value })} rows={2} placeholder="Informe o motivo da inativação..." />
               </div>
             )}
           </CardContent>

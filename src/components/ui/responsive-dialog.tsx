@@ -16,6 +16,7 @@ interface ResponsiveDialogProps {
   onConfirm?: () => void;
   confirmLabel?: string;
   confirmDisabled?: boolean;
+  confirmLoading?: boolean;
   className?: string;
 }
 
@@ -31,6 +32,7 @@ export function ResponsiveDialog({
   onConfirm,
   confirmLabel = 'Salvar',
   confirmDisabled = false,
+  confirmLoading = false,
   className,
 }: ResponsiveDialogProps) {
   const isMobile = useIsMobile();
@@ -38,7 +40,7 @@ export function ResponsiveDialog({
   const defaultFooter = (
     <div className="flex gap-3 w-full">
       {onConfirm && (
-        <Button onClick={onConfirm} disabled={confirmDisabled} className="flex-1">
+        <Button onClick={onConfirm} disabled={confirmDisabled || confirmLoading} className="flex-1">
           {confirmLabel}
         </Button>
       )}

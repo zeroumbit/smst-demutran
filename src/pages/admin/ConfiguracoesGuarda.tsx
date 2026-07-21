@@ -71,6 +71,11 @@ const ConfiguracoesGuarda = () => {
   };
 
   const handleToggleAtivo = async (item: IROValorGraduacao) => {
+    const confirmed = await confirm({
+      title: item.ativo ? 'Desativar valor' : 'Ativar valor',
+      description: `Deseja ${item.ativo ? 'desativar' : 'ativar'} este valor de graduação?`,
+    });
+    if (!confirmed) return;
     const { error } = await supabase.from('iro_valores_graduacao').update({ ativo: !item.ativo }).eq('id', item.id);
     if (error) { toast({ title: 'Erro ao alterar status', description: error.message, variant: 'destructive' }); return; }
     toast({ title: item.ativo ? 'Valor desativado' : 'Valor ativado' });

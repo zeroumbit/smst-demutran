@@ -50,11 +50,13 @@ const MembrosEquipe = ({ paginaAtual }: MembrosEquipeProps) => {
     const fetchMembros = async () => {
       try {
         // Primeiro tentar buscar com todas as colunas
-        let { data, error } = await supabase
+        const { data: initialData, error } = await supabase
           .from('equipe')
           .select('id, nome, cargo, setor, foto, pagina_destino, ativo')
           .eq('ativo', true)
           .order('nome', { ascending: true });
+
+        let data = initialData;
 
         // Se ocorrer erro de coluna ausente, tentar com colunas essenciais
         if (error && error.message.includes('Could not find')) {

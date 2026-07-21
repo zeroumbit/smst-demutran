@@ -9,8 +9,8 @@ export function sanitizeFileName(fileName: string): string {
 }
 
 type UploadValidationOptions = {
-  allowedMimeTypes: string[];
-  allowedExtensions: string[];
+  allowedMimeTypes: readonly string[];
+  allowedExtensions: readonly string[];
   maxSizeInBytes: number;
   label?: string;
 };

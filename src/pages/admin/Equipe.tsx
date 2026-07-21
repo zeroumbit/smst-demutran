@@ -92,7 +92,7 @@ const Equipe = ({ layout = true }: { layout?: boolean } = {}) => {
     }
 
     let uploadedPath: string | null = null;
-    let oldImageUrl = editingItem?.foto || null;
+    const oldImageUrl = editingItem?.foto || null;
 
     try {
       let imageUrl = formData.foto;
@@ -290,10 +290,11 @@ const Equipe = ({ layout = true }: { layout?: boolean } = {}) => {
       }
 
       // Reload membros after successful submit
-      let { data, error: reloadError } = await supabase
+      const { data: initialData, error: reloadError } = await supabase
         .from('equipe')
         .select('id, nome, cargo, setor, pagina_destino, foto, ativo, created_at, updated_at')
         .order('nome', { ascending: true });
+      let data = initialData;
 
       // Se ocorrer erro de coluna ausente, tentar com colunas essenciais
       if (reloadError && reloadError.message.includes('Could not find')) {
@@ -305,8 +306,8 @@ const Equipe = ({ layout = true }: { layout?: boolean } = {}) => {
         if (!fallbackResult.error) {
           data = fallbackResult.data?.map(item => ({
             ...item,
-            pagina_destino: item.pagina_destino || null,
-            foto: item.foto || null
+            pagina_destino: null,
+            foto: null
           })) || [];
         } else {
           console.error('Error reloading membros:', fallbackResult.error.message);

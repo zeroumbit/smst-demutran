@@ -1,9 +1,11 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useRef, useState, ReactNode } from 'react';
+import type { Session } from '@supabase/supabase-js';
 import { useNavigate } from 'react-router-dom';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/lib/supabase';
 import type { AdminProfile, PapelUsuario } from '@/types/admin';
 import { maskCpf } from '@/lib/masks';
+import { queryClient } from '@/lib/queryClient';
 
 const LEI_IRO_ACCEPTED_KEY_PREFIX = 'lei-iro-accepted:';
 
@@ -265,6 +267,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<AdminProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
+  const sessionRequestRef = useRef(0);
+  const sessionUserIdRef = useRef<string | null>(null);
 
   const refreshProfile = async () => {
     const profile = await fetchUserProfile();
@@ -290,21 +294,29 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     let isMounted = true;
 
-    const processSession = async (hasSession: boolean) => {
+    const processSession = async (session: Session | null) => {
+      const requestId = ++sessionRequestRef.current;
+      const sessionUserId = session?.user.id ?? null;
+
       if (!isMounted) {
         return;
       }
 
-      if (hasSession) {
+      if (sessionUserIdRef.current !== sessionUserId) {
+        queryClient.clear();
+        sessionUserIdRef.current = sessionUserId;
+      }
+
+      if (sessionUserId) {
         const profile = await fetchUserProfile();
-        if (isMounted) {
+        if (isMounted && requestId === sessionRequestRef.current && profile?.user_id === sessionUserId) {
           setUser(profile);
         }
-      } else if (isMounted) {
+      } else if (isMounted && requestId === sessionRequestRef.current) {
         setUser(null);
       }
 
-      if (isMounted) {
+      if (isMounted && requestId === sessionRequestRef.current) {
         setIsLoading(false);
       }
     };
@@ -312,7 +324,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const checkInitialSession = async () => {
       setIsLoading(true);
       const { data: { session } } = await supabase.auth.getSession();
-      await processSession(!!session?.user);
+      await processSession(session);
     };
 
     void checkInitialSession();
@@ -320,7 +332,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       // Evita bloquear o ciclo interno do Supabase Auth com awaits no callback.
       window.setTimeout(() => {
-        void processSession(!!session?.user);
+        void processSession(session);
       }, 0);
     });
 
@@ -397,6 +409,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const logout = async () => {
+    ++sessionRequestRef.current;
+    sessionUserIdRef.current = null;
+    queryClient.clear();
     const { error } = await supabase.auth.signOut();
     if (error) {
       console.error('Logout error:', error.message);

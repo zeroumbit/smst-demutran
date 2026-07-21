@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { equipesGuardaService } from '../services/equipes-guarda.service';
 import type { GuardaEquipePayload } from '../types/equipes-guarda.types';
+import { escalasKeys } from '@/modules/escalas/hooks/useEscalas';
 
 export const equipesGuardaKeys = {
   root: ['equipes-guarda'] as const,
@@ -35,8 +36,11 @@ export function useEquipesGuardaMutations() {
   const queryClient = useQueryClient();
 
   const invalidate = async (equipeId?: string) => {
-    await queryClient.invalidateQueries({ queryKey: equipesGuardaKeys.equipes() });
-    await queryClient.invalidateQueries({ queryKey: equipesGuardaKeys.guardas() });
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: equipesGuardaKeys.equipes() }),
+      queryClient.invalidateQueries({ queryKey: equipesGuardaKeys.guardas() }),
+      queryClient.invalidateQueries({ queryKey: escalasKeys.root }),
+    ]);
     if (equipeId) {
       await queryClient.invalidateQueries({ queryKey: equipesGuardaKeys.historico(equipeId) });
     }
