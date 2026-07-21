@@ -1,4 +1,4 @@
-import { ReactNode, useEffect, useMemo, useState } from 'react';
+import { ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useTheme } from 'next-themes';
 import { useAuth } from '@/contexts/AuthContext';
@@ -9,6 +9,8 @@ import type { ModuloSistema } from '@/types/admin';
 import { supabase } from '@/lib/supabase';
 import type { ComponentType } from 'react';
 import guardaLogo from '@/guarda.png';
+import { OnboardingWizard } from '@/components/onboarding/OnboardingWizard';
+import { adminOnboardingSteps } from '@/components/onboarding/onboardingSteps';
 import {
   Newspaper,
   Calendar,
@@ -135,16 +137,16 @@ const guardaMenuItems: MenuItem[] = [
   { icon: HouseIcon, label: 'Dashboard', path: '/admin/dashboard/guarda-municipal', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
   { icon: FileWarning, label: 'IROs', path: '/admin/iros/guarda-municipal', allowedPapeis: ['gestor', 'admin_setor', 'tecnico'] },
   { icon: MessageSquareText, label: 'Fala Cidadao', path: '/admin/fala-cidadao/guarda-municipal', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
-  { icon: NotebookPen, label: 'Anotacoes', path: '/admin/anotacoes/guarda-municipal', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
-  { icon: ImageIcon, label: 'Midias', path: '/admin/midias/guarda-municipal', allowedPapeis: ['gestor', 'admin_setor'] },
-  { icon: FileWarning, label: 'Minhas IROs', path: '/admin/iros/guarda-municipal/minhas-iro', allowedPapeis: ['gestor', 'admin_setor', 'tecnico'] },
-  { icon: ClipboardList, label: 'Fiscalizacao', path: '/admin/fiscalizacao/infracoes', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
   { icon: Shield, label: 'Guardas', path: '/admin/guardas/guarda-municipal', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
-  { icon: CalendarDays, label: 'Escalas', path: '/admin/guardas/guarda-municipal/escalas', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
   { icon: CarFront, label: 'Frota da Guarda', path: '/admin/guardas/guarda-municipal/frota', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
   { icon: Users, label: 'Equipes', path: '/admin/guardas/guarda-municipal/equipes', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
+  { icon: ImageIcon, label: 'Midias', path: '/admin/midias/guarda-municipal', allowedPapeis: ['gestor', 'admin_setor'] },
   { icon: Settings2, label: 'Configuracoes', path: '/admin/configuracoes-guarda-municipal', allowedPapeis: ['super_admin', 'gestor', 'admin_setor'] },
   { icon: Users, label: 'Usuarios', path: '/admin/usuarios/guarda-municipal', allowedPapeis: ['super_admin', 'gestor'] },
+  { icon: FileWarning, label: 'Minhas IROs', path: '/admin/iros/guarda-municipal/minhas-iro', allowedPapeis: ['gestor', 'admin_setor', 'tecnico'] },
+  { icon: ClipboardList, label: 'Fiscalizacao', path: '/admin/fiscalizacao/infracoes', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
+  { icon: CalendarDays, label: 'Escalas', path: '/admin/guardas/guarda-municipal/escalas', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
+  { icon: NotebookPen, label: 'Anotacoes', path: '/admin/anotacoes/guarda-municipal', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
   { icon: UserCircle2, label: 'Perfil', path: '/admin/perfil/guarda-municipal', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
 ];
 
@@ -315,6 +317,53 @@ export const AdminLayout = ({ children, backPath, backLabel }: AdminLayoutProps)
     return null;
   }, [isSuperAdmin]);
 
+  const [onboardingOpen, setOnboardingOpen] = useState(false);
+  const [onboardingLoading, setOnboardingLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    setOnboardingLoading(true);
+
+    // Fallback do localStorage para evitar que o onboarding abra repetidamente em caso de falha no banco
+    const localConcluido = localStorage.getItem('admin_onboarding_concluido');
+    if (localConcluido === 'true') {
+      setOnboardingOpen(false);
+      setOnboardingLoading(false);
+      return;
+    }
+
+    supabase.rpc('get_minha_onboarding_etapa').then(({ data, error }) => {
+      if (cancelled) return;
+      if (error) {
+        console.warn('Erro ao carregar etapa de onboarding do banco:', error.message);
+        // Se houver erro de banco (ex: migração não aplicada), não abrimos o onboarding por segurança
+        setOnboardingOpen(false);
+        return;
+      }
+      const etapa = (data as { tipo?: string; etapa?: number | null } | null)?.etapa;
+      if (etapa == null) {
+        setOnboardingOpen(true);
+      }
+    }).catch(() => {
+    }).finally(() => {
+      if (!cancelled) setOnboardingLoading(false);
+    });
+    return () => { cancelled = true; };
+  }, []);
+
+  const handleOnboardingFinish = useCallback(async () => {
+    setOnboardingOpen(false);
+    localStorage.setItem('admin_onboarding_concluido', 'true');
+    try {
+      const { error } = await supabase.rpc('set_minha_onboarding_etapa', { p_etapa: adminOnboardingSteps.length });
+      if (error) {
+        console.error('Erro ao salvar etapa de onboarding no banco:', error.message);
+      }
+    } catch (e) {
+      console.error('Erro de conexão ao salvar onboarding:', e);
+    }
+  }, []);
+
   const visibleMenuItems = useMemo(() => {
     const sourceMenuItems = sectorContext === 'guarda-municipal'
       ? guardaMenuItems
@@ -386,9 +435,12 @@ export const AdminLayout = ({ children, backPath, backLabel }: AdminLayoutProps)
       .map(filterItem)
       .filter(Boolean) as MenuItem[];
 
-    let items = moveMenuItemBeforeLabel(filteredMenuItems, ANOTACOES_LABEL, PERFIL_LABEL);
-    items = moveMenuItemBeforeLabel(items, 'Midias', PERFIL_LABEL);
-    return items;
+    if (sectorContext !== 'guarda-municipal') {
+      let items = moveMenuItemBeforeLabel(filteredMenuItems, ANOTACOES_LABEL, PERFIL_LABEL);
+      items = moveMenuItemBeforeLabel(items, 'Midias', PERFIL_LABEL);
+      return items;
+    }
+    return filteredMenuItems;
   }, [hasPapel, sectorContext, isSuperAdmin, profile?.setor_slug, profile?.modulos]);
 
   const visibleBottomNavItems = useMemo(() => {
@@ -399,15 +451,17 @@ export const AdminLayout = ({ children, backPath, backLabel }: AdminLayoutProps)
     });
   }, [hasPapel, isSuperAdmin]);
 
-  const showSectionSplit = sectorContext === 'guarda-municipal';
-  const pessoalLabels = new Set(['Minhas IROs', 'Escalas', 'Fiscalizacao', 'Perfil']);
+  const showSectionSplit = sectorContext === 'guarda-municipal' || sectorContext === 'demutran';
+  const guardaPessoalLabels = new Set(['Minhas IROs', 'Escalas', 'Fiscalizacao', 'Anotacoes', 'Perfil']);
+  const demutranPessoalLabels = new Set(['Anotacoes', 'Perfil']);
+  const pessoalLabels = sectorContext === 'demutran' ? demutranPessoalLabels : guardaPessoalLabels;
   const adminMenuItems = useMemo(
     () => showSectionSplit ? visibleMenuItems.filter(item => !pessoalLabels.has(item.label)) : visibleMenuItems,
-    [visibleMenuItems, showSectionSplit],
+    [visibleMenuItems, showSectionSplit, pessoalLabels],
   );
   const pessoalMenuItems = useMemo(
     () => showSectionSplit ? visibleMenuItems.filter(item => pessoalLabels.has(item.label)) : [],
-    [visibleMenuItems, showSectionSplit],
+    [visibleMenuItems, showSectionSplit, pessoalLabels],
   );
 
   useEffect(() => {
@@ -856,6 +910,14 @@ export const AdminLayout = ({ children, backPath, backLabel }: AdminLayoutProps)
             </button>
           </div>
         </div>
+      )}
+
+      {onboardingOpen && !onboardingLoading && (
+        <OnboardingWizard
+          steps={adminOnboardingSteps}
+          totalSteps={adminOnboardingSteps.length}
+          onFinish={handleOnboardingFinish}
+        />
       )}
     </div>
   );

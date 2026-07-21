@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { AlertTriangle, Bell, CarFront, CheckCircle, Clock, CreditCard, Eye, EyeOff, Home, KeyRound, LogOut, Printer, Save, ScrollText, Send, User, UserCircle, X, XCircle } from 'lucide-react';
 import { DemutranPortalLayout } from '@/components/demutran/DemutranPortalLayout';
@@ -19,6 +19,8 @@ import { getConcessionarioFinancialCopy } from '@/lib/demutranConcessionarioFina
 import { printHtml } from '@/lib/reports';
 import { supabase } from '@/lib/supabase';
 import { maskCpf, maskPhone } from '@/lib/masks';
+import { OnboardingWizard } from '@/components/onboarding/OnboardingWizard';
+import { concessionarioOnboardingSteps } from '@/components/onboarding/onboardingSteps';
 import type { DemutranConcessionario, DemutranConcessionarioNotificacao } from '@/types/admin';
 
 const SESSION_KEY = 'demutran_concessionario_session';
@@ -116,6 +118,25 @@ const PublicConcessionarioDemutran = () => {
   const [solicitandoVeiculo, setSolicitandoVeiculo] = useState(false);
   const [showConfirmTroca, setShowConfirmTroca] = useState(false);
   const [dismissedDebitoBanner, setDismissedDebitoBanner] = useState(false);
+  const [onboardingOpen, setOnboardingOpen] = useState(false);
+
+  const checkConcessionarioOnboarding = useCallback(() => {
+    const concluido = localStorage.getItem('concessionario_onboarding_concluido');
+    if (!concluido) {
+      setOnboardingOpen(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (perfil) {
+      checkConcessionarioOnboarding();
+    }
+  }, [perfil, checkConcessionarioOnboarding]);
+
+  const handleOnboardingFinish = useCallback(() => {
+    setOnboardingOpen(false);
+    localStorage.setItem('concessionario_onboarding_concluido', 'true');
+  }, []);
 
   // Estados para Taxas de Serviços
   const [taxas, setTaxas] = useState<any[]>([]);
@@ -1116,6 +1137,14 @@ const PublicConcessionarioDemutran = () => {
             </div>
           </div>
         </section>
+      )}
+
+      {onboardingOpen && perfil && (
+        <OnboardingWizard
+          steps={concessionarioOnboardingSteps}
+          totalSteps={concessionarioOnboardingSteps.length}
+          onFinish={handleOnboardingFinish}
+        />
       )}
     </DemutranPortalLayout>
   );

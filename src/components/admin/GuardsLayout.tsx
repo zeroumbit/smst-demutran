@@ -1,8 +1,11 @@
-import { ReactNode, ComponentType, useState } from 'react';
+import { ReactNode, ComponentType, useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAdminNotifications } from '@/hooks/use-admin-notifications';
 import { Button } from '@/components/ui/button';
+import { supabase } from '@/lib/supabase';
+import { OnboardingWizard } from '@/components/onboarding/OnboardingWizard';
+import { guardaOnboardingSteps } from '@/components/onboarding/onboardingSteps';
 import {
   FileWarning,
   UserCircle,
@@ -73,6 +76,54 @@ export const GuardsLayout = ({ children }: GuardsLayoutProps) => {
   const handleLogout = async () => {
     await logout();
     navigate('/admin/login');
+  };
+
+  const [onboardingOpen, setOnboardingOpen] = useState(false);
+  const [onboardingLoading, setOnboardingLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    setOnboardingLoading(true);
+
+    // Fallback do localStorage para evitar que o onboarding abra repetidamente em caso de falha no banco
+    const localConcluido = localStorage.getItem('guarda_onboarding_concluido');
+    if (localConcluido === 'true') {
+      setOnboardingOpen(false);
+      setOnboardingLoading(false);
+      return;
+    }
+
+    supabase.rpc('get_minha_onboarding_etapa').then(({ data, error }) => {
+      if (cancelled) return;
+      if (error) {
+        console.warn('Erro ao carregar etapa de onboarding do banco:', error.message);
+        // Se houver erro de banco (ex: migração não aplicada), não abrimos o onboarding por segurança
+        setOnboardingOpen(false);
+        return;
+      }
+      const etapa = (data as { tipo?: string; etapa?: number | null } | null)?.etapa;
+      if (etapa == null) {
+        setOnboardingOpen(true);
+      }
+    }).catch(() => {
+      // fallback silencioso
+    }).finally(() => {
+      if (!cancelled) setOnboardingLoading(false);
+    });
+    return () => { cancelled = true; };
+  }, []);
+
+  const handleOnboardingFinish = async () => {
+    setOnboardingOpen(false);
+    localStorage.setItem('guarda_onboarding_concluido', 'true');
+    try {
+      const { error } = await supabase.rpc('set_minha_onboarding_etapa', { p_etapa: guardaOnboardingSteps.length });
+      if (error) {
+        console.error('Erro ao salvar etapa de onboarding no banco:', error.message);
+      }
+    } catch (e) {
+      console.error('Erro de conexão ao salvar onboarding:', e);
+    }
   };
 
   const allNavItems = [...adminNavItems, ...pessoalNavItems];
@@ -283,6 +334,14 @@ export const GuardsLayout = ({ children }: GuardsLayoutProps) => {
             </button>
           </div>
         </div>
+      )}
+
+      {onboardingOpen && !onboardingLoading && (
+        <OnboardingWizard
+          steps={guardaOnboardingSteps}
+          totalSteps={guardaOnboardingSteps.length}
+          onFinish={handleOnboardingFinish}
+        />
       )}
     </div>
   );
