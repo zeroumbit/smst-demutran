@@ -44,11 +44,10 @@ export function ResponsiveDialog({
       )}
     </div>
   );
-
   if (isMobile) {
     return (
       <Drawer open={open} onOpenChange={onOpenChange}>
-        <DrawerContent className="h-screen mt-0">
+        <DrawerContent className="max-h-[85dvh] rounded-t-[28px]">
           <DrawerHeader className="text-left relative shrink-0">
             <DrawerClose className="absolute right-4 top-4 rounded-sm opacity-70 hover:opacity-100 transition-opacity">
               <X className="h-5 w-5" />
@@ -57,7 +56,7 @@ export function ResponsiveDialog({
             {description && <DrawerDescription className="pr-8 break-words">{description}</DrawerDescription>}
           </DrawerHeader>
           <div className={`flex-1 overflow-y-auto px-4 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden ${className ?? ''}`}>{children}</div>
-          <DrawerFooter className="mt-0 pt-2 bg-background border-t">
+          <DrawerFooter className="mt-0 pt-2 bg-background border-t pb-[calc(1rem+env(safe-area-inset-bottom))]">
             {footer ?? defaultFooter}
           </DrawerFooter>
         </DrawerContent>

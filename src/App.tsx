@@ -96,6 +96,7 @@ const AdminFalaCidadao = React.lazy(() => import("./pages/admin/FalaCidadao"));
 const AdminRelatorios = React.lazy(() => import("./pages/admin/Relatorios"));
 const AdminMinhasAnotacoes = React.lazy(() => import("./pages/admin/MinhasAnotacoes"));
 const GuardaMinhasAnotacoes = React.lazy(() => import("./pages/admin/guarda/MinhasAnotacoes"));
+const SuportePage = React.lazy(() => import("./pages/admin/Suporte"));
 
 const IroDashboardRoute = () => {
   const { profile } = useAuth();
@@ -725,6 +726,14 @@ const App = () => {
               </SuspenseWrapper>
             } />
 
+            <Route path="/admin/suporte" element={
+              <SuspenseWrapper>
+                <ProtectedRoute allowedPapeis={['super_admin', 'gestor', 'admin_setor', 'tecnico']}>
+                  <SuportePage />
+                </ProtectedRoute>
+              </SuspenseWrapper>
+            } />
+
             {/* Guarda Municipal - Perfil Routes */}
             <Route path="/admin/perfil-guardas/guarda-municipal/dashboard" element={
               <SuspenseWrapper>
@@ -786,6 +795,14 @@ const App = () => {
               <SuspenseWrapper>
                 <ProtectedRoute requireGuarda>
                   <GuardaMinhasAnotacoes />
+                </ProtectedRoute>
+              </SuspenseWrapper>
+            } />
+
+            <Route path="/admin/perfil-guardas/guarda-municipal/suporte" element={
+              <SuspenseWrapper>
+                <ProtectedRoute requireGuarda>
+                  <SuportePage />
                 </ProtectedRoute>
               </SuspenseWrapper>
             } />

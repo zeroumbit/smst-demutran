@@ -6,7 +6,7 @@ import { GuardsLayout } from '@/components/admin/GuardsLayout';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { ResponsiveDialog } from '@/components/ui/responsive-dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -84,9 +84,9 @@ export default function MinhasEscalasPage() {
       <div className="space-y-5">
         <section className="rounded-[24px] bg-[linear-gradient(135deg,_#0f172a_0%,_#1e293b_48%,_#2563eb_100%)] p-4 text-white sm:rounded-[28px] sm:p-6">
           <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-sky-100/70 sm:text-[11px]">Guarda Municipal</p>
-          <h1 className="mt-2 text-xl font-black text-white sm:text-2xl md:text-3xl">Minhas Escalas</h1>
-          <p className="mt-1.5 hidden text-[13px] text-white/80 md:block md:mt-2 md:text-sm">Servicos publicados, ciencia e trocas de servico.</p>
-          <div className="mt-4 grid gap-3 sm:grid-cols-3 md:mt-5">
+          <h1 className="mt-2 text-2xl font-bold text-white sm:text-3xl">Minhas Escalas</h1>
+          <p className="mt-1.5 hidden text-[13px] leading-5 text-white/80 md:block md:mt-2 md:text-sm">Servicos publicados, ciencia e trocas de servico.</p>
+          <div className="mt-4 flex gap-3 overflow-x-auto snap-x snap-mandatory scrollbar-none md:grid md:grid-cols-3 md:overflow-visible md:mt-5">
             <Stat label="Proximas" value={String(futuras.length)} icon={CalendarDays} />
             <Stat label="Na semana" value={String(semana.length)} icon={Clock} />
             <Stat label="Trocas" value={String(trocas.length)} icon={Shuffle} />
@@ -119,9 +119,9 @@ export default function MinhasEscalasPage() {
                   <div key={troca.id} className="rounded-xl border border-slate-200 p-4">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                       <div>
-                        <p className="text-sm font-bold text-slate-900">{troca.tipo} - {troca.escala_origem?.titulo ?? 'Escala'}</p>
+                        <p className="text-[15px] font-semibold text-slate-900">{troca.tipo} - {troca.escala_origem?.titulo ?? 'Escala'}</p>
                         <p className="text-xs text-slate-500">Solicitante: {troca.solicitante?.nome ?? '-'} - Destinatario: {troca.destinatario?.nome ?? '-'}</p>
-                        <p className="mt-1 text-xs text-slate-400">{formatDateTime(troca.solicitado_em)}</p>
+                        <p className="mt-0.5 text-xs text-slate-400">{formatDateTime(troca.solicitado_em)}</p>
                       </div>
                       <div className="flex flex-wrap gap-2">
                         <Badge variant="outline">{trocaStatusLabels[troca.status]}</Badge>
@@ -152,48 +152,52 @@ export default function MinhasEscalasPage() {
         )}
       </div>
 
-      <Dialog open={trocaOpen} onOpenChange={setTrocaOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Solicitar troca de servico</DialogTitle>
-            <DialogDescription>A troca so altera a escala oficial apos aceite do outro guarda e aprovacao administrativa.</DialogDescription>
-          </DialogHeader>
-          <form onSubmit={solicitarTroca} className="space-y-4">
-            <div className="rounded-lg bg-slate-50 p-3 text-sm text-slate-600">
-              <strong>{selected?.titulo}</strong><br />{selected ? formatDateTime(selected.data_inicio) : ''}
-            </div>
-            <Field label="Tipo">
-              <Select value={trocaForm.tipo} onValueChange={(value: TrocaTipo) => setTrocaForm((current) => ({ ...current, tipo: value }))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent><SelectItem value="SUBSTITUICAO">Substituicao</SelectItem><SelectItem value="TROCA">Troca</SelectItem></SelectContent>
+      <ResponsiveDialog
+        open={trocaOpen}
+        onOpenChange={setTrocaOpen}
+        title="Solicitar troca de serviço"
+        description="A troca só altera a escala oficial após aceite do outro guarda e aprovação administrativa."
+        footer={
+          <div className="flex gap-2 w-full">
+            <Button type="button" variant="outline" className="flex-1 rounded-xl text-[13px] font-semibold" onClick={() => setTrocaOpen(false)}>Cancelar</Button>
+            <Button type="submit" form="troca-form" className="flex-1 rounded-xl text-[13px] font-semibold">Enviar solicitação</Button>
+          </div>
+        }
+      >
+        <form id="troca-form" onSubmit={solicitarTroca} className="space-y-4 py-2">
+          <div className="rounded-xl bg-slate-50 p-4 text-sm text-slate-600 border border-slate-100 shadow-inner">
+            <strong>{selected?.titulo}</strong><br />{selected ? formatDateTime(selected.data_inicio) : ''}
+          </div>
+          <Field label="Tipo">
+            <Select value={trocaForm.tipo} onValueChange={(value: TrocaTipo) => setTrocaForm((current) => ({ ...current, tipo: value }))}>
+              <SelectTrigger className="rounded-xl"><SelectValue /></SelectTrigger>
+              <SelectContent className="rounded-xl"><SelectItem value="SUBSTITUICAO">Substituição</SelectItem><SelectItem value="TROCA">Troca</SelectItem></SelectContent>
+            </Select>
+          </Field>
+          <Field label="Guarda destinatário">
+            <Select value={trocaForm.destinatario_guarda_id} onValueChange={(value) => setTrocaForm((current) => ({ ...current, destinatario_guarda_id: value }))}>
+              <SelectTrigger className="rounded-xl"><SelectValue placeholder="Selecione o guarda" /></SelectTrigger>
+              <SelectContent className="rounded-xl">{(apoio.guardas.data ?? []).map((guarda) => <SelectItem key={guarda.id} value={guarda.id}>{guarda.nome} - {guarda.matricula}</SelectItem>)}</SelectContent>
+            </Select>
+          </Field>
+          {trocaForm.tipo === 'TROCA' && (
+            <Field label="Escala oferecida pelo destinatário">
+              <Select value={trocaForm.escala_destino_id} onValueChange={(value) => setTrocaForm((current) => ({ ...current, escala_destino_id: value }))}>
+                <SelectTrigger className="rounded-xl"><SelectValue placeholder="Selecione a escala" /></SelectTrigger>
+                <SelectContent className="rounded-xl">{escalas.filter((escala) => escala.id !== selected?.id && new Date(escala.data_inicio) > new Date()).map((escala) => <SelectItem key={escala.id} value={escala.id}>{escala.titulo} - {formatDate(escala.data_inicio)}</SelectItem>)}</SelectContent>
               </Select>
             </Field>
-            <Field label="Guarda destinatario">
-              <Select value={trocaForm.destinatario_guarda_id} onValueChange={(value) => setTrocaForm((current) => ({ ...current, destinatario_guarda_id: value }))}>
-                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                <SelectContent>{(apoio.guardas.data ?? []).map((guarda) => <SelectItem key={guarda.id} value={guarda.id}>{guarda.nome} - {guarda.matricula}</SelectItem>)}</SelectContent>
-              </Select>
-            </Field>
-            {trocaForm.tipo === 'TROCA' && (
-              <Field label="Escala oferecida pelo destinatario">
-                <Select value={trocaForm.escala_destino_id} onValueChange={(value) => setTrocaForm((current) => ({ ...current, escala_destino_id: value }))}>
-                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                  <SelectContent>{escalas.filter((escala) => escala.id !== selected?.id && new Date(escala.data_inicio) > new Date()).map((escala) => <SelectItem key={escala.id} value={escala.id}>{escala.titulo} - {formatDate(escala.data_inicio)}</SelectItem>)}</SelectContent>
-                </Select>
-              </Field>
-            )}
-            <Field label="Motivo"><Input value={trocaForm.motivo} onChange={(event) => setTrocaForm((current) => ({ ...current, motivo: event.target.value }))} /></Field>
-            <Field label="Observacao"><Textarea value={trocaForm.observacao} onChange={(event) => setTrocaForm((current) => ({ ...current, observacao: event.target.value }))} /></Field>
-            <DialogFooter><Button type="button" variant="outline" onClick={() => setTrocaOpen(false)}>Cancelar</Button><Button type="submit">Enviar solicitacao</Button></DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+          )}
+          <Field label="Motivo"><Input className="rounded-xl" value={trocaForm.motivo} onChange={(event) => setTrocaForm((current) => ({ ...current, motivo: event.target.value }))} /></Field>
+          <Field label="Observação"><Textarea className="rounded-xl min-h-[80px]" value={trocaForm.observacao} onChange={(event) => setTrocaForm((current) => ({ ...current, observacao: event.target.value }))} /></Field>
+        </form>
+      </ResponsiveDialog>
     </GuardsLayout>
   );
 }
 
 function Stat({ label, value, icon: Icon }: { label: string; value: string; icon: any }) {
-  return <div className="rounded-[20px] bg-white/10 p-4"><Icon className="h-5 w-5 text-white/70" /><p className="mt-3 text-[10px] font-bold uppercase tracking-wide text-white/60">{label}</p><p className="mt-1 text-2xl font-black">{value}</p></div>;
+  return <div className="min-w-[140px] shrink-0 snap-start rounded-[20px] bg-white/10 p-4 md:min-w-0 md:snap-none"><Icon className="h-5 w-5 text-white/70" /><p className="mt-3 text-[11px] font-semibold uppercase tracking-wide text-white/60">{label}</p><p className="mt-1 text-2xl font-bold">{value}</p></div>;
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
@@ -209,7 +213,7 @@ function EscalaCard({ escala, destaque, onConfirmar, onTroca }: { escala: Guarda
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <p className="font-bold text-slate-900">{escala.titulo}</p>
+            <p className="text-[15px] font-semibold text-slate-900">{escala.titulo}</p>
             <Badge variant="outline" className={statusClassName(status)}>{statusLabels[status]}</Badge>
           </div>
           <p className="mt-1 text-sm text-slate-500">{formatDate(escala.data_inicio)} - {formatTime(escala.data_inicio)} ate {formatTime(escala.data_fim)}</p>
@@ -221,9 +225,9 @@ function EscalaCard({ escala, destaque, onConfirmar, onTroca }: { escala: Guarda
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
-          {onConfirmar && !minhaCiencia?.confirmado_em && <Button size="sm" onClick={onConfirmar} className="gap-2"><CheckCircle2 className="h-4 w-4" />Confirmar ciencia</Button>}
-          {minhaCiencia?.confirmado_em && <Badge className="bg-emerald-50 text-emerald-700"><CheckCircle2 className="mr-1 h-3.5 w-3.5" />Ciente</Badge>}
-          {onTroca && new Date(escala.data_inicio) > new Date() && <Button size="sm" variant="outline" onClick={onTroca} className="gap-2"><Shuffle className="h-4 w-4" />Solicitar troca</Button>}
+          {onConfirmar && !minhaCiencia?.confirmado_em && <Button size="sm" onClick={onConfirmar} className="gap-2 text-[13px]"><CheckCircle2 className="h-4 w-4" />Confirmar ciencia</Button>}
+          {minhaCiencia?.confirmado_em && <Badge className="bg-emerald-50 text-emerald-700 text-[13px]"><CheckCircle2 className="mr-1 h-3.5 w-3.5" />Ciente</Badge>}
+          {onTroca && new Date(escala.data_inicio) > new Date() && <Button size="sm" variant="outline" onClick={onTroca} className="gap-2 text-[13px]"><Shuffle className="h-4 w-4" />Solicitar troca</Button>}
         </div>
       </div>
     </div>

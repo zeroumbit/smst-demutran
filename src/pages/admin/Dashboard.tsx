@@ -296,6 +296,11 @@ const Dashboard = () => {
       let frotaMunicipalAtiva = 0;
       let noticiasSetor = 0;
       let eventosSetor = 0;
+      let veiculosApreendidosSistema = 0;
+      let veiculosLiberadosSistema = 0;
+      let frotaManutencaoSistema = 0;
+      let iroOperacoesSistema = 0;
+      let falaDemandasSistema = 0;
 
       if (isDemutranScope) {
         const [
@@ -447,17 +452,12 @@ const Dashboard = () => {
           }
         });
 
-        let iroOperacoesSistema = 0;
-        let iroBancoHorasSistema = 0;
-        let falaDemandasSistema = 0;
-        let veiculosApreendidosSistema = 0;
-        let veiculosLiberadosSistema = 0;
-        let credenciaisPendentesSistema = 0;
-        let recursosPendentesSistema = 0;
-        let concessionariosSistema: any[] = [];
-        let frotaManutencaoSistema = 0;
-
         if (isSuperAdmin && !isGuardaScope && !isDemutranScope) {
+          let iroBancoHorasSistema = 0;
+          let credenciaisPendentesSistema = 0;
+          let recursosPendentesSistema = 0;
+          let concessionariosSistema: any[] = [];
+
           const [
             guardasSistemaCount,
             frotaSistemaCount,

@@ -40,6 +40,7 @@ import {
   ClipboardList,
   Wrench,
   CalendarDays,
+  LifeBuoy,
 } from 'lucide-react';
 
 const HouseIcon: ComponentType<{ className?: string }> = ({ className }) => (
@@ -643,6 +644,16 @@ export const AdminLayout = ({ children, backPath, backLabel }: AdminLayoutProps)
           </span>
         )}
         {pessoalMenuItems.map((item) => renderNavItem(item))}
+        {!sidebarCollapsed && (
+          <span className="mt-4 block px-4 pb-1 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+            Suporte
+          </span>
+        )}
+        {renderNavItem({
+          icon: LifeBuoy,
+          label: 'Suporte',
+          path: '/admin/suporte',
+        })}
       </nav>
 
       <div className="border-t border-slate-200 p-3">
@@ -870,7 +881,7 @@ export const AdminLayout = ({ children, backPath, backLabel }: AdminLayoutProps)
 
       {menuModalOpen && (
         <div className="fixed inset-0 z-[60] flex flex-col bg-white lg:hidden animate-in slide-in-from-bottom">
-          <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
+          <div className="flex items-center justify-between border-b border-slate-200 px-5 pb-4 pt-[calc(max(env(safe-area-inset-top),1rem)+0.5rem)] bg-slate-50">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
                 <img src={guardaLogo as string} alt="Guarda" className="h-full w-full object-contain p-1" />
@@ -898,9 +909,17 @@ export const AdminLayout = ({ children, backPath, backLabel }: AdminLayoutProps)
               </span>
             )}
             {pessoalMenuItems.map((item) => renderNavItem(item))}
+            <span className="mt-4 block px-4 pb-1 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+              Suporte
+            </span>
+            {renderNavItem({
+              icon: LifeBuoy,
+              label: 'Suporte',
+              path: '/admin/suporte',
+            })}
           </nav>
 
-          <div className="border-t border-slate-200 p-4">
+          <div className="border-t border-slate-200 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] bg-slate-50">
             <button
               onClick={handleLogout}
               className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium text-slate-500 hover:bg-red-50 hover:text-red-600 transition-colors"

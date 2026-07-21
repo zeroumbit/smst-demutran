@@ -5,13 +5,23 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ResponsiveDialog } from '@/components/ui/responsive-dialog';
 import { toast } from '@/hooks/use-toast';
-import { Calendar, Hourglass, Banknote, ChevronRight, Clock, FileWarning, TrendingUp, X, Sparkles, Info, Shield, Gavel, CheckCircle2 } from 'lucide-react';
+import { Calendar, Hourglass, Banknote, ChevronRight, Clock, FileWarning, TrendingUp, X, Sparkles, Info, Shield, Gavel, CheckCircle2, AlertTriangle } from 'lucide-react';
 import type { IROOperacao } from '@/types/admin';
 import { cn } from '@/lib/utils';
+
+const gerarIntervaloDatas = (inicio: string, fim: string): string[] => {
+  const dates: string[] = [];
+  const current = new Date(inicio + 'T00:00:00');
+  const end = new Date(fim + 'T00:00:00');
+  while (current <= end) {
+    dates.push(current.toISOString().slice(0, 10));
+    current.setDate(current.getDate() + 1);
+  }
+  return dates;
+};
 
 const LIMITE_IRO_MES = 72;
 const BANNER_STORAGE_KEY = 'iro-banner-dismiss';
@@ -80,8 +90,11 @@ const GuardaDashboard = () => {
   const [bannerVisible, setBannerVisible] = useState(() => bannerPodeExibir());
 
   const [selectedOperacao, setSelectedOperacao] = useState<IROOperacao | null>(null);
-  const [candidaturaData, setCandidaturaData] = useState({ data_operacao: new Date().toISOString().slice(0, 10) });
   const [candidaturaEnviando, setCandidaturaEnviando] = useState(false);
+  const [operacaoDatas, setOperacaoDatas] = useState<Record<string, string[]>>({});
+  const [vagasPorData, setVagasPorData] = useState<Record<string, number>>({});
+  const [minhasCandidaturasPorData, setMinhasCandidaturasPorData] = useState<Record<string, boolean>>({});
+  const [datasSelecionadas, setDatasSelecionadas] = useState<string[]>([]);
 
   const [exibirModalLei, setExibirModalLei] = useState(false);
   const [termoAceito, setTermoAceito] = useState(false);
@@ -167,30 +180,66 @@ const GuardaDashboard = () => {
           .select('horas_excedentes')
           .eq('usuario_id', user.user_id)
           .maybeSingle(),
-        supabase.from('iro_candidaturas').select('operacao_id').in('status', ['pendente', 'confirmado', 'realizado']),
+        supabase.from('iro_candidaturas').select('operacao_id, data_operacao').in('status', ['pendente', 'confirmado', 'realizado']),
       ]);
 
       const hojeStr = new Date().toISOString().slice(0, 10);
       const validOps = (opRes.data || []).filter((op: any) => op.ativo && op.data_fim >= hojeStr) as IROOperacao[];
       setOperacoes(validOps);
 
-      const vagasCountMap = new Map<string, number>();
-      (vagasCountRes.data || []).forEach((v: any) => {
-        vagasCountMap.set(v.operacao_id, (vagasCountMap.get(v.operacao_id) || 0) + 1);
-      });
-      const vagasMap: Record<string, boolean> = {};
-      validOps.forEach((op: any) => {
-        const dias = Math.ceil((new Date(op.data_fim).getTime() - new Date(op.data_inicio).getTime()) / (1000 * 60 * 60 * 24)) + 1;
-        const totalVagas = op.vagas_por_dia * dias;
-        vagasMap[op.id] = (vagasCountMap.get(op.id) || 0) >= totalVagas;
-      });
-      setVagasPreenchidas(vagasMap);
+      let datasMap: Record<string, string[]> = {};
+      if (validOps.length > 0) {
+        const { data: datasRes } = await supabase
+          .from('iro_operacao_datas')
+          .select('operacao_id, data')
+          .in('operacao_id', validOps.map((op) => op.id))
+          .gte('data', hojeStr)
+          .order('data', { ascending: true });
+
+        (datasRes || []).forEach((row: any) => {
+          if (!datasMap[row.operacao_id]) datasMap[row.operacao_id] = [];
+          datasMap[row.operacao_id].push(row.data);
+        });
+      }
+      datasMap = validOps.reduce((acc, op) => {
+        acc[op.id] = acc[op.id]?.length ? acc[op.id] : gerarIntervaloDatas(op.data_inicio, op.data_fim).filter((data) => data >= hojeStr);
+        return acc;
+      }, datasMap);
+      setOperacaoDatas(datasMap);
 
       const lista = (candRes.data || []).map((c: any) => ({
         ...c,
         operacao_nome: c.operacao_nome || c.iro_operacoes?.nome || 'IRO extra',
       }));
       setUltimasCandidaturas(lista.slice(0, 5));
+
+      const minhasCandidaturasPorDataMap: Record<string, boolean> = {};
+      lista
+        .filter((c: any) => c.operacao_id && ['pendente', 'confirmado', 'realizado'].includes(c.status))
+        .forEach((c: any) => {
+          minhasCandidaturasPorDataMap[`${c.operacao_id}:${c.data_operacao}`] = true;
+        });
+      setMinhasCandidaturasPorData(minhasCandidaturasPorDataMap);
+
+      const vagasCountMap = new Map<string, number>();
+      (vagasCountRes.data || []).forEach((v: any) => {
+        const key = `${v.operacao_id}:${v.data_operacao}`;
+        vagasCountMap.set(key, (vagasCountMap.get(key) || 0) + 1);
+      });
+      const vagasPorDataMap: Record<string, number> = {};
+      const vagasMap: Record<string, boolean> = {};
+      validOps.forEach((op: any) => {
+        const datas = datasMap[op.id] || [];
+        const datasComVaga = datas.filter((data) => {
+          const ocupadas = vagasCountMap.get(`${op.id}:${data}`) || 0;
+          const disponiveis = Math.max(op.vagas_por_dia - ocupadas, 0);
+          vagasPorDataMap[`${op.id}:${data}`] = disponiveis;
+          return disponiveis > 0;
+        });
+        vagasMap[op.id] = datas.length > 0 && datasComVaga.length === 0;
+      });
+      setVagasPorData(vagasPorDataMap);
+      setVagasPreenchidas(vagasMap);
 
       const now = new Date();
       const firstDay = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
@@ -234,26 +283,41 @@ const GuardaDashboard = () => {
   };
 
   const handleCandidatar = async () => {
-    if (!selectedOperacao || !candidaturaData.data_operacao || !user?.user_id) return;
-    setCandidaturaEnviando(true);
-    const { data, error } = await supabase.rpc('candidatar_se_iro', {
-      p_operacao_id: selectedOperacao.id,
-      p_usuario_id: user.user_id,
-      p_data: candidaturaData.data_operacao,
-    });
-    setCandidaturaEnviando(false);
-    if (error) {
-      toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+    if (!selectedOperacao || datasSelecionadas.length === 0 || !user?.user_id) return;
+    if (selectedOperacao.data_fim < new Date().toISOString().slice(0, 10)) {
+      toast({ title: 'Prazo encerrado', description: 'O período desta operação já se encerrou.', variant: 'destructive' });
       return;
     }
-    const r = data as { sucesso: boolean; mensagem: string };
-    if (r.sucesso) {
-      toast({ title: 'Inscrição realizada com sucesso!' });
-      setSelectedOperacao(null);
-      void loadData();
-    } else {
-      toast({ title: 'Erro', description: r.mensagem, variant: 'destructive' });
+    setCandidaturaEnviando(true);
+    const resultados: Array<{ data: string; sucesso: boolean; mensagem: string }> = [];
+    for (const dataSelecionada of datasSelecionadas) {
+      const { data, error } = await supabase.rpc('candidatar_se_iro', {
+        p_operacao_id: selectedOperacao.id,
+        p_usuario_id: user.user_id,
+        p_data: dataSelecionada,
+      });
+      if (error) {
+        resultados.push({ data: dataSelecionada, sucesso: false, mensagem: error.message });
+        continue;
+      }
+      const r = data as { sucesso: boolean; mensagem: string };
+      resultados.push({ data: dataSelecionada, sucesso: r.sucesso, mensagem: r.mensagem });
     }
+    setCandidaturaEnviando(false);
+
+    const sucessos = resultados.filter((item) => item.sucesso);
+    const falhas = resultados.filter((item) => !item.sucesso);
+    if (sucessos.length > 0) {
+      toast({
+        title: 'Inscrição realizada com sucesso!',
+        description: `${sucessos.length} candidatura(s) realizada(s)${falhas.length ? `; ${falhas.length} não realizada(s).` : '.'}`,
+      });
+    } else {
+      toast({ title: 'Erro', description: falhas[0]?.mensagem || 'Nenhuma candidatura foi realizada.', variant: 'destructive' });
+    }
+    setSelectedOperacao(null);
+    setDatasSelecionadas([]);
+    void loadData();
   };
 
   useEffect(() => { void loadData(); }, [user?.user_id, profile?.setor_id]);
@@ -264,6 +328,7 @@ const GuardaDashboard = () => {
     const channel = supabase
       .channel(`iro_dashboard_guarda_${user.user_id}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'iro_operacoes' }, () => void loadData())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'iro_operacao_datas' }, () => void loadData())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'iro_candidaturas', filter: `usuario_id=eq.${user.user_id}` }, () => void loadData())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'iro_banco_horas', filter: `usuario_id=eq.${user.user_id}` }, () => void loadData())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'iro_valores_graduacao' }, () => void loadData())
@@ -427,7 +492,7 @@ const GuardaDashboard = () => {
                           VAGAS PREENCHIDAS
                         </Button>
                       ) : (
-                        <Button size="sm" variant="outline" className="mt-3 min-h-11 w-full rounded-xl text-[13px] font-semibold sm:ml-3 sm:mt-0 sm:min-h-10 sm:w-auto sm:shrink-0" onClick={() => { setSelectedOperacao(op); setCandidaturaData({ data_operacao: new Date().toISOString().slice(0, 10) }); }}>
+                        <Button size="sm" variant="outline" className="mt-3 min-h-11 w-full rounded-xl text-[13px] font-semibold sm:ml-3 sm:mt-0 sm:min-h-10 sm:w-auto sm:shrink-0" onClick={() => { setSelectedOperacao(op); setDatasSelecionadas([]); }}>
                           VER DETALHES
                         </Button>
                       )}
@@ -451,14 +516,14 @@ const GuardaDashboard = () => {
 
     <ResponsiveDialog
       open={Boolean(selectedOperacao)}
-      onOpenChange={(open) => { if (!open) setSelectedOperacao(null); }}
+      onOpenChange={(open) => { if (!open) { setSelectedOperacao(null); setDatasSelecionadas([]); } }}
       title={selectedOperacao?.nome || 'Detalhes da operação'}
       description="Veja os detalhes da operação."
       footer={
         <div className="flex gap-2 w-full">
-          <Button variant="outline" className="flex-1 rounded-xl text-[13px] font-semibold" onClick={() => setSelectedOperacao(null)}>Cancelar</Button>
-          <Button className="flex-1 rounded-xl text-[13px] font-semibold" disabled={candidaturaEnviando} onClick={() => void handleCandidatar()}>
-            {candidaturaEnviando ? 'Enviando...' : 'Confirmar inscrição'}
+          <Button variant="outline" className="flex-1 rounded-xl text-[13px] font-semibold" onClick={() => { setSelectedOperacao(null); setDatasSelecionadas([]); }}>Cancelar</Button>
+          <Button className="flex-1 rounded-xl text-[13px] font-semibold" disabled={datasSelecionadas.length === 0 || candidaturaEnviando} onClick={() => void handleCandidatar()}>
+            {candidaturaEnviando ? 'Enviando...' : `Confirmar ${datasSelecionadas.length || ''} candidatura(s)`}
           </Button>
         </div>
       }
@@ -483,12 +548,12 @@ const GuardaDashboard = () => {
                 <p className="mt-1 text-base font-bold text-slate-800">{selectedOperacao.horario_previsto.slice(0, 5)}</p>
               </div>
               <div className="rounded-xl bg-slate-50 p-3.5">
-                <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-slate-400">Vagas p/ dia</p>
-                <p className="mt-1 text-base font-bold text-slate-800">{selectedOperacao.vagas_por_dia}</p>
+                <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-slate-400">Horas/dia</p>
+                <p className="mt-1 text-base font-bold text-slate-800">{selectedOperacao.horas_por_dia}h</p>
               </div>
               <div className="rounded-xl bg-slate-50 p-3.5">
-                <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-slate-400">Carga horária</p>
-                <p className="mt-1 text-base font-bold text-slate-800">{selectedOperacao.horas_por_dia}h/dia</p>
+                <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-slate-400">Vagas</p>
+                <p className="mt-1 text-base font-bold text-slate-800">{selectedOperacao.vagas_por_dia}/dia</p>
               </div>
               <div className="rounded-xl bg-slate-50 p-3.5">
                 <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-slate-400">Período</p>
@@ -496,24 +561,95 @@ const GuardaDashboard = () => {
               </div>
             </div>
           </div>
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <Label className="text-xs font-bold uppercase tracking-[0.1em] text-slate-500">Data da operação</Label>
-            <Input
-              type="date"
-              value={candidaturaData.data_operacao}
-              onChange={(e) => setCandidaturaData({ data_operacao: e.target.value })}
-              min={selectedOperacao.data_inicio}
-              max={selectedOperacao.data_fim}
-              className="mt-2 h-12 rounded-xl border-slate-200 text-[15px] font-medium"
-            />
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between gap-3">
+              <Label className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Dias para candidatura</Label>
+              <span className="text-sm font-medium text-slate-500">{datasSelecionadas.length} dia(s)</span>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const datas = (operacaoDatas[selectedOperacao.id] || []).filter((data) => {
+                    const key = `${selectedOperacao.id}:${data}`;
+                    return (vagasPorData[key] || 0) > 0 && !minhasCandidaturasPorData[key];
+                  });
+                  setDatasSelecionadas(datas);
+                }}
+              >
+                Marcar todos
+              </Button>
+              <Button type="button" variant="outline" size="sm" onClick={() => setDatasSelecionadas([])}>
+                Desmarcar todos
+              </Button>
+            </div>
+            <div className="max-h-72 space-y-3 overflow-y-auto rounded-xl border border-slate-200 bg-slate-50 p-3">
+              {(() => {
+                const datas = operacaoDatas[selectedOperacao.id] || [];
+                if (datas.length === 0) {
+                  return <div className="rounded-xl border border-dashed border-slate-300 bg-white p-4 text-center text-sm text-slate-500">Nenhum dia disponível para esta operação.</div>;
+                }
+
+                const grupos = new Map<string, string[]>();
+                for (const data of datas) {
+                  const mes = new Date(data + 'T00:00:00').toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+                  if (!grupos.has(mes)) grupos.set(mes, []);
+                  grupos.get(mes)!.push(data);
+                }
+                const selected = new Set(datasSelecionadas);
+
+                return Array.from(grupos.entries()).map(([mes, grupoDatas]) => (
+                  <div key={mes}>
+                    <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.08em] text-slate-500">{mes}</p>
+                    <div className="grid grid-cols-4 gap-1.5 min-[400px]:grid-cols-5 sm:grid-cols-7">
+                      {grupoDatas.map((data) => {
+                        const dt = new Date(data + 'T00:00:00');
+                        const isFds = dt.getDay() === 0 || dt.getDay() === 6;
+                        const isSelected = selected.has(data);
+                        const key = `${selectedOperacao.id}:${data}`;
+                        const vagasDisponiveis = vagasPorData[key] ?? selectedOperacao.vagas_por_dia;
+                        const jaCandidatado = minhasCandidaturasPorData[key];
+                        const semVaga = vagasDisponiveis <= 0;
+                        return (
+                          <button
+                            key={data}
+                            type="button"
+                            disabled={semVaga || jaCandidatado}
+                            onClick={() =>
+                              setDatasSelecionadas((prev) => {
+                                const set = new Set(prev);
+                                if (set.has(data)) set.delete(data);
+                                else set.add(data);
+                                return [...set].sort();
+                              })
+                            }
+                            className={cn(
+                              'flex flex-col items-center rounded-lg px-2.5 py-1.5 text-xs transition-colors',
+                              isSelected ? 'bg-primary text-primary-foreground shadow-sm' : isFds ? 'bg-red-50 text-red-500 hover:bg-red-100' : 'bg-white text-slate-600 hover:bg-slate-100',
+                              (semVaga || jaCandidatado) && 'cursor-not-allowed bg-slate-100 text-slate-300 line-through hover:bg-slate-100',
+                            )}
+                          >
+                            <span className="text-sm font-bold leading-tight">{dt.getDate()}</span>
+                            <span className="text-[9px] leading-tight opacity-60">{['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'][dt.getDay()]}</span>
+                            <span className="mt-0.5 text-[9px] leading-tight opacity-70">{jaCandidatado ? 'inscrito' : semVaga ? '0 vaga' : `${vagasDisponiveis} vaga(s)`}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ));
+              })()}
+            </div>
           </div>
         </div>
       )}
     </ResponsiveDialog>
 
     {exibirModalLei && (
-      <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4 overflow-y-auto animate-fade-in">
-        <div className="flex max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-2xl animate-in fade-in zoom-in duration-300">
+      <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-end sm:justify-center bg-slate-950/80 backdrop-blur-sm sm:p-4 overflow-hidden animate-fade-in">
+        <div className="flex h-auto max-h-[88dvh] sm:max-h-[92vh] w-full sm:max-w-4xl flex-col overflow-hidden rounded-t-[28px] sm:rounded-2xl border border-slate-100 bg-white shadow-2xl animate-in slide-in-from-bottom sm:zoom-in duration-300">
           {/* Header */}
           <div className="flex items-start gap-3 bg-gradient-to-r from-slate-900 via-slate-800 to-blue-900 p-4 text-white sm:items-center sm:gap-4 sm:p-6">
             <div className="rounded-xl bg-white/10 p-3 text-white backdrop-blur-sm shrink-0">
@@ -734,7 +870,7 @@ const GuardaDashboard = () => {
           </div>
 
           {/* Footer Controls */}
-          <div className="space-y-4 border-t border-slate-100 bg-slate-50 p-4 sm:p-6">
+          <div className="space-y-4 border-t border-slate-100 bg-slate-50 p-4 sm:p-6 pb-[calc(1rem+env(safe-area-inset-bottom))]">
             <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm transition-colors hover:bg-slate-50">
               <input
                 type="checkbox"

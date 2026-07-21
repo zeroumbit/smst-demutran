@@ -15,6 +15,7 @@ import {
   ClipboardList,
   CalendarDays,
   X,
+  LifeBuoy,
 } from 'lucide-react';
 import guardaLogo from '@/guarda.png';
 
@@ -210,6 +211,20 @@ export const GuardsLayout = ({ children }: GuardsLayoutProps) => {
               </Link>
             );
           })}
+          <span className="mt-4 block px-4 pb-1 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+            Suporte
+          </span>
+          <Link
+            to="/admin/perfil-guardas/guarda-municipal/suporte"
+            className={`flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium transition-all ${
+              isActive('/admin/perfil-guardas/guarda-municipal/suporte')
+                ? 'bg-brand-50 text-brand-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.65)]'
+                : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
+            }`}
+          >
+            <LifeBuoy className="h-5 w-5 shrink-0" />
+            <span>Suporte</span>
+          </Link>
         </nav>
 
         <div className="border-t border-slate-200/80 p-3">
@@ -300,7 +315,7 @@ export const GuardsLayout = ({ children }: GuardsLayoutProps) => {
       {/* ─── Mobile menu modal ─── */}
       {menuModalOpen && (
         <div className="fixed inset-0 z-[60] flex flex-col bg-white lg:hidden animate-in slide-in-from-bottom">
-          <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
+          <div className="flex items-center justify-between border-b border-slate-200 px-5 pb-4 pt-[calc(max(env(safe-area-inset-top),1rem)+0.5rem)] bg-slate-50">
             <div className="flex items-center gap-3">
               <GuardaLogo />
               <span className="text-lg font-bold text-slate-900">Guarda Municipal</span>
@@ -322,9 +337,24 @@ export const GuardsLayout = ({ children }: GuardsLayoutProps) => {
               Pessoal
             </span>
             {pessoalNavItems.map((item) => renderMobileModalLink(item))}
+            <span className="mt-4 block px-4 pb-1 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+              Suporte
+            </span>
+            <Link
+              to="/admin/perfil-guardas/guarda-municipal/suporte"
+              onClick={() => setMenuModalOpen(false)}
+              className={`flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium transition-all ${
+                isActive('/admin/perfil-guardas/guarda-municipal/suporte')
+                  ? 'bg-brand-50 text-brand-700'
+                  : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
+              }`}
+            >
+              <LifeBuoy className="h-5 w-5 shrink-0" />
+              <span>Suporte</span>
+            </Link>
           </nav>
 
-          <div className="border-t border-slate-200 p-4">
+          <div className="border-t border-slate-200 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] bg-slate-50">
             <button
               onClick={handleLogout}
               className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium text-slate-500 hover:bg-red-50 hover:text-red-600 transition-colors"
