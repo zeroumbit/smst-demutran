@@ -94,6 +94,7 @@ export type GuardaEscala = {
   status: EscalaStatus;
   recorrencia_tipo: RecorrenciaTipo;
   recorrencia_config: Record<string, unknown>;
+  recorrencia_origem_id?: string | null;
   publicado_em: string | null;
   cancelado_em: string | null;
   motivo_cancelamento: string | null;
@@ -163,4 +164,17 @@ export type RpcResult = {
   sucesso: boolean;
   mensagem: string;
   [key: string]: unknown;
+};
+
+export type GuardaEscalaAgenteDraft = {
+  guarda_id: string;
+  funcao: string;
+  observacao?: string | null;
+};
+
+export type GuardaEscalaCompletaPayload = {
+  escala: GuardaEscalaPayload;
+  agentes: GuardaEscalaAgenteDraft[];
+  viatura_id?: string | null;
+  publicar?: boolean;
 };

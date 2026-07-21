@@ -46,6 +46,12 @@ const todayStr = () => new Date().toISOString().slice(0, 10);
 const formatCurrency = (value: number) =>
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 
+type IRODataDisponivel = {
+  operacao_id: string;
+  data: string;
+  vagas_disponiveis: number;
+};
+
 const MinhasIrosGestor = () => {
   const { setorId, profile, user } = useAuth();
   const navigate = useNavigate();
@@ -55,7 +61,6 @@ const MinhasIrosGestor = () => {
   const [minhasCandidaturas, setMinhasCandidaturas] = useState<IROCandidatura[]>([]);
   const [operacaoDatas, setOperacaoDatas] = useState<Record<string, string[]>>({});
   const [vagasPorData, setVagasPorData] = useState<Record<string, number>>({});
-  const [vagasPreenchidas, setVagasPreenchidas] = useState<Record<string, boolean>>({});
   const [minhasCandidaturasPorData, setMinhasCandidaturasPorData] = useState<Record<string, boolean>>({});
   const [selectedOperacao, setSelectedOperacao] = useState<IROOperacao | null>(null);
   const [datasSelecionadas, setDatasSelecionadas] = useState<string[]>([]);
@@ -140,31 +145,23 @@ const MinhasIrosGestor = () => {
         });
       setMinhasCandidaturasPorData(minhasCandidaturasPorDataMap);
 
-      const { data: vagasCountData } = await supabase
-        .from('iro_candidaturas')
-        .select('operacao_id, data_operacao')
-        .in('status', ['pendente', 'confirmado', 'realizado']);
-
-      const vagasCountMap = new Map<string, number>();
-      (vagasCountData || []).forEach((v: any) => {
-        const key = `${v.operacao_id}:${v.data_operacao}`;
-        vagasCountMap.set(key, (vagasCountMap.get(key) || 0) + 1);
+      const { data: disponibilidadeData, error: disponibilidadeError } = await supabase.rpc('listar_iro_datas_disponiveis', {
+        p_usuario_id: user!.user_id,
       });
+      if (disponibilidadeError) throw disponibilidadeError;
 
+      const validOperacaoIds = new Set(validOps.map((op) => op.id));
+      const datasDisponiveisMap: Record<string, string[]> = {};
       const vagasPorDataMap: Record<string, number> = {};
-      const vagasPreenchidasMap: Record<string, boolean> = {};
-      validOps.forEach((op: any) => {
-        const datas = datasMap[op.id] || [];
-        const datasComVaga = datas.filter((data) => {
-          const ocupadas = vagasCountMap.get(`${op.id}:${data}`) || 0;
-          const disponiveis = Math.max(op.vagas_por_dia - ocupadas, 0);
-          vagasPorDataMap[`${op.id}:${data}`] = disponiveis;
-          return disponiveis > 0;
+      ((disponibilidadeData || []) as IRODataDisponivel[])
+        .filter((item) => validOperacaoIds.has(item.operacao_id))
+        .forEach((item) => {
+          if (!datasDisponiveisMap[item.operacao_id]) datasDisponiveisMap[item.operacao_id] = [];
+          datasDisponiveisMap[item.operacao_id].push(item.data);
+          vagasPorDataMap[`${item.operacao_id}:${item.data}`] = item.vagas_disponiveis;
         });
-        vagasPreenchidasMap[op.id] = datas.length > 0 && datasComVaga.length === 0;
-      });
+      setOperacaoDatas(datasDisponiveisMap);
       setVagasPorData(vagasPorDataMap);
-      setVagasPreenchidas(vagasPreenchidasMap);
 
       const now = new Date();
       const firstDay = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
@@ -225,9 +222,14 @@ const MinhasIrosGestor = () => {
     const term = search.trim().toLowerCase();
     return operacoes.filter((o) => {
       if (term && !o.nome.toLowerCase().includes(term) && !(o.descricao || '').toLowerCase().includes(term)) return false;
+      const datasDisponiveis = (operacaoDatas[o.id] || []).filter((data) => {
+        const key = `${o.id}:${data}`;
+        return (vagasPorData[key] ?? 0) > 0 && !minhasCandidaturasPorData[key];
+      });
+      if (datasDisponiveis.length === 0) return false;
       return true;
     });
-  }, [operacoes, search]);
+  }, [minhasCandidaturasPorData, operacaoDatas, operacoes, search, vagasPorData]);
 
   const handleCandidatar = async () => {
     if (!selectedOperacao || datasSelecionadas.length === 0 || !user?.user_id) return;
@@ -293,7 +295,7 @@ const MinhasIrosGestor = () => {
     const { error } = await supabase.from('iro_candidaturas').update({ status: 'cancelado' }).eq('id', item.id);
     if (error) { toast({ title: 'Erro', description: error.message, variant: 'destructive' }); return; }
     toast({ title: 'Candidatura cancelada' });
-    void loadData();
+    await loadData();
   };
 
   const confirmarCancelamento = async () => {
@@ -318,7 +320,7 @@ const MinhasIrosGestor = () => {
     setCandidaturaParaCancelar(null);
     if (error) { toast({ title: 'Erro', description: error.message, variant: 'destructive' }); return; }
     toast({ title: 'Candidatura cancelada' });
-    void loadData();
+    await loadData();
   };
 
   if (loading) {
@@ -407,15 +409,9 @@ const MinhasIrosGestor = () => {
             <div className="native-scrollbar -mx-1 flex snap-x snap-mandatory gap-3 overflow-x-auto px-1 pb-1 sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0 md:grid-cols-3 lg:grid-cols-4">
               {filteredOperacoes.map((op) => (
                 <article key={op.id} className="flex min-w-[84%] snap-start flex-col rounded-2xl border border-slate-200/80 bg-white px-4 py-4 shadow-[0_4px_20px_-8px_rgba(15,23,42,0.08)] active:scale-[0.99] sm:min-w-0 sm:px-5">
-                  {vagasPreenchidas[op.id] ? (
-                    <Badge variant="outline" className="self-start rounded-full bg-rose-50 text-rose-700 border-rose-200 text-[10px] font-bold">
-                      Vagas preenchidas
-                    </Badge>
-                  ) : (
-                    <Badge variant="outline" className="self-start rounded-full bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px] font-bold">
-                      {op.vagas_por_dia} vaga(s)/dia
-                    </Badge>
-                  )}
+                  <Badge variant="outline" className="self-start rounded-full bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px] font-bold">
+                    {op.vagas_por_dia} vaga(s)/dia
+                  </Badge>
                   <h3 className="mt-2 text-[15px] font-bold text-slate-900 line-clamp-2 leading-snug"><span className="text-slate-400 font-mono text-[13px] font-medium">{op.codigo}</span> {op.nome}</h3>
                   {op.descricao && <p className="text-[13px] leading-5 text-slate-500 mt-0.5 line-clamp-2">{op.descricao}</p>}
                   <div className="mt-auto pt-3 space-y-1.5 text-[13px] text-slate-500">
@@ -423,15 +419,9 @@ const MinhasIrosGestor = () => {
                     <span className="flex items-center gap-1.5"><Clock className="h-3.5 w-3.5 shrink-0" />{op.horario_previsto.slice(0, 5)}</span>
                     <span className="flex items-center gap-1.5"><Hourglass className="h-3.5 w-3.5 shrink-0" />{op.horas_por_dia}h/dia</span>
                   </div>
-                  {vagasPreenchidas[op.id] ? (
-                    <Button size="sm" disabled className="mt-3 min-h-11 w-full rounded-xl text-[13px] font-semibold sm:min-h-10 opacity-50 cursor-not-allowed">
-                      VAGAS PREENCHIDAS
-                    </Button>
-                  ) : (
-                    <Button size="sm" className="mt-3 min-h-11 w-full rounded-xl text-[13px] font-semibold sm:min-h-10" onClick={() => { setSelectedOperacao(op); setDatasSelecionadas([]); }}>
-                      VER DETALHES
-                    </Button>
-                  )}
+                  <Button size="sm" className="mt-3 min-h-11 w-full rounded-xl text-[13px] font-semibold sm:min-h-10" onClick={() => { setSelectedOperacao(op); setDatasSelecionadas([]); }}>
+                    VER DETALHES
+                  </Button>
                 </article>
               ))}
             </div>
@@ -547,7 +537,10 @@ const MinhasIrosGestor = () => {
               </div>
               <div className="max-h-72 space-y-3 overflow-y-auto rounded-xl border border-slate-200 bg-slate-50 p-3">
                 {(() => {
-                  const datas = operacaoDatas[selectedOperacao.id] || [];
+                  const datas = (operacaoDatas[selectedOperacao.id] || []).filter((data) => {
+                    const key = `${selectedOperacao.id}:${data}`;
+                    return (vagasPorData[key] ?? 0) > 0 && !minhasCandidaturasPorData[key];
+                  });
                   if (datas.length === 0) {
                     return <div className="rounded-xl border border-dashed border-slate-300 bg-white p-4 text-center text-sm text-slate-500">Nenhum dia disponível para esta operação.</div>;
                   }
@@ -566,36 +559,26 @@ const MinhasIrosGestor = () => {
                       <div className="grid grid-cols-5 gap-1.5 sm:grid-cols-7">
                         {grupoDatas.map((data) => {
                           const cKey = `${selectedOperacao.id}:${data}`;
-                          const vagas = vagasPorData[cKey] ?? 0;
-                          const jaInscrito = minhasCandidaturasPorData[cKey];
+                          const vagas = vagasPorData[cKey] ?? selectedOperacao.vagas_por_dia;
                           const isSelected = selected.has(data);
 
                           return (
                             <button
                               key={data}
                               type="button"
-                              disabled={jaInscrito || vagas <= 0}
                               onClick={() => {
-                                if (jaInscrito) return;
                                 setDatasSelecionadas((prev) =>
                                   prev.includes(data) ? prev.filter((d) => d !== data) : [...prev, data],
                                 );
                               }}
                               className={`relative flex flex-col items-center rounded-xl px-1 py-2.5 text-center text-[11px] font-medium transition-all ${
-                                jaInscrito
-                                  ? 'bg-sky-100 text-sky-800 ring-1 ring-sky-300 cursor-default'
-                                  : isSelected
-                                    ? 'bg-brand-100 text-brand-800 ring-2 ring-brand-500'
-                                    : vagas <= 0
-                                      ? 'cursor-not-allowed bg-slate-100 text-slate-300'
-                                      : 'bg-white text-slate-600 ring-1 ring-slate-200 hover:ring-brand-300 hover:shadow-sm'
+                                isSelected
+                                  ? 'bg-brand-100 text-brand-800 ring-2 ring-brand-500'
+                                  : 'bg-white text-slate-600 ring-1 ring-slate-200 hover:ring-brand-300 hover:shadow-sm'
                               }`}
                             >
                               <span className="text-[10px] font-bold">{data.slice(8, 10)}</span>
-                              {jaInscrito && <span className="mt-0.5 text-[9px] font-bold uppercase leading-tight">Insc.</span>}
-                              {!jaInscrito && vagas > 0 && (
-                                <span className="mt-0.5 text-[9px] text-slate-400">{vagas}v</span>
-                              )}
+                              <span className="mt-0.5 text-[9px] text-slate-400">{vagas}v</span>
                             </button>
                           );
                         })}

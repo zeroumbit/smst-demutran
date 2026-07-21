@@ -2,6 +2,7 @@ import { supabase } from '@/lib/supabase';
 import type {
   GuardaEscala,
   GuardaEscalaAgente,
+  GuardaEscalaCompletaPayload,
   GuardaEscalaGuarda,
   GuardaEscalaHistorico,
   GuardaEscalaPayload,
@@ -226,6 +227,81 @@ export const escalasService = {
       .single();
     if (error) throw error;
     return data as GuardaEscala;
+  },
+
+  async detectarConflitos(guardaId: string, inicio: string, fim: string, ignorarEscalaId?: string | null) {
+    const { data, error } = await supabase.rpc('detectar_conflitos_guarda_escala', {
+      p_guarda_id: guardaId,
+      p_inicio: inicio,
+      p_fim: fim,
+      p_ignorar_escala_id: ignorarEscalaId ?? null,
+    });
+    if (error) throw error;
+    return Array.isArray(data) ? data : [];
+  },
+
+  async listRecorrencias(origemId: string) {
+    const { data, error } = await supabase
+      .from('guarda_escalas')
+      .select(escalaSelect)
+      .eq('recorrencia_origem_id', origemId)
+      .order('data_inicio', { ascending: true });
+    if (error) throw error;
+    return this.attachChildren((data || []) as GuardaEscala[]);
+  },
+
+  async createEscalaCompleta(payload: GuardaEscalaCompletaPayload) {
+    const uniqueAgentIds = new Set(payload.agentes.map((agente) => agente.guarda_id));
+    if (uniqueAgentIds.size !== payload.agentes.length) {
+      throw new Error('Existem agentes duplicados na composicao da escala.');
+    }
+
+    for (const agente of payload.agentes) {
+      const conflitos = await this.detectarConflitos(agente.guarda_id, payload.escala.data_inicio, payload.escala.data_fim);
+      if (conflitos.length > 0) {
+        throw new Error('Resolva os conflitos de horario antes de salvar a escala.');
+      }
+    }
+
+    const escala = await this.createEscala(payload.escala);
+
+    for (const agente of payload.agentes) {
+      const result = await this.addAgente({
+        escala_id: escala.id,
+        guarda_id: agente.guarda_id,
+        funcao: agente.funcao,
+        observacao: agente.observacao ?? null,
+      });
+      if (!result.sucesso) {
+        throw new Error(result.mensagem || 'Nao foi possivel vincular todos os agentes.');
+      }
+    }
+
+    if (payload.viatura_id) {
+      await this.addViatura({ escala_id: escala.id, veiculo_id: payload.viatura_id });
+    }
+
+    let geradas = 0;
+    if ((payload.escala.recorrencia_tipo ?? 'NAO_REPETIR') !== 'NAO_REPETIR') {
+      const result = await this.gerarRecorrencias(escala.id);
+      if (!result.sucesso) throw new Error(result.mensagem || 'Nao foi possivel gerar recorrencias.');
+      geradas = Number(result.geradas ?? 0);
+    }
+
+    if (payload.publicar) {
+      const publishBase = await this.publicar(escala.id);
+      if (!publishBase.sucesso) throw new Error(publishBase.mensagem || 'Nao foi possivel publicar a escala.');
+
+      const recorrencias = geradas > 0 ? await this.listRecorrencias(escala.id) : [];
+      for (const recorrencia of recorrencias) {
+        if (recorrencia.status !== 'PUBLICADA') {
+          const result = await this.publicar(recorrencia.id);
+          if (!result.sucesso) throw new Error(result.mensagem || 'Nao foi possivel publicar uma recorrencia.');
+        }
+      }
+    }
+
+    return { escala, geradas };
   },
 
   async updateEscala(id: string, payload: GuardaEscalaPayload) {

@@ -5,7 +5,7 @@ import { ptBR } from 'date-fns/locale';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
-import { CalendarDays, CheckCircle2, FileDown, FileText, History, MapPin, Plus, Printer, Search, Settings2, Shield, Shuffle, Users, XCircle } from 'lucide-react';
+import { CalendarDays, CheckCircle2, FileDown, FileText, History, MapPin, Plus, Printer, Search, Settings2, Shield, Shuffle, Trash2, Users, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { Badge } from '@/components/ui/badge';
@@ -19,7 +19,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import { escalasService } from '../services/escalas.service';
 import { useEscalas, useEscalasApoio, useEscalasHistorico, useEscalasMutations, useEscalasTrocas } from '../hooks/useEscalas';
-import type { GuardaEscala, GuardaEscalaAgente, GuardaEscalaPayload, GuardaEscalaPosto, GuardaEscalaTipoServico, GuardaEscalaTroca } from '../types/escalas.types';
+import type { GuardaEscala, GuardaEscalaAgente, GuardaEscalaAgenteDraft, GuardaEscalaPayload, GuardaEscalaPosto, GuardaEscalaTipoServico, GuardaEscalaTroca, RecorrenciaTipo } from '../types/escalas.types';
 import { formatDate, formatDateTime, formatTime, fromDatetimeLocal, getEscalaStatusCalculado, statusClassName, statusLabels, toDatetimeLocal, trocaStatusLabels } from '../utils/escalas.formatters';
 
 type DialogMode = 'escala' | 'agente' | 'viatura' | 'cancelar' | 'tipo' | 'posto' | 'troca-decisao' | null;
@@ -97,6 +97,12 @@ export default function EscalasAdminPage() {
   const [escalaForm, setEscalaForm] = useState<GuardaEscalaPayload>(defaultEscalaForm);
   const [agenteForm, setAgenteForm] = useState({ guarda_id: '', funcao: 'Patrulheiro', observacao: '', conflito_autorizado: false, motivo_conflito: '' });
   const [viaturaForm, setViaturaForm] = useState({ veiculo_id: '', agente_id: 'none', observacao: '' });
+  const [draftAgents, setDraftAgents] = useState<GuardaEscalaAgenteDraft[]>([]);
+  const [draftViaturaId, setDraftViaturaId] = useState<string | null>(null);
+  const [draftAgentToAdd, setDraftAgentToAdd] = useState('');
+  const [draftConflicts, setDraftConflicts] = useState<Record<string, any[]>>({});
+  const [showAdditionalInfo, setShowAdditionalInfo] = useState(false);
+  const [submitAction, setSubmitAction] = useState<'draft' | 'publish'>('draft');
   const [configForm, setConfigForm] = useState<Partial<GuardaEscalaTipoServico & GuardaEscalaPosto>>({ nome: '', descricao: '', ativo: true });
   const [cancelReason, setCancelReason] = useState('');
   const [decisionTroca, setDecisionTroca] = useState<{ troca: GuardaEscalaTroca; aprovar: boolean } | null>(null);
@@ -182,6 +188,11 @@ export default function EscalasAdminPage() {
 
   const openEscalaForm = (escala?: GuardaEscala | null) => {
     setEditingEscala(escala ?? null);
+    setDraftAgents((escala?.agentes ?? []).map((agente) => ({ guarda_id: agente.guarda_id, funcao: agente.funcao, observacao: agente.observacao })));
+    setDraftViaturaId(escala?.viaturas?.[0]?.veiculo_id ?? null);
+    setDraftAgentToAdd('');
+    setDraftConflicts({});
+    setShowAdditionalInfo(Boolean(escala?.titulo || escala?.local_texto || escala?.descricao || escala?.observacoes));
     setEscalaForm(escala ? {
       titulo: escala.titulo,
       tipo_servico_id: escala.tipo_servico_id,
@@ -219,6 +230,91 @@ export default function EscalasAdminPage() {
     updateRecorrenciaConfig('dias_semana', next);
   };
 
+  const getGeneratedTitle = () => {
+    const tipo = apoio.tipos.data?.find((item) => item.id === escalaForm.tipo_servico_id)?.nome ?? 'Servico';
+    const equipe = apoio.equipes.data?.find((item) => item.id === escalaForm.equipe_id)?.nome ?? 'Equipe';
+    return `${tipo} - ${equipe} - ${formatDate(escalaForm.data_inicio)}`;
+  };
+
+  const getEscalaPayloadForSubmit = (): GuardaEscalaPayload => ({
+    ...escalaForm,
+    titulo: escalaForm.titulo.trim() || getGeneratedTitle(),
+    ponto_apresentacao: null,
+    area_atuacao: null,
+    grupamento: null,
+    recorrencia_tipo: escalaForm.recorrencia_tipo === 'PERSONALIZADO' ? 'DIAS_SEMANA' : escalaForm.recorrencia_tipo,
+  });
+
+  const validateEscalaForm = (publish: boolean) => {
+    if (!escalaForm.tipo_servico_id) {
+      toast.error('Selecione o tipo de servico.');
+      return false;
+    }
+    if (new Date(escalaForm.data_fim) <= new Date(escalaForm.data_inicio)) {
+      toast.error('A data de termino precisa ser posterior ao inicio.');
+      return false;
+    }
+    if (publish && draftAgents.length === 0) {
+      toast.error('Adicione ao menos um agente para publicar a escala.');
+      return false;
+    }
+    if (Object.values(draftConflicts).some((items) => items.length > 0)) {
+      toast.error('Resolva os conflitos de horario antes de salvar a escala.');
+      return false;
+    }
+    return true;
+  };
+
+  const addDraftAgent = (guardaId: string, funcao = 'Patrulheiro') => {
+    if (!guardaId || draftAgents.some((agente) => agente.guarda_id === guardaId)) return;
+    setDraftAgents((current) => [...current, { guarda_id: guardaId, funcao, observacao: null }]);
+  };
+
+  const handleEquipeChange = async (value: string) => {
+    const equipeId = value === 'none' ? null : value;
+    setEscalaForm((current) => ({ ...current, equipe_id: equipeId }));
+    if (!equipeId) return;
+
+    try {
+      const membros = await escalasService.listEquipeMembros(equipeId);
+      setDraftAgents((current) => {
+        const existing = new Set(current.map((agente) => agente.guarda_id));
+        const next = membros
+          .filter((guardaId) => !existing.has(guardaId))
+          .map((guardaId) => ({ guarda_id: guardaId, funcao: 'Patrulheiro', observacao: null }));
+        return [...current, ...next];
+      });
+      toast.success('Agentes da equipe adicionados a esta escala.');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Nao foi possivel carregar os agentes da equipe.');
+    }
+  };
+
+  useEffect(() => {
+    if (dialogMode !== 'escala' || draftAgents.length === 0) {
+      setDraftConflicts({});
+      return;
+    }
+    if (!escalaForm.data_inicio || !escalaForm.data_fim || new Date(escalaForm.data_fim) <= new Date(escalaForm.data_inicio)) return;
+
+    let cancelled = false;
+    const loadConflicts = async () => {
+      const entries = await Promise.all(draftAgents.map(async (agente) => {
+        const conflitos = await escalasService.detectarConflitos(agente.guarda_id, escalaForm.data_inicio, escalaForm.data_fim, editingEscala?.id ?? null);
+        return [agente.guarda_id, conflitos] as const;
+      }));
+      if (!cancelled) setDraftConflicts(Object.fromEntries(entries));
+    };
+
+    loadConflicts().catch(() => {
+      if (!cancelled) setDraftConflicts({});
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [dialogMode, draftAgents, escalaForm.data_inicio, escalaForm.data_fim, editingEscala?.id]);
+
   useEffect(() => {
     if (view === 'nova' && !novaRouteHandled) {
       setNovaRouteHandled(true);
@@ -232,28 +328,39 @@ export default function EscalasAdminPage() {
 
   const saveEscala = async (event: FormEvent) => {
     event.preventDefault();
-    if (!escalaForm.titulo.trim()) {
-      toast.error('Informe o titulo da escala.');
-      return;
-    }
-    if (new Date(escalaForm.data_fim) <= new Date(escalaForm.data_inicio)) {
-      toast.error('A data de termino precisa ser posterior ao inicio.');
-      return;
-    }
+    const publish = submitAction === 'publish';
+    if (!validateEscalaForm(publish)) return;
+
     try {
-      const escala = editingEscala
-        ? await mutations.updateEscala.mutateAsync({ id: editingEscala.id, payload: escalaForm })
-        : await mutations.createEscala.mutateAsync(escalaForm);
-      if ((escalaForm.recorrencia_tipo ?? 'NAO_REPETIR') !== 'NAO_REPETIR') {
-        const result = await mutations.gerarRecorrencias.mutateAsync(escala.id);
-        if (result.sucesso) {
-          toast.success(`Recorrencias geradas: ${result.geradas ?? 0}.`);
-        }
+      const payload = getEscalaPayloadForSubmit();
+      if (editingEscala) {
+        const escala = await mutations.updateEscala.mutateAsync({ id: editingEscala.id, payload });
+        setSelectedId(escala.id);
+        setDialogMode(null);
+        toast.success('Escala atualizada.');
+        navigate(`/admin/guardas/guarda-municipal/escalas/${escala.id}`);
+        return;
       }
-      setSelectedId(escala.id);
+
+      const result = await mutations.createEscalaCompleta.mutateAsync({
+        escala: payload,
+        agentes: draftAgents,
+        viatura_id: draftViaturaId,
+        publicar: publish,
+      });
+
+      setSelectedId(result.escala.id);
       setDialogMode(null);
-      toast.success(editingEscala ? 'Escala atualizada.' : 'Escala criada como rascunho.');
-      navigate(`/admin/guardas/guarda-municipal/escalas/${escala.id}`);
+      if (publish) {
+        if (result.geradas > 0) {
+          toast.success(`Escala publicada com sucesso. Foram criadas ${result.geradas} escalas recorrentes.`);
+        } else {
+          toast.success('Escala criada e publicada com sucesso.');
+        }
+      } else {
+        toast.success(result.geradas > 0 ? `Rascunho salvo com ${result.geradas} recorrencia(s).` : 'Escala salva como rascunho.');
+      }
+      navigate(`/admin/guardas/guarda-municipal/escalas/${result.escala.id}`);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Nao foi possivel salvar a escala.');
     }
@@ -519,51 +626,101 @@ export default function EscalasAdminPage() {
             <DialogTitle>{editingEscala ? 'Editar escala' : 'Criar escala'}</DialogTitle>
             <DialogDescription>A escala nasce como rascunho e so aparece para os guardas apos publicacao.</DialogDescription>
           </DialogHeader>
-          <form onSubmit={saveEscala} className="grid gap-4 md:grid-cols-2">
-            <div className="md:col-span-2">
-              <Field label="Titulo"><Input value={escalaForm.titulo} onChange={(event) => setEscalaForm((current) => ({ ...current, titulo: event.target.value }))} placeholder="Ex.: Patrulhamento preventivo" /></Field>
-            </div>
-            <div className="md:col-span-2 grid md:grid-cols-3 gap-4">
+          <form onSubmit={saveEscala} className="space-y-5">
+            <section className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <h3 className="text-sm font-black uppercase tracking-[0.14em] text-slate-500">Servico</h3>
+              <div className="mt-3 grid gap-4 md:grid-cols-2">
               <Field label="Tipo de servico">
                 <Select value={escalaForm.tipo_servico_id ?? 'none'} onValueChange={(value) => setEscalaForm((current) => ({ ...current, tipo_servico_id: value === 'none' ? null : value }))}>
                   <SelectTrigger><SelectValue placeholder="Selecione o tipo" /></SelectTrigger>
-                  <SelectContent><SelectItem value="none">Nao definido</SelectItem>{(apoio.tipos.data ?? []).filter((tipo) => tipo.ativo).map((tipo) => <SelectItem key={tipo.id} value={tipo.id}>{tipo.nome}</SelectItem>)}</SelectContent>
+                  <SelectContent>{(apoio.tipos.data ?? []).filter((tipo) => tipo.ativo).map((tipo) => <SelectItem key={tipo.id} value={tipo.id}>{tipo.nome}</SelectItem>)}</SelectContent>
                 </Select>
               </Field>
-              <Field label="Inicio"><Input type="datetime-local" value={toDatetimeLocal(escalaForm.data_inicio)} onChange={(event) => setEscalaForm((current) => ({ ...current, data_inicio: fromDatetimeLocal(event.target.value) }))} placeholder="DD/MM/AAAA HH:MM" /></Field>
-              <Field label="Termino"><Input type="datetime-local" value={toDatetimeLocal(escalaForm.data_fim)} onChange={(event) => setEscalaForm((current) => ({ ...current, data_fim: fromDatetimeLocal(event.target.value) }))} placeholder="DD/MM/AAAA HH:MM" /></Field>
-            </div>
-            <Field label="Posto principal">
-              <Select value={escalaForm.posto_id ?? 'none'} onValueChange={(value) => setEscalaForm((current) => ({ ...current, posto_id: value === 'none' ? null : value }))}>
-                <SelectTrigger><SelectValue placeholder="Selecione o posto" /></SelectTrigger>
-                <SelectContent><SelectItem value="none">Sem posto</SelectItem>{(apoio.postos.data ?? []).filter((posto) => posto.ativo).map((posto) => <SelectItem key={posto.id} value={posto.id}>{posto.nome}</SelectItem>)}</SelectContent>
-              </Select>
-            </Field>
-            <Field label="Equipe">
-              <Select value={escalaForm.equipe_id ?? 'none'} onValueChange={(value) => setEscalaForm((current) => ({ ...current, equipe_id: value === 'none' ? null : value }))}>
-                <SelectTrigger><SelectValue placeholder="Selecione a equipe" /></SelectTrigger>
-                <SelectContent><SelectItem value="none">Sem equipe</SelectItem>{(apoio.equipes.data ?? []).map((equipe) => <SelectItem key={equipe.id} value={equipe.id}>{equipe.nome}</SelectItem>)}</SelectContent>
-              </Select>
-            </Field>
-            <Field label="Local do servico"><Input value={escalaForm.local_texto ?? ''} onChange={(event) => setEscalaForm((current) => ({ ...current, local_texto: event.target.value }))} placeholder="Ex.: Terminal Central" /></Field>
-            <Field label="Ponto de apresentacao"><Input value={escalaForm.ponto_apresentacao ?? ''} onChange={(event) => setEscalaForm((current) => ({ ...current, ponto_apresentacao: event.target.value }))} placeholder="Ex.: Base operacional" /></Field>
-            <Field label="Area de atuacao"><Input value={escalaForm.area_atuacao ?? ''} onChange={(event) => setEscalaForm((current) => ({ ...current, area_atuacao: event.target.value }))} placeholder="Ex.: Regiao central" /></Field>
-            <Field label="Grupamento"><Input value={escalaForm.grupamento ?? ''} onChange={(event) => setEscalaForm((current) => ({ ...current, grupamento: event.target.value }))} placeholder="Ex.: GAT-01" /></Field>
-            <Field label="Recorrencia">
-              <Select value={escalaForm.recorrencia_tipo ?? 'NAO_REPETIR'} onValueChange={(value: any) => setEscalaForm((current) => ({ ...current, recorrencia_tipo: value }))}>
+              <Field label="Posto principal">
+                <Select value={escalaForm.posto_id ?? 'none'} onValueChange={(value) => setEscalaForm((current) => ({ ...current, posto_id: value === 'none' ? null : value }))}>
+                  <SelectTrigger><SelectValue placeholder="Selecione o posto" /></SelectTrigger>
+                  <SelectContent><SelectItem value="none">Sem posto</SelectItem>{(apoio.postos.data ?? []).filter((posto) => posto.ativo).map((posto) => <SelectItem key={posto.id} value={posto.id}>{posto.nome}</SelectItem>)}</SelectContent>
+                </Select>
+              </Field>
+              </div>
+            </section>
+
+            <section className="rounded-2xl border border-slate-200 bg-white p-4">
+              <h3 className="text-sm font-black uppercase tracking-[0.14em] text-slate-500">Equipe escalada</h3>
+              <div className="mt-3 grid gap-4 md:grid-cols-[1fr_1fr_auto] md:items-end">
+                <Field label="Equipe">
+                  <Select value={escalaForm.equipe_id ?? 'none'} onValueChange={handleEquipeChange}>
+                    <SelectTrigger><SelectValue placeholder="Selecione a equipe" /></SelectTrigger>
+                    <SelectContent><SelectItem value="none">Sem equipe</SelectItem>{(apoio.equipes.data ?? []).map((equipe) => <SelectItem key={equipe.id} value={equipe.id}>{equipe.nome}</SelectItem>)}</SelectContent>
+                  </Select>
+                </Field>
+                <Field label="Adicionar agente">
+                  <Select value={draftAgentToAdd} onValueChange={setDraftAgentToAdd}>
+                    <SelectTrigger><SelectValue placeholder="Selecione um agente" /></SelectTrigger>
+                    <SelectContent>{(apoio.guardas.data ?? []).filter((guarda) => !draftAgents.some((agente) => agente.guarda_id === guarda.id)).map((guarda) => <SelectItem key={guarda.id} value={guarda.id}>{guarda.nome} - {guarda.matricula}</SelectItem>)}</SelectContent>
+                  </Select>
+                </Field>
+                <Button type="button" variant="outline" onClick={() => { addDraftAgent(draftAgentToAdd); setDraftAgentToAdd(''); }}>Adicionar</Button>
+              </div>
+
+              <div className="mt-3 space-y-2">
+                {draftAgents.length === 0 ? (
+                  <div className="rounded-xl border border-dashed border-slate-300 px-4 py-5 text-center text-sm text-slate-500">Nenhum agente selecionado.</div>
+                ) : draftAgents.map((agente) => {
+                  const guarda = apoio.guardas.data?.find((item) => item.id === agente.guarda_id);
+                  const conflitos = draftConflicts[agente.guarda_id] ?? [];
+                  return (
+                    <div key={agente.guarda_id} className={cn('rounded-xl border px-3 py-3', conflitos.length > 0 ? 'border-amber-200 bg-amber-50' : 'border-slate-200 bg-slate-50')}>
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-bold text-slate-900">{guarda?.nome ?? 'Guarda selecionado'}</p>
+                          <p className="text-xs text-slate-500">Mat. {guarda?.matricula ?? '-'} - {agente.funcao}</p>
+                        </div>
+                        <Button type="button" variant="ghost" size="sm" className="text-red-600" onClick={() => setDraftAgents((current) => current.filter((item) => item.guarda_id !== agente.guarda_id))}>
+                          <Trash2 className="mr-1.5 h-4 w-4" />Remover
+                        </Button>
+                      </div>
+                      {conflitos.length > 0 && (
+                        <div className="mt-2 rounded-lg bg-white/80 px-3 py-2 text-xs text-amber-800">
+                          <p className="font-bold">Atencao: este guarda ja possui outra escala neste horario.</p>
+                          {conflitos.slice(0, 2).map((item) => <p key={item.escala_id}>{item.titulo} - {formatDateTime(item.data_inicio)}</p>)}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+
+            <section className="grid gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 md:grid-cols-3">
+              <div className="md:col-span-3"><h3 className="text-sm font-black uppercase tracking-[0.14em] text-slate-500">Viatura e horario</h3></div>
+              <Field label="Viatura">
+                <Select value={draftViaturaId ?? 'none'} onValueChange={(value) => setDraftViaturaId(value === 'none' ? null : value)}>
+                  <SelectTrigger><SelectValue placeholder="Selecione a viatura" /></SelectTrigger>
+                  <SelectContent><SelectItem value="none">Sem viatura</SelectItem>{(apoio.viaturas.data ?? []).map((veiculo) => <SelectItem key={veiculo.id} value={veiculo.id}>{veiculo.prefixo} - {veiculo.placa}</SelectItem>)}</SelectContent>
+                </Select>
+              </Field>
+              <Field label="Inicio"><Input type="datetime-local" value={toDatetimeLocal(escalaForm.data_inicio)} onChange={(event) => setEscalaForm((current) => ({ ...current, data_inicio: fromDatetimeLocal(event.target.value) }))} /></Field>
+              <Field label="Termino"><Input type="datetime-local" value={toDatetimeLocal(escalaForm.data_fim)} onChange={(event) => setEscalaForm((current) => ({ ...current, data_fim: fromDatetimeLocal(event.target.value) }))} /></Field>
+            </section>
+
+            <section className="rounded-2xl border border-slate-200 bg-white p-4">
+              <h3 className="text-sm font-black uppercase tracking-[0.14em] text-slate-500">Recorrencia</h3>
+              <div className="mt-3 grid gap-4 md:grid-cols-3">
+            <Field label="Repeticao">
+              <Select value={escalaForm.recorrencia_tipo ?? 'NAO_REPETIR'} onValueChange={(value: RecorrenciaTipo) => setEscalaForm((current) => ({ ...current, recorrencia_tipo: value }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="NAO_REPETIR">Nao repetir</SelectItem>
                   <SelectItem value="DIARIA">Diariamente</SelectItem>
                   <SelectItem value="SEMANAL">Semanalmente</SelectItem>
-                  <SelectItem value="DIAS_SEMANA">Dias da semana</SelectItem>
-                  <SelectItem value="CICLO_HORAS">Ciclo de horas</SelectItem>
+                  <SelectItem value="CICLO_HORAS">Escala por ciclo</SelectItem>
                   <SelectItem value="PERSONALIZADO">Personalizado</SelectItem>
                 </SelectContent>
               </Select>
             </Field>
             {(escalaForm.recorrencia_tipo ?? 'NAO_REPETIR') !== 'NAO_REPETIR' && (
-              <div className="md:col-span-2 grid gap-4 rounded-lg border border-slate-200 bg-slate-50 p-4 md:grid-cols-3">
+              <>
                 <Field label="Repetir ate">
                   <Input
                     type="date"
@@ -572,7 +729,7 @@ export default function EscalasAdminPage() {
                     placeholder="Data limite"
                   />
                 </Field>
-                <Field label="Quantidade maxima">
+                <Field label="Quantidade">
                   <Input
                     type="number"
                     min={1}
@@ -582,16 +739,30 @@ export default function EscalasAdminPage() {
                     placeholder="Maximo de repeticoes"
                   />
                 </Field>
-                <Field label={escalaForm.recorrencia_tipo === 'CICLO_HORAS' ? 'Horas do ciclo' : 'Intervalo'}>
+                {escalaForm.recorrencia_tipo === 'CICLO_HORAS' ? (
+                  <Field label="Ciclo">
+                    <Select value={String(escalaForm.recorrencia_config?.horas ?? 72)} onValueChange={(value) => updateRecorrenciaConfig('horas', Number(value))}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="48">12x36</SelectItem>
+                        <SelectItem value="72">24x48</SelectItem>
+                        <SelectItem value="96">24x72</SelectItem>
+                        <SelectItem value="24">Personalizado</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </Field>
+                ) : (
+                <Field label="Intervalo">
                   <Input
                     type="number"
                     min={1}
-                    value={String(escalaForm.recorrencia_tipo === 'CICLO_HORAS' ? (escalaForm.recorrencia_config?.horas ?? 24) : (escalaForm.recorrencia_config?.intervalo ?? 1))}
-                    onChange={(event) => updateRecorrenciaConfig(escalaForm.recorrencia_tipo === 'CICLO_HORAS' ? 'horas' : 'intervalo', Number(event.target.value))}
+                    value={String(escalaForm.recorrencia_config?.intervalo ?? 1)}
+                    onChange={(event) => updateRecorrenciaConfig('intervalo', Number(event.target.value))}
                     placeholder="Numero"
                   />
                 </Field>
-                {escalaForm.recorrencia_tipo === 'DIAS_SEMANA' && (
+                )}
+                {escalaForm.recorrencia_tipo === 'PERSONALIZADO' && (
                   <div className="md:col-span-3 grid gap-2">
                     <Label>Dias da semana</Label>
                     <div className="flex flex-wrap gap-2">
@@ -612,12 +783,26 @@ export default function EscalasAdminPage() {
                     </div>
                   </div>
         )}
-
-              </div>
+              </>
             )}
-            <div className="md:col-span-2 grid gap-2"><Label>Descricao</Label><Textarea value={escalaForm.descricao ?? ''} onChange={(event) => setEscalaForm((current) => ({ ...current, descricao: event.target.value }))} placeholder="Descreva os detalhes da escala e objetivos" /></div>
-            <div className="md:col-span-2 grid gap-2"><Label>Observacoes</Label><Textarea value={escalaForm.observacoes ?? ''} onChange={(event) => setEscalaForm((current) => ({ ...current, observacoes: event.target.value }))} placeholder="Informacoes adicionais para os guardas" /></div>
-            <DialogFooter className="md:col-span-2"><Button type="button" variant="outline" onClick={() => setDialogMode(null)}>Cancelar</Button><Button type="submit">Salvar rascunho</Button></DialogFooter>
+              </div>
+            </section>
+
+            <details open={showAdditionalInfo} onToggle={(event) => setShowAdditionalInfo(event.currentTarget.open)} className="rounded-2xl border border-slate-200 bg-white p-4">
+              <summary className="cursor-pointer list-none text-sm font-black uppercase tracking-[0.14em] text-slate-500">Informacoes adicionais</summary>
+              <div className="mt-4 grid gap-4 md:grid-cols-2">
+                <Field label="Titulo personalizado"><Input value={escalaForm.titulo} onChange={(event) => setEscalaForm((current) => ({ ...current, titulo: event.target.value }))} placeholder={getGeneratedTitle()} /></Field>
+                <Field label="Local do servico"><Input value={escalaForm.local_texto ?? ''} onChange={(event) => setEscalaForm((current) => ({ ...current, local_texto: event.target.value }))} placeholder="Ex.: Terminal Central" /></Field>
+                <div className="md:col-span-2 grid gap-2"><Label>Descricao</Label><Textarea value={escalaForm.descricao ?? ''} onChange={(event) => setEscalaForm((current) => ({ ...current, descricao: event.target.value }))} placeholder="Descreva os detalhes da escala e objetivos" /></div>
+                <div className="md:col-span-2 grid gap-2"><Label>Observacoes</Label><Textarea value={escalaForm.observacoes ?? ''} onChange={(event) => setEscalaForm((current) => ({ ...current, observacoes: event.target.value }))} placeholder="Informacoes adicionais para os guardas" /></div>
+              </div>
+            </details>
+
+            <DialogFooter className="gap-2">
+              <Button type="button" variant="outline" onClick={() => setDialogMode(null)}>Cancelar</Button>
+              <Button type="submit" variant="outline" disabled={mutations.createEscalaCompleta.isPending || mutations.updateEscala.isPending} onClick={() => setSubmitAction('draft')}>Salvar rascunho</Button>
+              {!editingEscala && <Button type="submit" disabled={mutations.createEscalaCompleta.isPending} onClick={() => setSubmitAction('publish')}>Criar e publicar</Button>}
+            </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>

@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { escalasService } from '../services/escalas.service';
-import type { GuardaEscalaPayload } from '../types/escalas.types';
+import type { GuardaEscalaCompletaPayload, GuardaEscalaPayload } from '../types/escalas.types';
 import { useAuth } from '@/contexts/AuthContext';
 
 export const escalasKeys = {
@@ -55,6 +55,7 @@ export function useEscalasMutations() {
 
   return {
     createEscala: useMutation({ mutationFn: (payload: GuardaEscalaPayload) => escalasService.createEscala(payload), onSuccess: invalidate }),
+    createEscalaCompleta: useMutation({ mutationFn: (payload: GuardaEscalaCompletaPayload) => escalasService.createEscalaCompleta(payload), onSuccess: invalidate }),
     updateEscala: useMutation({ mutationFn: ({ id, payload }: { id: string; payload: GuardaEscalaPayload }) => escalasService.updateEscala(id, payload), onSuccess: invalidate }),
     deleteDraft: useMutation({ mutationFn: (id: string) => escalasService.deleteDraft(id), onSuccess: invalidate }),
     addAgente: useMutation({ mutationFn: (payload: Parameters<typeof escalasService.addAgente>[0]) => escalasService.addAgente(payload), onSuccess: invalidate }),
