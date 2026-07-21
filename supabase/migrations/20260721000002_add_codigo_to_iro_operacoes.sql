@@ -25,6 +25,8 @@ BEGIN
 END;
 $$;
 
+DROP TRIGGER IF EXISTS trg_iro_operacoes_codigo ON public.iro_operacoes;
+
 CREATE TRIGGER trg_iro_operacoes_codigo
   BEFORE INSERT ON public.iro_operacoes
   FOR EACH ROW
