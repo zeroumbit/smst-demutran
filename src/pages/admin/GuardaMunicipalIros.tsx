@@ -16,7 +16,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useConfirmDialog } from '@/components/ui/use-confirm-dialog';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
-import { gerarRelatorioDetalhadoOperacao, gerarRelatorioMensal, gerarRelatorioOperacao } from '@/lib/relatorio-iro';
+import { gerarRelatorioDetalhadoOperacao, gerarRelatorioMensal, gerarRelatorioOperacao, gerarRelatorioPorDia } from '@/lib/relatorio-iro';
 import { supabase } from '@/lib/supabase';
 import { cn } from '@/lib/utils';
 import { maskCpf } from '@/lib/masks';
@@ -298,9 +298,10 @@ const GuardaMunicipalIros = () => {
   const [guardaComboboxOpen, setGuardaComboboxOpen] = useState(false);
   const [operacaoComboboxOpen, setOperacaoComboboxOpen] = useState(false);
 
-  const [relatorioTipo, setRelatorioTipo] = useState<'operacao' | 'mensal'>('operacao');
+  const [relatorioTipo, setRelatorioTipo] = useState<'operacao' | 'mensal' | 'dia'>('operacao');
   const [relatorioOperacaoId, setRelatorioOperacaoId] = useState('');
   const [relatorioMes, setRelatorioMes] = useState(new Date().toISOString().slice(0, 7));
+  const [relatorioDia, setRelatorioDia] = useState(new Date().toISOString().slice(0, 10));
   const [relatorioFormato, setRelatorioFormato] = useState<'pdf' | 'xlsx'>('pdf');
 
   const podeVerTudo =
@@ -1531,12 +1532,30 @@ const GuardaMunicipalIros = () => {
       return Array.from(acc.values());
     };
 
+    const linhasPorDia = (operacaoId: string, data: string) => {
+      return candidaturas
+        .filter((item) => item.operacao_id === operacaoId && item.data_operacao === data && ['confirmado', 'realizado'].includes(item.status))
+        .map((item) => ({
+          nome: usuarioMap.get(item.usuario_id) || '—',
+          matricula: guardaMatriculaMap.get(item.usuario_id) || '—',
+          graduacao: guardaGraduacaoMap.get(item.usuario_id) || '—',
+          data: item.data_operacao,
+          horario: operacoes.find((o) => o.id === operacaoId)?.horario_previsto.slice(0, 5) || '',
+          horas: item.horas_trabalhadas,
+          valor: item.horas_trabalhadas * (valorHoraPorUsuario.get(item.usuario_id) || 0),
+          status: item.status,
+        }));
+    };
+
     return (
       <Card className="rounded-[24px] border-slate-200">
         <CardContent className="space-y-5 px-5 py-6">
           <div className="flex gap-3">
             <Button variant={relatorioTipo === 'operacao' ? 'default' : 'outline'} size="sm" onClick={() => setRelatorioTipo('operacao')}>
               Por Operação
+            </Button>
+            <Button variant={relatorioTipo === 'dia' ? 'default' : 'outline'} size="sm" onClick={() => setRelatorioTipo('dia')}>
+              Por Dia
             </Button>
             <Button variant={relatorioTipo === 'mensal' ? 'default' : 'outline'} size="sm" onClick={() => setRelatorioTipo('mensal')}>
               Por Mês
@@ -1559,6 +1578,39 @@ const GuardaMunicipalIros = () => {
                 </SelectContent>
               </Select>
             </div>
+          ) : relatorioTipo === 'dia' ? (
+            <>
+              <div className="space-y-2">
+                <Label>Selecione a operação</Label>
+                <Select value={relatorioOperacaoId} onValueChange={(v) => { setRelatorioOperacaoId(v); setRelatorioDia(new Date().toISOString().slice(0, 10)); }}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Escolher operação..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {operacoes.map((item) => (
+                      <SelectItem key={item.id} value={item.id}>
+                        {item.codigo} {item.nome}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {relatorioOperacaoId && (() => {
+                const op = operacoes.find((o) => o.id === relatorioOperacaoId);
+                return (
+                  <div className="space-y-2">
+                    <Label>Dia da operação</Label>
+                    <Input
+                      type="date"
+                      value={relatorioDia}
+                      min={op?.data_inicio || ''}
+                      max={op?.data_fim || ''}
+                      onChange={(event) => setRelatorioDia(event.target.value)}
+                    />
+                  </div>
+                );
+              })()}
+            </>
           ) : (
             <div className="space-y-2">
               <Label>Mês / Ano</Label>
@@ -1581,7 +1633,7 @@ const GuardaMunicipalIros = () => {
 
           <Button
             className="w-full"
-            disabled={(relatorioTipo === 'operacao' && !relatorioOperacaoId) || (relatorioTipo === 'mensal' && !relatorioMes)}
+            disabled={(relatorioTipo === 'operacao' && !relatorioOperacaoId) || (relatorioTipo === 'mensal' && !relatorioMes) || (relatorioTipo === 'dia' && (!relatorioOperacaoId || !relatorioDia))}
             onClick={() => {
               if (relatorioTipo === 'operacao') {
                 const operacao = operacoes.find((item) => item.id === relatorioOperacaoId);
@@ -1592,6 +1644,32 @@ const GuardaMunicipalIros = () => {
                   return;
                 }
                 gerarRelatorioOperacao(operacao.nome, linhas, relatorioFormato);
+                toast({ title: 'Relatório gerado!' });
+                return;
+              }
+
+              if (relatorioTipo === 'dia') {
+                const op = operacoes.find((item) => item.id === relatorioOperacaoId);
+                if (!op) return;
+                const linhas = linhasPorDia(op.id, relatorioDia);
+                if (linhas.length === 0) {
+                  toast({ title: 'Nenhum registro', description: 'Nenhuma candidatura encontrada para esta data.', variant: 'destructive' });
+                  return;
+                }
+                gerarRelatorioPorDia(
+                  {
+                    nome: op.nome,
+                    descricao: op.descricao,
+                    data_inicio: op.data_inicio,
+                    data_fim: op.data_fim,
+                    horario_previsto: op.horario_previsto,
+                    vagas_por_dia: op.vagas_por_dia,
+                    horas_por_dia: op.horas_por_dia,
+                  },
+                  relatorioDia,
+                  linhas,
+                  relatorioFormato,
+                );
                 toast({ title: 'Relatório gerado!' });
                 return;
               }

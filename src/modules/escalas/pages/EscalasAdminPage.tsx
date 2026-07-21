@@ -59,6 +59,24 @@ const diasSemana = [
 ];
 
 const normalize = (value: string) => value.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+const escalaMonthKey = (escala: GuardaEscala) => format(new Date(escala.data_inicio), 'yyyy-MM');
+const escalaMonthLabel = (monthKey: string) => {
+  const [year, month] = monthKey.split('-').map(Number);
+  return format(new Date(year, month - 1, 1), 'MMMM yyyy', { locale: ptBR });
+};
+
+type EscalasEquipeGroup = {
+  key: string;
+  label: string;
+  items: GuardaEscala[];
+};
+
+type EscalasMonthGroup = {
+  key: string;
+  label: string;
+  total: number;
+  equipes: EscalasEquipeGroup[];
+};
 
 export default function EscalasAdminPage() {
   const location = useLocation();
@@ -107,10 +125,43 @@ export default function EscalasAdminPage() {
   const filteredEscalas = useMemo(() => {
     const term = normalize(query.trim());
     return escalas.filter((escala) => {
-      const text = normalize(`${escala.titulo} ${escala.local_texto ?? ''} ${escala.tipo_servico?.nome ?? ''} ${escala.posto?.nome ?? ''}`);
+      const text = normalize(`${escala.titulo} ${escala.local_texto ?? ''} ${escala.tipo_servico?.nome ?? ''} ${escala.posto?.nome ?? ''} ${escala.equipe?.nome ?? ''} ${escala.grupamento ?? ''}`);
       return !term || text.includes(term);
     });
   }, [escalas, query]);
+
+  const escalasGroupedByMonthAndTeam = useMemo<EscalasMonthGroup[]>(() => {
+    const months = new Map<string, Map<string, EscalasEquipeGroup>>();
+
+    for (const escala of filteredEscalas) {
+      const monthKey = escalaMonthKey(escala);
+      const teamKey = escala.equipe_id ?? `sem-equipe-${escala.grupamento || 'geral'}`;
+      const teamLabel = escala.equipe?.nome ?? escala.grupamento ?? 'Sem equipe definida';
+      const teams = months.get(monthKey) ?? new Map<string, EscalasEquipeGroup>();
+      const team = teams.get(teamKey) ?? { key: teamKey, label: teamLabel, items: [] };
+      team.items.push(escala);
+      teams.set(teamKey, team);
+      months.set(monthKey, teams);
+    }
+
+    return Array.from(months.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([key, teams]) => {
+        const equipes = Array.from(teams.values())
+          .map((team) => ({
+            ...team,
+            items: team.items.sort((a, b) => new Date(a.data_inicio).getTime() - new Date(b.data_inicio).getTime()),
+          }))
+          .sort((a, b) => a.label.localeCompare(b.label, 'pt-BR'));
+
+        return {
+          key,
+          label: escalaMonthLabel(key),
+          total: equipes.reduce((sum, team) => sum + team.items.length, 0),
+          equipes,
+        };
+      });
+  }, [filteredEscalas]);
 
   const stats = useMemo(() => {
     const now = new Date();
@@ -405,23 +456,15 @@ export default function EscalasAdminPage() {
                     <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar escala" className="border-0 bg-transparent px-0 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0" />
                   </div>
                 </div>
-                <div className="mt-4 space-y-2">
-                  {isLoading ? <p className="py-8 text-center text-sm text-slate-500">Carregando...</p> : filteredEscalas.slice(0, 40).map((escala) => {
-                    const status = getEscalaStatusCalculado(escala);
-                    return (
-                      <button key={escala.id} onClick={() => { setSelectedId(escala.id); navigate(`/admin/guardas/guarda-municipal/escalas/${escala.id}`); }} className={`w-full rounded-2xl border p-4 text-left transition-all ${selectedEscala?.id === escala.id ? 'border-brand-200 bg-brand-50' : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'}`}>
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0">
-                            <p className="truncate text-sm font-bold text-slate-900">{escala.titulo}</p>
-                            <p className="mt-1 text-xs text-slate-500">{formatDateTime(escala.data_inicio)}</p>
-                          </div>
-                          <Badge variant="outline" className={statusClassName(status)}>{statusLabels[status]}</Badge>
-                        </div>
-                        <p className="mt-2 truncate text-xs text-slate-500">{escala.posto?.nome ?? escala.local_texto ?? 'Sem local definido'} - {escala.agentes?.length ?? 0} agentes</p>
-                      </button>
-                    );
-                  })}
-                </div>
+                <EscalasAgrupadasList
+                  groups={escalasGroupedByMonthAndTeam}
+                  isLoading={isLoading}
+                  selectedId={selectedEscala?.id ?? null}
+                  onSelect={(escala) => {
+                    setSelectedId(escala.id);
+                    navigate(`/admin/guardas/guarda-municipal/escalas/${escala.id}`);
+                  }}
+                />
               </div>
 
               {selectedEscala ? (
@@ -659,6 +702,97 @@ export default function EscalasAdminPage() {
       </Dialog>
       </div>
     </AdminLayout>
+  );
+}
+
+function EscalasAgrupadasList({ groups, isLoading, selectedId, onSelect }: {
+  groups: EscalasMonthGroup[];
+  isLoading: boolean;
+  selectedId: string | null;
+  onSelect: (escala: GuardaEscala) => void;
+}) {
+  if (isLoading) {
+    return <p className="py-8 text-center text-sm text-slate-500">Carregando...</p>;
+  }
+
+  if (groups.length === 0) {
+    return (
+      <div className="mt-4 rounded-2xl border border-dashed border-slate-300 px-4 py-8 text-center text-sm text-slate-500">
+        Nenhuma escala encontrada para o filtro informado.
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-4 max-h-[72vh] space-y-3 overflow-y-auto pr-1">
+      {groups.map((month, monthIndex) => {
+        const monthHasSelected = month.equipes.some((team) => team.items.some((escala) => escala.id === selectedId));
+
+        return (
+          <details key={month.key} open={monthHasSelected || monthIndex === 0} className="group rounded-2xl border border-slate-200 bg-slate-50/80">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3">
+              <div className="min-w-0">
+                <p className="truncate text-sm font-black capitalize tracking-tight text-slate-950">{month.label}</p>
+                <p className="mt-0.5 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">
+                  {month.equipes.length} equipe(s) - {month.total} escala(s)
+                </p>
+              </div>
+              <Badge variant="outline" className="rounded-full bg-white text-slate-600">{month.total}</Badge>
+            </summary>
+
+            <div className="space-y-3 border-t border-slate-200 px-3 pb-3 pt-2">
+              {month.equipes.map((team) => {
+                const teamHasSelected = team.items.some((escala) => escala.id === selectedId);
+                const agentes = team.items.reduce((sum, escala) => sum + (escala.agentes?.length ?? 0), 0);
+
+                return (
+                  <details key={team.key} open={teamHasSelected || month.equipes.length === 1} className="rounded-xl border border-slate-200 bg-white">
+                    <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-2.5">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-bold text-slate-800">{team.label}</p>
+                        <p className="mt-0.5 text-xs text-slate-500">{team.items.length} escala(s) - {agentes} agente(s)</p>
+                      </div>
+                      <Users className="h-4 w-4 shrink-0 text-slate-400" />
+                    </summary>
+
+                    <div className="space-y-2 border-t border-slate-100 p-2">
+                      {team.items.map((escala) => {
+                        const status = getEscalaStatusCalculado(escala);
+                        const isSelected = selectedId === escala.id;
+
+                        return (
+                          <button
+                            key={escala.id}
+                            onClick={() => onSelect(escala)}
+                            className={cn(
+                              'w-full rounded-xl border p-3 text-left transition-all',
+                              isSelected
+                                ? 'border-brand-200 bg-brand-50 shadow-sm'
+                                : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50',
+                            )}
+                          >
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="min-w-0">
+                                <p className="truncate text-sm font-bold text-slate-900">{escala.titulo}</p>
+                                <p className="mt-1 text-xs text-slate-500">{formatDateTime(escala.data_inicio)}</p>
+                              </div>
+                              <Badge variant="outline" className={cn('shrink-0', statusClassName(status))}>{statusLabels[status]}</Badge>
+                            </div>
+                            <p className="mt-2 truncate text-xs text-slate-500">
+                              {escala.posto?.nome ?? escala.local_texto ?? 'Sem local definido'} - {escala.agentes?.length ?? 0} agente(s)
+                            </p>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </details>
+                );
+              })}
+            </div>
+          </details>
+        );
+      })}
+    </div>
   );
 }
 

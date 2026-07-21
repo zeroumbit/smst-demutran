@@ -136,6 +136,7 @@ const demutranMenuItems: MenuItem[] = [
 
 const guardaMenuItems: MenuItem[] = [
   { icon: HouseIcon, label: 'Dashboard', path: '/admin/dashboard/guarda-municipal', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
+  { icon: CalendarDays, label: 'Escalas', path: '/admin/guardas/guarda-municipal/escalas', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
   { icon: FileWarning, label: 'IROs', path: '/admin/iros/guarda-municipal', allowedPapeis: ['gestor', 'admin_setor', 'tecnico'] },
   { icon: MessageSquareText, label: 'Fala Cidadao', path: '/admin/fala-cidadao/guarda-municipal', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
   { icon: Shield, label: 'Guardas', path: '/admin/guardas/guarda-municipal', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
@@ -146,7 +147,6 @@ const guardaMenuItems: MenuItem[] = [
   { icon: Users, label: 'Usuarios', path: '/admin/usuarios/guarda-municipal', allowedPapeis: ['super_admin', 'gestor'] },
   { icon: FileWarning, label: 'Minhas IROs', path: '/admin/iros/guarda-municipal/minhas-iro', allowedPapeis: ['gestor', 'admin_setor', 'tecnico'] },
   { icon: ClipboardList, label: 'Fiscalizacao', path: '/admin/fiscalizacao/infracoes', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
-  { icon: CalendarDays, label: 'Escalas', path: '/admin/guardas/guarda-municipal/escalas', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
   { icon: NotebookPen, label: 'Anotacoes', path: '/admin/anotacoes/guarda-municipal', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
   { icon: UserCircle2, label: 'Perfil', path: '/admin/perfil/guarda-municipal', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
 ];
@@ -451,7 +451,7 @@ export const AdminLayout = ({ children, backPath, backLabel }: AdminLayoutProps)
   }, [hasPapel, isSuperAdmin]);
 
   const showSectionSplit = sectorContext === 'guarda-municipal' || sectorContext === 'demutran';
-  const guardaPessoalLabels = new Set(['Minhas IROs', 'Escalas', 'Fiscalizacao', 'Anotacoes', 'Perfil']);
+  const guardaPessoalLabels = new Set(['Minhas IROs', 'Fiscalizacao', 'Anotacoes', 'Perfil']);
   const demutranPessoalLabels = new Set(['Anotacoes', 'Perfil']);
   const pessoalLabels = sectorContext === 'demutran' ? demutranPessoalLabels : guardaPessoalLabels;
   const adminMenuItems = useMemo(
