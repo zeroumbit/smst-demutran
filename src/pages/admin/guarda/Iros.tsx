@@ -543,7 +543,7 @@ const GuardaIros = () => {
               )}
               <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                 <h4 className="mb-4 text-xs font-bold uppercase tracking-[0.1em] text-slate-500">Informações da operação</h4>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                   <div className="rounded-xl bg-slate-50 p-3.5">
                     <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-slate-400">Código</p>
                     <p className="mt-1 text-base font-bold text-slate-800 font-mono">{selectedOperacao.codigo}</p>
@@ -560,10 +560,10 @@ const GuardaIros = () => {
                     <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-slate-400">Vagas</p>
                     <p className="mt-1 text-base font-bold text-slate-800">{selectedOperacao.vagas_por_dia}/dia</p>
                   </div>
-                  <div className="rounded-xl bg-slate-50 p-3.5">
-                    <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-slate-400">Período</p>
-                    <p className="mt-1 text-base font-bold text-slate-800">{fmtDateBR(selectedOperacao.data_inicio)} - {fmtDateBR(selectedOperacao.data_fim)}</p>
-                  </div>
+                </div>
+                <div className="mt-3 rounded-xl bg-slate-50 p-3.5">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-slate-400">Período</p>
+                  <p className="mt-1 text-base font-bold text-slate-800">{fmtDateBR(selectedOperacao.data_inicio)} - {fmtDateBR(selectedOperacao.data_fim)}</p>
                 </div>
               </div>
               <div className="space-y-1.5">

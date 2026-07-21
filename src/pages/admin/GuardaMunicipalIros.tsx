@@ -91,6 +91,7 @@ type PerfilUsuarioRow = {
   nome: string | null;
   sobrenome: string | null;
   graduacao_id: string | null;
+  guarda_municipal_graduacoes?: { nome?: string | null } | { nome?: string | null }[] | null;
 };
 
 type ValorGraduacaoRow = {
@@ -100,6 +101,28 @@ type ValorGraduacaoRow = {
 
 type IROCandidaturaRow = IROCandidatura & {
   iro_operacoes?: { nome?: string | null } | null;
+};
+
+type IRODisponibilidadeDia = {
+  operacao_id: string;
+  data: string;
+  vagas_total: number;
+  vagas_ocupadas: number;
+  vagas_disponiveis: number;
+};
+
+type IROOperacaoDataRow = {
+  operacao_id: string;
+  data: string;
+};
+
+type CandidaturasDiaGroup = {
+  data: string;
+  items: Array<{
+    operacao: IROOperacao;
+    candidaturas: IROCandidatura[];
+    disponibilidade?: IRODisponibilidadeDia;
+  }>;
 };
 
 type GuardaJoinRow = {
@@ -125,6 +148,16 @@ type GuardaJoinRow = {
         guarda_municipal_graduacoes?: { nome?: string | null } | { nome?: string | null }[] | null;
       }[]
     | null;
+};
+
+type GuardaMunicipalRow = {
+  id: string;
+  nome: string;
+  matricula: string;
+  cpf: string | null;
+  graduacao_id: string | null;
+  ativo: boolean;
+  guarda_municipal_graduacoes?: { nome?: string | null } | { nome?: string | null }[] | null;
 };
 
 const TEMPO_SOLICITACAO_LABEL: Record<string, string> = {
@@ -260,12 +293,15 @@ const GuardaMunicipalIros = () => {
   const [viewMode, setViewMode] = useState<IROViewMode>('gerenciar');
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('todas');
+  const [dataFilter, setDataFilter] = useState('');
+  const [disponibilidadeFilter, setDisponibilidadeFilter] = useState<'todas' | 'com-vagas'>('todas');
 
   const [operacoes, setOperacoes] = useState<IROOperacao[]>([]);
   const [candidaturas, setCandidaturas] = useState<IROCandidatura[]>([]);
+  const [disponibilidadeDias, setDisponibilidadeDias] = useState<IRODisponibilidadeDia[]>([]);
   const [bancoHoras, setBancoHoras] = useState<IROBancoHoras[]>([]);
   const [notificacoes, setNotificacoes] = useState<IRONotificacao[]>([]);
-  const [usuarios, setUsuarios] = useState<{ user_id: string; nome: string; graduacao_id?: string | null }[]>([]);
+  const [usuarios, setUsuarios] = useState<{ user_id: string; nome: string; graduacao_id?: string | null; graduacao_nome?: string | null }[]>([]);
   const [guardasAtivos, setGuardasAtivos] = useState<GuardaOption[]>([]);
   const [valoresGraduacao, setValoresGraduacao] = useState<{ graduacao_id: string; valor_hora: number }[]>([]);
 
@@ -338,7 +374,7 @@ const GuardaMunicipalIros = () => {
         podeVerTudo
           ? supabase.from('iro_notificacoes').select('*').order('created_at', { ascending: false })
           : supabase.from('iro_notificacoes').select('*').eq('usuario_id', user!.user_id).order('created_at', { ascending: false }),
-        supabase.from('perfis_usuarios').select('user_id, nome, sobrenome, graduacao_id').eq('ativo', true),
+        supabase.from('perfis_usuarios').select('user_id, nome, sobrenome, graduacao_id, guarda_municipal_graduacoes(nome)').eq('ativo', true),
         supabase.from('iro_valores_graduacao').select('graduacao_id, valor_hora').eq('ativo', true),
         supabase
           .from('guardas_usuarios')
@@ -360,6 +396,8 @@ const GuardaMunicipalIros = () => {
         valor_hora: Number(item.valor_hora) || 0,
       }));
       const valorByGraduacao = new Map(valores.map((item) => [item.graduacao_id, item.valor_hora]));
+      const getGraduacaoNome = (graduacao?: { nome?: string | null } | { nome?: string | null }[] | null) =>
+        Array.isArray(graduacao) ? graduacao[0]?.nome || null : graduacao?.nome || null;
 
       const operacoesData = (opRes.data || []) as IROOperacao[];
       const hoje = todayStr();
@@ -376,14 +414,49 @@ const GuardaMunicipalIros = () => {
         }
       }
 
+      const candidaturasData = ((candRes.data || []) as IROCandidaturaRow[]).map((item) => ({ ...item, operacao_nome: item.operacao_nome || item.iro_operacoes?.nome || 'IRO extra' }));
+      let disponibilidadeRows: IRODisponibilidadeDia[] = [];
+      if (podeVerTudo) {
+        const operacaoIds = new Set(operacoesData.map((item) => item.id));
+        if (operacaoIds.size > 0) {
+          const { data: datasOperacoes, error: datasOperacoesError } = await supabase
+            .from('iro_operacao_datas')
+            .select('operacao_id, data')
+            .in('operacao_id', Array.from(operacaoIds))
+            .gte('data', hoje)
+            .order('data', { ascending: true });
+          if (datasOperacoesError) throw datasOperacoesError;
+
+          const operacaoMap = new Map(operacoesData.map((item) => [item.id, item]));
+          const ocupacao = new Map<string, number>();
+          for (const candidatura of candidaturasData) {
+            if (!['pendente', 'confirmado', 'realizado'].includes(candidatura.status)) continue;
+            const key = `${candidatura.operacao_id}:${candidatura.data_operacao}`;
+            ocupacao.set(key, (ocupacao.get(key) || 0) + 1);
+          }
+
+          disponibilidadeRows = ((datasOperacoes || []) as IROOperacaoDataRow[])
+            .map((item) => {
+              const operacao = operacaoMap.get(item.operacao_id);
+              if (!operacao || !operacao.ativo || operacao.data_fim < hoje) return null;
+              const vagasOcupadas = ocupacao.get(`${item.operacao_id}:${item.data}`) || 0;
+              const vagasTotal = Number(operacao.vagas_por_dia) || 0;
+              return {
+                operacao_id: item.operacao_id,
+                data: item.data,
+                vagas_total: vagasTotal,
+                vagas_ocupadas: vagasOcupadas,
+                vagas_disponiveis: Math.max(0, vagasTotal - vagasOcupadas),
+              } satisfies IRODisponibilidadeDia;
+            })
+            .filter(Boolean) as IRODisponibilidadeDia[];
+        }
+      }
+
       const guardas = ((guardasRes.data || []) as GuardaJoinRow[])
         .map((row) => {
           const guarda = Array.isArray(row.guardas_municipais) ? row.guardas_municipais[0] : row.guardas_municipais;
           if (!guarda?.ativo || !row.usuario_id) return null;
-          const graduacaoNome =
-            Array.isArray(guarda.guarda_municipal_graduacoes)
-              ? guarda.guarda_municipal_graduacoes[0]?.nome || null
-              : guarda.guarda_municipal_graduacoes?.nome || null;
 
           return {
             usuario_id: row.usuario_id,
@@ -392,14 +465,47 @@ const GuardaMunicipalIros = () => {
             matricula: guarda.matricula,
             cpf: guarda.cpf || null,
             graduacao_id: guarda.graduacao_id || null,
-            graduacao_nome: graduacaoNome,
+            graduacao_nome: getGraduacaoNome(guarda.guarda_municipal_graduacoes),
             valor_hora: valorByGraduacao.get(guarda.graduacao_id) || 0,
           } satisfies GuardaOption;
         })
         .filter(Boolean) as GuardaOption[];
 
+      if (podeVerTudo) {
+        const usuariosPorNome = new Map(
+          ((userRes.data || []) as PerfilUsuarioRow[])
+            .map((item) => {
+              const nomeCompleto = [item.nome, item.sobrenome].filter(Boolean).join(' ').trim();
+              return nomeCompleto ? [nomeCompleto.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase(), item.user_id] as const : null;
+            })
+            .filter(Boolean) as Array<readonly [string, string]>,
+        );
+        const guardasVinculados = new Set(guardas.map((item) => item.usuario_id));
+        const { data: guardasMunicipaisData } = await supabase
+          .from('guardas_municipais')
+          .select('id, nome, matricula, cpf, graduacao_id, ativo, guarda_municipal_graduacoes(nome)')
+          .eq('ativo', true);
+
+        for (const guarda of (guardasMunicipaisData || []) as GuardaMunicipalRow[]) {
+          const usuarioId = usuariosPorNome.get(guarda.nome.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase());
+          if (!usuarioId || guardasVinculados.has(usuarioId)) continue;
+          guardas.push({
+            usuario_id: usuarioId,
+            guarda_id: guarda.id,
+            nome: guarda.nome,
+            matricula: guarda.matricula,
+            cpf: guarda.cpf || null,
+            graduacao_id: guarda.graduacao_id || null,
+            graduacao_nome: getGraduacaoNome(guarda.guarda_municipal_graduacoes),
+            valor_hora: valorByGraduacao.get(guarda.graduacao_id || '') || 0,
+          });
+          guardasVinculados.add(usuarioId);
+        }
+      }
+
       setOperacoes(operacoesData);
-      setCandidaturas(((candRes.data || []) as IROCandidaturaRow[]).map((item) => ({ ...item, operacao_nome: item.operacao_nome || item.iro_operacoes?.nome || 'IRO extra' })));
+      setCandidaturas(candidaturasData);
+      setDisponibilidadeDias(disponibilidadeRows);
       setBancoHoras((bhRes.data || []) as IROBancoHoras[]);
       setNotificacoes((notifRes.data || []) as IRONotificacao[]);
       setUsuarios(
@@ -407,6 +513,7 @@ const GuardaMunicipalIros = () => {
           user_id: item.user_id,
           nome: [item.nome, item.sobrenome].filter(Boolean).join(' ') || 'Sem nome',
           graduacao_id: item.graduacao_id,
+          graduacao_nome: getGraduacaoNome(item.guarda_municipal_graduacoes),
         })),
       );
       setGuardasAtivos(guardas.sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')));
@@ -491,9 +598,12 @@ const GuardaMunicipalIros = () => {
 
   const guardaGraduacaoMap = useMemo(() => {
     const map = new Map<string, string>();
+    for (const item of usuarios) {
+      if (item.graduacao_nome) map.set(item.user_id, item.graduacao_nome);
+    }
     for (const item of guardasAtivos) map.set(item.usuario_id, item.graduacao_nome || '');
     return map;
-  }, [guardasAtivos]);
+  }, [guardasAtivos, usuarios]);
 
   const minhasCandidaturas = useMemo(
     () => candidaturas.filter((item) => item.usuario_id === user?.user_id),
@@ -571,31 +681,78 @@ const GuardaMunicipalIros = () => {
           : minhasCandidaturas;
     return base.filter((item) => {
       if (term && !`${item.operacao_nome} ${usuarioMap.get(item.usuario_id) || ''}`.toLowerCase().includes(term)) return false;
+      if (activeSection === 'candidaturas' && dataFilter && item.data_operacao !== dataFilter) return false;
       if (statusFilter === 'manuais' && !item.adicionado_manual) return false;
       if (statusFilter === 'automaticas' && item.adicionado_manual) return false;
       if (!['todas', 'manuais', 'automaticas'].includes(statusFilter) && item.status !== statusFilter) return false;
       return true;
     });
-  }, [candidaturas, isExtrasIrosView, isMinhaIrosView, minhasCandidaturas, podeVerTudo, search, statusFilter, usuarioMap]);
+  }, [activeSection, candidaturas, dataFilter, isExtrasIrosView, isMinhaIrosView, minhasCandidaturas, podeVerTudo, search, statusFilter, usuarioMap]);
 
-  const candidaturasAgrupadas = useMemo(() => {
-    if (!podeVerTudo || viewMode !== 'gerenciar') return [];
-    const map = new Map<string, { operacao: IROOperacao; candidaturas: IROCandidatura[]; stats: { total: number; confirmados: number; capacidadeTotal: number; restante: number } }>();
-    for (const op of operacoes) {
-      const opCandidaturas = filteredCandidaturas.filter((c) => c.operacao_id === op.id);
-      if (opCandidaturas.length === 0) continue;
-      const confirmadosRealizados = opCandidaturas.filter((c) => c.status === 'confirmado' || c.status === 'realizado');
-      const dias = Math.max(1, Math.ceil((new Date(op.data_fim).getTime() - new Date(op.data_inicio).getTime()) / (1000 * 60 * 60 * 24)) + 1);
-      const capacidadeTotal = dias * op.vagas_por_dia;
-      const usadas = confirmadosRealizados.length;
-      map.set(op.id, {
-        operacao: op,
-        candidaturas: opCandidaturas,
-        stats: { total: opCandidaturas.length, confirmados: confirmadosRealizados.length, capacidadeTotal, restante: Math.max(0, capacidadeTotal - usadas) },
-      });
+  const disponibilidadePorOperacaoDia = useMemo(() => {
+    const map = new Map<string, IRODisponibilidadeDia>();
+    for (const item of disponibilidadeDias) {
+      map.set(`${item.operacao_id}:${item.data}`, item);
     }
-    return Array.from(map.values()).sort((a, b) => b.candidaturas.length - a.candidaturas.length);
-  }, [filteredCandidaturas, operacoes, podeVerTudo, viewMode]);
+    return map;
+  }, [disponibilidadeDias]);
+
+  const candidaturasAgrupadasPorDia = useMemo<CandidaturasDiaGroup[]>(() => {
+    if (!podeVerTudo || viewMode !== 'gerenciar') return [];
+    const operacaoMap = new Map(operacoes.map((item) => [item.id, item]));
+    const datasCandidaturas = new Set(filteredCandidaturas.map((item) => `${item.operacao_id}:${item.data_operacao}`));
+    const groups = new Map<string, CandidaturasDiaGroup['items']>();
+    const term = search.trim().toLowerCase();
+
+    const addGroupItem = (data: string, operacao: IROOperacao, opCandidaturas: IROCandidatura[], disponibilidade?: IRODisponibilidadeDia) => {
+      if (term && !`${operacao.codigo || ''} ${operacao.nome} ${operacao.descricao || ''} ${opCandidaturas.map((item) => usuarioMap.get(item.usuario_id) || '').join(' ')}`.toLowerCase().includes(term)) return;
+      if (!['todas', 'manuais', 'automaticas'].includes(statusFilter) && opCandidaturas.length === 0) return;
+      if (disponibilidadeFilter === 'com-vagas' && (!disponibilidade || disponibilidade.vagas_disponiveis <= 0)) return;
+      const current = groups.get(data) || [];
+      current.push({ operacao, candidaturas: opCandidaturas, disponibilidade });
+      groups.set(data, current);
+    };
+
+    for (const disponibilidade of disponibilidadeDias) {
+      if (dataFilter && disponibilidade.data !== dataFilter) continue;
+      if (disponibilidadeFilter === 'com-vagas' && disponibilidade.vagas_disponiveis <= 0) continue;
+
+      const operacao = operacaoMap.get(disponibilidade.operacao_id);
+      if (!operacao) continue;
+
+      const opCandidaturas = filteredCandidaturas.filter(
+        (item) => item.operacao_id === disponibilidade.operacao_id && item.data_operacao === disponibilidade.data,
+      );
+      const key = `${disponibilidade.operacao_id}:${disponibilidade.data}`;
+      if (opCandidaturas.length === 0 && !datasCandidaturas.has(key)) {
+        addGroupItem(disponibilidade.data, operacao, [], disponibilidade);
+        continue;
+      }
+
+      addGroupItem(disponibilidade.data, operacao, opCandidaturas, disponibilidade);
+    }
+
+    if (disponibilidadeFilter === 'todas') {
+      for (const item of filteredCandidaturas) {
+        const key = `${item.operacao_id}:${item.data_operacao}`;
+        if (disponibilidadePorOperacaoDia.has(key)) continue;
+        if (dataFilter && item.data_operacao !== dataFilter) continue;
+        const operacao = operacaoMap.get(item.operacao_id);
+        if (!operacao) continue;
+        const opCandidaturas = filteredCandidaturas.filter((entry) => entry.operacao_id === item.operacao_id && entry.data_operacao === item.data_operacao);
+        addGroupItem(item.data_operacao, operacao, opCandidaturas);
+      }
+    }
+
+    return Array.from(groups.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([data, items]) => ({
+        data,
+        items: items
+          .filter((item, index, array) => array.findIndex((entry) => entry.operacao.id === item.operacao.id) === index)
+          .sort((a, b) => a.operacao.horario_previsto.localeCompare(b.operacao.horario_previsto) || a.operacao.nome.localeCompare(b.operacao.nome, 'pt-BR')),
+      }));
+  }, [dataFilter, disponibilidadeDias, disponibilidadeFilter, disponibilidadePorOperacaoDia, filteredCandidaturas, operacoes, podeVerTudo, search, statusFilter, usuarioMap, viewMode]);
 
   const handlePrintCandidaturas = useCallback((operacao: IROOperacao, opCandidaturas: IROCandidatura[], formato: 'pdf' | 'xlsx' = 'pdf') => {
     const candidatos = opCandidaturas.map((c) => ({
@@ -1388,6 +1545,100 @@ const GuardaMunicipalIros = () => {
     </article>
   );
 
+  const renderCandidaturasDiaGroup = ({ data, items }: CandidaturasDiaGroup) => {
+    const totalCandidaturas = items.reduce((acc, item) => acc + item.candidaturas.length, 0);
+    const totalVagas = items.reduce((acc, item) => acc + (item.disponibilidade?.vagas_total ?? item.operacao.vagas_por_dia), 0);
+    const vagasDisponiveis = items.reduce((acc, item) => acc + (item.disponibilidade?.vagas_disponiveis ?? 0), 0);
+
+    return (
+      <article key={data} className="rounded-[34px] border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="flex flex-col gap-3 border-b border-slate-100 pb-4 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-400">
+              {new Date(`${data}T00:00:00`).toLocaleDateString('pt-BR', { weekday: 'long' })}
+            </p>
+            <h3 className="text-xl font-black tracking-[-0.03em] text-slate-950">{fmtDateBR(data)}</h3>
+          </div>
+          <div className="flex flex-wrap gap-2 text-xs">
+            <span className="rounded-full bg-slate-100 px-3 py-1 font-semibold text-slate-700">{items.length} operação(ões)</span>
+            <span className="rounded-full bg-blue-50 px-3 py-1 font-semibold text-blue-700">{totalCandidaturas} candidatura(s)</span>
+            <span className={cn('rounded-full px-3 py-1 font-semibold', vagasDisponiveis > 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700')}>
+              {vagasDisponiveis} vaga(s) livre(s) de {totalVagas}
+            </span>
+          </div>
+        </div>
+
+        <div className="mt-4 space-y-4">
+          {items.map(({ operacao, candidaturas: opCandidaturas, disponibilidade }) => (
+            <div key={`${data}:${operacao.id}`} className="rounded-[24px] border border-slate-100 bg-slate-50/70 p-4">
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h4 className="font-bold text-slate-900">
+                      <span className="font-mono text-xs font-medium text-slate-400">{operacao.codigo}</span> {operacao.nome}
+                    </h4>
+                    <Badge variant="outline" className={cn('rounded-full px-2.5 py-0.5 text-[10px] font-bold', operacao.ativo ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-slate-200 bg-slate-100 text-slate-500')}>
+                      {operacao.ativo ? 'Ativa' : 'Inativa'}
+                    </Badge>
+                    <Badge variant="outline" className={cn('rounded-full px-2.5 py-0.5 text-[10px] font-bold', (disponibilidade?.vagas_disponiveis ?? 0) > 0 ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-amber-200 bg-amber-50 text-amber-700')}>
+                      {disponibilidade ? `${disponibilidade.vagas_disponiveis}/${disponibilidade.vagas_total} vaga(s)` : 'Sem agenda futura'}
+                    </Badge>
+                  </div>
+                  <div className="mt-2 flex flex-wrap gap-3 text-sm text-slate-500">
+                    <span className="flex items-center gap-1"><Clock className="h-3.5 w-3.5" />{operacao.horario_previsto.slice(0, 5)}</span>
+                    <span className="flex items-center gap-1"><Hourglass className="h-3.5 w-3.5" />{operacao.horas_por_dia}h/dia</span>
+                    <span className="flex items-center gap-1"><Users className="h-3.5 w-3.5" />{opCandidaturas.length} candidatura(s)</span>
+                  </div>
+                </div>
+                <Button size="sm" variant="outline" onClick={() => handlePrintCandidaturas(operacao, opCandidaturas)} disabled={opCandidaturas.length === 0}>
+                  <Printer className="mr-1.5 h-4 w-4" />
+                  Imprimir
+                </Button>
+              </div>
+
+              {opCandidaturas.length > 0 ? (
+                <div className="mt-3 overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-slate-200 text-left text-xs font-bold uppercase tracking-[0.08em] text-slate-500">
+                        <th className="py-2.5 pr-3">Nome</th>
+                        <th className="py-2.5 pr-3">Matrícula</th>
+                        <th className="py-2.5 pr-3">Graduação</th>
+                        <th className="py-2.5 pr-3">Horas</th>
+                        <th className="py-2.5 pr-3">Valor</th>
+                        <th className="py-2.5">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {opCandidaturas.map((c) => (
+                        <tr key={c.id} className="border-b border-slate-100 last:border-0">
+                          <td className="py-2.5 pr-3 font-medium text-slate-900">{usuarioMap.get(c.usuario_id) || '—'}</td>
+                          <td className="py-2.5 pr-3 text-slate-500">{guardaMatriculaMap.get(c.usuario_id) || '—'}</td>
+                          <td className="py-2.5 pr-3 text-slate-500">{guardaGraduacaoMap.get(c.usuario_id) || '—'}</td>
+                          <td className="py-2.5 pr-3 font-medium">{c.horas_trabalhadas}h</td>
+                          <td className="py-2.5 pr-3 font-medium text-emerald-600">{formatCurrency(c.horas_trabalhadas * (valorHoraPorUsuario.get(c.usuario_id) || 0))}</td>
+                          <td className="py-2.5">
+                            <Badge variant="outline" className={cn('rounded-full px-2.5 py-0.5 text-[10px] font-bold', STATUS_CANDIDATURA_VARIANT[c.status])}>
+                              {c.status}
+                            </Badge>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="mt-3 rounded-2xl border border-dashed border-emerald-200 bg-emerald-50/60 px-4 py-3 text-sm font-medium text-emerald-700">
+                  Nenhuma candidatura neste dia; ainda há vaga disponível para esta operação.
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </article>
+    );
+  };
+
   const renderBancoHorasCard = (item: IROBancoHoras) => (
     <article key={item.id} className="rounded-[34px] border border-slate-200 bg-white p-5 shadow-sm">
       <div className="flex items-center justify-between">
@@ -1432,72 +1683,10 @@ const GuardaMunicipalIros = () => {
       return filteredOperacoes.length ? filteredOperacoes.map(renderOperacaoCard) : <EmptyBox text="Nenhuma operação encontrada." />;
     }
     if (activeSection === 'candidaturas') {
-      if (podeVerTudo && viewMode === 'gerenciar' && candidaturasAgrupadas.length > 0) {
-        return candidaturasAgrupadas.map(({ operacao, candidaturas: opCandidaturas, stats }) => (
-          <article key={operacao.id} className="rounded-[34px] border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-              <div className="flex-1 space-y-2">
-                <div className="flex flex-wrap items-center gap-2">
-                  <h3 className="text-lg font-bold text-slate-900"><span className="text-slate-400 font-mono text-sm font-medium">{operacao.codigo}</span> {operacao.nome}</h3>
-                  <Badge variant="outline" className={cn('rounded-full px-3 py-1 text-xs font-bold', operacao.ativo ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-slate-200 bg-slate-100 text-slate-500')}>
-                    {operacao.ativo ? 'Ativa' : 'Inativa'}
-                  </Badge>
-                </div>
-                <div className="flex flex-wrap gap-3 text-sm text-slate-500">
-                  <span className="flex items-center gap-1"><Calendar className="h-3.5 w-3.5" />{fmtDateBR(operacao.data_inicio)} - {fmtDateBR(operacao.data_fim)}</span>
-                  <span className="flex items-center gap-1"><Clock className="h-3.5 w-3.5" />{operacao.horario_previsto.slice(0, 5)}</span>
-                  <span className="flex items-center gap-1"><Hourglass className="h-3.5 w-3.5" />{operacao.horas_por_dia}h/dia</span>
-                  <span className="flex items-center gap-1"><Users className="h-3.5 w-3.5" />{operacao.vagas_por_dia} vaga(s)/dia</span>
-                </div>
-                <div className="flex flex-wrap gap-2 text-xs">
-                  <span className="rounded-full bg-slate-100 px-3 py-1 font-semibold text-slate-700">{stats.total} candidatura(s)</span>
-                  <span className="rounded-full bg-blue-50 px-3 py-1 font-semibold text-blue-700">{stats.confirmados} confirmado(s)/realizado(s)</span>
-                  <span className={cn('rounded-full px-3 py-1 font-semibold', stats.restante > 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700')}>
-                    {stats.restante} vaga(s) restante(s) de {stats.capacidadeTotal}
-                  </span>
-                </div>
-              </div>
-              <div className="flex shrink-0 gap-2">
-                <Button size="sm" variant="outline" onClick={() => handlePrintCandidaturas(operacao, opCandidaturas)}>
-                  <Printer className="mr-1.5 h-4 w-4" />
-                  Imprimir
-                </Button>
-              </div>
-            </div>
-            <div className="mt-4 overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-slate-200 text-left text-xs font-bold uppercase tracking-[0.08em] text-slate-500">
-                    <th className="py-2.5 pr-3">Nome</th>
-                    <th className="py-2.5 pr-3">Matrícula</th>
-                    <th className="py-2.5 pr-3">Graduação</th>
-                    <th className="py-2.5 pr-3">Data</th>
-                    <th className="py-2.5 pr-3">Horas</th>
-                    <th className="py-2.5 pr-3">Valor</th>
-                    <th className="py-2.5">Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {opCandidaturas.map((c) => (
-                    <tr key={c.id} className="border-b border-slate-100 last:border-0">
-                      <td className="py-2.5 pr-3 font-medium text-slate-900">{usuarioMap.get(c.usuario_id) || '—'}</td>
-                      <td className="py-2.5 pr-3 text-slate-500">{guardaMatriculaMap.get(c.usuario_id) || '—'}</td>
-                      <td className="py-2.5 pr-3 text-slate-500">{guardaGraduacaoMap.get(c.usuario_id) || '—'}</td>
-                      <td className="py-2.5 pr-3 text-slate-600">{fmtDateBR(c.data_operacao)}</td>
-                      <td className="py-2.5 pr-3 font-medium">{c.horas_trabalhadas}h</td>
-                      <td className="py-2.5 pr-3 font-medium text-emerald-600">{formatCurrency(c.horas_trabalhadas * (valorHoraPorUsuario.get(c.usuario_id) || 0))}</td>
-                      <td className="py-2.5">
-                        <Badge variant="outline" className={cn('rounded-full px-2.5 py-0.5 text-[10px] font-bold', STATUS_CANDIDATURA_VARIANT[c.status])}>
-                          {c.status}
-                        </Badge>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </article>
-        ));
+      if (podeVerTudo && viewMode === 'gerenciar') {
+        return candidaturasAgrupadasPorDia.length
+          ? candidaturasAgrupadasPorDia.map(renderCandidaturasDiaGroup)
+          : <EmptyBox text="Nenhuma candidatura ou dia com vaga encontrado." />;
       }
       return filteredCandidaturas.length ? filteredCandidaturas.map(renderCandidaturaCard) : <EmptyBox text="Nenhuma candidatura encontrada." />;
     }
@@ -1745,6 +1934,8 @@ const GuardaMunicipalIros = () => {
                     setSection('operacoes');
                     setSearch('');
                     setStatusFilter('todas');
+                    setDataFilter('');
+                    setDisponibilidadeFilter('todas');
                   }}
                 >
                   Gerenciar IROs
@@ -1755,6 +1946,8 @@ const GuardaMunicipalIros = () => {
                     setViewMode('extras');
                     setSearch('');
                     setStatusFilter('todas');
+                    setDataFilter('');
+                    setDisponibilidadeFilter('todas');
                   }}
                 >
                   Gerenciar IROs Extras
@@ -1772,7 +1965,7 @@ const GuardaMunicipalIros = () => {
         {activeSection !== 'relatorios' && (
           <Card className="rounded-[24px] border-slate-200">
             <CardContent className="space-y-4 px-5 py-5">
-              <div className="grid gap-4 lg:grid-cols-[1fr_220px]">
+              <div className={cn('grid gap-4', activeSection === 'candidaturas' ? 'lg:grid-cols-[minmax(0,1fr)_170px_220px_220px]' : 'lg:grid-cols-[1fr_220px]')}>
                 <div className="space-y-2">
                   <Label>Buscar</Label>
                   <Input
@@ -1789,8 +1982,30 @@ const GuardaMunicipalIros = () => {
                             ? 'Buscar guardas...'
                             : 'Buscar notificações...'
                     }
-                  />
+                    />
                 </div>
+                {activeSection === 'candidaturas' && (
+                  <>
+                    <div className="space-y-2">
+                      <Label>Dia</Label>
+                      <Input type="date" value={dataFilter} onChange={(event) => setDataFilter(event.target.value)} />
+                    </div>
+                    {podeVerTudo && viewMode === 'gerenciar' && (
+                      <div className="space-y-2">
+                        <Label>Vagas</Label>
+                        <Select value={disponibilidadeFilter} onValueChange={(value) => setDisponibilidadeFilter(value as 'todas' | 'com-vagas')}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="todas">Todos os dias</SelectItem>
+                            <SelectItem value="com-vagas">Somente com vagas</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+                  </>
+                )}
                 <div className="space-y-2">
                   <Label>Filtrar</Label>
                   <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -1827,6 +2042,8 @@ const GuardaMunicipalIros = () => {
                     setSection(key);
                     setSearch('');
                     setStatusFilter('todas');
+                    setDataFilter('');
+                    setDisponibilidadeFilter('todas');
                   }}
                   className={cn(
                     'whitespace-nowrap rounded-[20px] px-4 py-2.5 text-sm font-bold tracking-[-0.02em] transition-all',
