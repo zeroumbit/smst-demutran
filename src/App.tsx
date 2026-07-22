@@ -98,6 +98,7 @@ const AdminRelatorios = React.lazy(() => import("./pages/admin/Relatorios"));
 const AdminMinhasAnotacoes = React.lazy(() => import("./pages/admin/MinhasAnotacoes"));
 const GuardaMinhasAnotacoes = React.lazy(() => import("./pages/admin/guarda/MinhasAnotacoes"));
 const SuportePage = React.lazy(() => import("./pages/admin/Suporte"));
+const SuperAdminOperacoes = React.lazy(() => import("./pages/admin/SuperAdminOperacoes"));
 
 const IroDashboardRoute = () => {
   const { profile } = useAuth();
@@ -368,6 +369,13 @@ const App = () => {
               <SuspenseWrapper>
                 <ProtectedRoute allowedPapeis={['super_admin', 'gestor', 'admin_setor', 'tecnico']}>
                   <Dashboard />
+                </ProtectedRoute>
+              </SuspenseWrapper>
+            } />
+            <Route path="/admin/iros" element={
+              <SuspenseWrapper>
+                <ProtectedRoute allowedPapeis={['super_admin']}>
+                  <SuperAdminOperacoes />
                 </ProtectedRoute>
               </SuspenseWrapper>
             } />

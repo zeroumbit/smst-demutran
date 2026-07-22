@@ -96,6 +96,7 @@ const moveMenuItemBeforeLabel = (items: MenuItem[], itemLabel: string, beforeLab
 
 const defaultMenuItems: MenuItem[] = [
   { icon: HouseIcon, label: 'Dashboard', path: '/admin/dashboard', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
+  { icon: Shield, label: 'IROS', path: '/admin/iros', allowedPapeis: ['super_admin'] },
   { icon: MessageSquareText, label: 'Fala Cidadao', path: '/admin/fala-cidadao', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
   { icon: FileWarning, label: 'IRO', path: '/admin/dashboard/:setorSlug/iro', allowedPapeis: ['gestor', 'admin_setor'] },
   { icon: NotebookPen, label: 'Anotacoes', path: '/admin/anotacoes', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
