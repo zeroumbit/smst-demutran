@@ -590,7 +590,7 @@ const App = () => {
             <Route path="/admin/iros/guarda-municipal/*" element={
               <SuspenseWrapper>
                 <ProtectedRoute
-                  allowedPapeis={['gestor', 'admin_setor', 'tecnico']}
+                  allowedPapeis={['super_admin', 'gestor', 'admin_setor', 'tecnico']}
                   requiredSetorSlug="guarda-municipal"
                   allowGuardaIroManagement
                 >

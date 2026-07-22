@@ -857,6 +857,30 @@ const Dashboard = () => {
           </section>
         )}
 
+        {isSuperAdmin && !urlSetorSlug && (
+          <Link
+            to="/admin/iros/guarda-municipal"
+            className="block rounded-[24px] border border-slate-200/80 bg-gradient-to-br from-white to-slate-50/80 p-5 shadow-[0_16px_38px_-30px_rgba(15,23,42,0.32)] transition-all hover:shadow-[0_20px_44px_-30px_rgba(37,99,235,0.35)] hover:border-brand-200/60"
+          >
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
+                <div className="rounded-2xl bg-blue-50 p-3 text-blue-600">
+                  <ShieldCheck className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-slate-900">Operações IRO — Guarda Municipal</p>
+                  <p className="mt-0.5 text-sm text-slate-500">
+                    {state.operacoesAtivasIro} operação(oes) ativa(s) — acompanhe e gerencie as operações de reforço operacional
+                  </p>
+                </div>
+              </div>
+              <div className="rounded-xl bg-blue-50 p-2.5 text-blue-600">
+                <span className="text-2xl font-extrabold">{state.operacoesAtivasIro}</span>
+              </div>
+            </div>
+          </Link>
+        )}
+
         {papel === 'gestor' && (
           <Link
             to="/admin/usuarios"

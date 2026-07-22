@@ -93,7 +93,7 @@ BEGIN
     v_setor_id,
     upper(trim(_placa)),
     nullif(trim(_chassi), ''),
-    _descricao_veiculo,
+    COALESCE(NULLIF(TRIM(_descricao_veiculo), ''), 'Nao informado'),
     nullif(trim(_ano), ''),
     nullif(trim(_cor), ''),
     nullif(trim(_modelo), ''),

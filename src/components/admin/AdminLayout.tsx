@@ -137,7 +137,7 @@ const demutranMenuItems: MenuItem[] = [
 const guardaMenuItems: MenuItem[] = [
   { icon: HouseIcon, label: 'Dashboard', path: '/admin/dashboard/guarda-municipal', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
   { icon: CalendarDays, label: 'Escalas', path: '/admin/guardas/guarda-municipal/escalas', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
-  { icon: FileWarning, label: 'IROs', path: '/admin/iros/guarda-municipal', allowedPapeis: ['gestor', 'admin_setor', 'tecnico'] },
+  { icon: FileWarning, label: 'IROs', path: '/admin/iros/guarda-municipal', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
   { icon: MessageSquareText, label: 'Fala Cidadao', path: '/admin/fala-cidadao/guarda-municipal', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
   { icon: Shield, label: 'Guardas', path: '/admin/guardas/guarda-municipal', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
   { icon: CarFront, label: 'Frota da Guarda', path: '/admin/guardas/guarda-municipal/frota', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
@@ -153,7 +153,7 @@ const guardaMenuItems: MenuItem[] = [
 
 const guardaBottomNavItems: MenuItem[] = [
   { icon: HouseIcon, label: 'Home', path: '/admin/dashboard/guarda-municipal', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
-  { icon: FileWarning, label: 'IROs', path: '/admin/iros/guarda-municipal', allowedPapeis: ['gestor', 'admin_setor', 'tecnico'] },
+  { icon: FileWarning, label: 'IROs', path: '/admin/iros/guarda-municipal', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
   { icon: CalendarDays, label: 'Escala', path: '/admin/guardas/guarda-municipal/escalas', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
   { icon: Users, label: 'Equipes', path: '/admin/guardas/guarda-municipal/equipes', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
   { icon: NotebookPen, label: 'Anotacoes', path: '/admin/anotacoes/guarda-municipal', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
