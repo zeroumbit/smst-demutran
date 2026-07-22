@@ -851,7 +851,13 @@ const DemutranLiberacao = () => {
       return;
     }
 
-    const protocolo = (insertData as { protocolo?: string })?.protocolo;
+    const result = insertData as { error?: string; protocolo?: string } | null;
+    if (result?.error) {
+      toast({ title: 'Erro ao salvar apreensao', description: result.error, variant: 'destructive' });
+      return;
+    }
+
+    const protocolo = result?.protocolo;
     toast({
       title: 'Veiculo cadastrado com sucesso!',
       description: protocolo
