@@ -536,7 +536,7 @@ export function NotesWorkspace({ variant }: NotesWorkspaceProps) {
 
       <Button
         onClick={openCreateModal}
-        className="fixed bottom-24 right-6 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-slate-900 text-white shadow-[0_16px_38px_-14px_rgba(15,23,42,0.5)] transition-transform hover:bg-slate-800 active:scale-95 lg:hidden"
+        className="fixed bottom-[calc(6rem+var(--safe-area-bottom))] right-[calc(1.5rem+var(--safe-area-right))] z-40 flex h-14 w-14 items-center justify-center rounded-full bg-slate-900 text-white shadow-[0_16px_38px_-14px_rgba(15,23,42,0.5)] transition-transform hover:bg-slate-800 active:scale-95 lg:hidden"
         aria-label="Criar anotacao"
       >
         <Plus className="h-5 w-5" />

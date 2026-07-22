@@ -151,7 +151,7 @@ export const GuardsLayout = ({ children }: GuardsLayoutProps) => {
   };
 
   return (
-    <div className="min-h-screen bg-[#f3f6fb] text-slate-900">
+    <div className="min-h-screen min-h-dvh bg-[#f3f6fb] text-slate-900">
       {/* ─── Desktop sidebar ─── */}
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-slate-200 bg-white/95 backdrop-blur-xl lg:flex">
         <div className="flex items-center gap-3 border-b border-slate-200/80 px-5 py-5">
@@ -238,9 +238,9 @@ export const GuardsLayout = ({ children }: GuardsLayoutProps) => {
       </aside>
 
       {/* ─── Main content ─── */}
-      <div className="flex min-h-screen flex-col lg:pl-64">
+      <div className="flex min-h-screen min-h-dvh flex-col lg:pl-64">
 
-        <main className="native-app-scroll flex-1 px-3 pb-[calc(6.4rem+env(safe-area-inset-bottom))] pt-[max(env(safe-area-inset-top),0.75rem)] sm:px-4 sm:py-5 lg:p-8">
+        <main className="native-app-scroll flex-1 px-3 pb-[calc(6.4rem+var(--safe-area-bottom))] pt-[max(var(--safe-area-top),0.75rem)] sm:px-4 sm:py-5 lg:p-8">
           <div className="mx-auto w-full max-w-5xl">
           {children}
           </div>
@@ -248,7 +248,7 @@ export const GuardsLayout = ({ children }: GuardsLayoutProps) => {
       </div>
 
       {/* ─── Mobile bottom tab bar ─── */}
-      <nav className="fixed bottom-0 left-0 right-0 z-50 px-3 pb-[calc(0.7rem+env(safe-area-inset-bottom))] pt-2 lg:hidden pointer-events-none">
+      <nav className="fixed bottom-0 left-0 right-0 z-50 pl-[calc(0.75rem+var(--safe-area-left))] pr-[calc(0.75rem+var(--safe-area-right))] pb-[calc(0.7rem+var(--safe-area-bottom))] pt-2 lg:hidden pointer-events-none">
         <div className="mx-auto grid max-w-5xl grid-cols-5 gap-2 rounded-[24px] bg-white/90 p-1.5 shadow-[0_14px_34px_-24px_rgba(15,23,42,0.3)] ring-1 ring-slate-200/70 backdrop-blur-xl pointer-events-auto">
           {mobileNavItems.map((item) => {
             const Icon = item.icon;
@@ -312,8 +312,8 @@ export const GuardsLayout = ({ children }: GuardsLayoutProps) => {
 
       {/* ─── Mobile menu modal ─── */}
       {menuModalOpen && (
-        <div className="fixed inset-0 z-[60] flex flex-col bg-white lg:hidden animate-in slide-in-from-bottom">
-          <div className="flex items-center justify-between border-b border-slate-200 px-5 pb-4 pt-[calc(max(env(safe-area-inset-top),1rem)+0.5rem)] bg-slate-50">
+        <div className="fixed inset-0 z-[60] flex min-h-0 flex-col bg-white lg:hidden animate-in slide-in-from-bottom">
+          <div className="flex items-center justify-between border-b border-slate-200 px-5 pb-4 pt-[calc(max(var(--safe-area-top),1rem)+0.5rem)] bg-slate-50">
             <div className="flex items-center gap-3">
               <GuardaLogo />
               <span className="text-lg font-bold text-slate-900">Guarda Municipal</span>
@@ -352,7 +352,7 @@ export const GuardsLayout = ({ children }: GuardsLayoutProps) => {
             </Link>
           </nav>
 
-          <div className="border-t border-slate-200 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] bg-slate-50">
+          <div className="border-t border-slate-200 p-4 pb-[calc(1rem+var(--safe-area-bottom))] bg-slate-50">
             <button
               onClick={handleLogout}
               className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium text-slate-500 hover:bg-red-50 hover:text-red-600 transition-colors"

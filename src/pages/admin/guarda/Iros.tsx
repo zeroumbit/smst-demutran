@@ -69,7 +69,7 @@ const GuardaIros = () => {
 
   const [leiDialogAberta, setLeiDialogAberta] = useState(false);
   const [candidaturaParaCancelar, setCandidaturaParaCancelar] = useState<IROCandidatura | null>(null);
-  const [candidaturaResultado, setCandidaturaResultado] = useState<{ sucesso: boolean; mensagem: string; operacaoNome?: string; dataOperacao?: string; horas?: number; totalMes?: number } | null>(null);
+  const [candidaturaResultado, setCandidaturaResultado] = useState<{ sucesso: boolean; mensagem: string; operacaoNome?: string; dataOperacao?: string; horas?: number; totalMes?: number; datasSucesso?: string[] } | null>(null);
   const [candidaturaResultadoAberto, setCandidaturaResultadoAberto] = useState(false);
   const [selectedCandidatura, setSelectedCandidatura] = useState<IROCandidatura | null>(null);
   const [candidaturaDetalhesAberto, setCandidaturaDetalhesAberto] = useState(false);
@@ -280,13 +280,28 @@ const GuardaIros = () => {
 
     const sucessos = resultados.filter((item) => item.sucesso);
     const falhas = resultados.filter((item) => !item.sucesso);
+    const datasSucesso = sucessos.map((item) => item.data);
     const ultimaComSucesso = sucessos.at(-1);
+
+    if (sucessos.length > 0) {
+      toast({
+        variant: 'success',
+        title: 'Inscrição realizada com sucesso!',
+        description: sucessos.length === 1
+          ? `Candidatura confirmada para ${fmtDateBR(sucessos[0].data)}.`
+          : `${sucessos.length} candidaturas confirmadas.`,
+      });
+    } else {
+      toast({ title: 'Erro', description: falhas[0]?.mensagem || 'Nenhuma candidatura foi realizada.', variant: 'destructive' });
+    }
+
     setCandidaturaResultado({
       sucesso: sucessos.length > 0,
       mensagem: sucessos.length > 0
         ? `${sucessos.length} candidatura(s) realizada(s) com sucesso${falhas.length ? `; ${falhas.length} não realizada(s).` : '.'}`
         : (falhas[0]?.mensagem || 'Nenhuma candidatura foi realizada.'),
       operacaoNome: selectedOperacao.nome,
+      datasSucesso: datasSucesso.length > 0 ? datasSucesso : undefined,
       dataOperacao: sucessos.length === 1 ? sucessos[0].data : undefined,
       horas: selectedOperacao.horas_por_dia,
       totalMes: ultimaComSucesso?.total_mes,
@@ -802,7 +817,20 @@ const GuardaIros = () => {
                 {candidaturaResultado?.sucesso && candidaturaResultado?.operacaoNome && (
                   <div className="mt-3 space-y-1 text-sm text-slate-600">
                     <p><span className="font-semibold text-slate-700">Operação:</span> {candidaturaResultado.operacaoNome}</p>
-                    <p><span className="font-semibold text-slate-700">Data:</span> {fmtDateBR(candidaturaResultado.dataOperacao || '')}</p>
+                    {candidaturaResultado.datasSucesso && candidaturaResultado.datasSucesso.length > 1 ? (
+                      <div>
+                        <p className="font-semibold text-slate-700 mb-1">Datas:</p>
+                        <div className="flex flex-wrap gap-1">
+                          {candidaturaResultado.datasSucesso.map((d) => (
+                            <Badge key={d} variant="outline" className="rounded-full bg-emerald-50 text-emerald-700 border-emerald-200 text-[11px] font-medium">
+                              {fmtDateBR(d)}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <p><span className="font-semibold text-slate-700">Data:</span> {fmtDateBR(candidaturaResultado.dataOperacao || '')}</p>
+                    )}
                     <p><span className="font-semibold text-slate-700">Horas:</span> {candidaturaResultado.horas}h/dia</p>
                     {candidaturaResultado.totalMes !== undefined && (
                       <p className="pt-1 text-emerald-700"><span className="font-semibold">Total no mês:</span> {candidaturaResultado.totalMes}h</p>

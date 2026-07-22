@@ -11,7 +11,7 @@ const Rope = () => {
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
-      <div className="h-16" />
+      <div className="public-navbar-spacer" />
 
       <Hero
         title="ROPE"

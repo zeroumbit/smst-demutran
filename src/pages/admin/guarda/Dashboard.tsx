@@ -100,6 +100,8 @@ const GuardaDashboard = () => {
   const [vagasPorData, setVagasPorData] = useState<Record<string, number>>({});
   const [minhasCandidaturasPorData, setMinhasCandidaturasPorData] = useState<Record<string, boolean>>({});
   const [datasSelecionadas, setDatasSelecionadas] = useState<string[]>([]);
+  const [candidaturaResultado, setCandidaturaResultado] = useState<{ sucesso: boolean; mensagem: string; operacaoNome?: string; datasSucesso?: string[]; dataOperacao?: string; horas?: number; totalMes?: number } | null>(null);
+  const [candidaturaResultadoAberto, setCandidaturaResultadoAberto] = useState(false);
 
   const [exibirModalLei, setExibirModalLei] = useState(false);
   const [termoAceito, setTermoAceito] = useState(false);
@@ -309,14 +311,33 @@ const GuardaDashboard = () => {
 
     const sucessos = resultados.filter((item) => item.sucesso);
     const falhas = resultados.filter((item) => !item.sucesso);
+    const datasSucesso = sucessos.map((item) => item.data);
+    const ultimoSucesso = sucessos.at(-1);
+
     if (sucessos.length > 0) {
       toast({
+        variant: 'success',
         title: 'Inscrição realizada com sucesso!',
-        description: `${sucessos.length} candidatura(s) realizada(s)${falhas.length ? `; ${falhas.length} não realizada(s).` : '.'}`,
+        description: sucessos.length === 1
+          ? `Candidatura confirmada para ${fmtDateBR(sucessos[0].data)}.`
+          : `${sucessos.length} candidaturas confirmadas.`,
       });
     } else {
       toast({ title: 'Erro', description: falhas[0]?.mensagem || 'Nenhuma candidatura foi realizada.', variant: 'destructive' });
     }
+
+    setCandidaturaResultado({
+      sucesso: sucessos.length > 0,
+      mensagem: sucessos.length > 0
+        ? `${sucessos.length} candidatura(s) realizada(s) com sucesso${falhas.length ? `; ${falhas.length} não realizada(s).` : '.'}`
+        : (falhas[0]?.mensagem || 'Nenhuma candidatura foi realizada.'),
+      operacaoNome: selectedOperacao.nome,
+      datasSucesso: datasSucesso.length > 0 ? datasSucesso : undefined,
+      dataOperacao: sucessos.length === 1 ? sucessos[0].data : undefined,
+      horas: selectedOperacao.horas_por_dia,
+      totalMes: (ultimoSucesso as any)?.total_mes,
+    });
+    setCandidaturaResultadoAberto(true);
     setSelectedOperacao(null);
     setDatasSelecionadas([]);
     void loadData();
@@ -650,9 +671,57 @@ const GuardaDashboard = () => {
       )}
     </ResponsiveDialog>
 
+    <ResponsiveDialog
+      open={candidaturaResultadoAberto}
+      onOpenChange={(open) => { if (!open) { setCandidaturaResultadoAberto(false); setCandidaturaResultado(null); } }}
+      title={candidaturaResultado?.sucesso ? 'Inscrição realizada' : 'Inscrição não realizada'}
+      description={candidaturaResultado?.sucesso ? 'Sua candidatura foi registrada com sucesso.' : 'Não foi possível completar sua inscrição.'}
+    >
+      <div className="space-y-5 py-2">
+        <div className={cn('flex flex-col items-center gap-3 rounded-2xl p-6 text-center', candidaturaResultado?.sucesso ? 'bg-emerald-50' : 'bg-red-50')}>
+          {candidaturaResultado?.sucesso ? (
+            <CheckCircle2 className="h-14 w-14 text-emerald-500" />
+          ) : (
+            <X className="h-14 w-14 text-red-500" />
+          )}
+          <div>
+            <p className={cn('text-lg font-bold', candidaturaResultado?.sucesso ? 'text-emerald-800' : 'text-red-800')}>
+              {candidaturaResultado?.mensagem || (candidaturaResultado?.sucesso ? 'Candidatura realizada!' : 'Erro ao candidatar')}
+            </p>
+            {candidaturaResultado?.sucesso && candidaturaResultado?.operacaoNome && (
+              <div className="mt-3 space-y-1 text-sm text-slate-600">
+                <p><span className="font-semibold text-slate-700">Operação:</span> {candidaturaResultado.operacaoNome}</p>
+                {candidaturaResultado.datasSucesso && candidaturaResultado.datasSucesso.length > 1 ? (
+                  <div>
+                    <p className="font-semibold text-slate-700 mb-1">Datas:</p>
+                    <div className="flex flex-wrap justify-center gap-1">
+                      {candidaturaResultado.datasSucesso.map((d) => (
+                        <Badge key={d} variant="outline" className="rounded-full bg-emerald-50 text-emerald-700 border-emerald-200 text-[11px] font-medium">
+                          {fmtDateBR(d)}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <p><span className="font-semibold text-slate-700">Data:</span> {fmtDateBR(candidaturaResultado.dataOperacao || '')}</p>
+                )}
+                <p><span className="font-semibold text-slate-700">Horas:</span> {candidaturaResultado.horas}h/dia</p>
+                {candidaturaResultado.totalMes !== undefined && (
+                  <p className="pt-1 text-emerald-700"><span className="font-semibold">Total no mês:</span> {candidaturaResultado.totalMes}h</p>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+        <Button className="w-full" onClick={() => { setCandidaturaResultadoAberto(false); setCandidaturaResultado(null); }}>
+          {candidaturaResultado?.sucesso ? 'OK, entendi' : 'Fechar'}
+        </Button>
+      </div>
+    </ResponsiveDialog>
+
     {exibirModalLei && (
-      <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-end sm:justify-center bg-slate-950/80 backdrop-blur-sm sm:p-4 overflow-hidden animate-fade-in">
-        <div className="flex h-auto max-h-[88dvh] sm:max-h-[92vh] w-full sm:max-w-4xl flex-col overflow-hidden rounded-t-[28px] sm:rounded-2xl border border-slate-100 bg-white shadow-2xl animate-in slide-in-from-bottom sm:zoom-in duration-300">
+      <div className="fixed inset-0 z-[9999] flex min-h-0 flex-col items-center justify-end bg-slate-950/80 pl-[var(--safe-area-left)] pr-[var(--safe-area-right)] pt-[var(--safe-area-top)] backdrop-blur-sm sm:justify-center sm:p-4 overflow-hidden animate-fade-in">
+        <div className="flex h-auto max-h-[calc(100dvh-var(--safe-area-top))] sm:max-h-[calc(100dvh-var(--safe-area-top)-var(--safe-area-bottom)-2rem)] w-full sm:max-w-4xl flex-col overflow-hidden rounded-t-[28px] sm:rounded-2xl border border-slate-100 bg-white shadow-2xl animate-in slide-in-from-bottom sm:zoom-in duration-300">
           {/* Header */}
           <div className="flex items-start gap-3 bg-gradient-to-r from-slate-900 via-slate-800 to-blue-900 p-4 text-white sm:items-center sm:gap-4 sm:p-6">
             <div className="rounded-xl bg-white/10 p-3 text-white backdrop-blur-sm shrink-0">
@@ -873,7 +942,7 @@ const GuardaDashboard = () => {
           </div>
 
           {/* Footer Controls */}
-          <div className="space-y-4 border-t border-slate-100 bg-slate-50 p-4 sm:p-6 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+          <div className="space-y-4 border-t border-slate-100 bg-slate-50 p-4 sm:p-6 pb-[calc(1rem+var(--safe-area-bottom))]">
             <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm transition-colors hover:bg-slate-50">
               <input
                 type="checkbox"

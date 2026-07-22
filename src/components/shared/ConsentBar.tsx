@@ -49,7 +49,7 @@ export function ConsentBar() {
       }`}
     >
       <div className="border-t border-border bg-background/95 backdrop-blur-lg shadow-[0_-8px_32px_-8px_rgba(0,0,0,0.12)]">
-        <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 sm:py-5">
+        <div className="mx-auto max-w-7xl px-4 pt-4 pb-[calc(1rem+var(--safe-area-bottom))] sm:px-6 sm:pt-5 sm:pb-[calc(1.25rem+var(--safe-area-bottom))]">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex-1 space-y-1">
               <p className="text-sm font-bold text-foreground">Privacidade e Termos</p>

@@ -46,7 +46,7 @@ const Noticias = () => {
     return (
       <div className="min-h-screen flex flex-col">
         <Navbar />
-        <div className="h-16" />
+        <div className="public-navbar-spacer" />
         <div className="container mx-auto px-4 py-8 flex justify-center items-center">
           <p>Carregando notícias...</p>
         </div>
@@ -58,7 +58,7 @@ const Noticias = () => {
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
-      <div className="h-16" />
+      <div className="public-navbar-spacer" />
 
       <Hero
         title="Notícias"

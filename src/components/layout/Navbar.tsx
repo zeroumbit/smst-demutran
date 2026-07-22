@@ -41,7 +41,7 @@ const Navbar = () => {
   ];
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-secondary shadow-lg">
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-secondary pt-[var(--safe-area-top)] shadow-lg">
       <div className="mx-auto max-w-7xl px-4 sm:px-6">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
@@ -143,8 +143,8 @@ const Navbar = () => {
 
         {/* Mobile Navigation - Fullscreen Overlay */}
         {isMenuOpen && (
-          <div className="lg:hidden fixed inset-0 z-[60] bg-secondary animate-fade-in">
-            <div className="flex items-center justify-between h-16 px-4 sm:px-6 border-b border-yellow-400">
+          <div className="lg:hidden fixed inset-0 z-[60] flex min-h-0 flex-col bg-secondary pt-[var(--safe-area-top)] animate-fade-in">
+            <div className="flex h-16 shrink-0 items-center justify-between px-4 sm:px-6 border-b border-yellow-400">
               <div className="flex items-center gap-3">
                 <div className="bg-white p-2 rounded-lg">
                   <img
@@ -162,7 +162,7 @@ const Navbar = () => {
                 <X className="h-6 w-6" />
               </button>
             </div>
-            <div className="flex flex-col gap-2 p-4 sm:p-6 overflow-y-auto h-[calc(100vh-4rem)]">
+            <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-4 pb-[calc(1rem+var(--safe-area-bottom))] sm:p-6 sm:pb-[calc(1.5rem+var(--safe-area-bottom))]">
               {navItems.map((item) =>
                 item.label === "Entrar" ? (
                   <a

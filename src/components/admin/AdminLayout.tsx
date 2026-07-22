@@ -667,19 +667,19 @@ export const AdminLayout = ({ children, backPath, backLabel }: AdminLayoutProps)
   );
 
   return (
-    <div className="min-h-screen bg-[#f6f8fc]">
+    <div className="min-h-screen min-h-dvh bg-[#f6f8fc]">
       <aside className={`hidden border-r border-slate-200 bg-white lg:fixed lg:inset-y-0 lg:flex lg:flex-col ${sidebarCollapsed ? 'lg:w-[72px]' : 'lg:w-[285px]'}`}>
         {sidebarContent}
       </aside>
 
       {sidebarOpen && (
-        <div className="lg:hidden fixed inset-0 z-50 flex">
+        <div className="lg:hidden fixed inset-0 z-50 flex min-h-0">
           <div
             className="fixed inset-0 bg-black/50"
             onClick={() => setSidebarOpen(false)}
           />
-          <aside className="relative flex w-full max-w-xs flex-1 flex-col bg-white">
-            <div className="absolute top-0 right-0 -mr-12 pt-4">
+          <aside className="relative flex min-h-0 w-full max-w-xs flex-1 flex-col bg-white pt-[var(--safe-area-top)] pb-[var(--safe-area-bottom)] pl-[var(--safe-area-left)]">
+            <div className="absolute right-0 -mr-12 top-[var(--safe-area-top)] pt-4">
               <button
                 type="button"
                 className="ml-1 flex items-center justify-center h-10 w-10 rounded-full"
@@ -839,13 +839,13 @@ export const AdminLayout = ({ children, backPath, backLabel }: AdminLayoutProps)
           </div>
         </header>
 
-        <main className={`flex-1 p-4 lg:p-8 ${sectorContext === 'guarda-municipal' ? 'pb-[calc(5.75rem+env(safe-area-inset-bottom))] lg:pb-8' : ''}`}>
+        <main className={`flex-1 px-4 pt-[calc(1rem+var(--safe-area-top))] lg:p-8 ${sectorContext === 'guarda-municipal' ? 'pb-[calc(5.75rem+var(--safe-area-bottom))] lg:pb-8' : 'pb-[calc(1rem+var(--safe-area-bottom))] lg:pb-8'}`}>
           {children}
         </main>
       </div>
 
       {sectorContext === 'guarda-municipal' && visibleBottomNavItems.length > 0 && (
-        <nav className="fixed bottom-0 left-0 right-0 z-50 flex min-h-[4.75rem] items-stretch border-t border-slate-200/80 bg-white shadow-[0_-2px_20px_-8px_rgba(15,23,42,0.12)] lg:hidden pb-[env(safe-area-inset-bottom)]">
+        <nav className="fixed bottom-0 left-0 right-0 z-50 flex min-h-[4.75rem] items-stretch border-t border-slate-200/80 bg-white pl-[var(--safe-area-left)] pr-[var(--safe-area-right)] shadow-[0_-2px_20px_-8px_rgba(15,23,42,0.12)] lg:hidden pb-[var(--safe-area-bottom)]">
           {visibleBottomNavItems.map((item) => {
             const Icon = item.icon!;
             const active = item.path ? (location.pathname === item.path || location.pathname.startsWith(item.path + '/')) : false;
@@ -878,8 +878,8 @@ export const AdminLayout = ({ children, backPath, backLabel }: AdminLayoutProps)
       )}
 
       {menuModalOpen && (
-        <div className="fixed inset-0 z-[60] flex flex-col bg-white lg:hidden animate-in slide-in-from-bottom">
-          <div className="flex items-center justify-between border-b border-slate-200 px-5 pb-4 pt-[calc(max(env(safe-area-inset-top),1rem)+0.5rem)] bg-slate-50">
+        <div className="fixed inset-0 z-[60] flex min-h-0 flex-col bg-white lg:hidden animate-in slide-in-from-bottom">
+          <div className="flex items-center justify-between border-b border-slate-200 px-5 pb-4 pt-[calc(max(var(--safe-area-top),1rem)+0.5rem)] bg-slate-50">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
                 <img src={guardaLogo as string} alt="Guarda" className="h-full w-full object-contain p-1" />
@@ -917,7 +917,7 @@ export const AdminLayout = ({ children, backPath, backLabel }: AdminLayoutProps)
             })}
           </nav>
 
-          <div className="border-t border-slate-200 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] bg-slate-50">
+          <div className="border-t border-slate-200 p-4 pb-[calc(1rem+var(--safe-area-bottom))] bg-slate-50">
             <button
               onClick={handleLogout}
               className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium text-slate-500 hover:bg-red-50 hover:text-red-600 transition-colors"

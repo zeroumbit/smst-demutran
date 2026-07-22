@@ -312,7 +312,7 @@ const GuardaMunicipalIros = () => {
   const [operacaoForm, setOperacaoForm] = useState<OperacaoFormState>(() => operacaoFormInitial());
   const [editingOperacao, setEditingOperacao] = useState<IROOperacao | null>(null);
 
-  const [candidaturaResultado, setCandidaturaResultado] = useState<{ sucesso: boolean; mensagem: string; operacaoNome?: string; dataOperacao?: string; horas?: number; totalMes?: number } | null>(null);
+  const [candidaturaResultado, setCandidaturaResultado] = useState<{ sucesso: boolean; mensagem: string; operacaoNome?: string; dataOperacao?: string; horas?: number; totalMes?: number; datasSucesso?: string[] } | null>(null);
   const [candidaturaResultadoAberto, setCandidaturaResultadoAberto] = useState(false);
 
   const [detalhesCandidatura, setDetalhesCandidatura] = useState<IROCandidatura | null>(null);
@@ -1150,10 +1150,22 @@ const GuardaMunicipalIros = () => {
     }
 
     const result = data as { sucesso: boolean; mensagem: string; total_mes?: number };
+
+    if (result.sucesso) {
+      toast({
+        variant: 'success',
+        title: 'Inscrição realizada com sucesso!',
+        description: `Candidatura confirmada para ${fmtDateBR(candidaturaData.data_operacao)}.`,
+      });
+    } else {
+      toast({ title: 'Erro', description: result.mensagem || 'Candidatura não realizada.', variant: 'destructive' });
+    }
+
     setCandidaturaResultado({
       sucesso: result.sucesso,
       mensagem: result.mensagem,
       operacaoNome: operacao?.nome,
+      datasSucesso: result.sucesso ? [candidaturaData.data_operacao] : undefined,
       dataOperacao: candidaturaData.data_operacao,
       horas: operacao?.horas_por_dia,
       totalMes: result.total_mes,
@@ -2686,17 +2698,17 @@ const GuardaMunicipalIros = () => {
       {section === 'operacoes' && (
         <>
           {isExtrasIrosView && canLaunchManual && (
-            <button onClick={() => setManualDialogOpen(true)} className="fixed bottom-44 right-5 z-50 flex size-14 items-center justify-center rounded-full border-2 border-emerald-500 bg-emerald-600 text-white shadow-[0_8px_28px_-6px_rgba(16,185,129,0.55)] transition-all active:scale-90 sm:hidden">
+            <button onClick={() => setManualDialogOpen(true)} className="fixed bottom-[calc(11rem+var(--safe-area-bottom))] right-[calc(1.25rem+var(--safe-area-right))] z-50 flex size-14 items-center justify-center rounded-full border-2 border-emerald-500 bg-emerald-600 text-white shadow-[0_8px_28px_-6px_rgba(16,185,129,0.55)] transition-all active:scale-90 sm:hidden">
               <Plus className="h-7 w-7" />
             </button>
           )}
           {!isMinhaIrosView && !isExtrasIrosView && canLaunchManual && (
-            <button onClick={() => setViewMode('extras')} className="fixed bottom-44 right-5 z-50 flex size-14 items-center justify-center rounded-full border-2 border-emerald-500 bg-emerald-600 text-white shadow-[0_8px_28px_-6px_rgba(16,185,129,0.55)] transition-all active:scale-90 sm:hidden">
+            <button onClick={() => setViewMode('extras')} className="fixed bottom-[calc(11rem+var(--safe-area-bottom))] right-[calc(1.25rem+var(--safe-area-right))] z-50 flex size-14 items-center justify-center rounded-full border-2 border-emerald-500 bg-emerald-600 text-white shadow-[0_8px_28px_-6px_rgba(16,185,129,0.55)] transition-all active:scale-90 sm:hidden">
               <Plus className="h-7 w-7" />
             </button>
           )}
           {!isMinhaIrosView && !isExtrasIrosView && canManageOperacoes && (
-            <button onClick={openCreateOperacao} className="fixed bottom-24 right-5 z-50 flex size-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-[0_8px_28px_-6px_rgba(37,99,235,0.55)] transition-all active:scale-90 sm:hidden">
+            <button onClick={openCreateOperacao} className="fixed bottom-[calc(6rem+var(--safe-area-bottom))] right-[calc(1.25rem+var(--safe-area-right))] z-50 flex size-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-[0_8px_28px_-6px_rgba(37,99,235,0.55)] transition-all active:scale-90 sm:hidden">
               <Plus className="h-7 w-7" />
             </button>
           )}
@@ -2723,7 +2735,20 @@ const GuardaMunicipalIros = () => {
               {candidaturaResultado?.sucesso && candidaturaResultado?.operacaoNome && (
                 <div className="mt-3 space-y-1 text-sm text-slate-600">
                   <p><span className="font-semibold text-slate-700">Operação:</span> {candidaturaResultado.operacaoNome}</p>
-                  <p><span className="font-semibold text-slate-700">Data:</span> {fmtDateBR(candidaturaResultado.dataOperacao || '')}</p>
+                  {candidaturaResultado.datasSucesso && candidaturaResultado.datasSucesso.length > 1 ? (
+                    <div>
+                      <p className="font-semibold text-slate-700 mb-1">Datas:</p>
+                      <div className="flex flex-wrap justify-center gap-1">
+                        {candidaturaResultado.datasSucesso.map((d) => (
+                          <Badge key={d} variant="outline" className="rounded-full bg-emerald-50 text-emerald-700 border-emerald-200 text-[11px] font-medium">
+                            {fmtDateBR(d)}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <p><span className="font-semibold text-slate-700">Data:</span> {fmtDateBR(candidaturaResultado.dataOperacao || '')}</p>
+                  )}
                   <p><span className="font-semibold text-slate-700">Horas:</span> {candidaturaResultado.horas}h/dia</p>
                   {candidaturaResultado.totalMes !== undefined && (
                     <p className="pt-1 text-emerald-700"><span className="font-semibold">Total no mês:</span> {candidaturaResultado.totalMes}h</p>

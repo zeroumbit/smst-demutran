@@ -31,7 +31,7 @@ export function PwaStatus() {
               onClick={() => setInstallDismissed(true)}
             />
             {/* Sheet */}
-            <div className="absolute bottom-0 left-0 right-0 pointer-events-auto animate-slide-up">
+            <div className="absolute bottom-0 left-0 right-0 pb-[var(--safe-area-bottom)] pointer-events-auto animate-slide-up">
               <div className="relative mx-auto w-full max-w-[400px] rounded-t-[28px] bg-white px-6 pb-8 pt-5 shadow-[0_-8px_40px_rgba(0,0,0,0.12)]">
                 <div className="mx-auto mb-6 h-1 w-9 rounded-full bg-slate-200" />
                 <div className="flex flex-col items-center text-center">
@@ -80,7 +80,7 @@ export function PwaStatus() {
 
           {/* Desktop: Horizontal Bar */}
           <div className="hidden md:block">
-            <div className="absolute bottom-6 left-1/2 w-full max-w-[920px] -translate-x-1/2 px-4 pointer-events-auto">
+            <div className="absolute bottom-[calc(1.5rem+var(--safe-area-bottom))] left-1/2 w-full max-w-[920px] -translate-x-1/2 px-4 pointer-events-auto">
               <div className="relative grid grid-cols-[auto,minmax(0,1fr),auto] items-center gap-x-4 gap-y-3 rounded-[26px] border border-slate-200/70 bg-white/95 px-6 py-5 shadow-[0_16px_36px_rgba(0,0,0,0.08)] backdrop-blur-md transition-all duration-300 hover:shadow-[0_20px_48px_rgba(0,0,0,0.12)]">
                 <div className="row-span-2 flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 p-2 shadow-md shadow-blue-100">
                   <img
@@ -132,7 +132,7 @@ export function PwaStatus() {
 
       {/* Update Banner */}
       {needRefresh && (
-        <div className="absolute bottom-4 left-1/2 w-full max-w-[420px] -translate-x-1/2 px-4 pointer-events-auto sm:bottom-6">
+        <div className="absolute bottom-[calc(1rem+var(--safe-area-bottom))] left-1/2 w-full max-w-[420px] -translate-x-1/2 px-4 pointer-events-auto sm:bottom-[calc(1.5rem+var(--safe-area-bottom))]">
           <div className="rounded-2xl border border-blue-100 bg-white/95 p-4 shadow-[0_16px_36px_rgba(15,23,42,0.14)] backdrop-blur-md">
             <div className="flex items-start gap-3">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
@@ -156,7 +156,7 @@ export function PwaStatus() {
 
       {/* Offline Ready Banner */}
       {showOfflineReady && (
-        <div className="absolute bottom-4 left-1/2 w-full max-w-[420px] -translate-x-1/2 px-4 pointer-events-auto sm:bottom-6">
+        <div className="absolute bottom-[calc(1rem+var(--safe-area-bottom))] left-1/2 w-full max-w-[420px] -translate-x-1/2 px-4 pointer-events-auto sm:bottom-[calc(1.5rem+var(--safe-area-bottom))]">
           <div className="flex items-start gap-3 rounded-2xl border border-emerald-100 bg-white/95 p-4 shadow-[0_12px_28px_rgba(15,23,42,0.1)] backdrop-blur-md">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
               <CheckCircle2 className="h-5 w-5" />
@@ -178,7 +178,7 @@ export function PwaStatus() {
 
       {/* Offline Banner */}
       {!isOnline && (
-        <div className="absolute bottom-4 left-1/2 w-full max-w-[420px] -translate-x-1/2 px-4 pointer-events-auto sm:bottom-6">
+        <div className="absolute bottom-[calc(1rem+var(--safe-area-bottom))] left-1/2 w-full max-w-[420px] -translate-x-1/2 px-4 pointer-events-auto sm:bottom-[calc(1.5rem+var(--safe-area-bottom))]">
           <div className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-white/95 p-4 text-sm text-slate-600 shadow-[0_12px_28px_rgba(15,23,42,0.12)] backdrop-blur-md">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-500">
               <WifiOff className="h-5 w-5" />

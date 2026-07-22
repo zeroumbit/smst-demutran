@@ -15,7 +15,7 @@ export function FalaCidadaoLayout({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
       <Navbar />
-      <div className="h-16" />
+      <div className="public-navbar-spacer" />
       <main>{children}</main>
       <Footer />
     </div>

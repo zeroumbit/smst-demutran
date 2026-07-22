@@ -58,7 +58,7 @@ const NoticiaDetalhe = () => {
     return (
       <div className="min-h-screen flex flex-col">
         <Navbar />
-        <div className="h-16" />
+        <div className="public-navbar-spacer" />
         <div className="mx-auto max-w-7xl px-4 sm:px-6 py-8 flex justify-center items-center">
           <p>Carregando notícia...</p>
         </div>
@@ -71,7 +71,7 @@ const NoticiaDetalhe = () => {
     return (
       <div className="min-h-screen flex flex-col">
         <Navbar />
-        <div className="h-16" />
+        <div className="public-navbar-spacer" />
         <div className="mx-auto max-w-7xl px-4 sm:px-6 py-8">
           <div className="text-center">
             <p className="text-destructive">{error || 'Notícia não encontrada'}</p>
@@ -92,7 +92,7 @@ const NoticiaDetalhe = () => {
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
-      <div className="h-16" />
+      <div className="public-navbar-spacer" />
       
       <main className="flex-grow bg-background">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 py-8">

@@ -58,7 +58,7 @@ export function ResponsiveDialog({
             {description && <DrawerDescription className="pr-8 break-words">{description}</DrawerDescription>}
           </DrawerHeader>
           <div className={`flex-1 overflow-y-auto px-4 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden ${className ?? ''}`}>{children}</div>
-          <DrawerFooter className="mt-0 pt-2 bg-background border-t pb-[calc(1rem+env(safe-area-inset-bottom))]">
+          <DrawerFooter className="mt-0 pt-2 bg-background border-t pb-[calc(1rem+var(--safe-area-bottom))]">
             {footer ?? defaultFooter}
           </DrawerFooter>
         </DrawerContent>
@@ -68,7 +68,7 @@ export function ResponsiveDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={`sm:max-w-2xl max-h-[90vh] overflow-y-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden ${className ?? ''}`}>
+      <DialogContent className={`sm:max-w-2xl max-h-[calc(100dvh-var(--safe-area-top)-var(--safe-area-bottom)-2rem)] overflow-y-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden ${className ?? ''}`}>
         <DialogHeader>
           <DialogTitle className="break-words">{title}</DialogTitle>
           {description && <DialogDescription className="break-words">{description}</DialogDescription>}

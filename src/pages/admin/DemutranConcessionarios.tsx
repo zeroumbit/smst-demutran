@@ -1574,7 +1574,7 @@ const DemutranConcessionarios = () => {
 
         <button
           onClick={() => setFiltrosAbertos(true)}
-          className={`fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-slate-900 text-white shadow-[0_8px_32px_-8px_rgba(15,23,42,0.45)] transition-all hover:bg-slate-800 active:scale-95 lg:hidden ${filtrosAbertos ? 'hidden' : ''}`}
+          className={`admin-floating-action fixed z-50 flex h-14 w-14 items-center justify-center rounded-full bg-slate-900 text-white shadow-[0_8px_32px_-8px_rgba(15,23,42,0.45)] transition-all hover:bg-slate-800 active:scale-95 lg:hidden ${filtrosAbertos ? 'hidden' : ''}`}
         >
           <SlidersHorizontal className="h-6 w-6" />
         </button>
@@ -2269,7 +2269,7 @@ const DemutranConcessionarios = () => {
         {notifyItem && (
           <>
             <div className="fixed inset-0 z-[100] bg-black/40" onClick={() => { setNotifyItem(null); setNotifyForm({ titulo: '', mensagem: '', tipo: 'geral' }); }} />
-            <div className="fixed inset-y-0 right-0 z-[110] w-full sm:max-w-md bg-background shadow-xl border-l flex flex-col animate-in slide-in-from-right duration-300">
+            <div className="fixed inset-y-0 right-0 z-[110] flex h-dvh w-full flex-col border-l bg-background pt-[var(--safe-area-top)] pr-[var(--safe-area-right)] pb-[var(--safe-area-bottom)] shadow-xl sm:max-w-md animate-in slide-in-from-right duration-300">
               <div className="flex items-center justify-between border-b px-6 py-4">
                 <div>
                   <h2 className="text-lg font-semibold">Enviar notificacao</h2>

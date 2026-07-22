@@ -621,7 +621,7 @@ export default function EscalasAdminPage() {
         )}
 
       <Dialog open={dialogMode === 'escala'} onOpenChange={(open) => !open && setDialogMode(null)}>
-        <DialogContent className="max-h-[92vh] max-w-4xl overflow-y-auto">
+        <DialogContent className="max-h-[calc(100dvh-var(--safe-area-top)-var(--safe-area-bottom)-2rem)] max-w-4xl overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editingEscala ? 'Editar escala' : 'Criar escala'}</DialogTitle>
             <DialogDescription>A escala nasce como rascunho e so aparece para os guardas apos publicacao.</DialogDescription>
@@ -909,7 +909,7 @@ function EscalasAgrupadasList({ groups, isLoading, selectedId, onSelect }: {
   }
 
   return (
-    <div className="mt-4 max-h-[72vh] space-y-3 overflow-y-auto pr-1">
+    <div className="mt-4 max-h-[min(72dvh,calc(100dvh-var(--safe-area-top)-var(--safe-area-bottom)-4rem))] space-y-3 overflow-y-auto pr-1">
       {groups.map((month, monthIndex) => {
         const monthHasSelected = month.equipes.some((team) => team.items.some((escala) => escala.id === selectedId));
 

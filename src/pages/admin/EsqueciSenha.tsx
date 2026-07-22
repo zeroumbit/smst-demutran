@@ -86,7 +86,7 @@ const EsqueciSenha = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#f6f8fc] p-4">
+    <div className="mobile-safe-screen flex items-center justify-center bg-[#f6f8fc]">
       <div className="relative w-full max-w-[420px]">
         <a
           href="/admin/login"

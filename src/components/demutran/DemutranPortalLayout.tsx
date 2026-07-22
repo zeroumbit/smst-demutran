@@ -36,7 +36,7 @@ function DemutranPortalNav() {
   const location = useLocation();
 
   return (
-    <header className="sticky top-0 z-50 border-b border-secondary-foreground/10 bg-secondary text-secondary-foreground backdrop-blur">
+    <header className="sticky top-0 z-50 border-b border-secondary-foreground/10 bg-secondary pt-[var(--safe-area-top)] text-secondary-foreground backdrop-blur">
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
         <Link to="/demutran" className="flex items-center gap-3">
           <img src="/images/demutran.png" alt="DEMUTRAN" className="h-10 w-auto" />

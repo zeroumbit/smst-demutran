@@ -1567,7 +1567,7 @@ const DemutranLiberacao = () => {
 
         <button
           onClick={() => setFiltrosAbertos(true)}
-          className={`fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-slate-900 text-white shadow-[0_8px_32px_-8px_rgba(15,23,42,0.45)] transition-all hover:bg-slate-800 active:scale-95 lg:hidden ${filtrosAbertos ? 'hidden' : ''}`}
+          className={`admin-floating-action fixed z-50 flex h-14 w-14 items-center justify-center rounded-full bg-slate-900 text-white shadow-[0_8px_32px_-8px_rgba(15,23,42,0.45)] transition-all hover:bg-slate-800 active:scale-95 lg:hidden ${filtrosAbertos ? 'hidden' : ''}`}
         >
           <SlidersHorizontal className="h-6 w-6" />
         </button>
@@ -2479,7 +2479,7 @@ const DemutranLiberacao = () => {
           onConfirm={handleSubmitCpf}
           confirmLabel="Salvar dados"
         >
-          <div className="space-y-3 py-2 max-h-[70vh] overflow-y-auto px-1">
+          <div className="space-y-3 py-2 max-h-[min(70dvh,calc(100dvh-var(--safe-area-top)-var(--safe-area-bottom)-4rem))] overflow-y-auto px-1">
             <div className="space-y-2">
               <Label htmlFor="edit_nome">Nome</Label>
               <Input

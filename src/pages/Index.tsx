@@ -104,7 +104,7 @@ const Index = () => {
       <Navbar />
 
       {/* Offset for fixed navbar */}
-      <div className="h-16" />
+      <div className="public-navbar-spacer" />
 
       {/* Hero Section */}
       <Hero

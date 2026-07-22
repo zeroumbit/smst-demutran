@@ -75,14 +75,14 @@ export function OnboardingWizard({ steps, totalSteps, onFinish }: OnboardingWiza
   return (
     <div
       ref={containerRef}
-      className="fixed inset-0 z-[100] flex flex-col bg-gradient-to-b from-slate-50 to-white"
+      className="fixed inset-0 z-[100] flex min-h-0 flex-col bg-gradient-to-b from-slate-50 to-white pl-[var(--safe-area-left)] pr-[var(--safe-area-right)]"
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
       <div className="relative flex flex-1 flex-col items-center justify-center px-8">
         <button
           onClick={finish}
-          className="absolute right-4 top-[calc(env(safe-area-inset-top)+1rem)] z-10 flex h-10 w-10 items-center justify-center rounded-full bg-white/80 text-slate-400 shadow-sm backdrop-blur transition-colors hover:bg-white hover:text-slate-600"
+          className="absolute right-[calc(var(--safe-area-right)+1rem)] top-[calc(var(--safe-area-top)+1rem)] z-10 flex h-10 w-10 items-center justify-center rounded-full bg-white/80 text-slate-400 shadow-sm backdrop-blur transition-colors hover:bg-white hover:text-slate-600"
           aria-label="Fechar"
         >
           <X className="h-5 w-5" />
@@ -105,7 +105,7 @@ export function OnboardingWizard({ steps, totalSteps, onFinish }: OnboardingWiza
         </div>
       </div>
 
-      <div className="flex flex-col items-center gap-6 px-8 pb-[calc(2.5rem+env(safe-area-inset-bottom))]">
+      <div className="flex flex-col items-center gap-6 px-8 pb-[calc(2.5rem+var(--safe-area-bottom))]">
         <div className="flex items-center gap-2.5">
           {Array.from({ length: totalSteps }).map((_, i) => (
             <div
