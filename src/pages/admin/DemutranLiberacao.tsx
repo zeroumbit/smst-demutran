@@ -766,6 +766,28 @@ const DemutranLiberacao = () => {
     setIsTaxaDialogOpen(false);
   };
 
+  const handleAdvanceApreensaoStep = () => {
+    if (apreensaoStep === 0 && (!apreensaoForm.data_recolhimento || !apreensaoForm.logradouro || !apreensaoForm.motivo || !apreensaoForm.situacao)) {
+      toast({
+        title: 'Campos obrigatorios',
+        description: 'Preencha entrada, logradouro, motivo e situacao para avancar.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (apreensaoStep === 1 && !apreensaoForm.placa) {
+      toast({
+        title: 'Campo obrigatorio',
+        description: 'Informe a placa do veiculo para avancar.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setApreensaoStep((current) => Math.min(current + 1, 3));
+  };
+
   const handleSubmitApreensao = async () => {
     if (!effectiveSetorId || !apreensaoForm.placa || !apreensaoForm.data_recolhimento || !apreensaoForm.logradouro || !apreensaoForm.motivo || !apreensaoForm.situacao) {
       toast({
@@ -2006,7 +2028,7 @@ const DemutranLiberacao = () => {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="space-y-2">
                       <Label htmlFor="ano_modelo">Ano modelo</Label>
                       <Input id="ano_modelo" placeholder="Ex: 2021" value={apreensaoForm.ano_modelo} onChange={(e) => setApreensaoForm({ ...apreensaoForm, ano_modelo: e.target.value })} />
@@ -2014,21 +2036,6 @@ const DemutranLiberacao = () => {
                     <div className="space-y-2">
                       <Label htmlFor="cor">Cor</Label>
                       <Input id="cor" placeholder="Ex: Prata" value={apreensaoForm.cor} onChange={(e) => setApreensaoForm({ ...apreensaoForm, cor: e.target.value })} />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="fabricacao">Fabricação</Label>
-                      <Input id="fabricacao" placeholder="Ex: 2020" value={apreensaoForm.fabricacao} onChange={(e) => setApreensaoForm({ ...apreensaoForm, fabricacao: e.target.value })} />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div className="space-y-2">
-                      <Label htmlFor="ano">Ano (simplificado)</Label>
-                      <Input id="ano" placeholder="Ex: 2010" value={apreensaoForm.ano} onChange={(e) => setApreensaoForm({ ...apreensaoForm, ano: e.target.value })} />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="rota">Rota</Label>
-                      <Input id="rota" placeholder="Ex: Centro - Bairro" value={apreensaoForm.rota} onChange={(e) => setApreensaoForm({ ...apreensaoForm, rota: e.target.value })} />
                     </div>
                   </div>
 
@@ -2129,7 +2136,7 @@ const DemutranLiberacao = () => {
               </div>
               <div className="flex items-center gap-2">
                 {apreensaoStep < 3 ? (
-                  <Button type="button" onClick={() => setApreensaoStep(apreensaoStep + 1)}>
+                  <Button type="button" onClick={handleAdvanceApreensaoStep}>
                     Avançar
                   </Button>
                 ) : (
