@@ -9,6 +9,7 @@ import type { ModuloSistema } from '@/types/admin';
 import { supabase } from '@/lib/supabase';
 import type { ComponentType } from 'react';
 import guardaLogo from '@/guarda.png';
+import jovemGuardaLogo from '@/jovem-guarda.png';
 import { OnboardingWizard } from '@/components/onboarding/OnboardingWizard';
 import { adminOnboardingSteps } from '@/components/onboarding/onboardingSteps';
 import {
@@ -58,6 +59,28 @@ const HouseIcon: ComponentType<{ className?: string }> = ({ className }) => (
   >
     <path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8" />
     <path d="M3 10a2 2 0 0 1 .709-1.528l7-6a2 2 0 0 1 2.582 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+  </svg>
+);
+
+const BookOpenTextIcon: ComponentType<{ className?: string }> = ({ className }) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="24"
+    height="24"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+  >
+    <path d="M12 5v16" />
+    <path d="M16 13h2" />
+    <path d="M16 9h2" />
+    <path d="M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2a5 5 0 0 1 4-2z" />
+    <path d="M6 13h2" />
+    <path d="M6 9h2" />
   </svg>
 );
 
@@ -153,13 +176,13 @@ const guardaMenuItems: MenuItem[] = [
 ];
 
 const jovemGuardaMenuItems: MenuItem[] = [
-  { icon: HouseIcon, label: 'Painel Jovem Guarda', path: '/admin/dashboard/jovem-guarda/dashboard', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
+  { icon: HouseIcon, label: 'Home', path: '/admin/dashboard/jovem-guarda/dashboard', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
   { icon: Users, label: 'Alunos', path: '/admin/dashboard/jovem-guarda/alunos', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
   { icon: IdCard, label: 'Responsaveis', path: '/admin/dashboard/jovem-guarda/responsaveis', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
   { icon: Building2, label: 'Turmas', path: '/admin/dashboard/jovem-guarda/turmas', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
   { icon: ClipboardList, label: 'Frequencia', path: '/admin/dashboard/jovem-guarda/diario', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
   { icon: CalendarDays, label: 'Atividades', path: '/admin/dashboard/jovem-guarda/atividades', allowedPapeis: ['super_admin', 'gestor', 'tecnico'] },
-  { icon: Accessibility, label: 'Acompanhamentos', path: '/admin/dashboard/jovem-guarda/acompanhamentos', allowedPapeis: ['super_admin', 'gestor', 'tecnico'] },
+  { icon: BookOpenTextIcon, label: 'Acompanhamentos', path: '/admin/dashboard/jovem-guarda/acompanhamentos', allowedPapeis: ['super_admin', 'gestor', 'tecnico'] },
   { icon: BarChart3, label: 'Relatorios', path: '/admin/dashboard/jovem-guarda/relatorios', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
   { icon: FileText, label: 'Documentos', path: '/admin/documentos/jovem-guarda', allowedPapeis: ['gestor', 'admin_setor'] },
   { icon: Users, label: 'Usuarios', path: '/admin/usuarios/jovem-guarda', allowedPapeis: ['super_admin', 'gestor'] },
@@ -328,7 +351,7 @@ export const AdminLayout = ({ children, backPath, backLabel }: AdminLayoutProps)
   const sectorLogo = useMemo(() => {
     if (isSuperAdmin) return '/images/logo.png';
     if (sectorContext === 'guarda-municipal') return guardaLogo;
-    if (sectorContext === 'jovem-guarda') return '/images/logo.png';
+    if (sectorContext === 'jovem-guarda') return jovemGuardaLogo;
     return '/images/demutran.png';
   }, [isSuperAdmin, sectorContext]);
 

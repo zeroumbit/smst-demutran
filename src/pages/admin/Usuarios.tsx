@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Building2, Check, CheckCircle, ChevronDown, Eye, EyeOff, GraduationCap, IdCard, Plus, Search, ShieldCheck, SlidersHorizontal, Users, X } from 'lucide-react';
 import { useConfirmDialog } from '@/components/ui/use-confirm-dialog';
 import { AdminLayout } from '@/components/admin/AdminLayout';
@@ -108,6 +108,8 @@ const UsuariosPage = () => {
   const [usuarios, setUsuarios] = useState<AdminProfileRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isCreatingUser, setIsCreatingUser] = useState(false);
+  const creatingUserRef = useRef(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [createSetorId, setCreateSetorId] = useState('');
   const [filtroPapel, setFiltroPapel] = useState<string>('todos');
@@ -218,6 +220,7 @@ const UsuariosPage = () => {
   };
 
   const handleSubmit = async () => {
+    if (creatingUserRef.current) return;
     const targetSetorId = isSuperAdmin ? createSetorId : currentSetorId;
 
     if (isSuperAdmin && !createSetorId) {
@@ -252,6 +255,8 @@ const UsuariosPage = () => {
       return;
     }
 
+    creatingUserRef.current = true;
+    setIsCreatingUser(true);
     try {
       const created = await provisionAdminUser({
         email: formData.email.trim(),
@@ -300,6 +305,9 @@ const UsuariosPage = () => {
         description: error?.message || error?.error || 'Nao foi possivel criar o usuario.',
         variant: 'destructive',
       });
+    } finally {
+      creatingUserRef.current = false;
+      setIsCreatingUser(false);
     }
   };
 
@@ -771,12 +779,14 @@ const UsuariosPage = () => {
         {/* Dialog de criacao */}
         <ResponsiveDialog
           open={isDialogOpen}
-          onOpenChange={setIsDialogOpen}
+          onOpenChange={(open) => { if (!isCreatingUser) setIsDialogOpen(open); }}
           title="Criar usuario do setor"
           description="A conta sera criada automaticamente no Supabase Auth."
-          confirmLabel="Criar usuario"
+          confirmLabel={isCreatingUser ? 'Criando usuário...' : 'Criar usuário'}
           onCancel={handleClose}
           onConfirm={handleSubmit}
+          confirmLoading={isCreatingUser}
+          confirmDisabled={isCreatingUser}
         >
           <div className="space-y-4 py-2">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
