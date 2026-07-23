@@ -904,7 +904,7 @@ export const AdminLayout = ({ children, backPath, backLabel }: AdminLayoutProps)
           </div>
         </header>
 
-        <main className={`flex-1 px-4 pt-[calc(1rem+var(--safe-area-top))] lg:p-8 ${sectorContext === 'guarda-municipal' ? 'pb-[calc(5.75rem+var(--safe-area-bottom))] lg:pb-8' : 'pb-[calc(1rem+var(--safe-area-bottom))] lg:pb-8'}`}>
+        <main className={`flex-1 px-4 pt-[calc(1rem+var(--safe-area-top))] lg:p-8 ${sectorContext === 'guarda-municipal' || sectorContext === 'jovem-guarda' ? 'pb-[calc(5.75rem+var(--safe-area-bottom))] lg:pb-8' : 'pb-[calc(1rem+var(--safe-area-bottom))] lg:pb-8'}`}>
           {children}
         </main>
       </div>
@@ -912,6 +912,39 @@ export const AdminLayout = ({ children, backPath, backLabel }: AdminLayoutProps)
       {sectorContext === 'guarda-municipal' && visibleBottomNavItems.length > 0 && (
         <nav className="fixed bottom-0 left-0 right-0 z-50 flex min-h-[4.75rem] items-stretch border-t border-slate-200/80 bg-white pl-[var(--safe-area-left)] pr-[var(--safe-area-right)] shadow-[0_-2px_20px_-8px_rgba(15,23,42,0.12)] lg:hidden pb-[var(--safe-area-bottom)]">
           {visibleBottomNavItems.map((item) => {
+            const Icon = item.icon!;
+            const active = item.path ? (location.pathname === item.path || location.pathname.startsWith(item.path + '/')) : false;
+            return (
+              <Link
+                key={item.path}
+                to={item.path!}
+                className="flex min-w-0 flex-1 flex-col items-center justify-center gap-1 px-1 py-2 transition-colors"
+                aria-current={active ? 'page' : undefined}
+              >
+                <div className={`flex items-center justify-center rounded-xl p-1.5 transition-colors ${active ? 'bg-brand-50' : ''}`}>
+                  <Icon className={`h-5 w-5 ${active ? 'text-brand-600' : 'text-slate-400'}`} />
+                </div>
+                <span className={`max-w-full truncate text-[10px] font-bold ${active ? 'text-brand-600' : 'text-slate-400'}`}>
+                  {item.label}
+                </span>
+              </Link>
+            );
+          })}
+          <button
+            onClick={() => setMenuModalOpen(true)}
+            className="flex min-w-0 flex-1 flex-col items-center justify-center gap-1 px-1 py-2 transition-colors"
+          >
+            <div className="flex items-center justify-center rounded-xl p-1.5">
+              <Menu className="h-5 w-5 text-slate-400" />
+            </div>
+            <span className="text-[10px] font-bold text-slate-400">Menu</span>
+          </button>
+        </nav>
+      )}
+
+      {sectorContext === 'jovem-guarda' && adminMenuItems.filter(item => item.path).length > 0 && (
+        <nav className="fixed bottom-0 left-0 right-0 z-50 flex min-h-[4.75rem] items-stretch border-t border-slate-200/80 bg-white pl-[var(--safe-area-left)] pr-[var(--safe-area-right)] shadow-[0_-2px_20px_-8px_rgba(15,23,42,0.12)] lg:hidden pb-[var(--safe-area-bottom)]">
+          {adminMenuItems.filter(item => item.path).slice(0, 4).map((item) => {
             const Icon = item.icon!;
             const active = item.path ? (location.pathname === item.path || location.pathname.startsWith(item.path + '/')) : false;
             return (
