@@ -11,7 +11,7 @@ import { useConfirmDialog } from '@/components/ui/use-confirm-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/lib/supabase';
-import { cn } from '@/lib/utils';
+import { capitalizeNome, cn } from '@/lib/utils';
 import { maskCpf } from '@/lib/masks';
 import type { GuardaMunicipal, GuardaMunicipalGraduacao } from '@/types/admin';
 

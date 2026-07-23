@@ -152,6 +152,21 @@ const guardaMenuItems: MenuItem[] = [
   { icon: UserCircle2, label: 'Perfil', path: '/admin/perfil/guarda-municipal', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
 ];
 
+const jovemGuardaMenuItems: MenuItem[] = [
+  { icon: HouseIcon, label: 'Painel Jovem Guarda', path: '/admin/dashboard/jovem-guarda/dashboard', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
+  { icon: Users, label: 'Alunos', path: '/admin/dashboard/jovem-guarda/alunos', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
+  { icon: IdCard, label: 'Responsaveis', path: '/admin/dashboard/jovem-guarda/responsaveis', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
+  { icon: Building2, label: 'Turmas', path: '/admin/dashboard/jovem-guarda/turmas', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
+  { icon: ClipboardList, label: 'Frequencia', path: '/admin/dashboard/jovem-guarda/diario', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
+  { icon: CalendarDays, label: 'Atividades', path: '/admin/dashboard/jovem-guarda/atividades', allowedPapeis: ['super_admin', 'gestor', 'tecnico'] },
+  { icon: Accessibility, label: 'Acompanhamentos', path: '/admin/dashboard/jovem-guarda/acompanhamentos', allowedPapeis: ['super_admin', 'gestor', 'tecnico'] },
+  { icon: BarChart3, label: 'Relatorios', path: '/admin/dashboard/jovem-guarda/relatorios', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
+  { icon: FileText, label: 'Documentos', path: '/admin/documentos/jovem-guarda', allowedPapeis: ['gestor', 'admin_setor'] },
+  { icon: Users, label: 'Usuarios', path: '/admin/usuarios/jovem-guarda', allowedPapeis: ['super_admin', 'gestor'] },
+  { icon: NotebookPen, label: 'Anotacoes', path: '/admin/anotacoes/jovem-guarda', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
+  { icon: UserCircle2, label: 'Perfil', path: '/admin/perfil/jovem-guarda', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
+];
+
 const guardaBottomNavItems: MenuItem[] = [
   { icon: HouseIcon, label: 'Home', path: '/admin/dashboard/guarda-municipal', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
   { icon: FileWarning, label: 'IROs', path: '/admin/iros/guarda-municipal', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
@@ -173,6 +188,14 @@ const moduloItemMap: Record<string, ModuloSistema> = {
   'Frota da Guarda': 'guarda_frota',
   Frota: 'guarda_frota',
   Equipes: 'guarda_equipes',
+  'Painel Jovem Guarda': 'jgc_dashboard',
+  Alunos: 'jgc_alunos',
+  Responsaveis: 'jgc_responsaveis',
+  Turmas: 'jgc_turmas',
+  Frequencia: 'jgc_frequencia',
+  Atividades: 'jgc_atividades',
+  Acompanhamentos: 'jgc_acompanhamentos',
+  Relatorios: 'jgc_relatorios',
 };
 
 const papelLabels: Record<string, string> = {
@@ -298,18 +321,21 @@ export const AdminLayout = ({ children, backPath, backLabel }: AdminLayoutProps)
     const segments = location.pathname.split('/');
     if (slug === 'guarda-municipal' || segments.includes('guarda-municipal')) return 'guarda-municipal';
     if (slug === 'demutran' || segments.includes('demutran')) return 'demutran';
+    if (slug === 'jovem-guarda' || segments.includes('jovem-guarda')) return 'jovem-guarda';
     return null;
   }, [isSuperAdmin, profile?.setor_slug, location.pathname]);
 
   const sectorLogo = useMemo(() => {
     if (isSuperAdmin) return '/images/logo.png';
     if (sectorContext === 'guarda-municipal') return guardaLogo;
+    if (sectorContext === 'jovem-guarda') return '/images/logo.png';
     return '/images/demutran.png';
   }, [isSuperAdmin, sectorContext]);
 
   const sectorLabel = useMemo(() => {
     if (isSuperAdmin) return 'SMST';
     if (sectorContext === 'guarda-municipal') return 'Guarda';
+    if (sectorContext === 'jovem-guarda') return 'Jovem Guarda';
     return 'Demutran';
   }, [isSuperAdmin, sectorContext]);
 
@@ -369,7 +395,9 @@ export const AdminLayout = ({ children, backPath, backLabel }: AdminLayoutProps)
       ? guardaMenuItems
       : sectorContext === 'demutran'
         ? demutranMenuItems
-        : defaultMenuItems;
+        : sectorContext === 'jovem-guarda'
+          ? jovemGuardaMenuItems
+          : defaultMenuItems;
 
     const userModulos = profile?.modulos;
     const hasModulosRestricted = !isSuperAdmin && userModulos && userModulos.length > 0;
@@ -435,7 +463,7 @@ export const AdminLayout = ({ children, backPath, backLabel }: AdminLayoutProps)
       .map(filterItem)
       .filter(Boolean) as MenuItem[];
 
-    if (sectorContext !== 'guarda-municipal') {
+    if (sectorContext !== 'guarda-municipal' && sectorContext !== 'jovem-guarda') {
       let items = moveMenuItemBeforeLabel(filteredMenuItems, ANOTACOES_LABEL, PERFIL_LABEL);
       items = moveMenuItemBeforeLabel(items, 'Midias', PERFIL_LABEL);
       return items;
@@ -451,10 +479,15 @@ export const AdminLayout = ({ children, backPath, backLabel }: AdminLayoutProps)
     });
   }, [hasPapel, isSuperAdmin]);
 
-  const showSectionSplit = sectorContext === 'guarda-municipal' || sectorContext === 'demutran';
+  const showSectionSplit = sectorContext === 'guarda-municipal' || sectorContext === 'demutran' || sectorContext === 'jovem-guarda';
   const guardaPessoalLabels = new Set(['Minhas IROs', 'Fiscalizacao', 'Anotacoes', 'Perfil']);
   const demutranPessoalLabels = new Set(['Anotacoes', 'Perfil']);
-  const pessoalLabels = sectorContext === 'demutran' ? demutranPessoalLabels : guardaPessoalLabels;
+  const jovemGuardaPessoalLabels = new Set(['IRO', 'Anotacoes', 'Perfil']);
+  const pessoalLabels = sectorContext === 'demutran'
+    ? demutranPessoalLabels
+    : sectorContext === 'jovem-guarda'
+      ? jovemGuardaPessoalLabels
+      : guardaPessoalLabels;
   const adminMenuItems = useMemo(
     () => showSectionSplit ? visibleMenuItems.filter(item => !pessoalLabels.has(item.label)) : visibleMenuItems,
     [visibleMenuItems, showSectionSplit, pessoalLabels],
@@ -883,9 +916,9 @@ export const AdminLayout = ({ children, backPath, backLabel }: AdminLayoutProps)
           <div className="flex items-center justify-between border-b border-slate-200 px-5 pb-4 pt-[calc(max(var(--safe-area-top),1rem)+0.5rem)] bg-slate-50">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-                <img src={guardaLogo as string} alt="Guarda" className="h-full w-full object-contain p-1" />
+                <img src={sectorLogo as string} alt={sectorLabel} className="h-full w-full object-contain p-1" />
               </div>
-              <span className="text-lg font-bold text-slate-900">Guarda Municipal</span>
+              <span className="text-lg font-bold text-slate-900">{profile?.setor_nome || sectorLabel}</span>
             </div>
             <button
               onClick={() => setMenuModalOpen(false)}

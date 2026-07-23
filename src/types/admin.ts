@@ -14,7 +14,16 @@ export type ModuloSistema =
   | 'guarda_frota'
   | 'guarda_equipes'
   | 'guarda_escalas'
-  | 'frota_guarda';
+  | 'frota_guarda'
+  | 'jgc_alunos'
+  | 'jgc_dashboard'
+  | 'jgc_responsaveis'
+  | 'jgc_turmas'
+  | 'jgc_diario'
+  | 'jgc_frequencia'
+  | 'jgc_atividades'
+  | 'jgc_acompanhamentos'
+  | 'jgc_relatorios';
 
 export const MODULOS_DEMUTRAN: { value: ModuloSistema; label: string }[] = [
   { value: 'veiculos', label: 'Veículos' },
@@ -36,9 +45,21 @@ export const MODULOS_GUARDA: { value: ModuloSistema; label: string }[] = [
   { value: 'midias', label: 'Mídias' },
 ];
 
+export const MODULOS_JOVEM_GUARDA: { value: ModuloSistema; label: string }[] = [
+  { value: 'jgc_dashboard', label: 'Painel Jovem Guarda' },
+  { value: 'jgc_alunos', label: 'Alunos' },
+  { value: 'jgc_responsaveis', label: 'Responsáveis' },
+  { value: 'jgc_turmas', label: 'Turmas' },
+  { value: 'jgc_frequencia', label: 'Frequência' },
+  { value: 'jgc_atividades', label: 'Atividades' },
+  { value: 'jgc_acompanhamentos', label: 'Acompanhamento do Aluno' },
+  { value: 'jgc_relatorios', label: 'Relatórios' },
+];
+
 export const MODULOS_POR_SETOR: Record<string, { value: ModuloSistema; label: string }[]> = {
   demutran: MODULOS_DEMUTRAN,
   'guarda-municipal': MODULOS_GUARDA,
+  'jovem-guarda': MODULOS_JOVEM_GUARDA,
 };
 
 export interface AdminProfile {
@@ -54,7 +75,7 @@ export interface AdminProfile {
   setor_slug: string | null;
   ativo: boolean;
   legacy_admin: boolean;
-  modulos?: ModuloSistema[];
+  modulos?: string[];
   graduacao_id?: string | null;
   graduacao_nome?: string | null;
   aceitou_lei_iro_at?: string | null;

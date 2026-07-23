@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase';
-import type { ModuloSistema, PapelUsuario } from '@/types/admin';
+import type { PapelUsuario } from '@/types/admin';
 
 export interface ProvisionAdminUserInput {
   email: string;
@@ -9,7 +9,7 @@ export interface ProvisionAdminUserInput {
   setorId: string | null;
   papel: PapelUsuario;
   active: boolean;
-  modulos?: ModuloSistema[];
+  modulos?: string[];
   graduacaoId?: string | null;
 }
 

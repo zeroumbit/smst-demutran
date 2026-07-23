@@ -18,7 +18,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 import { gerarRelatorioDetalhadoOperacao, gerarRelatorioMensal, gerarRelatorioOperacao, gerarRelatorioPorDia } from '@/lib/relatorio-iro';
 import { supabase } from '@/lib/supabase';
-import { cn } from '@/lib/utils';
+import { capitalizeNome, cn } from '@/lib/utils';
 import { maskCpf } from '@/lib/masks';
 import type { IROBancoHoras, IROCandidatura, IRONotificacao, IROOperacao } from '@/types/admin';
 
@@ -339,6 +339,7 @@ const GuardaMunicipalIros = () => {
   const [relatorioMes, setRelatorioMes] = useState(new Date().toISOString().slice(0, 7));
   const [relatorioDia, setRelatorioDia] = useState(new Date().toISOString().slice(0, 10));
   const [relatorioFormato, setRelatorioFormato] = useState<'pdf' | 'xlsx'>('pdf');
+  const [relatorioStatusFilter, setRelatorioStatusFilter] = useState<'todos' | 'confirmados' | 'cancelados'>('todos');
 
   const podeVerTudo =
     profile?.papel === 'gestor' ||
@@ -585,8 +586,8 @@ const GuardaMunicipalIros = () => {
 
   const usuarioMap = useMemo(() => {
     const map = new Map<string, string>();
-    for (const item of usuarios) map.set(item.user_id, item.nome);
-    for (const item of guardasAtivos) map.set(item.usuario_id, item.nome);
+    for (const item of usuarios) map.set(item.user_id, capitalizeNome(item.nome));
+    for (const item of guardasAtivos) map.set(item.usuario_id, capitalizeNome(item.nome));
     return map;
   }, [guardasAtivos, usuarios]);
 
@@ -765,6 +766,7 @@ const GuardaMunicipalIros = () => {
       valor: c.horas_trabalhadas * (valorHoraPorUsuario.get(c.usuario_id) || 0),
       status: c.status,
     }));
+    const filtroLabels: Record<string, string> = { todos: 'Todos os registros', confirmados: 'Apenas confirmados/realizados', cancelados: 'Apenas cancelados' };
     gerarRelatorioDetalhadoOperacao(
       {
         nome: operacao.nome,
@@ -777,9 +779,10 @@ const GuardaMunicipalIros = () => {
       },
       candidatos,
       formato,
+      filtroLabels[relatorioStatusFilter],
     );
     toast({ title: 'Lista de candidaturas gerada!' });
-  }, [usuarioMap, guardaMatriculaMap, guardaGraduacaoMap, valorHoraPorUsuario]);
+  }, [usuarioMap, guardaMatriculaMap, guardaGraduacaoMap, valorHoraPorUsuario, relatorioStatusFilter]);
 
   const filteredBancoHoras = useMemo(() => {
     const base = isMinhaIrosView ? (meuBancoHoras ? [meuBancoHoras] : []) : podeVerTudo ? bancoHoras : (meuBancoHoras ? [meuBancoHoras] : []);
@@ -1709,43 +1712,49 @@ const GuardaMunicipalIros = () => {
       return filteredNotificacoes.length ? filteredNotificacoes.map(renderNotificacaoCard) : <EmptyBox text="Nenhuma notificação." />;
     }
 
+    const relatorioFiltroLabels: Record<string, string> = {
+      todos: 'Todos os registros',
+      confirmados: 'Apenas confirmados/realizados',
+      cancelados: 'Apenas cancelados',
+    };
+    const relatorioFiltroLabel = relatorioFiltroLabels[relatorioStatusFilter];
+
     const linhasPorOperacao = (operacaoId: string) => {
-      const itens = candidaturas.filter((item) => item.operacao_id === operacaoId && ['confirmado', 'realizado'].includes(item.status));
+      let itens = candidaturas.filter((item) => item.operacao_id === operacaoId);
+      if (relatorioStatusFilter === 'confirmados') itens = itens.filter((item) => ['confirmado', 'realizado'].includes(item.status));
+      if (relatorioStatusFilter === 'cancelados') itens = itens.filter((item) => item.status === 'cancelado');
       return itens.map((item) => ({
         guarda: usuarioMap.get(item.usuario_id) || '—',
         horas: item.horas_trabalhadas,
-        valor: item.horas_trabalhadas * (valorHoraPorUsuario.get(item.usuario_id) || 0),
+        data: item.data_operacao,
       }));
     };
 
     const linhasPorMes = (mes: string) => {
-      const itens = candidaturas.filter((item) => item.status !== 'cancelado' && item.data_operacao.slice(0, 7) === mes);
-      const acc = new Map<string, { guarda: string; horas: number; valor: number }>();
-
-      for (const item of itens) {
-        const guarda = usuarioMap.get(item.usuario_id) || '—';
-        const current = acc.get(item.usuario_id) || { guarda, horas: 0, valor: 0 };
-        current.horas += item.horas_trabalhadas;
-        current.valor += item.horas_trabalhadas * (valorHoraPorUsuario.get(item.usuario_id) || 0);
-        acc.set(item.usuario_id, current);
-      }
-
-      return Array.from(acc.values());
+      let itens = candidaturas.filter((item) => item.data_operacao.slice(0, 7) === mes);
+      if (relatorioStatusFilter === 'confirmados') itens = itens.filter((item) => ['confirmado', 'realizado'].includes(item.status));
+      if (relatorioStatusFilter === 'cancelados') itens = itens.filter((item) => item.status === 'cancelado');
+      return itens.map((item) => ({
+        guarda: usuarioMap.get(item.usuario_id) || '—',
+        horas: item.horas_trabalhadas,
+        data: item.data_operacao,
+      }));
     };
 
     const linhasPorDia = (operacaoId: string, data: string) => {
-      return candidaturas
-        .filter((item) => item.operacao_id === operacaoId && item.data_operacao === data && ['confirmado', 'realizado'].includes(item.status))
-        .map((item) => ({
-          nome: usuarioMap.get(item.usuario_id) || '—',
-          matricula: guardaMatriculaMap.get(item.usuario_id) || '—',
-          graduacao: guardaGraduacaoMap.get(item.usuario_id) || '—',
-          data: item.data_operacao,
-          horario: operacoes.find((o) => o.id === operacaoId)?.horario_previsto.slice(0, 5) || '',
-          horas: item.horas_trabalhadas,
-          valor: item.horas_trabalhadas * (valorHoraPorUsuario.get(item.usuario_id) || 0),
-          status: item.status,
-        }));
+      let itens = candidaturas.filter((item) => item.operacao_id === operacaoId && item.data_operacao === data);
+      if (relatorioStatusFilter === 'confirmados') itens = itens.filter((item) => ['confirmado', 'realizado'].includes(item.status));
+      if (relatorioStatusFilter === 'cancelados') itens = itens.filter((item) => item.status === 'cancelado');
+      return itens.map((item) => ({
+        nome: usuarioMap.get(item.usuario_id) || '—',
+        matricula: guardaMatriculaMap.get(item.usuario_id) || '—',
+        graduacao: guardaGraduacaoMap.get(item.usuario_id) || '—',
+        data: item.data_operacao,
+        horario: operacoes.find((o) => o.id === operacaoId)?.horario_previsto.slice(0, 5) || '',
+        horas: item.horas_trabalhadas,
+        valor: item.horas_trabalhadas * (valorHoraPorUsuario.get(item.usuario_id) || 0),
+        status: item.status,
+      }));
     };
 
     return (
@@ -1761,6 +1770,21 @@ const GuardaMunicipalIros = () => {
             <Button variant={relatorioTipo === 'mensal' ? 'default' : 'outline'} size="sm" onClick={() => setRelatorioTipo('mensal')}>
               Por Mês
             </Button>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Status</Label>
+            <div className="flex gap-2">
+              <Button variant={relatorioStatusFilter === 'todos' ? 'default' : 'outline'} size="sm" onClick={() => setRelatorioStatusFilter('todos')}>
+                Todos
+              </Button>
+              <Button variant={relatorioStatusFilter === 'confirmados' ? 'default' : 'outline'} size="sm" onClick={() => setRelatorioStatusFilter('confirmados')}>
+                Confirmados/Realizados
+              </Button>
+              <Button variant={relatorioStatusFilter === 'cancelados' ? 'default' : 'outline'} size="sm" onClick={() => setRelatorioStatusFilter('cancelados')}>
+                Cancelados
+              </Button>
+            </div>
           </div>
 
           {relatorioTipo === 'operacao' ? (
@@ -1841,10 +1865,10 @@ const GuardaMunicipalIros = () => {
                 if (!operacao) return;
                 const linhas = linhasPorOperacao(operacao.id);
                 if (linhas.length === 0) {
-                  toast({ title: 'Nenhum registro', description: 'Essa operação não possui candidaturas confirmadas/realizadas.', variant: 'destructive' });
+                  toast({ title: 'Nenhum registro', description: 'Nenhuma candidatura encontrada para esta operação.', variant: 'destructive' });
                   return;
                 }
-                gerarRelatorioOperacao(operacao.nome, linhas, relatorioFormato);
+                gerarRelatorioOperacao(operacao.nome, linhas, relatorioFormato, relatorioFiltroLabel);
                 toast({ title: 'Relatório gerado!' });
                 return;
               }
@@ -1870,6 +1894,7 @@ const GuardaMunicipalIros = () => {
                   relatorioDia,
                   linhas,
                   relatorioFormato,
+                  relatorioFiltroLabel,
                 );
                 toast({ title: 'Relatório gerado!' });
                 return;
@@ -1883,7 +1908,7 @@ const GuardaMunicipalIros = () => {
                 toast({ title: 'Nenhum registro', description: 'Nenhuma candidatura encontrada para este mês.', variant: 'destructive' });
                 return;
               }
-              gerarRelatorioMensal(titulo, linhas, relatorioFormato);
+              gerarRelatorioMensal(titulo, linhas, relatorioFormato, relatorioFiltroLabel);
               toast({ title: 'Relatório gerado!' });
             }}
           >
@@ -2221,15 +2246,15 @@ const GuardaMunicipalIros = () => {
                   emptyText="Nenhum guarda ativo encontrado."
                   triggerLabel={
                     selectedManualGuarda
-                      ? `${selectedManualGuarda.nome} • ${selectedManualGuarda.graduacao_nome || 'Graduação'} • Mat. ${selectedManualGuarda.matricula}`
+                      ? `${capitalizeNome(selectedManualGuarda.nome)} • ${selectedManualGuarda.graduacao_nome || 'Graduação'} • Mat. ${selectedManualGuarda.matricula}`
                       : 'Escolher guarda...'
                   }
                   items={guardasAtivos.map((item) => ({
                     value: item.usuario_id,
-                    label: `${item.nome} ${item.matricula} ${item.cpf || ''}`,
+                    label: `${capitalizeNome(item.nome)} ${item.matricula} ${item.cpf || ''}`,
                     render: (
                       <div className="flex min-w-0 flex-col">
-                        <span className="font-medium text-slate-900">{item.nome}</span>
+                        <span className="font-medium text-slate-900">{capitalizeNome(item.nome)}</span>
                         <span className="text-xs text-slate-500">
                           {item.graduacao_nome || 'Graduação'} • Mat. {item.matricula}
                           {item.cpf ? ` • CPF ${maskCpf(item.cpf)}` : ''}
@@ -2337,7 +2362,7 @@ const GuardaMunicipalIros = () => {
               <div className="space-y-4">
                 <SummaryCard
                   title="Guarda"
-                  value={manualPreview.guarda?.nome || 'Não selecionado'}
+                  value={manualPreview.guarda ? capitalizeNome(manualPreview.guarda.nome) : 'Não selecionado'}
                   subtitle={
                     manualPreview.guarda
                       ? `${manualPreview.guarda.graduacao_nome || 'Graduação'} • ${formatCurrency(manualPreview.guarda.valor_hora)}/h`

@@ -99,6 +99,7 @@ const AdminMinhasAnotacoes = React.lazy(() => import("./pages/admin/MinhasAnotac
 const GuardaMinhasAnotacoes = React.lazy(() => import("./pages/admin/guarda/MinhasAnotacoes"));
 const SuportePage = React.lazy(() => import("./pages/admin/Suporte"));
 const SuperAdminOperacoes = React.lazy(() => import("./pages/admin/SuperAdminOperacoes"));
+const JovemGuardaCidada = React.lazy(() => import("./pages/admin/JovemGuardaCidada"));
 
 const IroDashboardRoute = () => {
   const { profile } = useAuth();
@@ -369,6 +370,13 @@ const App = () => {
               <SuspenseWrapper>
                 <ProtectedRoute allowedPapeis={['super_admin', 'gestor', 'admin_setor', 'tecnico']}>
                   <Dashboard />
+                </ProtectedRoute>
+              </SuspenseWrapper>
+            } />
+            <Route path="/admin/dashboard/jovem-guarda/:section?/:alunoId?" element={
+              <SuspenseWrapper>
+                <ProtectedRoute allowedPapeis={['super_admin', 'gestor', 'admin_setor', 'tecnico']} requiredSetorSlug="jovem-guarda">
+                  <JovemGuardaCidada />
                 </ProtectedRoute>
               </SuspenseWrapper>
             } />

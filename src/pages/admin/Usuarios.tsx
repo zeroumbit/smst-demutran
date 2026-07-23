@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Building2, Check, CheckCircle, Eye, EyeOff, GraduationCap, IdCard, Plus, Search, SlidersHorizontal, Users, X } from 'lucide-react';
+import { Building2, Check, CheckCircle, ChevronDown, Eye, EyeOff, GraduationCap, IdCard, Plus, Search, ShieldCheck, SlidersHorizontal, Users, X } from 'lucide-react';
 import { useConfirmDialog } from '@/components/ui/use-confirm-dialog';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { DataTable } from '@/components/admin/DataTable';
@@ -22,6 +22,7 @@ import { provisionAdminUser } from '@/lib/adminProvision';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 import type { AdminProfileRow, GuardaMunicipalGraduacao, ModuloSistema, PapelUsuario, Setor } from '@/types/admin';
+import type { JgcPerfil } from '@/types/jovem-guarda';
 import { MODULOS_POR_SETOR } from '@/types/admin';
 
 const papelOptions: Array<{ value: PapelUsuario; label: string }> = [
@@ -33,6 +34,12 @@ const papelFilterOptions: Array<{ value: PapelUsuario | 'todos'; label: string }
   { value: 'todos', label: 'Todos' },
   { value: 'gestor', label: 'Gestor de Setor' },
   { value: 'tecnico', label: 'Administrativo' },
+];
+
+const jgcPapelOptions: Array<{ value: Exclude<JgcPerfil, 'gestor'>; label: string }> = [
+  { value: 'administrativo', label: 'Administrativo' },
+  { value: 'professor', label: 'Professor' },
+  { value: 'multiprofissional', label: 'Profissional multiprofissional' },
 ];
 
 const papelLabels: Record<PapelUsuario, string> = {
@@ -47,6 +54,41 @@ const papelBadgeVariant: Record<PapelUsuario, string> = {
   gestor: 'bg-blue-100 text-blue-800 border-blue-200',
   admin_setor: 'bg-blue-100 text-blue-800 border-blue-200',
   tecnico: 'bg-slate-100 text-slate-800 border-slate-200',
+};
+
+type JgcPermissionModule = {
+  id: ModuloSistema;
+  label: string;
+  description: string;
+  actions: Array<{ id: string; label: string }>;
+};
+
+const JGC_PERMISSION_MODULES: JgcPermissionModule[] = [
+  { id: 'jgc_dashboard', label: 'Painel Jovem Guarda', description: 'Indicadores e visão geral do projeto.', actions: [{ id: 'visualizar', label: 'Visualizar' }] },
+  { id: 'jgc_alunos', label: 'Alunos', description: 'Cadastro e ficha completa dos participantes.', actions: [{ id: 'visualizar', label: 'Visualizar' }, { id: 'criar', label: 'Cadastrar' }, { id: 'editar', label: 'Editar' }, { id: 'inativar', label: 'Inativar' }] },
+  { id: 'jgc_responsaveis', label: 'Responsáveis', description: 'Contatos e vínculos familiares dos alunos.', actions: [{ id: 'visualizar', label: 'Visualizar' }, { id: 'criar', label: 'Cadastrar' }, { id: 'editar', label: 'Editar' }] },
+  { id: 'jgc_turmas', label: 'Turmas', description: 'Turmas, instrutores e vínculo de alunos.', actions: [{ id: 'visualizar', label: 'Visualizar' }, { id: 'criar', label: 'Cadastrar' }, { id: 'editar', label: 'Editar' }, { id: 'gerenciar_alunos', label: 'Gerenciar alunos' }] },
+  { id: 'jgc_frequencia', label: 'Frequência', description: 'Chamadas e acompanhamento de presença.', actions: [{ id: 'visualizar', label: 'Visualizar' }, { id: 'registrar', label: 'Registrar' }, { id: 'editar', label: 'Editar' }] },
+  { id: 'jgc_atividades', label: 'Atividades', description: 'Aulas, eventos, visitas e oficinas.', actions: [{ id: 'visualizar', label: 'Visualizar' }, { id: 'criar', label: 'Cadastrar' }, { id: 'editar', label: 'Editar' }, { id: 'excluir', label: 'Excluir' }] },
+  { id: 'jgc_acompanhamentos', label: 'Acompanhamento do Aluno', description: 'Registros socioeducativos com acesso rigoroso.', actions: [{ id: 'visualizar', label: 'Visualizar' }, { id: 'criar', label: 'Registrar' }, { id: 'editar', label: 'Editar' }] },
+  { id: 'jgc_relatorios', label: 'Relatórios', description: 'Consultas e exportações do Jovem Guarda.', actions: [{ id: 'visualizar', label: 'Visualizar' }, { id: 'gerar', label: 'Gerar' }, { id: 'exportar', label: 'Exportar' }] },
+];
+
+const permissionKey = (moduleId: ModuloSistema, actionId: string) =>
+  `jovem_guarda.${moduleId.replace('jgc_', '')}.${actionId}`;
+
+const modulesFromPermissions = (permissions: string[]) =>
+  JGC_PERMISSION_MODULES
+    .filter((module) => permissions.some((permission) => permission.startsWith(`jovem_guarda.${module.id.replace('jgc_', '')}.`)))
+    .map((module) => module.id);
+
+const permissionsFromStoredModules = (stored: string[] | null | undefined) => {
+  const values = stored || [];
+  const granular = values.filter((value) => value.startsWith('jovem_guarda.'));
+  if (granular.length) return granular;
+  return JGC_PERMISSION_MODULES.flatMap((module) =>
+    values.includes(module.id) ? module.actions.map((action) => permissionKey(module.id, action.id)) : [],
+  );
 };
 
 const initialForm = {
@@ -76,6 +118,9 @@ const UsuariosPage = () => {
   const [formData, setFormData] = useState(initialForm);
   const [showPassword, setShowPassword] = useState(false);
   const [selectedModulos, setSelectedModulos] = useState<ModuloSistema[]>([]);
+  const [selectedJgcPermissions, setSelectedJgcPermissions] = useState<string[]>([]);
+  const [selectedJgcPapel, setSelectedJgcPapel] = useState<Exclude<JgcPerfil, 'gestor'>>('administrativo');
+  const [selectedJgcArea, setSelectedJgcArea] = useState('');
   const [selectedGraduacaoId, setSelectedGraduacaoId] = useState('');
   const [editingItem, setEditingItem] = useState<AdminProfileRow | null>(null);
   const [editNome, setEditNome] = useState('');
@@ -83,6 +128,9 @@ const UsuariosPage = () => {
   const [editPapel, setEditPapel] = useState<PapelUsuario>('admin_setor');
   const [editSetorId, setEditSetorId] = useState('');
   const [editModulos, setEditModulos] = useState<ModuloSistema[]>([]);
+  const [editJgcPermissions, setEditJgcPermissions] = useState<string[]>([]);
+  const [editJgcPapel, setEditJgcPapel] = useState<Exclude<JgcPerfil, 'gestor'>>('administrativo');
+  const [editJgcArea, setEditJgcArea] = useState('');
   const [editGraduacaoId, setEditGraduacaoId] = useState('');
 
   const loadSetores = async () => {
@@ -162,6 +210,9 @@ const UsuariosPage = () => {
   const handleClose = () => {
     setFormData(initialForm);
     setSelectedModulos([]);
+    setSelectedJgcPermissions([]);
+    setSelectedJgcPapel('administrativo');
+    setSelectedJgcArea('');
     setSelectedGraduacaoId('');
     setIsDialogOpen(false);
   };
@@ -187,7 +238,12 @@ const UsuariosPage = () => {
       return;
     }
 
-    if (!isSuperAdmin && selectedModulos.length === 0) {
+    const creatingJovemGuarda = setores.find((setor) => setor.id === targetSetorId)?.slug === 'jovem-guarda';
+    if (creatingJovemGuarda && selectedJgcPapel === 'multiprofissional' && !selectedJgcArea.trim()) {
+      toast({ title: 'Informe a área de atuação', description: 'A área é obrigatória para o profissional multiprofissional.', variant: 'destructive' });
+      return;
+    }
+    if ((creatingJovemGuarda && selectedJgcPermissions.length === 0) || (!isSuperAdmin && !creatingJovemGuarda && selectedModulos.length === 0)) {
       toast({
         title: 'Selecione os modulos',
         description: 'Defina ao menos um modulo de acesso para o usuario.',
@@ -197,17 +253,37 @@ const UsuariosPage = () => {
     }
 
     try {
-      await provisionAdminUser({
+      const created = await provisionAdminUser({
         email: formData.email.trim(),
         password: formData.password.trim(),
         firstName: formData.firstName.trim(),
         lastName: formData.lastName.trim(),
         setorId: targetSetorId,
-        papel: formData.papel,
+        papel: creatingJovemGuarda ? 'tecnico' : formData.papel,
         active: formData.active,
-        modulos: isSuperAdmin ? undefined : selectedModulos,
-        graduacaoId: selectedGraduacaoId || undefined,
+        modulos: creatingJovemGuarda
+          ? [...modulesFromPermissions(selectedJgcPermissions), ...selectedJgcPermissions]
+          : isSuperAdmin ? undefined : selectedModulos,
+        graduacaoId: creatingJovemGuarda ? undefined : selectedGraduacaoId || undefined,
       });
+      const createdUserId = created?.userId || created?.user_id;
+      if (creatingJovemGuarda && createdUserId) {
+        const { data: createdProfiles, error: profileLookupError } = await supabase.rpc('get_admin_profiles', { _setor_id: targetSetorId });
+        if (profileLookupError) throw profileLookupError;
+        const createdProfile = (createdProfiles as AdminProfileRow[] | null)?.find((item) => item.user_id === createdUserId);
+        if (!createdProfile) throw new Error('Perfil criado, mas não foi possível definir o papel funcional do Jovem Guarda.');
+        const { error: permissionError } = await supabase.rpc('update_profile_jgc_permissions', {
+          _user_id: createdUserId,
+          _permissoes: selectedJgcPermissions,
+        });
+        if (permissionError) throw permissionError;
+        const { error: jgcRoleError } = await supabase.rpc('jgc_definir_perfil', {
+          _perfil_usuario_id: createdProfile.perfil_id,
+          _perfil: selectedJgcPapel,
+          _area_atuacao: selectedJgcPapel === 'multiprofissional' ? selectedJgcArea.trim() : null,
+        });
+        if (jgcRoleError) throw jgcRoleError;
+      }
 
       toast({
         title: 'Usuario criado',
@@ -269,13 +345,27 @@ const UsuariosPage = () => {
     }
   };
 
-  const handleEdit = (item: AdminProfileRow) => {
+  const handleEdit = async (item: AdminProfileRow) => {
     setEditingItem(item);
     setEditNome(item.nome || '');
     setEditSobrenome(item.sobrenome || '');
     setEditPapel(item.papel);
     setEditSetorId(item.setor_id || '');
     setEditModulos((item.modulos as ModuloSistema[]) || []);
+    setEditJgcPermissions(permissionsFromStoredModules(item.modulos));
+    setEditJgcPapel('administrativo');
+    setEditJgcArea('');
+    if (item.setor_slug === 'jovem-guarda') {
+      const { data } = await supabase
+        .from('jgc_perfis')
+        .select('perfil, area_atuacao')
+        .eq('perfil_usuario_id', item.perfil_id)
+        .maybeSingle();
+      if (data?.perfil && data.perfil !== 'gestor') {
+        setEditJgcPapel(data.perfil as Exclude<JgcPerfil, 'gestor'>);
+        setEditJgcArea(data.area_atuacao || '');
+      }
+    }
     setEditGraduacaoId(item.graduacao_id || '');
     setIsEditDialogOpen(true);
   };
@@ -289,22 +379,47 @@ const UsuariosPage = () => {
     }
 
     try {
+      if (editingItem.setor_slug === 'jovem-guarda' && editJgcPapel === 'multiprofissional' && !editJgcArea.trim()) {
+        toast({ title: 'Informe a área de atuação', description: 'A área é obrigatória para o profissional multiprofissional.', variant: 'destructive' });
+        return;
+      }
       const { error } = await supabase.rpc('update_profile', {
         _perfil_id: editingItem.perfil_id,
         _nome: editNome.trim(),
         _sobrenome: editSobrenome.trim(),
-        _papel: editPapel,
+        _papel: editingItem.setor_slug === 'jovem-guarda' ? 'tecnico' : editPapel,
         _setor_id: editSetorId || null,
         _graduacao_id: editGraduacaoId || null,
       });
 
       if (error) throw error;
 
-      const { error: modulosError } = await supabase.rpc('update_profile_modulos', {
-        _user_id: editingItem.user_id,
-        _modulos: editModulos,
-      });
+      const editingJovemGuarda = editingItem.setor_slug === 'jovem-guarda';
+      const modulesToSave = editingJovemGuarda
+        ? [...modulesFromPermissions(editJgcPermissions), ...editJgcPermissions]
+        : editModulos;
+      if (editingJovemGuarda && editJgcPermissions.length === 0) {
+        toast({ title: 'Selecione as permissões', description: 'Defina ao menos um módulo de acesso para o usuário.', variant: 'destructive' });
+        return;
+      }
+      const { error: modulosError } = editingJovemGuarda
+        ? await supabase.rpc('update_profile_jgc_permissions', {
+            _user_id: editingItem.user_id,
+            _permissoes: editJgcPermissions,
+          })
+        : await supabase.rpc('update_profile_modulos', {
+            _user_id: editingItem.user_id,
+            _modulos: modulesToSave,
+          });
       if (modulosError) throw modulosError;
+      if (editingJovemGuarda) {
+        const { error: roleError } = await supabase.rpc('jgc_definir_perfil', {
+          _perfil_usuario_id: editingItem.perfil_id,
+          _perfil: editJgcPapel,
+          _area_atuacao: editJgcPapel === 'multiprofissional' ? editJgcArea.trim() : null,
+        });
+        if (roleError) throw roleError;
+      }
 
       toast({ title: 'Perfil atualizado', description: 'Os dados do usuario foram alterados.' });
 
@@ -397,9 +512,11 @@ const UsuariosPage = () => {
   }, [isSuperAdmin, createSetorId, currentSetorId, setores]);
 
   const availableModulos = useMemo(
-    () => MODULOS_POR_SETOR[targetSetorSlug] || MODULOS_POR_SETOR['demutran'] || [],
+    () => MODULOS_POR_SETOR[targetSetorSlug] || [],
     [targetSetorSlug],
   );
+  const isJovemGuardaContext = targetSetorSlug === 'jovem-guarda';
+  const isEditingJovemGuarda = editingItem?.setor_slug === 'jovem-guarda';
 
   function renderMobileCard(item: AdminProfileRow) {
     return (
@@ -736,21 +853,33 @@ const UsuariosPage = () => {
 
             <div className="space-y-2">
               <Label>Papel no sistema</Label>
-              <Select value={formData.papel} onValueChange={(value) => setFormData((current) => ({ ...current, papel: value as PapelUsuario }))}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {createPapelOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {isJovemGuardaContext ? (
+                <>
+                  <Select value={selectedJgcPapel} onValueChange={(value) => setSelectedJgcPapel(value as Exclude<JgcPerfil, 'gestor'>)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {jgcPapelOptions.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">O gestor do setor é definido separadamente e não pode ser criado por este formulário.</p>
+                </>
+              ) : (
+                <Select value={formData.papel} onValueChange={(value) => setFormData((current) => ({ ...current, papel: value as PapelUsuario }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {createPapelOptions.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
+            {isJovemGuardaContext && selectedJgcPapel === 'multiprofissional' && (
+              <div className="space-y-2">
+                <Label htmlFor="jgc-area">Área de atuação</Label>
+                <Input id="jgc-area" value={selectedJgcArea} onChange={(event) => setSelectedJgcArea(event.target.value)} placeholder="Ex.: Psicologia, Serviço Social ou Pedagogia" />
+              </div>
+            )}
 
-            <div className="space-y-2">
+            {!isJovemGuardaContext && <div className="space-y-2">
               <Label>Graduação na Guarda (opcional)</Label>
               <p className="text-xs text-muted-foreground">Se vinculada, o usuário também poderá atuar como guarda municipal no módulo IRO.</p>
               <Select value={selectedGraduacaoId} onValueChange={(v) => setSelectedGraduacaoId(v === '__none__' ? '' : v)}>
@@ -764,9 +893,14 @@ const UsuariosPage = () => {
                   ))}
                 </SelectContent>
               </Select>
-            </div>
+            </div>}
 
-            {!isSuperAdmin && (
+            {isJovemGuardaContext ? (
+              <JgcPermissionsEditor
+                value={selectedJgcPermissions}
+                onChange={setSelectedJgcPermissions}
+              />
+            ) : !isSuperAdmin && (
               <div className="space-y-2">
                 <Label>Modulos de acesso</Label>
                 <div className="grid grid-cols-2 gap-2">
@@ -849,19 +983,31 @@ const UsuariosPage = () => {
 
             <div className="space-y-2">
               <Label>Papel</Label>
-              <Select value={editPapel} onValueChange={(value) => setEditPapel(value as PapelUsuario)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {createPapelOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {isEditingJovemGuarda ? (
+                <>
+                  <Select value={editJgcPapel} onValueChange={(value) => setEditJgcPapel(value as Exclude<JgcPerfil, 'gestor'>)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {jgcPapelOptions.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">O gestor do setor é administrado separadamente.</p>
+                </>
+              ) : (
+                <Select value={editPapel} onValueChange={(value) => setEditPapel(value as PapelUsuario)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {createPapelOptions.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
+            {isEditingJovemGuarda && editJgcPapel === 'multiprofissional' && (
+              <div className="space-y-2">
+                <Label htmlFor="edit-jgc-area">Área de atuação</Label>
+                <Input id="edit-jgc-area" value={editJgcArea} onChange={(event) => setEditJgcArea(event.target.value)} placeholder="Ex.: Psicologia, Serviço Social ou Pedagogia" />
+              </div>
+            )}
 
             <div className="space-y-2">
               <Label>Setor</Label>
@@ -891,7 +1037,7 @@ const UsuariosPage = () => {
               )}
             </div>
 
-            <div className="space-y-2">
+            {!isEditingJovemGuarda && <div className="space-y-2">
               <Label>Graduação na Guarda (opcional)</Label>
               <p className="text-xs text-muted-foreground">Permite atuar como guarda municipal no módulo IRO.</p>
               <Select value={editGraduacaoId} onValueChange={(v) => setEditGraduacaoId(v === '__none__' ? '' : v)}>
@@ -905,9 +1051,14 @@ const UsuariosPage = () => {
                   ))}
                 </SelectContent>
               </Select>
-            </div>
+            </div>}
 
-            {editPapel !== 'super_admin' && (
+            {isEditingJovemGuarda ? (
+              <JgcPermissionsEditor
+                value={editJgcPermissions}
+                onChange={setEditJgcPermissions}
+              />
+            ) : editPapel !== 'super_admin' && (
               <div className="space-y-2">
                 <Label>Modulos de acesso</Label>
                 <div className="grid grid-cols-2 gap-2">
@@ -956,6 +1107,127 @@ const UsuariosPage = () => {
     </AdminLayout>
   );
 };
+
+function JgcPermissionsEditor({
+  value,
+  onChange,
+}: {
+  value: string[];
+  onChange: (permissions: string[]) => void;
+}) {
+  const [expanded, setExpanded] = useState<string[]>(JGC_PERMISSION_MODULES.map((module) => module.id));
+
+  const togglePermission = (module: JgcPermissionModule, actionId: string) => {
+    const key = permissionKey(module.id, actionId);
+    const isSelected = value.includes(key);
+    let next = isSelected ? value.filter((permission) => permission !== key) : [...value, key];
+
+    if (!isSelected && actionId !== 'visualizar') {
+      const viewKey = permissionKey(module.id, 'visualizar');
+      if (!next.includes(viewKey)) next = [...next, viewKey];
+    }
+    if (isSelected && actionId === 'visualizar') {
+      const modulePrefix = `jovem_guarda.${module.id.replace('jgc_', '')}.`;
+      next = next.filter((permission) => !permission.startsWith(modulePrefix));
+    }
+    onChange([...new Set(next)]);
+  };
+
+  const toggleAll = (module: JgcPermissionModule) => {
+    const keys = module.actions.map((action) => permissionKey(module.id, action.id));
+    const complete = keys.every((key) => value.includes(key));
+    onChange(complete
+      ? value.filter((permission) => !keys.includes(permission))
+      : [...new Set([...value, ...keys])]);
+  };
+
+  const selectedModules = modulesFromPermissions(value).length;
+
+  return (
+    <div className="space-y-3 rounded-2xl border border-teal-200/80 bg-gradient-to-b from-teal-50/70 to-white p-3 sm:p-4">
+      <div className="flex items-start gap-3">
+        <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-teal-700 text-white shadow-sm">
+          <ShieldCheck className="h-5 w-5" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <Label className="text-base font-bold text-slate-900">Módulos e permissões</Label>
+          <p className="mt-0.5 text-xs leading-5 text-slate-500">
+            Selecione exatamente o que este usuário poderá visualizar e executar no Jovem Guarda.
+          </p>
+        </div>
+        <Badge className="shrink-0 border-0 bg-teal-100 text-teal-800 hover:bg-teal-100">
+          {selectedModules}/8
+        </Badge>
+      </div>
+
+      <div className="max-h-[42vh] space-y-2 overflow-y-auto pr-1">
+        {JGC_PERMISSION_MODULES.map((module) => {
+          const keys = module.actions.map((action) => permissionKey(module.id, action.id));
+          const selectedCount = keys.filter((key) => value.includes(key)).length;
+          const complete = selectedCount === keys.length;
+          const isExpanded = expanded.includes(module.id);
+          return (
+            <div key={module.id} className={cn('overflow-hidden rounded-xl border bg-white transition', selectedCount ? 'border-teal-300 shadow-sm' : 'border-slate-200')}>
+              <button
+                type="button"
+                onClick={() => setExpanded((current) => current.includes(module.id) ? current.filter((id) => id !== module.id) : [...current, module.id])}
+                className="flex w-full items-center gap-3 px-3 py-3 text-left"
+                aria-expanded={isExpanded}
+              >
+                <div className={cn('grid h-8 w-8 shrink-0 place-items-center rounded-lg text-xs font-black', selectedCount ? 'bg-teal-700 text-white' : 'bg-slate-100 text-slate-500')}>
+                  {selectedCount || '—'}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-bold text-slate-900">{module.label}</p>
+                  <p className="truncate text-xs text-slate-500">{module.description}</p>
+                </div>
+                <ChevronDown className={cn('h-4 w-4 text-slate-400 transition-transform', isExpanded && 'rotate-180')} />
+              </button>
+              {isExpanded && (
+                <div className="border-t border-slate-100 px-3 pb-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => toggleAll(module)}
+                    className={cn('mb-2 flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-xs font-bold transition', complete ? 'bg-teal-100 text-teal-800' : 'bg-slate-50 text-slate-600 hover:bg-teal-50')}
+                  >
+                    <PermissionCheck checked={complete} />
+                    {complete ? 'Desmarcar todas' : 'Acesso completo'}
+                  </button>
+                  <div className="grid gap-1.5 sm:grid-cols-2">
+                    {module.actions.map((action) => {
+                      const key = permissionKey(module.id, action.id);
+                      const checked = value.includes(key);
+                      return (
+                        <button
+                          key={action.id}
+                          type="button"
+                          onClick={() => togglePermission(module, action.id)}
+                          className={cn('flex items-center gap-2 rounded-lg border px-2.5 py-2 text-left text-xs font-medium transition', checked ? 'border-teal-300 bg-teal-50 text-teal-900' : 'border-slate-200 text-slate-600 hover:border-teal-200')}
+                        >
+                          <PermissionCheck checked={checked} />
+                          {action.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+      {value.length === 0 && <p className="flex items-center gap-2 text-xs font-medium text-amber-700"><AlertDot />Selecione pelo menos um módulo de acesso.</p>}
+    </div>
+  );
+}
+
+function PermissionCheck({ checked }: { checked: boolean }) {
+  return <span className={cn('grid h-4 w-4 shrink-0 place-items-center rounded border', checked ? 'border-teal-700 bg-teal-700 text-white' : 'border-slate-300 bg-white')}>{checked && <Check className="h-3 w-3" />}</span>;
+}
+
+function AlertDot() {
+  return <span className="h-2 w-2 rounded-full bg-amber-500" />;
+}
 
 function SummaryCard({
   title,
