@@ -118,6 +118,21 @@ export interface GuardaMunicipal {
   updated_at?: string | null;
 }
 
+export type GuardaAfastamentoTipo = 'ferias' | 'licenca_premio' | 'outro';
+
+export interface GuardaAfastamento {
+  id: string;
+  guarda_id: string;
+  tipo: GuardaAfastamentoTipo;
+  data_inicio: string;
+  data_fim: string;
+  observacao: string | null;
+  criado_por: string;
+  cancelado_em: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface GuardaPerfil {
   id: string;
   matricula: string;

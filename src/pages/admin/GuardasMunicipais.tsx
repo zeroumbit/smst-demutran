@@ -1,19 +1,21 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ClipboardList, Copy, GraduationCap, Pencil, Plus, RefreshCcw, Search, Shield, ToggleLeft, ToggleRight, Trash2, UserCheck } from 'lucide-react';
+import { CalendarOff, ClipboardList, Copy, GraduationCap, Pencil, Plus, RefreshCcw, Shield, ToggleLeft, ToggleRight, Trash2, UserCheck } from 'lucide-react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { ResponsiveDialog } from '@/components/ui/responsive-dialog';
 import { useConfirmDialog } from '@/components/ui/use-confirm-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/lib/supabase';
-import { capitalizeNome, cn } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 import { maskCpf } from '@/lib/masks';
-import type { GuardaMunicipal, GuardaMunicipalGraduacao } from '@/types/admin';
+import { useAuth } from '@/contexts/AuthContext';
+import type { GuardaAfastamento, GuardaAfastamentoTipo, GuardaMunicipal, GuardaMunicipalGraduacao } from '@/types/admin';
 
 type Section = 'guardas' | 'graduacoes';
 
@@ -29,11 +31,30 @@ function capitalizeNome(nome: string): string {
 
 const guardaInitialForm = { matricula: '', nome: '', graduacao_id: '', cpf: '' };
 const graduacaoInitialForm = { nome: '', ordem: '0' };
+const afastamentoInitialForm: {
+  tipo: GuardaAfastamentoTipo;
+  data_inicio: string;
+  data_fim: string;
+  observacao: string;
+} = { tipo: 'ferias', data_inicio: '', data_fim: '', observacao: '' };
+
+const afastamentoLabels: Record<GuardaAfastamentoTipo, string> = {
+  ferias: 'Férias',
+  licenca_premio: 'Licença-prêmio',
+  outro: 'Outro afastamento',
+};
+
+const formatDateBR = (date: string) => {
+  const [year, month, day] = date.split('-');
+  return year && month && day ? `${day}/${month}/${year}` : date;
+};
 
 const sectionLabels: Record<Section, string> = { guardas: 'Guardas', graduacoes: 'Graduações' };
 
 const GuardasMunicipaisPage = () => {
   const { confirm, confirmDialog } = useConfirmDialog();
+  const { isSuperAdmin } = useAuth();
+  const [canManageAfastamentos, setCanManageAfastamentos] = useState(isSuperAdmin);
   const [loading, setLoading] = useState(true);
   const [section, setSection] = useState<Section>('guardas');
 
@@ -50,13 +71,20 @@ const GuardasMunicipaisPage = () => {
   const [editingGuarda, setEditingGuarda] = useState<GuardaMunicipal | null>(null);
   const [editingGraduacao, setEditingGraduacao] = useState<GuardaMunicipalGraduacao | null>(null);
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; step: 1 | 2; item: GuardaMunicipal | null }>({ open: false, step: 1, item: null });
+  const [afastamentoDialogOpen, setAfastamentoDialogOpen] = useState(false);
+  const [selectedGuarda, setSelectedGuarda] = useState<GuardaMunicipal | null>(null);
+  const [afastamentos, setAfastamentos] = useState<GuardaAfastamento[]>([]);
+  const [afastamentoForm, setAfastamentoForm] = useState(afastamentoInitialForm);
+  const [loadingAfastamentos, setLoadingAfastamentos] = useState(false);
+  const [savingAfastamento, setSavingAfastamento] = useState(false);
 
   const loadData = async () => {
     setLoading(true);
-    const [{ data: graduacoesData, error: graduacoesError }, { data: guardasData, error: guardasError }] =
+    const [{ data: graduacoesData, error: graduacoesError }, { data: guardasData, error: guardasError }, { data: vinculosData }] =
       await Promise.all([
         supabase.from('guarda_municipal_graduacoes').select('id, nome, ordem, ativo, created_at, updated_at').order('ordem', { ascending: true }).order('nome', { ascending: true }),
         supabase.from('guardas_municipais').select('id, matricula, nome, cpf, email, telefone, graduacao_id, ativo, data_autocadastro, created_at, updated_at').order('nome', { ascending: true }),
+        supabase.from('guardas_usuarios').select('guarda_id'),
       ]);
 
     if (graduacoesError || guardasError) {
@@ -65,12 +93,13 @@ const GuardasMunicipaisPage = () => {
       return;
     }
 
+    const guardasComConta = new Set((vinculosData || []).map((v: { guarda_id: string }) => v.guarda_id));
     const graduacoesList = (graduacoesData || []) as GuardaMunicipalGraduacao[];
     const graduacaoMap = new Map(graduacoesList.map((item) => [item.id, item.nome]));
     setGraduacoes(graduacoesList);
     const guardasDedup = Object.values(
       ((guardasData || []) as GuardaMunicipal[]).reduce((acc, item) => {
-        acc[item.id] = { ...item, nome: capitalizeNome(item.nome), graduacao_nome: graduacaoMap.get(item.graduacao_id) ?? null, possui_conta: item.data_autocadastro !== null };
+        acc[item.id] = { ...item, nome: capitalizeNome(item.nome), graduacao_nome: graduacaoMap.get(item.graduacao_id) ?? null, possui_conta: guardasComConta.has(item.id) };
         return acc;
       }, {} as Record<string, GuardaMunicipal>)
     );
@@ -79,6 +108,21 @@ const GuardasMunicipaisPage = () => {
   };
 
   useEffect(() => { void loadData(); }, []);
+
+  useEffect(() => {
+    if (isSuperAdmin) {
+      setCanManageAfastamentos(true);
+      return;
+    }
+
+    let active = true;
+    const loadPermission = async () => {
+      const { data, error } = await supabase.rpc('can_manage_guarda_afastamentos');
+      if (active) setCanManageAfastamentos(!error && data === true);
+    };
+    void loadPermission();
+    return () => { active = false; };
+  }, [isSuperAdmin]);
 
   const filteredGuardas = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -97,6 +141,83 @@ const GuardasMunicipaisPage = () => {
   const openEditGuarda = (item: GuardaMunicipal) => { setEditingGuarda(item); setGuardaForm({ matricula: item.matricula, nome: item.nome, graduacao_id: item.graduacao_id, cpf: item.cpf ? maskCpf(item.cpf) : '' }); setGuardaDialogOpen(true); };
   const openCreateGraduacao = () => { setEditingGraduacao(null); setGraduacaoForm(graduacaoInitialForm); setGraduacaoDialogOpen(true); };
   const openEditGraduacao = (item: GuardaMunicipalGraduacao) => { setEditingGraduacao(item); setGraduacaoForm({ nome: item.nome, ordem: String(item.ordem) }); setGraduacaoDialogOpen(true); };
+
+  const loadAfastamentos = async (guardaId: string) => {
+    setLoadingAfastamentos(true);
+    const { data, error } = await supabase
+      .from('guarda_afastamentos')
+      .select('id, guarda_id, tipo, data_inicio, data_fim, observacao, criado_por, cancelado_em, created_at, updated_at')
+      .eq('guarda_id', guardaId)
+      .order('data_inicio', { ascending: false });
+    setLoadingAfastamentos(false);
+    if (error) {
+      toast({ title: 'Erro ao carregar afastamentos', description: error.message, variant: 'destructive' });
+      return;
+    }
+    setAfastamentos((data || []) as GuardaAfastamento[]);
+  };
+
+  const openAfastamentos = (item: GuardaMunicipal) => {
+    setSelectedGuarda(item);
+    setAfastamentoForm(afastamentoInitialForm);
+    setAfastamentos([]);
+    setAfastamentoDialogOpen(true);
+    void loadAfastamentos(item.id);
+  };
+
+  const resetAfastamentoDialog = () => {
+    setAfastamentoDialogOpen(false);
+    setSelectedGuarda(null);
+    setAfastamentos([]);
+    setAfastamentoForm(afastamentoInitialForm);
+  };
+
+  const handleSaveAfastamento = async () => {
+    if (!selectedGuarda || !afastamentoForm.data_inicio || !afastamentoForm.data_fim) {
+      toast({ title: 'Período obrigatório', description: 'Informe as datas de início e término.', variant: 'destructive' });
+      return;
+    }
+    if (afastamentoForm.data_fim < afastamentoForm.data_inicio) {
+      toast({ title: 'Período inválido', description: 'A data de término não pode ser anterior ao início.', variant: 'destructive' });
+      return;
+    }
+    if (afastamentoForm.tipo === 'outro' && afastamentoForm.observacao.trim().length < 3) {
+      toast({ title: 'Descrição obrigatória', description: 'Descreva o outro tipo de afastamento.', variant: 'destructive' });
+      return;
+    }
+
+    setSavingAfastamento(true);
+    const { error } = await supabase.rpc('criar_guarda_afastamento', {
+      p_guarda_id: selectedGuarda.id,
+      p_tipo: afastamentoForm.tipo,
+      p_data_inicio: afastamentoForm.data_inicio,
+      p_data_fim: afastamentoForm.data_fim,
+      p_observacao: afastamentoForm.observacao.trim() || null,
+    });
+    setSavingAfastamento(false);
+    if (error) {
+      toast({ title: 'Erro ao registrar afastamento', description: error.message, variant: 'destructive' });
+      return;
+    }
+    toast({ title: 'Afastamento registrado', description: 'O período já será considerado nas candidaturas IRO.' });
+    setAfastamentoForm(afastamentoInitialForm);
+    await loadAfastamentos(selectedGuarda.id);
+  };
+
+  const handleCancelAfastamento = async (item: GuardaAfastamento) => {
+    const confirmed = await confirm({
+      title: 'Cancelar afastamento',
+      description: `Deseja cancelar ${afastamentoLabels[item.tipo].toLowerCase()} de ${formatDateBR(item.data_inicio)} a ${formatDateBR(item.data_fim)}?`,
+    });
+    if (!confirmed || !selectedGuarda) return;
+    const { error } = await supabase.rpc('cancelar_guarda_afastamento', { p_afastamento_id: item.id });
+    if (error) {
+      toast({ title: 'Erro ao cancelar afastamento', description: error.message, variant: 'destructive' });
+      return;
+    }
+    toast({ title: 'Afastamento cancelado' });
+    await loadAfastamentos(selectedGuarda.id);
+  };
 
   const handleSaveGuarda = async () => {
     if (!guardaForm.matricula.trim() || !guardaForm.nome.trim() || !guardaForm.graduacao_id) {
@@ -289,7 +410,13 @@ const GuardasMunicipaisPage = () => {
                       <p className="text-xs font-medium text-slate-500">CPF: {maskCpf(item.cpf)}</p>
                     )}
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    {canManageAfastamentos && (
+                      <Button variant="outline" size="sm" onClick={() => openAfastamentos(item)}>
+                        <CalendarOff className="mr-1.5 h-4 w-4" />
+                        Afastamentos
+                      </Button>
+                    )}
                     <Button variant="outline" size="sm" onClick={() => void handleToggleAtivo(item)}>
                       {item.ativo ? <ToggleLeft className="mr-1.5 h-4 w-4" /> : <ToggleRight className="mr-1.5 h-4 w-4" />}
                       {item.ativo ? 'Desabilitar' : 'Habilitar'}
@@ -382,6 +509,106 @@ const GuardasMunicipaisPage = () => {
                 <Shield className="mr-2 h-4 w-4" />
                 {editingGuarda ? 'Salvar alterações' : 'Cadastrar guarda'}
               </Button>
+            </div>
+          </div>
+        </ResponsiveDialog>
+
+        <ResponsiveDialog
+          open={afastamentoDialogOpen}
+          onOpenChange={(open) => { if (!open) resetAfastamentoDialog(); }}
+          title={`Afastamentos${selectedGuarda ? ` — ${selectedGuarda.nome}` : ''}`}
+          description="Registre férias, licença-prêmio ou outro afastamento. Durante o período, o guarda não poderá se candidatar a IRO."
+          className="sm:max-w-2xl"
+        >
+          <div className="space-y-5">
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2 sm:col-span-2">
+                  <Label>Tipo de afastamento</Label>
+                  <Select
+                    value={afastamentoForm.tipo}
+                    onValueChange={(value) => setAfastamentoForm((prev) => ({ ...prev, tipo: value as GuardaAfastamentoTipo }))}
+                  >
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ferias">Férias</SelectItem>
+                      <SelectItem value="licenca_premio">Licença-prêmio</SelectItem>
+                      <SelectItem value="outro">Outro afastamento</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="afastamento-inicio">Início</Label>
+                  <Input
+                    id="afastamento-inicio"
+                    type="date"
+                    value={afastamentoForm.data_inicio}
+                    onChange={(event) => setAfastamentoForm((prev) => ({ ...prev, data_inicio: event.target.value }))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="afastamento-fim">Término</Label>
+                  <Input
+                    id="afastamento-fim"
+                    type="date"
+                    min={afastamentoForm.data_inicio || undefined}
+                    value={afastamentoForm.data_fim}
+                    onChange={(event) => setAfastamentoForm((prev) => ({ ...prev, data_fim: event.target.value }))}
+                  />
+                </div>
+                <div className="space-y-2 sm:col-span-2">
+                  <Label htmlFor="afastamento-observacao">
+                    {afastamentoForm.tipo === 'outro' ? 'Descrição do afastamento' : 'Observação (opcional)'}
+                  </Label>
+                  <Textarea
+                    id="afastamento-observacao"
+                    value={afastamentoForm.observacao}
+                    onChange={(event) => setAfastamentoForm((prev) => ({ ...prev, observacao: event.target.value }))}
+                    placeholder={afastamentoForm.tipo === 'outro' ? 'Informe o motivo do afastamento' : 'Informações adicionais'}
+                    rows={3}
+                  />
+                </div>
+              </div>
+              <div className="mt-4 flex justify-end">
+                <Button onClick={() => void handleSaveAfastamento()} disabled={savingAfastamento}>
+                  <CalendarOff className="mr-2 h-4 w-4" />
+                  {savingAfastamento ? 'Registrando...' : 'Registrar afastamento'}
+                </Button>
+              </div>
+            </div>
+
+            <div>
+              <h3 className="text-sm font-bold text-slate-900">Histórico de afastamentos</h3>
+              <div className="mt-3 max-h-72 space-y-2 overflow-y-auto pr-1">
+                {loadingAfastamentos ? (
+                  <p className="rounded-xl border border-slate-200 p-4 text-center text-sm text-slate-500">Carregando...</p>
+                ) : afastamentos.length === 0 ? (
+                  <p className="rounded-xl border border-dashed border-slate-300 p-4 text-center text-sm text-slate-500">Nenhum afastamento registrado.</p>
+                ) : afastamentos.map((item) => {
+                  const today = new Date().toISOString().slice(0, 10);
+                  const vigente = !item.cancelado_em && item.data_inicio <= today && item.data_fim >= today;
+                  return (
+                    <div key={item.id} className={cn('rounded-xl border p-3', item.cancelado_em ? 'border-slate-200 bg-slate-50 opacity-70' : vigente ? 'border-amber-300 bg-amber-50' : 'border-slate-200 bg-white')}>
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="font-semibold text-slate-900">{afastamentoLabels[item.tipo]}</span>
+                            {vigente && <span className="rounded-full bg-amber-200 px-2 py-0.5 text-[11px] font-bold text-amber-900">Em andamento</span>}
+                            {item.cancelado_em && <span className="rounded-full bg-slate-200 px-2 py-0.5 text-[11px] font-bold text-slate-600">Cancelado</span>}
+                          </div>
+                          <p className="mt-1 text-sm text-slate-600">{formatDateBR(item.data_inicio)} a {formatDateBR(item.data_fim)}</p>
+                          {item.observacao && <p className="mt-1 text-xs text-slate-500">{item.observacao}</p>}
+                        </div>
+                        {!item.cancelado_em && (
+                          <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700" onClick={() => void handleCancelAfastamento(item)}>
+                            Cancelar
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </div>
         </ResponsiveDialog>
