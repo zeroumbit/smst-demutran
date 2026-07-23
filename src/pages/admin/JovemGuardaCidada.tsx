@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
 import {
   Activity, AlertTriangle, ArrowLeft, CalendarCheck, ChevronRight, ClipboardCheck,
@@ -23,16 +23,7 @@ import { JgcOperationalSection } from '@/components/jgc/JgcOperationalSections';
 import { JgcStudentJourney } from '@/components/jgc/JgcStudentJourney';
 
 type Section = 'dashboard' | 'alunos' | 'responsaveis' | 'turmas' | 'diario' | 'atividades' | 'acompanhamentos' | 'relatorios';
-const menu: { id: Section; label: string; icon: typeof Users; profiles: JgcPerfil[] }[] = [
-  { id: 'dashboard', label: 'Visão geral', icon: Sparkles, profiles: ['gestor','administrativo','professor','multiprofissional'] },
-  { id: 'alunos', label: 'Alunos', icon: Users, profiles: ['gestor','administrativo','professor','multiprofissional'] },
-  { id: 'responsaveis', label: 'Responsáveis', icon: UsersRound, profiles: ['gestor','administrativo','multiprofissional'] },
-  { id: 'turmas', label: 'Turmas', icon: UsersRound, profiles: ['gestor','administrativo'] },
-  { id: 'diario', label: 'Diário', icon: ClipboardCheck, profiles: ['gestor','professor'] },
-  { id: 'atividades', label: 'Atividades', icon: CalendarCheck, profiles: ['gestor','professor'] },
-  { id: 'acompanhamentos', label: 'Acompanhamentos', icon: HeartPulse, profiles: ['gestor','multiprofissional'] },
-  { id: 'relatorios', label: 'Relatórios', icon: FileBarChart, profiles: ['gestor','administrativo','professor','multiprofissional'] },
-];
+const sections: Section[] = ['dashboard','alunos','responsaveis','turmas','diario','atividades','acompanhamentos','relatorios'];
 
 const today = new Date().toISOString().slice(0, 10);
 const initialStudent = {
@@ -90,8 +81,7 @@ export default function JovemGuardaCidada() {
   }, []);
   useEffect(() => { void load(); }, [load]);
 
-  const visibleMenu = useMemo(() => menu.filter(item => profile && item.profiles.includes(profile)), [profile]);
-  const active = menu.some(item => item.id === section) ? section : 'dashboard';
+  const active = sections.includes(section) ? section : 'dashboard';
   const selected = alunos.find(item => item.id === alunoId);
   const filtered = alunos.filter(item => `${item.nome_completo} ${item.matricula} ${item.escola_nome || ''}`.toLowerCase().includes(search.toLowerCase()));
   const moduleForSection: Record<Section, string> = {
@@ -103,11 +93,10 @@ export default function JovemGuardaCidada() {
   const hasModule = (moduleId: string) => unrestricted || !!account?.modulos?.includes(moduleId);
   const can = (moduleId: string, action: string) =>
     unrestricted || !!account?.modulos?.includes(`jovem_guarda.${moduleId}.${action}`);
-  const allowedMenu = visibleMenu.filter(item => hasModule(moduleForSection[item.id]));
+  const firstAllowedSection = sections.find(item => hasModule(moduleForSection[item]));
   if (!loading && !profile) return <Navigate to="/admin/dashboard/jovem-guarda" replace />;
   if (!loading && ((alunoId && !hasModule('jgc_alunos')) || (!alunoId && !hasModule(moduleForSection[active])))) {
-    const firstAllowed = allowedMenu[0]?.id;
-    if (firstAllowed) return <Navigate to={`/admin/dashboard/jovem-guarda/${firstAllowed}`} replace />;
+    if (firstAllowedSection) return <Navigate to={`/admin/dashboard/jovem-guarda/${firstAllowedSection}`} replace />;
     return <AdminLayout><Empty icon={ShieldCheck} title="Sem módulos liberados" text="Você não possui permissão para acessar os módulos do Jovem Guarda."/></AdminLayout>;
   }
 
@@ -157,9 +146,6 @@ export default function JovemGuardaCidada() {
           <Badge className="w-fit border-white/15 bg-white/10 px-3 py-1.5 text-white hover:bg-white/10">{profile || 'carregando'} · acesso protegido</Badge>
         </div>
       </header>
-      <nav className="mb-6 flex gap-2 overflow-x-auto pb-2">
-        {allowedMenu.map(({ id, label, icon: Icon }) => <Link key={id} to={`/admin/dashboard/jovem-guarda/${id}`} className={`flex shrink-0 items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium transition ${active === id && !alunoId ? 'bg-teal-700 text-white shadow-md' : 'bg-white text-slate-600 hover:bg-teal-50 hover:text-teal-800'}`}><Icon className="h-4 w-4"/>{label}</Link>)}
-      </nav>
       {loading ? <div className="grid min-h-72 place-items-center"><div className="h-10 w-10 animate-spin rounded-full border-4 border-teal-100 border-t-teal-700"/></div>
       : selected ? <StudentDetail student={selected} services={atendimentos.filter(item => item.aluno_id === selected.id)} profile={profile!} can={can} onBack={() => navigate('/admin/dashboard/jovem-guarda/alunos')} onService={() => { setService(value => ({ ...value, aluno_id: selected.id })); setServiceOpen(true); }}/>
       : active === 'dashboard' ? <Dashboard profile={profile!} alunos={alunos} turmas={turmas} services={atendimentos} actions={actions} referrals={referrals} onStudent={can('alunos','criar') ? () => setStudentOpen(true) : undefined} onService={can('acompanhamento','criar') ? () => setServiceOpen(true) : undefined}/>

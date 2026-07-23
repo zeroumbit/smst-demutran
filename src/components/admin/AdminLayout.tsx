@@ -400,7 +400,11 @@ export const AdminLayout = ({ children, backPath, backLabel }: AdminLayoutProps)
           : defaultMenuItems;
 
     const userModulos = profile?.modulos;
-    const hasModulosRestricted = !isSuperAdmin && userModulos && userModulos.length > 0;
+    const hasModulosRestricted = !isSuperAdmin && (
+      sectorContext === 'jovem-guarda'
+        ? profile?.papel === 'tecnico'
+        : Boolean(userModulos && userModulos.length > 0)
+    );
 
     const filterItem = (item: MenuItem): MenuItem | null => {
       const mappedItem = { ...item };
@@ -535,7 +539,11 @@ export const AdminLayout = ({ children, backPath, backLabel }: AdminLayoutProps)
     };
 
     const userModulos = profile?.modulos;
-    const hasModulosRestricted = !isSuperAdmin && userModulos && userModulos.length > 0;
+    const hasModulosRestricted = !isSuperAdmin && (
+      sectorContext === 'jovem-guarda'
+        ? profile?.papel === 'tecnico'
+        : Boolean(userModulos && userModulos.length > 0)
+    );
 
     const filterByPapel = (items: MenuItem[]): MenuItem[] =>
       items
