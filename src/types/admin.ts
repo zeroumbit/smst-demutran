@@ -22,7 +22,7 @@ export type ModuloSistema =
   | 'jgc_diario'
   | 'jgc_frequencia'
   | 'jgc_atividades'
-  | 'jgc_acompanhamentos'
+  | 'jgc_acompanhamento'
   | 'jgc_relatorios';
 
 export const MODULOS_DEMUTRAN: { value: ModuloSistema; label: string }[] = [
@@ -52,7 +52,7 @@ export const MODULOS_JOVEM_GUARDA: { value: ModuloSistema; label: string }[] = [
   { value: 'jgc_turmas', label: 'Turmas' },
   { value: 'jgc_frequencia', label: 'Frequência' },
   { value: 'jgc_atividades', label: 'Atividades' },
-  { value: 'jgc_acompanhamentos', label: 'Acompanhamento do Aluno' },
+  { value: 'jgc_acompanhamento', label: 'Acompanhamento do Aluno' },
   { value: 'jgc_relatorios', label: 'Relatórios' },
 ];
 

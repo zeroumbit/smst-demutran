@@ -70,7 +70,7 @@ const JGC_PERMISSION_MODULES: JgcPermissionModule[] = [
   { id: 'jgc_turmas', label: 'Turmas', description: 'Turmas, instrutores e vínculo de alunos.', actions: [{ id: 'visualizar', label: 'Visualizar' }, { id: 'criar', label: 'Cadastrar' }, { id: 'editar', label: 'Editar' }, { id: 'gerenciar_alunos', label: 'Gerenciar alunos' }] },
   { id: 'jgc_frequencia', label: 'Frequência', description: 'Chamadas e acompanhamento de presença.', actions: [{ id: 'visualizar', label: 'Visualizar' }, { id: 'registrar', label: 'Registrar' }, { id: 'editar', label: 'Editar' }] },
   { id: 'jgc_atividades', label: 'Atividades', description: 'Aulas, eventos, visitas e oficinas.', actions: [{ id: 'visualizar', label: 'Visualizar' }, { id: 'criar', label: 'Cadastrar' }, { id: 'editar', label: 'Editar' }, { id: 'excluir', label: 'Excluir' }] },
-  { id: 'jgc_acompanhamentos', label: 'Acompanhamento do Aluno', description: 'Registros socioeducativos com acesso rigoroso.', actions: [{ id: 'visualizar', label: 'Visualizar' }, { id: 'criar', label: 'Registrar' }, { id: 'editar', label: 'Editar' }] },
+  { id: 'jgc_acompanhamento', label: 'Acompanhamento do Aluno', description: 'Registros socioeducativos com acesso rigoroso.', actions: [{ id: 'visualizar', label: 'Visualizar' }, { id: 'criar', label: 'Registrar' }, { id: 'editar', label: 'Editar' }] },
   { id: 'jgc_relatorios', label: 'Relatórios', description: 'Consultas e exportações do Jovem Guarda.', actions: [{ id: 'visualizar', label: 'Visualizar' }, { id: 'gerar', label: 'Gerar' }, { id: 'exportar', label: 'Exportar' }] },
 ];
 
@@ -83,7 +83,11 @@ const modulesFromPermissions = (permissions: string[]) =>
     .map((module) => module.id);
 
 const permissionsFromStoredModules = (stored: string[] | null | undefined) => {
-  const values = stored || [];
+  const values = (stored || []).map((value) =>
+    value === 'jgc_acompanhamentos'
+      ? 'jgc_acompanhamento'
+      : value.replace(/^jovem_guarda\.acompanhamentos\./, 'jovem_guarda.acompanhamento.'),
+  );
   const granular = values.filter((value) => value.startsWith('jovem_guarda.'));
   if (granular.length) return granular;
   return JGC_PERMISSION_MODULES.flatMap((module) =>
@@ -291,8 +295,12 @@ const UsuariosPage = () => {
       }
 
       toast({
-        title: 'Usuario criado',
-        description: 'A conta no Supabase Auth e o perfil administrativo foram criados com sucesso.',
+        title: created?.reusedProfile ? 'Usuário atualizado' : 'Usuário criado',
+        description: created?.reusedProfile
+          ? 'A conta já existia e o perfil administrativo foi atualizado com sucesso.'
+          : created?.reusedAuthUser
+            ? 'A conta já existia; o perfil administrativo foi vinculado com sucesso.'
+            : 'A conta no Supabase Auth e o perfil administrativo foram criados com sucesso.',
       });
 
       handleClose();

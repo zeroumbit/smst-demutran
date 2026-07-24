@@ -217,8 +217,16 @@ const moduloItemMap: Record<string, ModuloSistema> = {
   Turmas: 'jgc_turmas',
   Frequencia: 'jgc_frequencia',
   Atividades: 'jgc_atividades',
-  Acompanhamentos: 'jgc_acompanhamentos',
+  Acompanhamentos: 'jgc_acompanhamento',
   Relatorios: 'jgc_relatorios',
+};
+
+const hasStoredModule = (modules: ModuloSistema[], module: ModuloSistema) => {
+  if (modules.includes(module)) return true;
+  if (module === 'jgc_acompanhamento') {
+    return (modules as string[]).includes('jgc_acompanhamentos');
+  }
+  return false;
 };
 
 const papelLabels: Record<string, string> = {
@@ -422,7 +430,7 @@ export const AdminLayout = ({ children, backPath, backLabel }: AdminLayoutProps)
           ? jovemGuardaMenuItems
           : defaultMenuItems;
 
-    const userModulos = profile?.modulos;
+    const userModulos = profile?.modulos ?? [];
     const hasModulosRestricted = !isSuperAdmin && (
       sectorContext === 'jovem-guarda'
         ? profile?.papel === 'tecnico'
@@ -475,7 +483,7 @@ export const AdminLayout = ({ children, backPath, backLabel }: AdminLayoutProps)
       if (hasModulosRestricted) {
         const modulo = moduloItemMap[mappedItem.label];
         if (modulo) {
-          return userModulos!.includes(modulo) ? mappedItem : null;
+          return hasStoredModule(userModulos, modulo) ? mappedItem : null;
         }
       }
 
@@ -496,7 +504,7 @@ export const AdminLayout = ({ children, backPath, backLabel }: AdminLayoutProps)
       return items;
     }
     return filteredMenuItems;
-  }, [hasPapel, sectorContext, isSuperAdmin, profile?.setor_slug, profile?.modulos]);
+  }, [hasPapel, sectorContext, isSuperAdmin, profile?.papel, profile?.setor_slug, profile?.modulos]);
 
   const visibleBottomNavItems = useMemo(() => {
     return guardaBottomNavItems.filter((item) => {
@@ -561,7 +569,7 @@ export const AdminLayout = ({ children, backPath, backLabel }: AdminLayoutProps)
       }
     };
 
-    const userModulos = profile?.modulos;
+    const userModulos = profile?.modulos ?? [];
     const hasModulosRestricted = !isSuperAdmin && (
       sectorContext === 'jovem-guarda'
         ? profile?.papel === 'tecnico'
@@ -580,7 +588,7 @@ export const AdminLayout = ({ children, backPath, backLabel }: AdminLayoutProps)
           if (hasModulosRestricted) {
             const modulo = moduloItemMap[item.label];
             if (modulo) {
-              return userModulos!.includes(modulo) ? item : null;
+              return hasStoredModule(userModulos, modulo) ? item : null;
             }
           }
           if (isSuperAdmin && item.allowedPapeis.includes('super_admin')) return item;
@@ -592,7 +600,7 @@ export const AdminLayout = ({ children, backPath, backLabel }: AdminLayoutProps)
     walk(filterByPapel(demutranMenuItems));
     walk(filterByPapel(guardaMenuItems));
     return flat;
-  }, [hasPapel, isSuperAdmin, profile?.modulos]);
+  }, [hasPapel, isSuperAdmin, sectorContext, profile?.papel, profile?.modulos]);
 
   const filteredSearchItems = searchQuery.trim()
     ? searchableItems.filter((item) =>

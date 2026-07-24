@@ -59,7 +59,7 @@ BEGIN
       WHEN 'dashboard' THEN 'jgc_dashboard' WHEN 'alunos' THEN 'jgc_alunos'
       WHEN 'responsaveis' THEN 'jgc_responsaveis' WHEN 'turmas' THEN 'jgc_turmas'
       WHEN 'frequencia' THEN 'jgc_frequencia' WHEN 'atividades' THEN 'jgc_atividades'
-      WHEN 'acompanhamento' THEN 'jgc_acompanhamentos' WHEN 'relatorios' THEN 'jgc_relatorios' END);
+      WHEN 'acompanhamento' THEN 'jgc_acompanhamento' WHEN 'relatorios' THEN 'jgc_relatorios' END);
   END LOOP;
   UPDATE auth.users SET raw_app_meta_data=raw_app_meta_data||jsonb_build_object('modulos',_modules||_normalized),updated_at=now()
   WHERE id=_user_id;
