@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { DollarSign, Pencil, Plus, RefreshCcw, Settings2, ShieldCheck, Trash2 } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,6 +22,7 @@ const ConfiguracoesGuarda = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [form, setForm] = useState(formInitial);
   const [editing, setEditing] = useState<IROValorGraduacao | null>(null);
+  const [deleteStep, setDeleteStep] = useState<{ item: IROValorGraduacao; step: 1 | 2 } | null>(null);
 
   const loadData = async () => {
     setLoading(true);
@@ -82,12 +84,11 @@ const ConfiguracoesGuarda = () => {
     void loadData();
   };
 
-  const handleDelete = async (item: IROValorGraduacao) => {
-    const confirmed = await confirm({ title: 'Excluir valor', description: `Deseja excluir o valor da graduação ${item.graduacao_nome || item.graduacao_id}?` });
-    if (!confirmed) return;
-    const { error } = await supabase.from('iro_valores_graduacao').delete().eq('id', item.id);
+  const handleDelete = async () => {
+    if (!deleteStep) return;
+    const { error } = await supabase.from('iro_valores_graduacao').delete().eq('id', deleteStep.item.id);
     if (error) { toast({ title: 'Erro ao excluir', description: error.message, variant: 'destructive' }); return; }
-    toast({ title: 'Valor excluído' }); void loadData();
+    toast({ title: 'Valor excluído' }); setDeleteStep(null); void loadData();
   };
 
   const usedGraduacaoIds = new Set(items.map((i) => i.graduacao_id));
@@ -146,17 +147,22 @@ const ConfiguracoesGuarda = () => {
                   <DollarSign className="h-4 w-4" />
                   <strong className="text-slate-900">R$ {item.valor_hora.toFixed(2).replace('.', ',')}</strong> / hora IRO
                 </p>
-                <div className="mt-auto flex flex-wrap items-center gap-2 border-t border-slate-100 pt-4">
-                  <Button variant="outline" size="sm" onClick={() => openEdit(item)}>
-                    <Pencil className="mr-1.5 h-4 w-4" />
-                    Editar
+                <div className="mt-auto flex items-center gap-4 border-t border-slate-100 pt-4">
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      checked={item.ativo}
+                      onCheckedChange={() => void handleToggleAtivo(item)}
+                      id={`ativo-${item.id}`}
+                    />
+                    <Label htmlFor={`ativo-${item.id}`} className="text-xs text-slate-500 cursor-pointer">
+                      {item.ativo ? 'Ativo' : 'Inativo'}
+                    </Label>
+                  </div>
+                  <Button variant="outline" size="icon" onClick={() => openEdit(item)} title="Editar">
+                    <Pencil className="h-4 w-4" />
                   </Button>
-                  <Button variant="outline" size="sm" onClick={() => void handleToggleAtivo(item)}>
-                    {item.ativo ? 'Desativar' : 'Ativar'}
-                  </Button>
-                  <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700" onClick={() => void handleDelete(item)}>
-                    <Trash2 className="mr-1.5 h-4 w-4" />
-                    Excluir
+                  <Button variant="outline" size="icon" className="text-red-600 hover:text-red-700" onClick={() => setDeleteStep({ item, step: 1 })} title="Excluir">
+                    <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
               </article>
@@ -203,6 +209,30 @@ const ConfiguracoesGuarda = () => {
                 {editing ? 'Salvar alterações' : 'Cadastrar valor'}
               </Button>
             </div>
+          </div>
+        </ResponsiveDialog>
+
+        <ResponsiveDialog
+          open={deleteStep !== null}
+          onOpenChange={(open) => { if (!open) setDeleteStep(null); }}
+          title={deleteStep?.step === 1 ? 'Excluir valor' : 'Confirmação final'}
+          description={
+            deleteStep?.step === 1
+              ? `Tem certeza que deseja excluir o valor da graduação ${deleteStep?.item.graduacao_nome || deleteStep?.item.graduacao_id}?`
+              : 'Esta ação é irreversível. Tem certeza absoluta?'
+          }
+        >
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setDeleteStep(null)}>Cancelar</Button>
+            {deleteStep?.step === 1 ? (
+              <Button variant="destructive" onClick={() => setDeleteStep((prev) => prev ? { ...prev, step: 2 } : null)}>
+                Sim, excluir
+              </Button>
+            ) : (
+              <Button variant="destructive" onClick={() => void handleDelete()}>
+                Sim, tenho certeza
+              </Button>
+            )}
           </div>
         </ResponsiveDialog>
 

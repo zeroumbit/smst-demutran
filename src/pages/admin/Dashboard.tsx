@@ -72,7 +72,7 @@ type DashboardState = {
   serviceStatus: ServiceStatus[];
   alerts: string[];
   sectorsNeedingAttention: SectorAttention[];
-  vehicleMovement: Array<{ month: string; apreendidos: number; liberados: number }>;
+  vehicleMovement: Array<{ month: string; apreendidos: number; liberados: number; valor_apreendidos: number; valor_liberados: number }>;
   sectorHealth: Array<{ name: string; value: number; fill: string }>;
   concessionarios: ConcessionarioBreakdown[];
   pendingRecursos: number;
@@ -137,6 +137,14 @@ const initialState: DashboardState = {
 };
 
 const monthFormatter = new Intl.DateTimeFormat('pt-BR', { month: 'short' });
+const currencyFormatter = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
+
+const calcValor = (taxaDiaria: number, dataInicio: string, dataFim: string | null): number => {
+  const inicio = new Date(dataInicio);
+  const fim = dataFim ? new Date(dataFim) : new Date();
+  const dias = Math.floor((fim.getTime() - inicio.getTime()) / (1000 * 60 * 60 * 24));
+  return Math.max(0, dias) * taxaDiaria;
+};
 
 const buildLastSixMonths = () => {
   const now = new Date();
@@ -148,6 +156,8 @@ const buildLastSixMonths = () => {
       month: monthFormatter.format(date).replace('.', ''),
       apreendidos: 0,
       liberados: 0,
+      valor_apreendidos: 0,
+      valor_liberados: 0,
     };
   });
 };
@@ -180,6 +190,14 @@ const chartConfig = {
     label: 'Liberados',
     color: '#10b981',
   },
+  valor_apreendidos: {
+    label: 'Valor apreendidos',
+    color: '#f97316',
+  },
+  valor_liberados: {
+    label: 'Valor liberados',
+    color: '#10b981',
+  },
   criticos: {
     label: 'Setores criticos',
     color: '#ef4444',
@@ -194,6 +212,11 @@ const Dashboard = () => {
   const { profile, isSuperAdmin, setorId, papel } = useAuth();
   const { setorSlug: urlSetorSlug } = useParams<{ setorSlug?: string }>();
   const [state, setState] = useState<DashboardState>(initialState);
+  const [liberadoFilter, setLiberadoFilter] = useState<'mes' | 'ano'>('ano');
+
+  const now = new Date();
+  const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const currentYearStr = String(now.getFullYear());
 
   const currentSetorSlug = urlSetorSlug || profile?.setor_slug;
   const isDemutranScope = currentSetorSlug === 'demutran';
@@ -327,7 +350,7 @@ const Dashboard = () => {
           scopedFilter(supabase.from('veiculos_recolhidos').select('status', { count: 'exact', head: true }).eq('status', 'liberado')),
           scopedFilter(supabase.from('demutran_veiculos_municipais').select('id', { count: 'exact', head: true }).eq('ativo', true)),
           scopedFilter((supabase as any).from('demutran_concessionarios').select('categoria, ativo, exercicio, ultimo_alvara')),
-          scopedFilter(supabase.from('veiculos_recolhidos').select('created_at, data_liberacao')),
+          scopedFilter(supabase.from('veiculos_recolhidos').select('created_at, data_liberacao, taxa_diaria, data_recolhimento, status')),
         ]);
 
         pendingCredenciais = credenciaisCountResponse.count || 0;
@@ -355,19 +378,30 @@ const Dashboard = () => {
         });
         concessionarios = Array.from(concessionariosMap.values()).filter((item) => item.total > 0);
 
+        const msPerDay = 1000 * 60 * 60 * 24;
         const movementLookup = new Map(movementMap.map((item) => [item.key, item]));
         (veiculosSeriesResponse.data || []).forEach((row: any) => {
           if (row.created_at) {
             const createdAt = new Date(row.created_at);
             const key = `${createdAt.getFullYear()}-${String(createdAt.getMonth() + 1).padStart(2, '0')}`;
             const target = movementLookup.get(key);
-            if (target) target.apreendidos += 1;
+            if (target) {
+              target.apreendidos += 1;
+              if (row.status !== 'liberado') {
+                const dias = Math.floor((Date.now() - new Date(row.data_recolhimento || row.created_at).getTime()) / msPerDay);
+                target.valor_apreendidos += Math.max(0, dias) * (row.taxa_diaria || 0);
+              }
+            }
           }
           if (row.data_liberacao) {
             const releasedAt = new Date(row.data_liberacao);
             const key = `${releasedAt.getFullYear()}-${String(releasedAt.getMonth() + 1).padStart(2, '0')}`;
             const target = movementLookup.get(key);
-            if (target) target.liberados += 1;
+            if (target) {
+              target.liberados += 1;
+              const dias = Math.floor((releasedAt.getTime() - new Date(row.data_recolhimento || row.created_at).getTime()) / msPerDay);
+              target.valor_liberados += Math.max(0, dias) * (row.taxa_diaria || 0);
+            }
           }
         });
       } else if (isGuardaScope) {
@@ -459,84 +493,98 @@ const Dashboard = () => {
           }
         });
 
-        if (isSuperAdmin && !isGuardaScope && !isDemutranScope) {
-          let iroBancoHorasSistema = 0;
-          let credenciaisPendentesSistema = 0;
-          let recursosPendentesSistema = 0;
-          let concessionariosSistema: any[] = [];
+      }
 
-          const [
-            guardasSistemaCount,
-            frotaSistemaCount,
-            frotaStatusSistema,
-            equipesSistemaCount,
-            iroOperacoesCount,
-            iroBancoHorasData,
-            falaDemandasCount,
-            veiculosRecolhidosApreendidos,
-            veiculosRecolhidosLiberados,
-            credenciaisCount,
-            recursosCount,
-            concessionariosData,
-            frotaMunicipalCount,
-            veiculosSeriesSistema,
-          ] = await Promise.all([
-            supabase.from('guardas_municipais').select('*', { count: 'exact', head: true }).eq('ativo', true),
-            supabase.from('guarda_frota_veiculos').select('*', { count: 'exact', head: true }).eq('ativo', true),
-            supabase.from('guarda_frota_veiculos').select('status').eq('ativo', true),
-            supabase.from('guarda_equipes').select('*', { count: 'exact', head: true }).eq('ativo', true),
-            supabase.from('iro_operacoes').select('*', { count: 'exact', head: true }).eq('ativo', true),
-            supabase.from('iro_banco_horas').select('horas_excedentes'),
-            supabase.from('fala_demandas').select('*', { count: 'exact', head: true }).in('status', ['recebido', 'analise']),
-            supabase.from('veiculos_recolhidos').select('*', { count: 'exact', head: true }).neq('status', 'liberado'),
-            supabase.from('veiculos_recolhidos').select('*', { count: 'exact', head: true }).eq('status', 'liberado'),
-            supabase.from('demutran_credenciais_solicitacoes').select('*', { count: 'exact', head: true }).in('status', ['pendente', 'em_analise']),
-            supabase.from('demutran_recursos').select('*', { count: 'exact', head: true }).in('status', ['pendente', 'em_analise']),
-            supabase.from('demutran_concessionarios').select('categoria, ativo, exercicio, ultimo_alvara'),
-            supabase.from('demutran_veiculos_municipais').select('*', { count: 'exact', head: true }).eq('ativo', true),
-            supabase.from('veiculos_recolhidos').select('created_at, data_liberacao'),
-          ]);
-          guardasAtivos = guardasSistemaCount.count || 0;
-          frotaAtiva = frotaSistemaCount.count || 0;
-          equipesAtivas = equipesSistemaCount.count || 0;
-          iroOperacoesSistema = iroOperacoesCount.count || 0;
-          iroBancoHorasSistema = (iroBancoHorasData.data || []).reduce((acc: number, curr: any) => acc + Number(curr.horas_excedentes || 0), 0);
-          falaDemandasSistema = falaDemandasCount.count || 0;
-          veiculosApreendidosSistema = veiculosRecolhidosApreendidos.count || 0;
-          veiculosLiberadosSistema = veiculosRecolhidosLiberados.count || 0;
-          credenciaisPendentesSistema = credenciaisCount.count || 0;
-          recursosPendentesSistema = recursosCount.count || 0;
-          concessionariosSistema = (concessionariosData.data || []) as any[];
-          frotaMunicipalAtiva = frotaMunicipalCount.count || 0;
+      // Super admin: dados gerais do sistema (visão sem setor específico)
+      if (isSuperAdmin && !isGuardaScope && !isDemutranScope) {
+        let iroBancoHorasSistema = 0;
+        let credenciaisPendentesSistema = 0;
+        let recursosPendentesSistema = 0;
+        let concessionariosSistema: any[] = [];
 
-          const frotaStatusRows = (frotaStatusSistema.data || []) as Array<{ status: string }>;
-          frotaDisponivel = frotaStatusRows.filter(r => r.status === 'DISPONIVEL').length;
-          frotaEmServico = frotaStatusRows.filter(r => r.status === 'EM_SERVICO').length;
-          frotaManutencaoSistema = frotaStatusRows.filter(r => r.status === 'EM_MANUTENCAO').length;
+        const [
+          guardasSistemaCount,
+          frotaSistemaCount,
+          frotaStatusSistema,
+          equipesSistemaCount,
+          iroOperacoesCount,
+          iroBancoHorasData,
+          falaDemandasCount,
+          veiculosRecolhidosApreendidos,
+          veiculosRecolhidosLiberados,
+          credenciaisCount,
+          recursosCount,
+          concessionariosData,
+          frotaMunicipalCount,
+          veiculosSeriesSistema,
+        ] = await Promise.all([
+          supabase.from('guardas_municipais').select('*', { count: 'exact', head: true }).eq('ativo', true),
+          supabase.from('guarda_frota_veiculos').select('*', { count: 'exact', head: true }).eq('ativo', true),
+          supabase.from('guarda_frota_veiculos').select('status').eq('ativo', true),
+          supabase.from('guarda_equipes').select('*', { count: 'exact', head: true }).eq('ativo', true),
+          supabase.from('iro_operacoes').select('*', { count: 'exact', head: true }).eq('ativo', true),
+          supabase.from('iro_banco_horas').select('horas_excedentes'),
+          supabase.from('fala_demandas').select('*', { count: 'exact', head: true }).in('status', ['recebido', 'analise']),
+          supabase.from('veiculos_recolhidos').select('*', { count: 'exact', head: true }).neq('status', 'liberado'),
+          supabase.from('veiculos_recolhidos').select('*', { count: 'exact', head: true }).eq('status', 'liberado'),
+          supabase.from('demutran_credenciais_solicitacoes').select('*', { count: 'exact', head: true }).in('status', ['pendente', 'em_analise']),
+          supabase.from('demutran_recursos').select('*', { count: 'exact', head: true }).in('status', ['pendente', 'em_analise']),
+          supabase.from('demutran_concessionarios').select('categoria, ativo, exercicio, ultimo_alvara'),
+          supabase.from('demutran_veiculos_municipais').select('*', { count: 'exact', head: true }).eq('ativo', true),
+          supabase.from('veiculos_recolhidos').select('created_at, data_liberacao, taxa_diaria, data_recolhimento, status'),
+        ]);
+        guardasAtivos = guardasSistemaCount.count || 0;
+        frotaAtiva = frotaSistemaCount.count || 0;
+        equipesAtivas = equipesSistemaCount.count || 0;
+        iroOperacoesSistema = iroOperacoesCount.count || 0;
+        iroBancoHorasSistema = (iroBancoHorasData.data || []).reduce((acc: number, curr: any) => acc + Number(curr.horas_excedentes || 0), 0);
+        falaDemandasSistema = falaDemandasCount.count || 0;
+        veiculosApreendidosSistema = veiculosRecolhidosApreendidos.count || 0;
+        veiculosLiberadosSistema = veiculosRecolhidosLiberados.count || 0;
+        credenciaisPendentesSistema = credenciaisCount.count || 0;
+        recursosPendentesSistema = recursosCount.count || 0;
+        concessionariosSistema = (concessionariosData.data || []) as any[];
+        frotaMunicipalAtiva = frotaMunicipalCount.count || 0;
 
-          pendingCredenciais = credenciaisPendentesSistema;
-          pendingRecursos = recursosPendentesSistema;
-          demandasFalaCidadaoCount = falaDemandasSistema;
-          operacoesAtivasIro = iroOperacoesSistema;
-          totalBancoHoras = iroBancoHorasSistema;
+        const frotaStatusRows = (frotaStatusSistema.data || []) as Array<{ status: string }>;
+        frotaDisponivel = frotaStatusRows.filter(r => r.status === 'DISPONIVEL').length;
+        frotaEmServico = frotaStatusRows.filter(r => r.status === 'EM_SERVICO').length;
+        frotaManutencaoSistema = frotaStatusRows.filter(r => r.status === 'EM_MANUTENCAO').length;
 
-          const movementLookup = new Map(movementMap.map((item) => [item.key, item]));
-          (veiculosSeriesSistema.data || []).forEach((row: any) => {
-            if (row.created_at) {
-              const createdAt = new Date(row.created_at);
-              const key = `${createdAt.getFullYear()}-${String(createdAt.getMonth() + 1).padStart(2, '0')}`;
-              const target = movementLookup.get(key);
-              if (target) target.apreendidos += 1;
+        pendingCredenciais = credenciaisPendentesSistema;
+        pendingRecursos = recursosPendentesSistema;
+        demandasFalaCidadaoCount = falaDemandasSistema;
+        operacoesAtivasIro = iroOperacoesSistema;
+        totalBancoHoras = iroBancoHorasSistema;
+
+        // Movimentação mensal com valores
+        const msPerDay = 1000 * 60 * 60 * 24;
+        const movementLookup = new Map(movementMap.map((item) => [item.key, item]));
+        (veiculosSeriesSistema.data || []).forEach((row: any) => {
+          if (row.created_at) {
+            const createdAt = new Date(row.created_at);
+            const key = `${createdAt.getFullYear()}-${String(createdAt.getMonth() + 1).padStart(2, '0')}`;
+            const target = movementLookup.get(key);
+            if (target) {
+              target.apreendidos += 1;
+              if (row.status !== 'liberado') {
+                const dias = Math.floor((Date.now() - new Date(row.data_recolhimento || row.created_at).getTime()) / msPerDay);
+                target.valor_apreendidos += Math.max(0, dias) * (row.taxa_diaria || 0);
+              }
             }
-            if (row.data_liberacao) {
-              const releasedAt = new Date(row.data_liberacao);
-              const key = `${releasedAt.getFullYear()}-${String(releasedAt.getMonth() + 1).padStart(2, '0')}`;
-              const target = movementLookup.get(key);
-              if (target) target.liberados += 1;
+          }
+          if (row.data_liberacao) {
+            const releasedAt = new Date(row.data_liberacao);
+            const key = `${releasedAt.getFullYear()}-${String(releasedAt.getMonth() + 1).padStart(2, '0')}`;
+            const target = movementLookup.get(key);
+            if (target) {
+              target.liberados += 1;
+              const dias = Math.floor((releasedAt.getTime() - new Date(row.data_recolhimento || row.created_at).getTime()) / msPerDay);
+              target.valor_liberados += Math.max(0, dias) * (row.taxa_diaria || 0);
             }
-          });
-          movementMap = Array.from(movementLookup.values());
-        }
+          }
+        });
+        movementMap = Array.from(movementLookup.values());
       }
 
       const setorRows = (setoresResponse.data || []) as Array<Pick<Setor, 'id' | 'nome' | 'ativo'>>;
@@ -695,50 +743,10 @@ const Dashboard = () => {
     <AdminLayout>
       <div className="space-y-8 p-1">
         <section className="space-y-6">
-          <div className="overflow-hidden rounded-3xl border border-slate-200/70 bg-[linear-gradient(118deg,_#17233c_0%,_#6c778c_48%,_#dfe7f5_100%)] shadow-[0_20px_40px_-20px_rgba(15,23,42,0.3)] md:rounded-[32px] md:shadow-[0_28px_60px_-34px_rgba(15,23,42,0.55)]">
-            <div className="flex flex-col gap-4 md:gap-6 xl:flex-row xl:items-center xl:justify-between">
-              <div className="space-y-4 px-4 py-5 text-white md:space-y-5 md:px-8 md:py-9">
-                <div className="flex items-center gap-2 overflow-x-auto pb-1 native-scrollbar whitespace-nowrap">
-                  <Badge className="flex-shrink-0 rounded-full border border-white/15 bg-brand-700/50 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.2em] text-white md:px-3 md:py-1 md:text-[11px]" variant="outline">
-                    {isSuperAdmin ? 'Centro operacional' : 'Setor em foco'}
-                  </Badge>
-                  {profile?.setor_nome && !isSuperAdmin && (
-                    <Badge className="flex-shrink-0 rounded-full border border-white/15 bg-white/10 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-white/90 md:px-3 md:py-1 md:text-[11px]" variant="outline">
-                      {profile.setor_nome}
-                    </Badge>
-                  )}
-                  <Badge className="flex-shrink-0 rounded-full border border-emerald-400/20 bg-emerald-500/20 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.2em] text-emerald-200 md:px-3 md:py-1 md:text-[11px]" variant="outline">
-                    Dados integrados
-                  </Badge>
-                </div>
-                {profile?.name && (
-                  <p className="text-xs font-medium text-white/60">
-                    Operador: <span className="font-semibold text-white/90">{profile.name}</span>
-                  </p>
-                )}
-
-                <div>
-                  <h1 className="font-heading text-xl font-extrabold tracking-[-0.04em] text-white sm:text-2xl md:text-[2rem] md:tracking-[-0.06em] lg:text-[3.15rem]">
-                    {panelTitle}
-                  </h1>
-                  <p className="mt-2 hidden max-w-3xl text-[14px] leading-6 text-slate-200/82 md:block md:mt-3 md:leading-7">
-                    {panelDescription}
-                  </p>
-                </div>
-
-                <div className="flex gap-2 overflow-x-auto pb-1 native-scrollbar whitespace-nowrap">
-                  {state.alerts.length > 0 ? state.alerts.slice(0, 2).map((alert) => (
-                    <div key={alert} className="flex-shrink-0 rounded-full border border-white/12 bg-white/10 px-3 py-1.5 text-[10px] font-semibold text-white/90 backdrop-blur md:px-4 md:py-2 md:text-xs">
-                      {alert}
-                    </div>
-                  )) : (
-                    <div className="flex-shrink-0 rounded-full border border-white/12 bg-white/10 px-3 py-1.5 text-[10px] font-semibold text-white/90 backdrop-blur md:px-4 md:py-2 md:text-xs">
-                      Nenhum alerta critico identificado neste momento.
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900 md:text-3xl">
+              Centro de comando
+            </h1>
           </div>
 
           <div className="flex gap-4 overflow-x-auto native-scrollbar snap-x-mandatory md:grid md:grid-cols-2 xl:grid-cols-4 md:overflow-x-visible">
@@ -778,108 +786,7 @@ const Dashboard = () => {
           </div>
         </section>
 
-        {isSuperAdmin && !urlSetorSlug && (
-          <section>
-            <h2 className="font-heading mb-5 text-[1rem] font-bold uppercase tracking-[-0.02em] text-slate-700">Módulos do Sistema</h2>
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-              <Card className="overflow-hidden rounded-[28px] border border-slate-200/80 bg-white shadow-[0_12px_32px_-22px_rgba(15,23,42,0.2)]">
-                <CardContent className="p-5">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">Guarda Municipal</p>
-                      <p className="mt-3 text-3xl font-extrabold tracking-[-0.05em] text-slate-900">{state.guardasAtivos}</p>
-                      <p className="mt-1 text-xs leading-5 text-slate-500">Guardas ativos no sistema</p>
-                    </div>
-                    <div className="rounded-2xl border border-blue-100 bg-blue-50 p-3 text-blue-600">
-                      <ShieldCheck className="h-5 w-5" />
-                    </div>
-                  </div>
-                  <div className="mt-4 flex gap-4 border-t border-slate-100 pt-3 text-xs text-slate-500">
-                    <span>{state.frotaAtiva} viaturas</span>
-                    <span>{state.operacoesAtivasIro} IRO ativas</span>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card className="overflow-hidden rounded-[28px] border border-slate-200/80 bg-white shadow-[0_12px_32px_-22px_rgba(15,23,42,0.2)]">
-                <CardContent className="p-5">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">DEMUTRAN</p>
-                      <p className="mt-3 text-3xl font-extrabold tracking-[-0.05em] text-slate-900">{state.veiculosApreendidosTotal}</p>
-                      <p className="mt-1 text-xs leading-5 text-slate-500">Veículos apreendidos no pátio</p>
-                    </div>
-                    <div className="rounded-2xl border border-rose-100 bg-rose-50 p-3 text-rose-600">
-                      <CarFront className="h-5 w-5" />
-                    </div>
-                  </div>
-                  <div className="mt-4 flex gap-4 border-t border-slate-100 pt-3 text-xs text-slate-500">
-                    <span>{state.pendingCredenciais} credenciais</span>
-                    <span>{state.pendingRecursos} recursos</span>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card className="overflow-hidden rounded-[28px] border border-slate-200/80 bg-white shadow-[0_12px_32px_-22px_rgba(15,23,42,0.2)]">
-                <CardContent className="p-5">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">Fala Cidadão</p>
-                      <p className="mt-3 text-3xl font-extrabold tracking-[-0.05em] text-slate-900">{state.demandasFalaCidadaoCount}</p>
-                      <p className="mt-1 text-xs leading-5 text-slate-500">Demandas pendentes de ouvidoria</p>
-                    </div>
-                    <div className="rounded-2xl border border-amber-100 bg-amber-50 p-3 text-amber-600">
-                      <MessageSquare className="h-5 w-5" />
-                    </div>
-                  </div>
-                  <div className="mt-4 flex gap-4 border-t border-slate-100 pt-3 text-xs text-slate-500">
-                    <span>{state.totalBancoHoras}h banco de horas</span>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card className="overflow-hidden rounded-[28px] border border-slate-200/80 bg-white shadow-[0_12px_32px_-22px_rgba(15,23,42,0.2)]">
-                <CardContent className="p-5">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">Conteúdo</p>
-                      <p className="mt-3 text-3xl font-extrabold tracking-[-0.05em] text-slate-900">{state.noticiasAtivas + state.eventosAtivos + state.galeriaAtiva + state.documentosAtivos}</p>
-                      <p className="mt-1 text-xs leading-5 text-slate-500">Publicações ativas no total</p>
-                    </div>
-                    <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-3 text-emerald-600">
-                      <Newspaper className="h-5 w-5" />
-                    </div>
-                  </div>
-                  <div className="mt-4 flex gap-4 border-t border-slate-100 pt-3 text-xs text-slate-500">
-                    <span>{state.noticiasAtivas} notícias</span>
-                    <span>{state.eventosAtivos} eventos</span>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </section>
-        )}
 
-        {isSuperAdmin && !urlSetorSlug && (
-          <Link
-            to="/admin/iros/guarda-municipal"
-            className="block rounded-[24px] border border-slate-200/80 bg-gradient-to-br from-white to-slate-50/80 p-5 shadow-[0_16px_38px_-30px_rgba(15,23,42,0.32)] transition-all hover:shadow-[0_20px_44px_-30px_rgba(37,99,235,0.35)] hover:border-brand-200/60"
-          >
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <div className="rounded-2xl bg-blue-50 p-3 text-blue-600">
-                  <ShieldCheck className="h-5 w-5" />
-                </div>
-                <div>
-                  <p className="text-sm font-bold text-slate-900">Operações IRO — Guarda Municipal</p>
-                  <p className="mt-0.5 text-sm text-slate-500">
-                    {state.operacoesAtivasIro} operação(oes) ativa(s) — acompanhe e gerencie as operações de reforço operacional
-                  </p>
-                </div>
-              </div>
-              <div className="rounded-xl bg-blue-50 p-2.5 text-blue-600">
-                <span className="text-2xl font-extrabold">{state.operacoesAtivasIro}</span>
-              </div>
-            </div>
-          </Link>
-        )}
 
         {papel === 'gestor' && (
           <Link
@@ -951,7 +858,47 @@ const Dashboard = () => {
                 </div>
               </div>
             </CardHeader>
-            <CardContent className="bg-[linear-gradient(180deg,_rgba(248,250,252,0.55)_0%,_rgba(255,255,255,1)_100%)]">
+            <CardContent className="bg-[linear-gradient(180deg,_rgba(248,250,252,0.55)_0%,_rgba(255,255,255,1)_100%)] space-y-6">
+              {!isGuardaScope && (
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">Valor estimado liberados</p>
+                      <div className="flex rounded-lg border border-slate-200 bg-white p-0.5 text-xs font-medium">
+                        <button
+                          onClick={() => setLiberadoFilter('mes')}
+                          className={`rounded-md px-2 py-1 transition ${liberadoFilter === 'mes' ? 'bg-emerald-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                        >
+                          Mês
+                        </button>
+                        <button
+                          onClick={() => setLiberadoFilter('ano')}
+                          className={`rounded-md px-2 py-1 transition ${liberadoFilter === 'ano' ? 'bg-emerald-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                        >
+                          Ano
+                        </button>
+                      </div>
+                    </div>
+                    <p className="mt-2 text-lg font-extrabold tracking-[-0.03em] text-emerald-600">
+                      {currencyFormatter.format(
+                        liberadoFilter === 'mes'
+                          ? (state.vehicleMovement.find(m => m.key === currentMonthKey)?.valor_liberados ?? 0)
+                          : state.vehicleMovement.filter(m => m.key.startsWith(currentYearStr)).reduce((acc, m) => acc + m.valor_liberados, 0)
+                      )}
+                    </p>
+                    <p className="mt-1 text-xs text-slate-500">
+                      {liberadoFilter === 'mes' ? 'Taxas do mês atual' : 'Taxas acumuladas no ano'}
+                    </p>
+                  </div>
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-3">
+                    <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">Valor estimado apreendidos</p>
+                    <p className="mt-2 text-lg font-extrabold tracking-[-0.03em] text-rose-600">
+                      {currencyFormatter.format(state.vehicleMovement.reduce((acc, m) => acc + m.valor_apreendidos, 0))}
+                    </p>
+                    <p className="mt-1 text-xs text-slate-500">Taxas acumuladas de veículos no pátio</p>
+                  </div>
+                </div>
+              )}
               <ChartContainer
                 className="h-[280px] w-full"
                 config={resolvedChartConfig}
@@ -970,7 +917,18 @@ const Dashboard = () => {
                   <CartesianGrid vertical={false} />
                   <XAxis dataKey="month" tickLine={false} axisLine={false} />
                   <YAxis tickLine={false} axisLine={false} allowDecimals={false} />
-                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <ChartTooltip
+                    content={
+                      <ChartTooltipContent
+                        formatter={(value: number, name: string) => {
+                          if (name === 'valor_apreendidos' || name === 'valor_liberados') {
+                            return currencyFormatter.format(value);
+                          }
+                          return value;
+                        }}
+                      />
+                    }
+                  />
                   <Area type="monotone" dataKey="apreendidos" stroke={isGuardaScope ? '#2563eb' : 'var(--color-apreendidos)'} fill="url(#fillApreendidos)" strokeWidth={2.5} />
                   <Area type="monotone" dataKey="liberados" stroke="var(--color-liberados)" fill="url(#fillLiberados)" strokeWidth={2.5} />
                   <ChartLegend content={<ChartLegendContent />} />

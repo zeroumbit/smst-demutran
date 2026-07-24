@@ -17,12 +17,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/lib/supabase';
 import { escalasService } from '../services/escalas.service';
 import { useEscalas, useEscalasApoio, useEscalasHistorico, useEscalasMutations, useEscalasTrocas } from '../hooks/useEscalas';
 import type { GuardaEscala, GuardaEscalaAgente, GuardaEscalaAgenteDraft, GuardaEscalaPayload, GuardaEscalaPosto, GuardaEscalaTipoServico, GuardaEscalaTroca, RecorrenciaTipo } from '../types/escalas.types';
 import { formatDate, formatDateTime, formatTime, fromDatetimeLocal, getEscalaStatusCalculado, statusClassName, statusLabels, toDatetimeLocal, trocaStatusLabels } from '../utils/escalas.formatters';
+import { gerarPdfEscalaOperacao } from '../utils/pdfOperacaoEscala';
 
-type DialogMode = 'escala' | 'agente' | 'viatura' | 'cancelar' | 'tipo' | 'posto' | 'troca-decisao' | null;
+type DialogMode = 'escala' | 'agente' | 'viatura' | 'cancelar' | 'tipo' | 'posto' | 'troca-decisao' | 'operacao-pdf' | null;
 
 const defaultEscalaForm = (): GuardaEscalaPayload => {
   const start = new Date();
@@ -109,6 +111,176 @@ export default function EscalasAdminPage() {
   const [decisionReason, setDecisionReason] = useState('');
   const [conflict, setConflict] = useState<any[] | null>(null);
   const [novaRouteHandled, setNovaRouteHandled] = useState(false);
+
+  const [operacaoPdfModalOpen, setOperacaoPdfModalOpen] = useState(false);
+  const [operacoesIroList, setOperacoesIroList] = useState<any[]>([]);
+  const [loadingOperacoes, setLoadingOperacoes] = useState(false);
+  const [selectedOperacaoId, setSelectedOperacaoId] = useState<string>('');
+  const [selectedDataFilter, setSelectedDataFilter] = useState<string>('todas');
+  const [statusFilter, setStatusFilter] = useState<'confirmados' | 'todos'>('confirmados');
+  const [operacaoDatasList, setOperacaoDatasList] = useState<string[]>([]);
+  const [generatingPdf, setGeneratingPdf] = useState(false);
+
+  const openOperacaoPdfDialog = async () => {
+    setDialogMode('operacao-pdf');
+    setLoadingOperacoes(true);
+    try {
+      const { data, error } = await supabase
+        .from('iro_operacoes')
+        .select('*')
+        .order('data_inicio', { ascending: false });
+      if (error) {
+        console.error('Erro ao buscar operações:', error);
+        toast.error(`Erro ao carregar operações: ${error.message}`);
+      } else {
+        setOperacoesIroList(data || []);
+        if (data && data.length > 0) {
+          setSelectedOperacaoId(data[0].id);
+        }
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error('Erro ao carregar lista de operações.');
+    } finally {
+      setLoadingOperacoes(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!selectedOperacaoId) {
+      setOperacaoDatasList([]);
+      return;
+    }
+    const fetchDatas = async () => {
+      const { data } = await supabase
+        .from('iro_operacao_datas')
+        .select('data')
+        .eq('operacao_id', selectedOperacaoId)
+        .order('data', { ascending: true });
+      if (data && data.length > 0) {
+        setOperacaoDatasList(data.map((d: any) => d.data));
+      } else {
+        setOperacaoDatasList([]);
+      }
+      setSelectedDataFilter('todas');
+    };
+    fetchDatas().catch(() => setOperacaoDatasList([]));
+  }, [selectedOperacaoId]);
+
+  const handleGerarPdfOperacao = async () => {
+    if (!selectedOperacaoId) {
+      toast.error('Selecione uma operação.');
+      return;
+    }
+    const operacao = operacoesIroList.find((op) => op.id === selectedOperacaoId);
+    if (!operacao) return;
+
+    setGeneratingPdf(true);
+    try {
+      let candQuery = supabase
+        .from('iro_candidaturas')
+        .select('*, iro_operacoes(nome)')
+        .eq('operacao_id', selectedOperacaoId);
+
+      if (statusFilter === 'confirmados') {
+        candQuery = candQuery.in('status', ['confirmado', 'realizado']);
+      }
+
+      if (selectedDataFilter !== 'todas') {
+        candQuery = candQuery.eq('data_operacao', selectedDataFilter);
+      }
+
+      const { data: candidaturas, error: candError } = await candQuery;
+      if (candError) throw candError;
+
+      if (!candidaturas || candidaturas.length === 0) {
+        toast.error('Nenhum guarda participante encontrado com os filtros selecionados.');
+        setGeneratingPdf(false);
+        return;
+      }
+
+      const userIds = Array.from(new Set(candidaturas.map((c: any) => c.usuario_id)));
+
+      const { data: guardasUsuariosData } = await supabase
+        .from('guardas_usuarios')
+        .select('usuario_id, guarda_id, guardas_municipais!inner(id, nome, matricula, graduacao_id, guarda_municipal_graduacoes(nome))')
+        .in('usuario_id', userIds);
+
+      const guardaMap = new Map<string, any>();
+      if (guardasUsuariosData) {
+        for (const item of guardasUsuariosData as any[]) {
+          const g = item.guardas_municipais;
+          const gradNome = Array.isArray(g?.guarda_municipal_graduacoes)
+            ? g?.guarda_municipal_graduacoes[0]?.nome
+            : g?.guarda_municipal_graduacoes?.nome;
+          guardaMap.set(item.usuario_id, {
+            matricula: g?.matricula || '-',
+            nome: g?.nome || 'Guarda',
+            graduacao: gradNome || 'Guarda Municipal',
+          });
+        }
+      }
+
+      const missingUserIds = userIds.filter((id) => !guardaMap.has(id));
+      if (missingUserIds.length > 0) {
+        const { data: perfisData } = await supabase
+          .from('perfis_usuarios')
+          .select('user_id, nome, sobrenome, graduacao_id, guarda_municipal_graduacoes(nome)')
+          .in('user_id', missingUserIds);
+        if (perfisData) {
+          for (const p of perfisData as any[]) {
+            const gradNome = Array.isArray(p.guarda_municipal_graduacoes)
+              ? p.guarda_municipal_graduacoes[0]?.nome
+              : p.guarda_municipal_graduacoes?.nome;
+            const fullNome = [p.nome, p.sobrenome].filter(Boolean).join(' ') || 'Guarda';
+            guardaMap.set(p.user_id, {
+              matricula: '-',
+              nome: fullNome,
+              graduacao: gradNome || 'Guarda Municipal',
+            });
+          }
+        }
+      }
+
+      const participantes = candidaturas.map((c: any) => {
+        const info = guardaMap.get(c.usuario_id) || {
+          matricula: '-',
+          nome: c.usuario_nome || 'Guarda',
+          graduacao: 'Guarda Municipal',
+        };
+        return {
+          matricula: info.matricula,
+          nome: info.nome,
+          graduacao: info.graduacao,
+          data_operacao: c.data_operacao,
+          status: c.status,
+          observacao: c.observacao || c.motivo_manual || null,
+        };
+      });
+
+      gerarPdfEscalaOperacao(
+        {
+          codigo: operacao.codigo,
+          nome: operacao.nome,
+          descricao: operacao.descricao,
+          horario_previsto: operacao.horario_previsto,
+          data_inicio: operacao.data_inicio,
+          data_fim: operacao.data_fim,
+          vagas_por_dia: operacao.vagas_por_dia,
+          horas_por_dia: operacao.horas_por_dia,
+        },
+        participantes,
+        selectedDataFilter !== 'todas' ? selectedDataFilter : null
+      );
+
+      toast.success('Escala da Operação (PDF) gerada com sucesso!');
+      setDialogMode(null);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Erro ao gerar PDF da escala.');
+    } finally {
+      setGeneratingPdf(false);
+    }
+  };
 
   const selectedEscala = useMemo(() => {
     if (!escalas.length) return null;
@@ -513,6 +685,7 @@ export default function EscalasAdminPage() {
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <Button variant="outline" size="sm" onClick={exportExcel} className="h-9 border-white/20 bg-white/10 text-xs text-white hover:bg-white/20 md:h-10 md:text-sm"><FileDown className="mr-1.5 h-4 w-4" />Excel</Button>
+              <Button variant="outline" size="sm" onClick={openOperacaoPdfDialog} className="h-9 border-white/20 bg-white/10 text-xs text-white hover:bg-white/20 md:h-10 md:text-sm"><Printer className="mr-1.5 h-4 w-4" />Escala de Operação (PDF)</Button>
               <Button size="sm" onClick={() => openEscalaForm(null)} className="h-9 gap-1.5 text-xs md:h-10 md:text-sm md:gap-2"><Plus className="h-4 w-4" />Nova escala</Button>
             </div>
           </div>
@@ -546,10 +719,16 @@ export default function EscalasAdminPage() {
               </button>
             ))}
           </div>
-          <Button size="sm" onClick={() => openEscalaForm(null)} className="shrink-0 gap-2">
-            <Plus className="h-4 w-4" />
-            Nova
-          </Button>
+          <div className="flex items-center gap-2 shrink-0">
+            <Button variant="outline" size="sm" onClick={openOperacaoPdfDialog} className="gap-1.5 text-xs md:text-sm">
+              <Printer className="h-4 w-4" />
+              Escala de Operação (PDF)
+            </Button>
+            <Button size="sm" onClick={() => openEscalaForm(null)} className="gap-2">
+              <Plus className="h-4 w-4" />
+              Nova
+            </Button>
+          </div>
         </div>
 
         {view === 'dashboard' && (
@@ -884,6 +1063,86 @@ export default function EscalasAdminPage() {
 
       <Dialog open={dialogMode === 'troca-decisao'} onOpenChange={(open) => !open && setDialogMode(null)}>
         <DialogContent><DialogHeader><DialogTitle>{decisionTroca?.aprovar ? 'Aprovar troca' : 'Rejeitar troca'}</DialogTitle></DialogHeader><Textarea value={decisionReason} onChange={(event) => setDecisionReason(event.target.value)} placeholder="Motivo ou observacao" /><DialogFooter><Button variant="outline" onClick={() => setDialogMode(null)}>Voltar</Button><Button onClick={decideTroca}>{decisionTroca?.aprovar ? 'Aprovar' : 'Rejeitar'}</Button></DialogFooter></DialogContent>
+      </Dialog>
+
+      <Dialog open={dialogMode === 'operacao-pdf'} onOpenChange={(open) => !open && setDialogMode(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-slate-900">
+              <Printer className="h-5 w-5 text-brand-600" />
+              Escala da Operação (PDF)
+            </DialogTitle>
+            <DialogDescription>
+              Selecione uma Operação IRO cadastrada para gerar e baixar a Escala de Serviço em PDF.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <Label>Operação IRO</Label>
+              {loadingOperacoes ? (
+                <div className="py-2 text-xs text-slate-500">Carregando operações...</div>
+              ) : operacoesIroList.length === 0 ? (
+                <div className="rounded-lg border border-dashed p-3 text-xs text-slate-500">Nenhuma operação encontrada.</div>
+              ) : (
+                <Select value={selectedOperacaoId} onValueChange={setSelectedOperacaoId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione uma operação" />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-60">
+                    {operacoesIroList.map((op) => (
+                      <SelectItem key={op.id} value={op.id}>
+                        {op.codigo ? `[${op.codigo}] ` : ''}{op.nome} {!op.ativo ? '(Encerrada)' : '(Ativa)'}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+
+            {operacaoDatasList.length > 0 && (
+              <div className="space-y-1.5">
+                <Label>Data Específica (Opcional)</Label>
+                <Select value={selectedDataFilter} onValueChange={setSelectedDataFilter}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Todas as datas" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todas">Todas as datas da operação</SelectItem>
+                    {operacaoDatasList.map((dt) => (
+                      <SelectItem key={dt} value={dt}>
+                        {formatDate(dt)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            <div className="space-y-1.5">
+              <Label>Filtro de Inscritos</Label>
+              <Select value={statusFilter} onValueChange={(val: any) => setStatusFilter(val)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="confirmados">Apenas guardas confirmados / realizados</SelectItem>
+                  <SelectItem value="todos">Todos os inscritos (incluindo pendentes)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setDialogMode(null)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleGerarPdfOperacao} disabled={generatingPdf || !selectedOperacaoId} className="gap-2">
+              <Printer className="h-4 w-4" />
+              {generatingPdf ? 'Gerando PDF...' : 'Gerar e Baixar PDF'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
       </Dialog>
       </div>
     </AdminLayout>
