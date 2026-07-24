@@ -211,6 +211,11 @@ export default function JovemGuardaCidada() {
     account?.papel === "admin_setor";
   const hasModule = (moduleId: string) => {
     if (unrestricted) return true;
+    if (
+      profile === "multiprofissional" &&
+      moduleId === "jgc_acompanhamentos"
+    )
+      return true;
     const aliases =
       moduleId === "jgc_acompanhamentos"
         ? ["jgc_acompanhamentos", "jgc_acompanhamento"]
@@ -221,6 +226,12 @@ export default function JovemGuardaCidada() {
   };
   const can = (moduleId: string, action: string) => {
     if (unrestricted) return true;
+    if (
+      profile === "multiprofissional" &&
+      moduleId === "acompanhamento" &&
+      ["visualizar", "criar", "editar"].includes(action)
+    )
+      return true;
     const aliases =
       moduleId === "acompanhamento"
         ? ["acompanhamento", "acompanhamentos"]
