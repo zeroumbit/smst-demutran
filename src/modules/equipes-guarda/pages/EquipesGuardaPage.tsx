@@ -1,5 +1,6 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react';
-import { ArrowLeftRight, CheckCircle2, Edit, History, Plus, Search, Shield, UserMinus, UserPlus, Users } from 'lucide-react';
+import { ArrowLeft, ArrowLeftRight, CheckCircle2, Edit, History, Plus, Search, Shield, UserMinus, UserPlus, Users } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { Badge } from '@/components/ui/badge';
@@ -53,6 +54,7 @@ const normalize = (value: string) =>
     .replace(/[\u0300-\u036f]/g, '');
 
 export default function EquipesGuardaPage() {
+  const navigate = useNavigate();
   const { data: equipes = [], isLoading } = useEquipesGuarda();
   const { data: guardas = [] } = useGuardasParaEquipe();
   const mutations = useEquipesGuardaMutations();
@@ -262,7 +264,18 @@ export default function EquipesGuardaPage() {
   return (
     <AdminLayout>
       <div className="space-y-6">
-        <section className="rounded-[24px] bg-[linear-gradient(135deg,_#0f172a_0%,_#1e293b_45%,_#2563eb_100%)] px-4 py-5 text-white md:rounded-[34px] md:px-6 md:py-6">
+        <div className="flex items-center gap-1 lg:hidden px-1 py-2">
+          <button
+            type="button"
+            onClick={() => navigate(-1)}
+            aria-label="Voltar"
+            className="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-slate-700 transition-colors hover:bg-slate-100 active:bg-slate-200"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </button>
+          <h1 className="truncate text-lg font-bold tracking-tight text-slate-900">Equipes</h1>
+        </div>
+        <section className="hidden rounded-[24px] bg-[linear-gradient(135deg,_#0f172a_0%,_#1e293b_45%,_#2563eb_100%)] px-4 py-5 text-white md:rounded-[34px] md:px-6 md:py-6 lg:block">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div className="min-w-0 flex-1">
               <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-sky-100/70 md:text-[11px]">Guarda Municipal</p>

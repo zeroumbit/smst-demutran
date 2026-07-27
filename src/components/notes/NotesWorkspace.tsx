@@ -1,16 +1,19 @@
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import {
+  ArrowLeft,
   NotebookPen,
   Pin,
   Plus,
   Printer,
   Search,
+  SlidersHorizontal,
   Star,
   Trash2,
   Eye,
   Pencil,
   RefreshCcw,
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { useConfirmDialog } from '@/components/ui/use-confirm-dialog';
@@ -18,7 +21,7 @@ import { ResponsiveDialog } from '@/components/ui/responsive-dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
@@ -61,12 +64,14 @@ const normalizeNote = (value: unknown): NoteRecord => value as NoteRecord;
 
 export function NotesWorkspace({ variant }: NotesWorkspaceProps) {
   const { profile } = useAuth();
+  const navigate = useNavigate();
   const { confirm, confirmDialog } = useConfirmDialog();
   const [notes, setNotes] = useState<NoteRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('todas');
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<ModalMode>('create');
   const [activeNote, setActiveNote] = useState<NoteRecord | null>(null);
@@ -446,9 +451,36 @@ export function NotesWorkspace({ variant }: NotesWorkspaceProps) {
 
   return (
     <div className="space-y-6">
-      <section className="overflow-hidden rounded-[24px] border border-slate-200 bg-[linear-gradient(135deg,_rgba(15,23,42,0.98)_0%,_rgba(15,118,110,0.94)_55%,_rgba(45,212,191,0.88)_100%)] text-white shadow-[0_20px_40px_-20px_rgba(15,23,42,0.3)] md:rounded-[30px] md:shadow-[0_28px_56px_-34px_rgba(15,23,42,0.5)]">
-        <div className="flex flex-col gap-4 px-4 py-5 md:px-8 md:py-8 lg:flex-row lg:items-end lg:justify-between">
-          <div className="max-w-3xl">
+      {variant === 'admin' && (
+        <div className="sticky top-0 z-20 flex items-center gap-1 border-b border-slate-200/80 bg-white/95 px-1 py-2 backdrop-blur-md lg:hidden">
+          <button
+            type="button"
+            onClick={() => navigate(-1)}
+            aria-label="Voltar"
+            className="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-slate-700 transition-colors hover:bg-slate-100 active:bg-slate-200"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </button>
+          <h1 className="truncate text-lg font-bold tracking-tight text-slate-900">Anotações</h1>
+        </div>
+      )}
+      {variant === 'guard' && (
+        <div className="flex items-center gap-1 lg:hidden px-1 py-2">
+          <button
+            type="button"
+            onClick={() => navigate(-1)}
+            aria-label="Voltar"
+            className="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-slate-700 transition-colors hover:bg-slate-100 active:bg-slate-200"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </button>
+          <h1 className="truncate text-lg font-bold tracking-tight text-slate-900">Anotações</h1>
+        </div>
+      )}
+
+      <section className="lg:overflow-hidden lg:rounded-[30px] lg:border lg:border-slate-200 lg:bg-[linear-gradient(135deg,_rgba(15,23,42,0.98)_0%,_rgba(15,118,110,0.94)_55%,_rgba(45,212,191,0.88)_100%)] lg:text-white lg:shadow-[0_28px_56px_-34px_rgba(15,23,42,0.5)]">
+        <div className="lg:px-8 lg:py-8">
+          <div className="hidden max-w-3xl lg:block">
             <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.18em] text-white/80 md:px-3 md:py-1 md:text-[11px]">
               <NotebookPen className="h-3 w-3 md:h-3.5 md:w-3.5" />
               {audienceLabel}
@@ -458,18 +490,12 @@ export function NotesWorkspace({ variant }: NotesWorkspaceProps) {
               {boardSubtitle}
             </p>
           </div>
-
-          <div className="grid gap-3 sm:grid-cols-3">
-            <MetricCard label="Ativas" value={activeNotesCount} />
-            <MetricCard label="Fixadas" value={pinnedCount} />
-            <MetricCard label="Favoritas" value={favoriteCount} />
-          </div>
         </div>
       </section>
 
       <section className="rounded-[28px] border border-slate-200 bg-white p-4 shadow-[0_20px_44px_-36px_rgba(15,23,42,0.35)] sm:p-5">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex flex-1 flex-col gap-3 md:flex-row">
+          <div className="flex flex-1 items-center gap-2">
             <div className="relative flex-1">
               <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
               <Input
@@ -479,19 +505,19 @@ export function NotesWorkspace({ variant }: NotesWorkspaceProps) {
                 className="h-12 rounded-[18px] border-slate-200 bg-slate-50 pl-11 text-[15px] font-medium"
               />
             </div>
-            <div className="md:w-[240px]">
-              <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                <SelectTrigger className="h-12 rounded-[18px] border-slate-200 bg-slate-50 text-[15px] font-medium">
-                  <SelectValue placeholder="Categoria" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="todas">Todas as categorias</SelectItem>
-                  {categoryOptions.map((category) => (
-                    <SelectItem key={category} value={category}>{category}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <button
+              type="button"
+              onClick={() => setIsFilterOpen(true)}
+              aria-label="Filtrar"
+              className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-[18px] border border-slate-200 bg-slate-50 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700"
+            >
+              <SlidersHorizontal className="h-5 w-5" />
+              {selectedCategory !== 'todas' && (
+                <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-slate-900 text-[9px] font-bold text-white">
+                  1
+                </span>
+              )}
+            </button>
           </div>
 
           <Button
@@ -503,6 +529,12 @@ export function NotesWorkspace({ variant }: NotesWorkspaceProps) {
           </Button>
         </div>
       </section>
+
+      <div className="grid grid-cols-3 gap-3">
+        <MetricCard label="Ativas" value={activeNotesCount} />
+        <MetricCard label="Fixadas" value={pinnedCount} />
+        <MetricCard label="Favoritas" value={favoriteCount} />
+      </div>
 
       {loading ? <NotesBoardSkeleton /> : null}
 
@@ -541,6 +573,48 @@ export function NotesWorkspace({ variant }: NotesWorkspaceProps) {
       >
         <Plus className="h-5 w-5" />
       </Button>
+
+      <ResponsiveDialog
+        open={isFilterOpen}
+        onOpenChange={setIsFilterOpen}
+        title="Filtrar anotacoes"
+        description="Selecione uma categoria para refinar a lista."
+        onCancel={() => setIsFilterOpen(false)}
+        cancelLabel="Fechar"
+      >
+        <div className="space-y-4 py-2">
+          <div className="space-y-2">
+            <label className="text-sm font-semibold text-slate-700">Categoria</label>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => setSelectedCategory('todas')}
+                className={`rounded-full border px-4 py-2 text-sm font-semibold transition-colors ${
+                  selectedCategory === 'todas'
+                    ? 'border-slate-900 bg-slate-900 text-white'
+                    : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-900'
+                }`}
+              >
+                Todas
+              </button>
+              {categoryOptions.map((category) => (
+                <button
+                  key={category}
+                  type="button"
+                  onClick={() => setSelectedCategory(category)}
+                  className={`rounded-full border px-4 py-2 text-sm font-semibold transition-colors ${
+                    selectedCategory === category
+                      ? 'border-slate-900 bg-slate-900 text-white'
+                      : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-900'
+                  }`}
+                >
+                  {category}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      </ResponsiveDialog>
 
       <ResponsiveDialog
         open={isModalOpen}
@@ -666,9 +740,9 @@ export function NotesWorkspace({ variant }: NotesWorkspaceProps) {
 
 function MetricCard({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-[22px] border border-white/15 bg-white/10 px-4 py-3 backdrop-blur">
-      <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-white/65">{label}</p>
-      <p className="mt-2 text-[28px] font-black tracking-[-0.06em] text-white">{value}</p>
+    <div className="rounded-[22px] border border-slate-200/80 bg-white px-4 py-3 shadow-sm lg:border-white/15 lg:bg-white/10 lg:shadow-none lg:backdrop-blur">
+      <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-400 lg:text-white/65">{label}</p>
+      <p className="mt-2 text-[28px] font-black tracking-[-0.06em] text-slate-900 lg:text-white">{value}</p>
     </div>
   );
 }

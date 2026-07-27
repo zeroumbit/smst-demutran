@@ -195,7 +195,6 @@ const guardaBottomNavItems: MenuItem[] = [
   { icon: FileWarning, label: 'IROs', path: '/admin/iros/guarda-municipal', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
   { icon: CalendarDays, label: 'Escala', path: '/admin/guardas/guarda-municipal/escalas', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
   { icon: Users, label: 'Equipes', path: '/admin/guardas/guarda-municipal/equipes', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
-  { icon: NotebookPen, label: 'Anotacoes', path: '/admin/anotacoes/guarda-municipal', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
 ];
 
 const moduloItemMap: Record<string, ModuloSistema> = {
@@ -355,6 +354,16 @@ export const AdminLayout = ({ children, backPath, backLabel }: AdminLayoutProps)
     if (slug === 'jovem-guarda' || segments.includes('jovem-guarda')) return 'jovem-guarda';
     return null;
   }, [isSuperAdmin, profile?.setor_slug, location.pathname]);
+
+  const isJovemGuardaHome = useMemo(() => {
+    if (sectorContext !== 'jovem-guarda') return false;
+    return location.pathname === '/admin/dashboard/jovem-guarda' || location.pathname === '/admin/dashboard/jovem-guarda/dashboard';
+  }, [sectorContext, location.pathname]);
+
+  const isGuardaHome = useMemo(() => {
+    if (sectorContext !== 'guarda-municipal') return false;
+    return location.pathname === '/admin/dashboard/guarda-municipal';
+  }, [sectorContext, location.pathname]);
 
   const sectorLogo = useMemo(() => {
     if (isSuperAdmin) return '/images/logo.png';
@@ -912,80 +921,84 @@ export const AdminLayout = ({ children, backPath, backLabel }: AdminLayoutProps)
           </div>
         </header>
 
-        <main className={`flex-1 px-4 pt-[calc(1rem+var(--safe-area-top))] lg:p-8 ${sectorContext === 'guarda-municipal' || sectorContext === 'jovem-guarda' ? 'pb-[calc(5.75rem+var(--safe-area-bottom))] lg:pb-8' : 'pb-[calc(1rem+var(--safe-area-bottom))] lg:pb-8'}`}>
+        <main className={`flex-1 px-4 pt-[calc(1rem+var(--safe-area-top))] lg:p-8 ${sectorContext === 'guarda-municipal' && isGuardaHome ? 'pb-[calc(5.75rem+var(--safe-area-bottom))] lg:pb-8' : sectorContext === 'jovem-guarda' && isJovemGuardaHome ? 'pb-[calc(5.75rem+var(--safe-area-bottom))] lg:pb-8' : 'pb-[calc(1rem+var(--safe-area-bottom))] lg:pb-8'}`}>
           {children}
         </main>
       </div>
 
-      {sectorContext === 'guarda-municipal' && visibleBottomNavItems.length > 0 && (
-        <nav className="fixed bottom-0 left-0 right-0 z-50 flex min-h-[4.75rem] items-stretch border-t border-slate-200/80 bg-white pl-[var(--safe-area-left)] pr-[var(--safe-area-right)] shadow-[0_-2px_20px_-8px_rgba(15,23,42,0.12)] lg:hidden pb-[var(--safe-area-bottom)]">
-          {visibleBottomNavItems.map((item) => {
-            const Icon = item.icon!;
-            const active = item.path ? (location.pathname === item.path || location.pathname.startsWith(item.path + '/')) : false;
-            return (
-              <Link
-                key={item.path}
-                to={item.path!}
-                className="flex min-w-0 flex-1 flex-col items-center justify-center gap-1 px-1 py-2 transition-colors"
-                aria-current={active ? 'page' : undefined}
-              >
-                <div className={`flex items-center justify-center rounded-xl p-1.5 transition-colors ${active ? 'bg-brand-50' : ''}`}>
-                  <Icon className={`h-5 w-5 ${active ? 'text-brand-600' : 'text-slate-400'}`} />
-                </div>
-                <span className={`max-w-full truncate text-[10px] font-bold ${active ? 'text-brand-600' : 'text-slate-400'}`}>
-                  {item.label}
-                </span>
-              </Link>
-            );
-          })}
-          <button
-            onClick={() => setMenuModalOpen(true)}
-            className="flex min-w-0 flex-1 flex-col items-center justify-center gap-1 px-1 py-2 transition-colors"
-          >
-            <div className="flex items-center justify-center rounded-xl p-1.5">
-              <Menu className="h-5 w-5 text-slate-400" />
-            </div>
-            <span className="text-[10px] font-bold text-slate-400">Menu</span>
-          </button>
+      {sectorContext === 'guarda-municipal' && isGuardaHome && visibleBottomNavItems.length > 0 && (
+        <nav className="fixed bottom-0 left-0 right-0 z-50 pl-[calc(0.75rem+var(--safe-area-left))] pr-[calc(0.75rem+var(--safe-area-right))] pb-[calc(0.7rem+var(--safe-area-bottom))] pt-2 lg:hidden pointer-events-none">
+          <div className="mx-auto grid max-w-5xl grid-cols-5 gap-2 rounded-[24px] bg-white/90 p-1.5 shadow-[0_14px_34px_-24px_rgba(15,23,42,0.3)] ring-1 ring-slate-200/70 backdrop-blur-xl pointer-events-auto">
+            {visibleBottomNavItems.map((item) => {
+              const Icon = item.icon!;
+              const active = item.path ? (location.pathname === item.path || location.pathname.startsWith(item.path + '/')) : false;
+              return (
+                <Link
+                  key={item.path}
+                  to={item.path!}
+                  className="flex min-w-0 flex-col items-center justify-center gap-1 rounded-[18px] px-1 py-2.5 transition-all active:scale-[0.98]"
+                  aria-current={active ? 'page' : undefined}
+                >
+                  <div className={`flex items-center justify-center rounded-xl p-1.5 transition-colors ${active ? 'bg-white shadow-[0_8px_18px_-14px_rgba(37,99,235,0.55)]' : ''}`}>
+                    <Icon className={`h-5 w-5 ${active ? 'text-brand-600' : 'text-slate-400'}`} />
+                  </div>
+                  <span className={`max-w-full truncate text-[10px] font-bold ${active ? 'text-brand-600' : 'text-slate-400'}`}>
+                    {item.label}
+                  </span>
+                </Link>
+              );
+            })}
+            <button
+              onClick={() => setMenuModalOpen(true)}
+              className="flex min-w-0 flex-col items-center justify-center gap-1 rounded-[18px] px-1 py-2.5 transition-all active:scale-[0.98]"
+            >
+              <div className="flex items-center justify-center rounded-xl p-1.5">
+                <Menu className="h-5 w-5 text-slate-400" />
+              </div>
+              <span className="text-[10px] font-bold text-slate-400">Menu</span>
+            </button>
+          </div>
         </nav>
       )}
 
-      {sectorContext === 'jovem-guarda' && adminMenuItems.filter(item => item.path).length > 0 && (
-        <nav className="fixed bottom-0 left-0 right-0 z-50 flex min-h-[4.75rem] items-stretch border-t border-slate-200/80 bg-white pl-[var(--safe-area-left)] pr-[var(--safe-area-right)] shadow-[0_-2px_20px_-8px_rgba(15,23,42,0.12)] lg:hidden pb-[var(--safe-area-bottom)]">
-          {adminMenuItems.filter(item => item.path).slice(0, 4).map((item) => {
-            const Icon = item.icon!;
-            const active = item.path ? (location.pathname === item.path || location.pathname.startsWith(item.path + '/')) : false;
-            return (
-              <Link
-                key={item.path}
-                to={item.path!}
-                className="flex min-w-0 flex-1 flex-col items-center justify-center gap-1 px-1 py-2 transition-colors"
-                aria-current={active ? 'page' : undefined}
-              >
-                <div className={`flex items-center justify-center rounded-xl p-1.5 transition-colors ${active ? 'bg-brand-50' : ''}`}>
-                  <Icon className={`h-5 w-5 ${active ? 'text-brand-600' : 'text-slate-400'}`} />
-                </div>
-                <span className={`max-w-full truncate text-[10px] font-bold ${active ? 'text-brand-600' : 'text-slate-400'}`}>
-                  {item.label}
-                </span>
-              </Link>
-            );
-          })}
-          <button
-            onClick={() => setMenuModalOpen(true)}
-            className="flex min-w-0 flex-1 flex-col items-center justify-center gap-1 px-1 py-2 transition-colors"
-          >
-            <div className="flex items-center justify-center rounded-xl p-1.5">
-              <Menu className="h-5 w-5 text-slate-400" />
-            </div>
-            <span className="text-[10px] font-bold text-slate-400">Menu</span>
-          </button>
+      {sectorContext === 'jovem-guarda' && isJovemGuardaHome && adminMenuItems.filter(item => item.path).length > 0 && (
+        <nav className="fixed bottom-0 left-0 right-0 z-50 pl-[calc(0.75rem+var(--safe-area-left))] pr-[calc(0.75rem+var(--safe-area-right))] pb-[calc(0.7rem+var(--safe-area-bottom))] pt-2 lg:hidden pointer-events-none">
+          <div className="mx-auto grid max-w-5xl grid-cols-5 gap-2 rounded-[24px] bg-white/90 p-1.5 shadow-[0_14px_34px_-24px_rgba(15,23,42,0.3)] ring-1 ring-slate-200/70 backdrop-blur-xl pointer-events-auto">
+            {adminMenuItems.filter(item => item.path).slice(0, 4).map((item) => {
+              const Icon = item.icon!;
+              const active = item.path ? (location.pathname === item.path || location.pathname.startsWith(item.path + '/')) : false;
+              return (
+                <Link
+                  key={item.path}
+                  to={item.path!}
+                  className="flex min-w-0 flex-col items-center justify-center gap-1 rounded-[18px] px-1 py-2.5 transition-all active:scale-[0.98]"
+                  aria-current={active ? 'page' : undefined}
+                >
+                  <div className={`flex items-center justify-center rounded-xl p-1.5 transition-colors ${active ? 'bg-white shadow-[0_8px_18px_-14px_rgba(37,99,235,0.55)]' : ''}`}>
+                    <Icon className={`h-5 w-5 ${active ? 'text-brand-600' : 'text-slate-400'}`} />
+                  </div>
+                  <span className={`max-w-full truncate text-[10px] font-bold ${active ? 'text-brand-600' : 'text-slate-400'}`}>
+                    {item.label}
+                  </span>
+                </Link>
+              );
+            })}
+            <button
+              onClick={() => setMenuModalOpen(true)}
+              className="flex min-w-0 flex-col items-center justify-center gap-1 rounded-[18px] px-1 py-2.5 transition-all active:scale-[0.98]"
+            >
+              <div className="flex items-center justify-center rounded-xl p-1.5">
+                <Menu className="h-5 w-5 text-slate-400" />
+              </div>
+              <span className="text-[10px] font-bold text-slate-400">Menu</span>
+            </button>
+          </div>
         </nav>
       )}
 
       {menuModalOpen && (
         <div className="fixed inset-0 z-[60] flex min-h-0 flex-col bg-white lg:hidden animate-in slide-in-from-bottom">
-          <div className="flex items-center justify-between border-b border-slate-200 px-5 pb-4 pt-[calc(max(var(--safe-area-top),1rem)+0.5rem)] bg-slate-50">
+          <div className="flex items-center justify-between px-5 pb-4 pt-[calc(max(var(--safe-area-top),1rem)+0.5rem)]">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
                 <img src={sectorLogo as string} alt={sectorLabel} className="h-full w-full object-contain p-1" />

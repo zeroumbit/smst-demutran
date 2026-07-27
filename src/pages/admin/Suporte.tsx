@@ -1,6 +1,6 @@
-import { Mail, MessageSquare, Info, LifeBuoy, ArrowUpRight, Copy, Check } from 'lucide-react';
+import { Mail, MessageSquare, Info, LifeBuoy, ArrowUpRight, Copy, Check, ArrowLeft } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { GuardsLayout } from '@/components/admin/GuardsLayout';
 import { Button } from '@/components/ui/button';
@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 export default function SuportePage() {
   const { profile } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
   const isGuarda = location.pathname.includes('/perfil-guardas/guarda-municipal');
 
   const handleWhatsAppClick = () => {
@@ -38,8 +39,35 @@ export default function SuportePage() {
 
   const content = (
     <div className="space-y-6">
+      {!isGuarda && (
+        <div className="sticky top-0 z-20 flex items-center gap-1 border-b border-slate-200/80 bg-white/95 px-1 py-2 backdrop-blur-md lg:hidden">
+          <button
+            type="button"
+            onClick={() => navigate(-1)}
+            aria-label="Voltar"
+            className="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-slate-700 transition-colors hover:bg-slate-100 active:bg-slate-200"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </button>
+          <h1 className="truncate text-lg font-bold tracking-tight text-slate-900">Suporte</h1>
+        </div>
+      )}
+      {isGuarda && (
+        <div className="flex items-center gap-1 lg:hidden px-1 py-2">
+          <button
+            type="button"
+            onClick={() => navigate(-1)}
+            aria-label="Voltar"
+            className="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-slate-700 transition-colors hover:bg-slate-100 active:bg-slate-200"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </button>
+          <h1 className="truncate text-lg font-bold tracking-tight text-slate-900">Suporte</h1>
+        </div>
+      )}
+
       {/* Header Banner */}
-      <section className="rounded-[24px] bg-[linear-gradient(135deg,_#0f172a_0%,_#1e293b_46%,_#2563eb_100%)] md:rounded-[34px]">
+      <section className="hidden rounded-[24px] bg-[linear-gradient(135deg,_#0f172a_0%,_#1e293b_46%,_#2563eb_100%)] md:rounded-[34px] lg:block">
         <div className="space-y-4 px-4 pb-5 pt-6 md:space-y-6 md:px-6 md:pb-6 md:pt-7">
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">

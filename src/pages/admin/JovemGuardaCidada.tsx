@@ -20,6 +20,8 @@ import {
   UsersRound,
 } from "lucide-react";
 import { AdminLayout } from "@/components/admin/AdminLayout";
+
+
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -71,6 +73,16 @@ const sections: Section[] = [
   "acompanhamentos",
   "relatorios",
 ];
+const sectionTitles: Record<Section, string> = {
+  dashboard: "Início",
+  alunos: "Alunos",
+  responsaveis: "Responsáveis",
+  turmas: "Turmas",
+  diario: "Frequência",
+  atividades: "Atividades",
+  acompanhamentos: "Acompanhamentos",
+  relatorios: "Relatórios",
+};
 
 const today = new Date().toISOString().slice(0, 10);
 const initialStudent = {
@@ -190,6 +202,7 @@ export default function JovemGuardaCidada() {
 
   const active = sections.includes(section) ? section : "dashboard";
   const selected = alunos.find((item) => item.id === alunoId);
+  const mobileTitle = selected ? selected.nome_completo : sectionTitles[active];
   const filtered = alunos.filter((item) =>
     `${item.nome_completo} ${item.matricula} ${item.escola_nome || ""}`
       .toLowerCase()
@@ -365,26 +378,56 @@ export default function JovemGuardaCidada() {
 
   return (
     <AdminLayout>
-      <div className="min-h-[calc(100vh-8rem)] rounded-[2rem] bg-[radial-gradient(circle_at_top_right,_rgba(20,184,166,.12),_transparent_35%),linear-gradient(145deg,#f8fafc,#f0fdfa)] p-3 sm:p-6">
-        <header className="mb-6 overflow-hidden rounded-[1.75rem] bg-gradient-to-br from-slate-950 via-teal-950 to-teal-800 px-5 py-6 text-white shadow-xl shadow-teal-950/15 sm:px-8">
-          <div className="flex flex-col justify-between gap-5 md:flex-row md:items-center">
-            <div>
-              <div className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-[.2em] text-teal-200">
-                <ShieldCheck className="h-4 w-4" />
-                Jovem Guarda Cidadã
-              </div>
-              <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
-                Cuidar da trajetória, agir no momento certo.
-              </h1>
-              <p className="mt-2 max-w-2xl text-sm text-teal-50/75">
-                Acompanhamento socioeducativo organizado em torno de cada jovem.
-              </p>
+      <header className="hidden lg:block rounded-[24px] bg-gradient-to-br from-slate-950 via-teal-950 to-teal-800 px-8 py-6 text-white shadow-xl shadow-teal-950/15">
+        <div className="flex flex-col justify-between gap-5 md:flex-row md:items-center">
+          <div>
+            <div className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-[.2em] text-teal-200">
+              <ShieldCheck className="h-4 w-4" />
+              Jovem Guarda Cidadã
             </div>
-            <Badge className="w-fit border-white/15 bg-white/10 px-3 py-1.5 text-white hover:bg-white/10">
-              {profile || "carregando"} · acesso protegido
-            </Badge>
+            <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
+              Cuidar da trajetória, agir no momento certo.
+            </h1>
+            <p className="mt-2 max-w-2xl text-sm text-teal-50/75">
+              Acompanhamento socioeducativo organizado em torno de cada jovem.
+            </p>
           </div>
-        </header>
+          <Badge className="w-fit border-white/15 bg-white/10 px-3 py-1.5 text-white hover:bg-white/10">
+            {profile || "carregando"} · acesso protegido
+          </Badge>
+        </div>
+      </header>
+      <div className="min-h-[calc(100vh-8rem)] p-3 sm:p-6 lg:mt-6 lg:p-0">
+        {selected ? (
+          <div className="flex items-center gap-1 lg:hidden px-1 py-2">
+            <button
+              type="button"
+              onClick={() => navigate('/admin/dashboard/jovem-guarda/alunos')}
+              aria-label="Voltar"
+              className="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-slate-700 transition-colors hover:bg-slate-100 active:bg-slate-200"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </button>
+            <h1 className="truncate text-lg font-bold tracking-tight text-slate-900">{mobileTitle}</h1>
+          </div>
+        ) : active !== 'dashboard' ? (
+          <div className="flex items-center gap-1 lg:hidden px-1 py-2">
+            <button
+              type="button"
+              onClick={() => navigate('/admin/dashboard/jovem-guarda')}
+              aria-label="Voltar"
+              className="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-slate-700 transition-colors hover:bg-slate-100 active:bg-slate-200"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </button>
+            <h1 className="truncate text-lg font-bold tracking-tight text-slate-900">{mobileTitle}</h1>
+          </div>
+        ) : (
+          <div className="lg:hidden px-1 py-2">
+            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">Jovem Guarda Cidadã</p>
+            <h1 className="text-lg font-bold tracking-tight text-slate-900">{mobileTitle}</h1>
+          </div>
+        )}
         {loading ? (
           <div className="grid min-h-72 place-items-center">
             <div className="h-10 w-10 animate-spin rounded-full border-4 border-teal-100 border-t-teal-700" />
@@ -426,7 +469,7 @@ export default function JovemGuardaCidada() {
                 can("alunos", "criar") && (
                   <Button
                     onClick={() => setStudentOpen(true)}
-                    className="gap-2 bg-teal-700 hover:bg-teal-800"
+                    className="hidden gap-2 bg-teal-700 hover:bg-teal-800 sm:inline-flex"
                   >
                     <Plus className="h-4 w-4" />
                     Novo aluno
@@ -483,6 +526,17 @@ export default function JovemGuardaCidada() {
                 text="Cadastre o primeiro participante ou ajuste sua busca."
               />
             )}
+            {can("alunos", "criar") && (
+              <button
+                type="button"
+                onClick={() => setStudentOpen(true)}
+                aria-label="Novo aluno"
+                title="Novo aluno"
+                className="fixed bottom-[calc(6rem+var(--safe-area-bottom))] right-[calc(1.25rem+var(--safe-area-right))] z-40 flex size-14 items-center justify-center rounded-full bg-teal-700 text-white shadow-[0_8px_28px_-6px_rgba(15,118,110,0.55)] transition-all active:scale-90 sm:hidden"
+              >
+                <Plus className="h-6 w-6" />
+              </button>
+            )}
           </section>
         ) : active === "turmas" ? (
           <section>
@@ -492,7 +546,7 @@ export default function JovemGuardaCidada() {
           action={
             can("turmas", "criar") && <Button
                   onClick={() => setClassOpen(true)}
-                  className="gap-2 bg-teal-700"
+                  className="hidden gap-2 bg-teal-700 sm:inline-flex"
                 >
                   <Plus className="h-4 w-4" />
                   Nova turma
@@ -547,6 +601,17 @@ export default function JovemGuardaCidada() {
                 text="Crie uma turma e depois vincule os alunos."
               />
             )}
+            {can("turmas", "criar") && (
+              <button
+                type="button"
+                onClick={() => setClassOpen(true)}
+                aria-label="Nova turma"
+                title="Nova turma"
+                className="fixed bottom-[calc(6rem+var(--safe-area-bottom))] right-[calc(1.25rem+var(--safe-area-right))] z-40 flex size-14 items-center justify-center rounded-full bg-teal-700 text-white shadow-[0_8px_28px_-6px_rgba(15,118,110,0.55)] transition-all active:scale-90 sm:hidden"
+              >
+                <Plus className="h-6 w-6" />
+              </button>
+            )}
           </section>
         ) : active === "acompanhamentos" ? (
           <section>
@@ -556,14 +621,14 @@ export default function JovemGuardaCidada() {
           action={
             can("acompanhamento", "criar") && <Button
                   onClick={() => setServiceOpen(true)}
-                  className="gap-2 bg-teal-700"
+                  className="hidden gap-2 bg-teal-700 sm:inline-flex"
                 >
                   <Plus className="h-4 w-4" />
                   Registrar atendimento
                 </Button>
               }
             />
-            <div className="mb-5 grid gap-3 sm:grid-cols-3">
+            <div className="mb-5 flex gap-3 overflow-x-auto pb-2 sm:grid sm:grid-cols-3 sm:overflow-visible sm:pb-0">
               <Stat
                 label="Atendimentos visíveis"
                 value={atendimentos.length}
@@ -615,6 +680,17 @@ export default function JovemGuardaCidada() {
                 title="Nenhum atendimento visível"
                 text="Novos registros aparecerão conforme seu nível de acesso."
               />
+            )}
+            {can("acompanhamento", "criar") && (
+              <button
+                type="button"
+                onClick={() => setServiceOpen(true)}
+                aria-label="Registrar atendimento"
+                title="Registrar atendimento"
+                className="fixed bottom-[calc(6rem+var(--safe-area-bottom))] right-[calc(1.25rem+var(--safe-area-right))] z-40 flex size-14 items-center justify-center rounded-full bg-teal-700 text-white shadow-[0_8px_28px_-6px_rgba(15,118,110,0.55)] transition-all active:scale-90 sm:hidden"
+              >
+                <Plus className="h-6 w-6" />
+              </button>
             )}
           </section>
         ) : (
@@ -1133,7 +1209,7 @@ function PageHead({
 }) {
   return (
     <div className="mb-5 flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
-      <div>
+      <div className="hidden lg:block">
         <h2 className="text-2xl font-bold text-slate-950">{title}</h2>
         <p className="mt-1 text-sm text-slate-500">{subtitle}</p>
       </div>
@@ -1277,7 +1353,7 @@ function Dashboard({
           onService && (
             <Button
               onClick={onService}
-              className="gap-2 bg-teal-700 hover:bg-teal-800"
+              className="hidden gap-2 bg-teal-700 hover:bg-teal-800 sm:inline-flex"
             >
               <Plus className="h-4 w-4" />
               Registrar atendimento
@@ -1286,6 +1362,9 @@ function Dashboard({
         }
       />
       <div>
+        <h2 className="mb-4 text-2xl font-bold text-slate-950 lg:hidden">
+          Visão geral
+        </h2>
         {activeAlerts.length > 0 && (
           <div className="mb-4 space-y-2">
             {activeAlerts.map((alert) => (
@@ -1328,7 +1407,7 @@ function Dashboard({
           />
           <Stat label="Atividades do mês" value={0} icon={CalendarCheck} />
         </div>
-        <div className="mt-6 grid gap-6 xl:grid-cols-[1.5fr_1fr]">
+        <div className={`mt-6 grid gap-6 ${(profile === 'gestor' || profile === 'administrativo') ? 'xl:grid-cols-[1.5fr_1fr]' : ''}`}>
           <Card className="rounded-3xl border-0 shadow-sm">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
@@ -1366,21 +1445,34 @@ function Dashboard({
               )}
             </CardContent>
           </Card>
-          <Card className="rounded-3xl border-0 bg-slate-950 text-white shadow-sm">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <AlertTriangle className="h-5 w-5 text-amber-400" />
-                Exige atenção
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <Attention label="Encaminhamentos pendentes" value={referrals} />
-              <Attention label="Ações em aberto" value={actions} />
-              <Attention label="Alunos sem turma" value={semTurma} />
-            </CardContent>
-          </Card>
+          {(profile === 'gestor' || profile === 'administrativo') && (
+            <Card className="rounded-3xl border-0 bg-slate-950 text-white shadow-sm">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <AlertTriangle className="h-5 w-5 text-amber-400" />
+                  Exige atenção
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <Attention label="Encaminhamentos pendentes" value={referrals} />
+                <Attention label="Ações em aberto" value={actions} />
+                <Attention label="Alunos sem turma" value={semTurma} />
+              </CardContent>
+            </Card>
+          )}
         </div>
       </div>
+      {onService && (
+        <button
+          type="button"
+          onClick={onService}
+          aria-label="Registrar atendimento"
+          title="Registrar atendimento"
+          className="fixed bottom-[calc(6rem+var(--safe-area-bottom))] right-[calc(1.25rem+var(--safe-area-right))] z-40 flex size-14 items-center justify-center rounded-full bg-teal-700 text-white shadow-[0_8px_28px_-6px_rgba(15,118,110,0.55)] transition-all active:scale-90 sm:hidden"
+        >
+          <Plus className="h-6 w-6" />
+        </button>
+      )}
     </section>
   );
 }

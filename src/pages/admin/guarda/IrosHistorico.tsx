@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { GuardsLayout } from '@/components/admin/GuardsLayout';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { supabase } from '@/lib/supabase';
@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Search, RefreshCcw } from 'lucide-react';
+import { ArrowLeft, Search, RefreshCcw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import type { IROCandidatura } from '@/types/admin';
@@ -30,6 +30,7 @@ const fmtDateBR = (d: string | null | undefined): string => {
 
 const GuardaIrosHistorico = () => {
   const { setorSlug } = useParams<{ setorSlug?: string }>();
+  const navigate = useNavigate();
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [candidaturas, setCandidaturas] = useState<IROCandidatura[]>([]);
@@ -96,7 +97,18 @@ const GuardaIrosHistorico = () => {
   return (
     <Layout>
       <div className="space-y-4 sm:space-y-6">
-        <section className="rounded-[24px] bg-[linear-gradient(135deg,_#0f172a_0%,_#1e293b_45%,_#2563eb_100%)] px-4 py-4 text-white sm:px-6 sm:py-5">
+        <div className="flex items-center gap-1 lg:hidden px-1 py-2">
+          <button
+            type="button"
+            onClick={() => navigate(-1)}
+            aria-label="Voltar"
+            className="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-slate-700 transition-colors hover:bg-slate-100 active:bg-slate-200"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </button>
+          <h1 className="truncate text-lg font-bold tracking-tight text-slate-900">Histórico de IROs</h1>
+        </div>
+        <section className="hidden rounded-[24px] bg-[linear-gradient(135deg,_#0f172a_0%,_#1e293b_45%,_#2563eb_100%)] px-4 py-4 text-white sm:px-6 sm:py-5 lg:block">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div className="min-w-0">
               <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-sky-100/70 sm:text-[11px]">Guarda Municipal</p>

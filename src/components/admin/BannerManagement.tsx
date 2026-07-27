@@ -307,9 +307,18 @@ const BannerManagement: React.FC = () => {
     <div className="container mx-auto py-6">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">Gerenciamento de Banners</h1>
-        <Button onClick={() => setIsDialogOpen(true)}>
+        <Button onClick={() => setIsDialogOpen(true)} className="hidden sm:inline-flex">
           <Plus className="mr-2 h-4 w-4" /> Adicionar Banner
         </Button>
+        <button
+          type="button"
+          onClick={() => setIsDialogOpen(true)}
+          aria-label="Adicionar banner"
+          title="Adicionar banner"
+          className="fixed bottom-[calc(6rem+var(--safe-area-bottom))] right-[calc(1.25rem+var(--safe-area-right))] z-40 flex size-14 items-center justify-center rounded-full bg-teal-700 text-white shadow-[0_8px_28px_-6px_rgba(15,118,110,0.55)] transition-all active:scale-90 sm:hidden"
+        >
+          <Plus className="h-6 w-6" />
+        </button>
         <ResponsiveDialog
           open={isDialogOpen}
           onOpenChange={setIsDialogOpen}

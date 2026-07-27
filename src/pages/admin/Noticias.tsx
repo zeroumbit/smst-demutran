@@ -265,11 +265,21 @@ const Noticias = ({ layout = true }: { layout?: boolean } = {}) => {
           />
         </div>
 
-        <Button onClick={() => setIsDialogOpen(true)} className="gap-2 shrink-0">
+        <Button onClick={() => setIsDialogOpen(true)} className="hidden gap-2 shrink-0 sm:inline-flex">
           <Plus className="w-4 h-4" />
           Nova Noticia
         </Button>
       </div>
+
+      <button
+        type="button"
+        onClick={() => setIsDialogOpen(true)}
+        aria-label="Nova noticia"
+        title="Nova noticia"
+        className="fixed bottom-[calc(6rem+var(--safe-area-bottom))] right-[calc(1.25rem+var(--safe-area-right))] z-40 flex size-14 items-center justify-center rounded-full bg-teal-700 text-white shadow-[0_8px_28px_-6px_rgba(15,118,110,0.55)] transition-all active:scale-90 sm:hidden"
+      >
+        <Plus className="h-6 w-6" />
+      </button>
 
       {loading ? (
         <div className="rounded-lg border border-border bg-card p-8 text-center text-muted-foreground">

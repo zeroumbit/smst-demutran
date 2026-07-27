@@ -170,11 +170,21 @@ const DemutranConteudos = ({ layout = true }: { layout?: boolean } = {}) => {
           <h1 className="text-2xl md:text-3xl font-bold text-foreground">Conteudos DEMUTRAN</h1>
           <p className="text-muted-foreground mt-1 text-sm">Gerencie as midias exibidas na pagina publica do DEMUTRAN.</p>
         </div>
-        <Button onClick={() => setIsDialogOpen(true)} className="gap-2 w-full sm:w-auto">
+        <Button onClick={() => setIsDialogOpen(true)} className="hidden gap-2 w-full sm:inline-flex sm:w-auto">
           <Plus className="w-4 h-4" />
           Nova Midia
         </Button>
       </div>
+
+      <button
+        type="button"
+        onClick={() => setIsDialogOpen(true)}
+        aria-label="Nova midia"
+        title="Nova midia"
+        className="fixed bottom-[calc(6rem+var(--safe-area-bottom))] right-[calc(1.25rem+var(--safe-area-right))] z-40 flex size-14 items-center justify-center rounded-full bg-teal-700 text-white shadow-[0_8px_28px_-6px_rgba(15,118,110,0.55)] transition-all active:scale-90 sm:hidden"
+      >
+        <Plus className="h-6 w-6" />
+      </button>
 
       <div className="sticky top-0 z-10 bg-background/95 backdrop-blur py-3 border-b border-border shadow-sm mb-4">
         <div className="relative">

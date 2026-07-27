@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
-import { CreditCard, Edit2, ImageIcon, Percent, Plus, Settings2, Trash2, Upload, X } from 'lucide-react';
+import { ArrowLeft, CreditCard, Edit2, ImageIcon, Percent, Plus, Settings2, Trash2, Upload, X } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -62,6 +63,7 @@ type DemutranTaxa = {
 };
 
 const Configuracoes = () => {
+  const navigate = useNavigate();
   const { confirm, confirmDialog } = useConfirmDialog();
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
@@ -299,8 +301,19 @@ const Configuracoes = () => {
   return (
     <AdminLayout>
       <div className="space-y-6">
+        <div className="flex items-center gap-1 lg:hidden px-1 py-2">
+          <button
+            type="button"
+            onClick={() => navigate(-1)}
+            aria-label="Voltar"
+            className="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-slate-700 transition-colors hover:bg-slate-100 active:bg-slate-200"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </button>
+          <h1 className="truncate text-lg font-bold tracking-tight text-slate-900">Configurações</h1>
+        </div>
         {/* HEAD BAR ADAPTATIVA (APP BAR) */}
-        <section className="rounded-[24px] md:rounded-[34px] bg-[linear-gradient(135deg,_#0f172a_0%,_#1e293b_46%,_#2563eb_100%)] shadow-md">
+        <section className="hidden rounded-[24px] md:rounded-[34px] bg-[linear-gradient(135deg,_#0f172a_0%,_#1e293b_46%,_#2563eb_100%)] shadow-md lg:block">
           <div className="space-y-4 md:space-y-6 px-4 py-5 md:px-6 md:pb-5 md:pt-6">
             <div className="flex items-center justify-between gap-4">
               <div className="min-w-0">

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { AlertTriangle, Calendar, Check, CheckCircle2, ChevronsUpDown, Clock, Eye, EyeOff, Hourglass, Pencil, Plus, Printer, RefreshCcw, Trash2, Users, X } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, Calendar, Check, CheckCircle2, ChevronsUpDown, Clock, Eye, EyeOff, Hourglass, ListFilter, MoreHorizontal, Pencil, Plus, Printer, RefreshCcw, Trash2, Users, X } from 'lucide-react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -292,6 +292,7 @@ const GuardaMunicipalIros = () => {
   const [section, setSection] = useState<Section>('operacoes');
   const [viewMode, setViewMode] = useState<IROViewMode>('gerenciar');
   const [search, setSearch] = useState('');
+  const [filterDialogOpen, setFilterDialogOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState('todas');
   const [dataFilter, setDataFilter] = useState('');
   const [disponibilidadeFilter, setDisponibilidadeFilter] = useState<'todas' | 'com-vagas'>('todas');
@@ -1482,9 +1483,22 @@ const GuardaMunicipalIros = () => {
                 >
                   <Pencil className="h-4 w-4" />
                 </Button>
-                <Button size="sm" variant="outline" className="border-red-200 text-red-600 hover:bg-red-50" onClick={() => openDeleteConfirm(item)}>
-                  <Trash2 className="h-4 w-4" />
-                </Button>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button size="sm" variant="outline">
+                      <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent align="end" className="w-44 p-1">
+                    <button
+                      onClick={() => openDeleteConfirm(item)}
+                      className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-red-600 transition-colors hover:bg-red-50"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      Excluir
+                    </button>
+                  </PopoverContent>
+                </Popover>
               </>
             )}
           </div>
@@ -1523,23 +1537,21 @@ const GuardaMunicipalIros = () => {
           )}
         </div>
 
-        <div className="flex flex-wrap justify-end gap-2">
+        <div className="flex flex-nowrap justify-end gap-2">
           {isExtrasIrosView && item.adicionado_manual && canLaunchManual && (
             <>
               {item.status !== 'cancelado' && (
                 <>
                   <Button size="sm" variant="outline" onClick={() => openEditExtra(item)}>
-                    <Pencil className="mr-1.5 h-4 w-4" />
-                    Editar
+                    <Pencil className="h-4 w-4" />
                   </Button>
                   <Button size="sm" variant="outline" className="border-red-200 text-red-600 hover:bg-red-50" onClick={() => void handleCancelarExtra(item)}>
-                    Cancelar
+                    <X className="h-4 w-4" />
                   </Button>
                 </>
               )}
               <Button size="sm" variant="outline" className="border-red-200 text-red-700 hover:bg-red-50" onClick={() => void handleExcluirExtra(item)}>
-                <Trash2 className="mr-1.5 h-4 w-4" />
-                Excluir
+                <Trash2 className="h-4 w-4" />
               </Button>
             </>
           )}
@@ -1760,7 +1772,7 @@ const GuardaMunicipalIros = () => {
     return (
       <Card className="rounded-[24px] border-slate-200">
         <CardContent className="space-y-5 px-5 py-6">
-          <div className="flex gap-3">
+          <div className="flex gap-3 overflow-x-auto scrollbar-none">
             <Button variant={relatorioTipo === 'operacao' ? 'default' : 'outline'} size="sm" onClick={() => setRelatorioTipo('operacao')}>
               Por Operação
             </Button>
@@ -1774,14 +1786,14 @@ const GuardaMunicipalIros = () => {
 
           <div className="space-y-2">
             <Label>Status</Label>
-            <div className="flex gap-2">
-              <Button variant={relatorioStatusFilter === 'todos' ? 'default' : 'outline'} size="sm" onClick={() => setRelatorioStatusFilter('todos')}>
+            <div className="flex gap-2 overflow-x-auto scrollbar-none">
+              <Button variant={relatorioStatusFilter === 'todos' ? 'default' : 'outline'} size="sm" onClick={() => setRelatorioStatusFilter('todos')} className="whitespace-nowrap">
                 Todos
               </Button>
-              <Button variant={relatorioStatusFilter === 'confirmados' ? 'default' : 'outline'} size="sm" onClick={() => setRelatorioStatusFilter('confirmados')}>
-                Confirmados/Realizados
+              <Button variant={relatorioStatusFilter === 'confirmados' ? 'default' : 'outline'} size="sm" onClick={() => setRelatorioStatusFilter('confirmados')} className="whitespace-nowrap">
+                Confirmados / Realizados
               </Button>
-              <Button variant={relatorioStatusFilter === 'cancelados' ? 'default' : 'outline'} size="sm" onClick={() => setRelatorioStatusFilter('cancelados')}>
+              <Button variant={relatorioStatusFilter === 'cancelados' ? 'default' : 'outline'} size="sm" onClick={() => setRelatorioStatusFilter('cancelados')} className="whitespace-nowrap">
                 Cancelados
               </Button>
             </div>
@@ -1922,7 +1934,34 @@ const GuardaMunicipalIros = () => {
   return (
     <AdminLayout>
       <div className="space-y-6">
-        <section className="rounded-[24px] bg-[linear-gradient(135deg,_#0f172a_0%,_#1e293b_45%,_#2563eb_100%)] px-4 py-5 text-white md:rounded-[34px] md:px-6 md:py-6">
+        <div className="flex items-center gap-1 lg:hidden px-1 pt-[var(--safe-area-top)]">
+          <button
+            type="button"
+            onClick={() => navigate('/admin/dashboard/guarda-municipal')}
+            aria-label="Voltar"
+            className="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-slate-700 transition-colors hover:bg-slate-100 active:bg-slate-200"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </button>
+          <h1 className="truncate text-lg font-bold tracking-tight text-slate-900">IROs</h1>
+        </div>
+
+        <div className="flex gap-3 overflow-x-auto px-1 pb-1 scrollbar-none sm:grid sm:grid-cols-4 sm:gap-3 sm:overflow-visible sm:pb-0 lg:px-0" style={{ WebkitOverflowScrolling: 'touch', scrollSnapType: 'x mandatory' }}>
+          <div className="min-w-[78vw] snap-start sm:min-w-0">
+            <StatCard label="Operações ativas" value={String(stats.operacoesAtivas)} icon={Calendar} />
+          </div>
+          <div className="min-w-[78vw] snap-start sm:min-w-0">
+            <StatCard label="Candidaturas no mês" value={String(stats.candidaturasMes)} icon={Users} />
+          </div>
+          <div className="min-w-[78vw] snap-start sm:min-w-0">
+            <StatCard label="Horas no mês" value={`${stats.horasMes}h`} icon={Clock} />
+          </div>
+          <div className="min-w-[78vw] snap-start sm:min-w-0">
+            <StatCard label="Banco de horas" value={`${stats.totalBancoHoras}h`} icon={Hourglass} />
+          </div>
+        </div>
+
+        <section className="hidden rounded-[24px] bg-[linear-gradient(135deg,_#0f172a_0%,_#1e293b_45%,_#2563eb_100%)] px-4 py-5 text-white md:rounded-[34px] md:px-6 md:py-6 lg:block">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div className="min-w-0 flex-1">
               <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-sky-100/70 md:text-[11px]">Guarda Municipal</p>
@@ -1941,85 +1980,77 @@ const GuardaMunicipalIros = () => {
               </Button>
             </div>
           </div>
-
-          <div className="mt-4 md:mt-6">
-            <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-none sm:grid sm:grid-cols-4 sm:gap-3 sm:overflow-visible sm:pb-0" style={{ WebkitOverflowScrolling: 'touch', scrollSnapType: 'x mandatory' }}>
-              <div className="min-w-[155px] snap-start sm:min-w-0">
-                <StatCard label="Operações ativas" value={String(stats.operacoesAtivas)} icon={Calendar} />
-              </div>
-              <div className="min-w-[155px] snap-start sm:min-w-0">
-                <StatCard label="Candidaturas no mês" value={String(stats.candidaturasMes)} icon={Users} />
-              </div>
-              <div className="min-w-[155px] snap-start sm:min-w-0">
-                <StatCard label="Horas no mês" value={`${stats.horasMes}h`} icon={Clock} />
-              </div>
-              <div className="min-w-[155px] snap-start sm:min-w-0">
-                <StatCard label="Banco de horas" value={`${stats.totalBancoHoras}h`} icon={Hourglass} />
-              </div>
-            </div>
-          </div>
         </section>
 
         {podeVerTudo && (
-          <Card className="rounded-[24px] border-slate-200">
-            <CardContent className="px-5 py-4">
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  variant={viewMode === 'gerenciar' ? 'default' : 'outline'}
-                  onClick={() => {
-                    setViewMode('gerenciar');
-                    setSection('operacoes');
-                    setSearch('');
-                    setStatusFilter('todas');
-                    setDataFilter('');
-                    setDisponibilidadeFilter('todas');
-                  }}
-                >
-                  Gerenciar IROs
-                </Button>
-                <Button
-                  variant={viewMode === 'extras' ? 'default' : 'outline'}
-                  onClick={() => {
-                    setViewMode('extras');
-                    setSearch('');
-                    setStatusFilter('todas');
-                    setDataFilter('');
-                    setDisponibilidadeFilter('todas');
-                  }}
-                >
-                  Gerenciar IROs Extras
-                </Button>
-              </div>
-              <p className="mt-3 text-sm text-slate-500">
-                {viewMode === 'extras'
-                  ? 'Veja somente as IROs extras lançadas manualmente, com opção de editar ou cancelar.'
-                  : 'Acompanhe operações, candidaturas, banco de horas, notificações e relatórios do setor.'}
-              </p>
-            </CardContent>
-          </Card>
+          <div className="flex gap-1 rounded-[26px] bg-slate-100/80 p-1.5">
+            <button
+              onClick={() => {
+                setViewMode('gerenciar');
+                setSection('operacoes');
+                setSearch('');
+                setStatusFilter('todas');
+                setDataFilter('');
+                setDisponibilidadeFilter('todas');
+              }}
+              className={cn(
+                'rounded-[20px] px-5 py-2.5 text-sm font-bold tracking-[-0.02em] transition-all',
+                viewMode === 'gerenciar' ? 'bg-white text-slate-950 shadow-[0_10px_24px_-18px_rgba(15,23,42,0.55)]' : 'text-slate-500 hover:text-slate-700',
+              )}
+            >
+              Gerenciar IROs
+            </button>
+            <button
+              onClick={() => {
+                setViewMode('extras');
+                setSearch('');
+                setStatusFilter('todas');
+                setDataFilter('');
+                setDisponibilidadeFilter('todas');
+              }}
+              className={cn(
+                'rounded-[20px] px-5 py-2.5 text-sm font-bold tracking-[-0.02em] transition-all',
+                viewMode === 'extras' ? 'bg-white text-slate-950 shadow-[0_10px_24px_-18px_rgba(15,23,42,0.55)]' : 'text-slate-500 hover:text-slate-700',
+              )}
+            >
+              Gerenciar IROs Extras
+            </button>
+          </div>
         )}
 
         {activeSection !== 'relatorios' && (
           <Card className="rounded-[24px] border-slate-200">
             <CardContent className="space-y-4 px-5 py-5">
-              <div className={cn('grid gap-4', activeSection === 'candidaturas' ? 'lg:grid-cols-[minmax(0,1fr)_170px_220px_220px]' : 'lg:grid-cols-[1fr_220px]')}>
-                <div className="space-y-2">
-                  <Label>Buscar</Label>
-                  <Input
-                    value={search}
-                    onChange={(event) => setSearch(event.target.value)}
-                    placeholder={
-                      isExtrasIrosView
-                        ? 'Buscar IROs extras...'
-                        : activeSection === 'operacoes'
-                        ? 'Buscar operações...'
-                        : activeSection === 'candidaturas'
-                          ? 'Buscar candidaturas...'
-                          : activeSection === 'banco-horas'
-                            ? 'Buscar guardas...'
-                            : 'Buscar notificações...'
-                    }
-                    />
+              <div className={cn('flex flex-col gap-4', activeSection === 'candidaturas' ? 'lg:grid lg:grid-cols-[minmax(0,1fr)_170px_220px_220px]' : 'lg:grid lg:grid-cols-[1fr_220px]')}>
+                <div className="flex flex-1 items-end gap-2">
+                  <div className="flex-1 space-y-2">
+                    <Label className="max-sm:sr-only">Buscar</Label>
+                    <Input
+                      value={search}
+                      onChange={(event) => setSearch(event.target.value)}
+                      placeholder={
+                        isExtrasIrosView
+                          ? 'Buscar IROs extras...'
+                          : activeSection === 'operacoes'
+                          ? 'Buscar operações...'
+                          : activeSection === 'candidaturas'
+                            ? 'Buscar candidaturas...'
+                            : activeSection === 'banco-horas'
+                              ? 'Buscar guardas...'
+                              : 'Buscar notificações...'
+                      }
+                      />
+                  </div>
+                  <div className="space-y-2 max-sm:w-auto">
+                    <Label className="max-sm:sr-only">Filtrar</Label>
+                    <button
+                      type="button"
+                      onClick={() => setFilterDialogOpen(true)}
+                      className="flex h-12 w-12 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 transition-colors hover:bg-slate-50 active:bg-slate-100"
+                    >
+                      <ListFilter className="h-5 w-5" />
+                    </button>
+                  </div>
                 </div>
                 {activeSection === 'candidaturas' && (
                   <>
@@ -2043,25 +2074,34 @@ const GuardaMunicipalIros = () => {
                     )}
                   </>
                 )}
-                <div className="space-y-2">
-                  <Label>Filtrar</Label>
-                  <Select value={statusFilter} onValueChange={setStatusFilter}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {sectionStatusOptions.map((item) => (
-                        <SelectItem key={item.value} value={item.value}>
-                          {item.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
               </div>
             </CardContent>
           </Card>
         )}
+
+        <ResponsiveDialog
+          open={filterDialogOpen}
+          onOpenChange={(open) => { if (!open) setFilterDialogOpen(false); }}
+          title="Filtrar"
+          description="Selecione o filtro desejado"
+        >
+          <div className="space-y-2 py-2">
+            {sectionStatusOptions.map((item) => (
+              <button
+                key={item.value}
+                onClick={() => { setStatusFilter(item.value); setFilterDialogOpen(false); }}
+                className={cn(
+                  'w-full rounded-xl px-4 py-3 text-left text-sm font-semibold transition-colors',
+                  statusFilter === item.value
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-slate-50 text-slate-700 hover:bg-slate-100',
+                )}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+        </ResponsiveDialog>
 
         <div className="flex items-center justify-between gap-3">
           {isMinhaIrosView || isExtrasIrosView ? (
@@ -2722,18 +2762,13 @@ const GuardaMunicipalIros = () => {
 
       {section === 'operacoes' && (
         <>
-          {isExtrasIrosView && canLaunchManual && (
-            <button onClick={() => setManualDialogOpen(true)} className="fixed bottom-[calc(11rem+var(--safe-area-bottom))] right-[calc(1.25rem+var(--safe-area-right))] z-50 flex size-14 items-center justify-center rounded-full border-2 border-emerald-500 bg-emerald-600 text-white shadow-[0_8px_28px_-6px_rgba(16,185,129,0.55)] transition-all active:scale-90 sm:hidden">
+          {viewMode === 'extras' && canLaunchManual && (
+            <button onClick={() => setManualDialogOpen(true)} className="fixed bottom-[calc(7rem+var(--safe-area-bottom))] right-[calc(1.25rem+var(--safe-area-right))] z-50 flex size-14 items-center justify-center rounded-full border-2 border-emerald-500 bg-emerald-600 text-white shadow-[0_8px_28px_-6px_rgba(16,185,129,0.55)] transition-all active:scale-90 sm:hidden">
               <Plus className="h-7 w-7" />
             </button>
           )}
-          {!isMinhaIrosView && !isExtrasIrosView && canLaunchManual && (
-            <button onClick={() => setViewMode('extras')} className="fixed bottom-[calc(11rem+var(--safe-area-bottom))] right-[calc(1.25rem+var(--safe-area-right))] z-50 flex size-14 items-center justify-center rounded-full border-2 border-emerald-500 bg-emerald-600 text-white shadow-[0_8px_28px_-6px_rgba(16,185,129,0.55)] transition-all active:scale-90 sm:hidden">
-              <Plus className="h-7 w-7" />
-            </button>
-          )}
-          {!isMinhaIrosView && !isExtrasIrosView && canManageOperacoes && (
-            <button onClick={openCreateOperacao} className="fixed bottom-[calc(6rem+var(--safe-area-bottom))] right-[calc(1.25rem+var(--safe-area-right))] z-50 flex size-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-[0_8px_28px_-6px_rgba(37,99,235,0.55)] transition-all active:scale-90 sm:hidden">
+          {viewMode === 'gerenciar' && canManageOperacoes && (
+            <button onClick={openCreateOperacao} className="fixed bottom-[calc(4.5rem+var(--safe-area-bottom))] right-[calc(1.25rem+var(--safe-area-right))] z-50 flex size-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-[0_8px_28px_-6px_rgba(37,99,235,0.55)] transition-all active:scale-90 sm:hidden">
               <Plus className="h-7 w-7" />
             </button>
           )}
@@ -2844,13 +2879,13 @@ const GuardaMunicipalIros = () => {
 
 function StatCard({ label, value, icon: Icon }: { label: string; value: string; icon: typeof Calendar }) {
   return (
-    <div className="rounded-[22px] bg-white/10 p-3 backdrop-blur-sm md:p-4">
+    <div className="rounded-[22px] border border-slate-200/80 bg-white p-3 shadow-[0_8px_24px_-16px_rgba(15,23,42,0.18)] md:p-4">
       <div className="flex items-start justify-between gap-2 md:gap-3">
         <div>
-          <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/70 md:text-[11px]">{label}</p>
-          <p className="mt-1 text-2xl font-black tracking-[-0.05em] text-white md:mt-2 md:text-3xl">{value}</p>
+          <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500 md:text-[11px]">{label}</p>
+          <p className="mt-1 text-2xl font-black tracking-[-0.05em] text-slate-900 md:mt-2 md:text-3xl">{value}</p>
         </div>
-        <div className="rounded-full bg-white/15 p-2 text-white md:rounded-[18px] md:p-3">
+        <div className="rounded-full bg-slate-100 p-2 text-slate-500 md:rounded-[18px] md:p-3">
           <Icon className="size-4 md:size-5" />
         </div>
       </div>

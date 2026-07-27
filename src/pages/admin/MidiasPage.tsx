@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Calendar, FileText, ImageIcon, Images, Newspaper, Users } from 'lucide-react';
+import { ArrowLeft, Calendar, FileText, ImageIcon, Images, Newspaper, Users } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import BannerManagement from '@/components/admin/BannerManagement';
@@ -20,6 +21,7 @@ const tabs = [
 ];
 
 const MidiasPage = () => {
+  const navigate = useNavigate();
   const [counts, setCounts] = useState({ noticias: 0, eventos: 0, galeria: 0, banners: 0, equipe: 0 });
 
   useEffect(() => {
@@ -47,7 +49,18 @@ const MidiasPage = () => {
   return (
     <AdminLayout>
       <div className="space-y-6">
-        <section className="rounded-[24px] bg-[linear-gradient(135deg,_#0f172a_0%,_#1e293b_46%,_#2563eb_100%)] md:rounded-[34px]">
+        <div className="flex items-center gap-1 lg:hidden px-1 py-2">
+          <button
+            type="button"
+            onClick={() => navigate(-1)}
+            aria-label="Voltar"
+            className="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-slate-700 transition-colors hover:bg-slate-100 active:bg-slate-200"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </button>
+          <h1 className="truncate text-lg font-bold tracking-tight text-slate-900">Mídias</h1>
+        </div>
+        <section className="hidden rounded-[24px] bg-[linear-gradient(135deg,_#0f172a_0%,_#1e293b_46%,_#2563eb_100%)] md:rounded-[34px] lg:block">
           <div className="space-y-4 px-4 pb-4 pt-5 md:space-y-6 md:px-6 md:pb-5 md:pt-6">
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0">
@@ -70,21 +83,23 @@ const MidiasPage = () => {
         </section>
 
         <Tabs defaultValue="noticias" className="space-y-6">
-          <TabsList className="w-full flex-wrap h-auto gap-1 bg-transparent p-0 justify-start">
-            {tabs.map((tab) => {
-              const Icon = tab.icon;
-              return (
-                <TabsTrigger
-                  key={tab.value}
-                  value={tab.value}
-                  className="flex items-center gap-2 rounded-xl border border-border px-4 py-2.5 text-sm font-semibold data-[state=active]:border-primary data-[state=active]:bg-primary/5 data-[state=active]:text-primary"
-                >
-                  <Icon className="h-4 w-4" />
-                  {tab.label}
-                </TabsTrigger>
-              );
-            })}
-          </TabsList>
+          <div className="-mx-3 overflow-x-auto px-3 pb-1 sm:mx-0 sm:px-0 sm:pb-0">
+            <TabsList className="flex w-max flex-nowrap h-auto gap-1 bg-transparent p-0 justify-start">
+              {tabs.map((tab) => {
+                const Icon = tab.icon;
+                return (
+                  <TabsTrigger
+                    key={tab.value}
+                    value={tab.value}
+                    className="flex shrink-0 items-center gap-2 rounded-xl border border-border px-4 py-2.5 text-sm font-semibold data-[state=active]:border-primary data-[state=active]:bg-primary/5 data-[state=active]:text-primary"
+                  >
+                    <Icon className="h-4 w-4" />
+                    {tab.label}
+                  </TabsTrigger>
+                );
+              })}
+            </TabsList>
+          </div>
 
           <TabsContent value="noticias">
             <Noticias layout={false} />

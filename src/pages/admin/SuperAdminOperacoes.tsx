@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  ArrowLeft,
   Calendar,
   CheckCircle2,
   ChevronDown,
@@ -75,6 +76,7 @@ const springStyle = { transitionTimingFunction: 'cubic-bezier(0.34,1.56,0.64,1)'
 const smoothStyle = { transitionTimingFunction: 'cubic-bezier(0.4,0,0.2,1)' };
 
 const SuperAdminOperacoes = () => {
+  const navigate = useNavigate();
   const { isSuperAdmin } = useAuth();
   const [operacoes, setOperacoes] = useState<OperacaoComVagas[]>([]);
   const [loading, setLoading] = useState(true);
@@ -226,7 +228,18 @@ const SuperAdminOperacoes = () => {
   return (
     <AdminLayout>
       <div className="space-y-6">
-        <section className="rounded-[24px] bg-[linear-gradient(135deg,_#0f172a_0%,_#1e293b_45%,_#2563eb_100%)] px-4 py-5 text-white md:rounded-[34px] md:px-6 md:py-6">
+        <div className="flex items-center gap-1 lg:hidden px-1 py-2">
+          <button
+            type="button"
+            onClick={() => navigate(-1)}
+            aria-label="Voltar"
+            className="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-slate-700 transition-colors hover:bg-slate-100 active:bg-slate-200"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </button>
+          <h1 className="truncate text-lg font-bold tracking-tight text-slate-900">IROs</h1>
+        </div>
+        <section className="hidden rounded-[24px] bg-[linear-gradient(135deg,_#0f172a_0%,_#1e293b_45%,_#2563eb_100%)] px-4 py-5 text-white md:rounded-[34px] md:px-6 md:py-6 lg:block">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-sky-100/70 md:text-[11px]">Administração</p>

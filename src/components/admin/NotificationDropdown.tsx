@@ -33,9 +33,10 @@ function timeAgo(dateStr: string) {
 
 interface NotificationDropdownProps {
   userId: string | undefined;
+  triggerClassName?: string;
 }
 
-export function NotificationDropdown({ userId }: NotificationDropdownProps) {
+export function NotificationDropdown({ userId, triggerClassName }: NotificationDropdownProps) {
   const [open, setOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
@@ -66,7 +67,7 @@ export function NotificationDropdown({ userId }: NotificationDropdownProps) {
     <div ref={dropdownRef} className="relative">
       <button
         onClick={() => setOpen(!open)}
-        className="relative hidden h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-600 shadow-[0_8px_22px_-18px_rgba(15,23,42,0.28)] lg:flex hover:bg-slate-50 transition-colors"
+        className={triggerClassName ?? "relative hidden h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-600 shadow-[0_8px_22px_-18px_rgba(15,23,42,0.28)] lg:flex hover:bg-slate-50 transition-colors"}
       >
         <Bell className="h-4 w-4" />
         {unreadCount > 0 && (

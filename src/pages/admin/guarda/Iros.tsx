@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { ResponsiveDialog } from '@/components/ui/responsive-dialog';
-import { Calendar, CheckCircle2, Clock, Hourglass, Search, History, AlertTriangle, Gavel, DollarSign, X } from 'lucide-react';
+import { ArrowLeft, Calendar, CheckCircle2, Clock, Hourglass, Search, History, AlertTriangle, Gavel, DollarSign, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
 import type { IROOperacao, IROCandidatura } from '@/types/admin';
@@ -389,7 +389,18 @@ const GuardaIros = () => {
   return (
     <Layout>
       <div className="space-y-4 sm:space-y-6">
-        <section className="rounded-[24px] bg-[linear-gradient(135deg,_#0f172a_0%,_#1e293b_45%,_#2563eb_100%)] px-4 py-4 text-white sm:rounded-[28px] sm:px-6 sm:py-5">
+        <div className="flex items-center gap-1 lg:hidden px-1 py-2">
+          <button
+            type="button"
+            onClick={() => navigate(-1)}
+            aria-label="Voltar"
+            className="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-slate-700 transition-colors hover:bg-slate-100 active:bg-slate-200"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </button>
+          <h1 className="truncate text-lg font-bold tracking-tight text-slate-900">IROs</h1>
+        </div>
+        <section className="hidden rounded-[24px] bg-[linear-gradient(135deg,_#0f172a_0%,_#1e293b_45%,_#2563eb_100%)] px-4 py-4 text-white sm:rounded-[28px] sm:px-6 sm:py-5 lg:block">
           <div className="flex items-start justify-between gap-4">
             <div>
               <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-sky-100/70 sm:text-[11px]">{setorNome}</p>

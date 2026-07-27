@@ -1,6 +1,7 @@
 import { FormEvent, useMemo, useState } from 'react';
 import { addDays, isAfter } from 'date-fns';
-import { CalendarDays, CheckCircle2, Clock, History, RefreshCw, Shield, Shuffle, UserCheck } from 'lucide-react';
+import { ArrowLeft, CalendarDays, CheckCircle2, Clock, History, RefreshCw, Shield, Shuffle, UserCheck } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { GuardsLayout } from '@/components/admin/GuardsLayout';
 import { Badge } from '@/components/ui/badge';
@@ -16,6 +17,7 @@ import type { GuardaEscala, TrocaTipo } from '../types/escalas.types';
 import { formatDate, formatDateTime, formatTime, getEscalaStatusCalculado, statusClassName, statusLabels, trocaStatusLabels } from '../utils/escalas.formatters';
 
 export default function MinhasEscalasPage() {
+  const navigate = useNavigate();
   const { data: escalas = [], isLoading } = useMinhasEscalas();
   const { data: trocas = [] } = useEscalasTrocas();
   const apoio = useEscalasApoio();
@@ -86,7 +88,18 @@ export default function MinhasEscalasPage() {
   return (
     <GuardsLayout>
       <div className="space-y-5">
-        <section className="rounded-[24px] bg-[linear-gradient(135deg,_#0f172a_0%,_#1e293b_48%,_#2563eb_100%)] p-4 text-white sm:rounded-[28px] sm:p-6">
+        <div className="flex items-center gap-1 lg:hidden px-1 py-2">
+          <button
+            type="button"
+            onClick={() => navigate(-1)}
+            aria-label="Voltar"
+            className="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-slate-700 transition-colors hover:bg-slate-100 active:bg-slate-200"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </button>
+          <h1 className="truncate text-lg font-bold tracking-tight text-slate-900">Minhas Escalas</h1>
+        </div>
+        <section className="hidden rounded-[24px] bg-[linear-gradient(135deg,_#0f172a_0%,_#1e293b_48%,_#2563eb_100%)] p-4 text-white sm:rounded-[28px] sm:p-6 lg:block">
           <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-sky-100/70 sm:text-[11px]">Guarda Municipal</p>
           <h1 className="mt-2 text-2xl font-bold text-white sm:text-3xl">Minhas Escalas</h1>
           <p className="mt-1.5 hidden text-[13px] leading-5 text-white/80 md:block md:mt-2 md:text-sm">Servicos publicados, ciencia e trocas de servico.</p>

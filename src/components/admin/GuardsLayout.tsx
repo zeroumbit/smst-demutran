@@ -129,6 +129,7 @@ export const GuardsLayout = ({ children }: GuardsLayoutProps) => {
   const mobileNavItems = allNavItems.filter(item => item.label !== FISCALIZACAO_LABEL);
   const isActive = (path: string) => location.pathname === path || location.pathname.startsWith(path + '/');
   const [menuModalOpen, setMenuModalOpen] = useState(false);
+  const isHomePage = location.pathname === '/admin/perfil-guardas/guarda-municipal/dashboard';
 
   const renderMobileModalLink = (item: NavItem) => {
     const Icon = item.icon;
@@ -240,7 +241,7 @@ export const GuardsLayout = ({ children }: GuardsLayoutProps) => {
       {/* ─── Main content ─── */}
       <div className="flex min-h-screen min-h-dvh flex-col lg:pl-64">
 
-        <main className="native-app-scroll flex-1 px-3 pb-[calc(6.4rem+var(--safe-area-bottom))] pt-[max(var(--safe-area-top),0.75rem)] sm:px-4 sm:py-5 lg:p-8">
+        <main className={`native-app-scroll flex-1 px-3 pt-[max(var(--safe-area-top),0.75rem)] sm:px-4 sm:py-5 lg:p-8 ${isHomePage ? 'pb-[calc(6.4rem+var(--safe-area-bottom))]' : 'pb-4'}`}>
           <div className="mx-auto w-full max-w-5xl">
           {children}
           </div>
@@ -248,6 +249,7 @@ export const GuardsLayout = ({ children }: GuardsLayoutProps) => {
       </div>
 
       {/* ─── Mobile bottom tab bar ─── */}
+      {isHomePage && (
       <nav className="fixed bottom-0 left-0 right-0 z-50 pl-[calc(0.75rem+var(--safe-area-left))] pr-[calc(0.75rem+var(--safe-area-right))] pb-[calc(0.7rem+var(--safe-area-bottom))] pt-2 lg:hidden pointer-events-none">
         <div className="mx-auto grid max-w-5xl grid-cols-5 gap-2 rounded-[24px] bg-white/90 p-1.5 shadow-[0_14px_34px_-24px_rgba(15,23,42,0.3)] ring-1 ring-slate-200/70 backdrop-blur-xl pointer-events-auto">
           {mobileNavItems.map((item) => {
@@ -309,11 +311,12 @@ export const GuardsLayout = ({ children }: GuardsLayoutProps) => {
           })}
         </div>
       </nav>
+      )}
 
       {/* ─── Mobile menu modal ─── */}
       {menuModalOpen && (
         <div className="fixed inset-0 z-[60] flex min-h-0 flex-col bg-white lg:hidden animate-in slide-in-from-bottom">
-          <div className="flex items-center justify-between border-b border-slate-200 px-5 pb-4 pt-[calc(max(var(--safe-area-top),1rem)+0.5rem)] bg-slate-50">
+          <div className="flex items-center justify-between px-5 pb-4 pt-[calc(max(var(--safe-area-top),1rem)+0.5rem)]">
             <div className="flex items-center gap-3">
               <GuardaLogo />
               <span className="text-lg font-bold text-slate-900">Guarda Municipal</span>

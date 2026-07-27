@@ -1,6 +1,6 @@
 import { useDeferredValue, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { BookCheck, Filter, Search } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { ArrowLeft, BookCheck, Filter, Search } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -25,6 +25,7 @@ const filtrosIniciais: FiltroInfracao = {
 };
 
 export function FiscalizacaoInfracoesPage({ scope }: { scope: 'admin' | 'guarda' }) {
+  const navigate = useNavigate();
   const [filtros, setFiltros] = useState<FiltroInfracao>(filtrosIniciais);
   const [autocompleteOpen, setAutocompleteOpen] = useState(false);
   const buscaDeferred = useDeferredValue(filtros.busca);
@@ -60,7 +61,33 @@ export function FiscalizacaoInfracoesPage({ scope }: { scope: 'admin' | 'guarda'
 
   return (
     <div className="space-y-6">
-      <section className="rounded-[24px] bg-[linear-gradient(140deg,_#111827_0%,_#0f766e_48%,_#f59e0b_100%)] px-4 py-5 text-white md:rounded-[32px] md:px-6 md:py-6">
+      {scope === 'admin' && (
+        <div className="sticky top-0 z-20 flex items-center gap-1 border-b border-slate-200/80 bg-white/95 px-1 py-2 backdrop-blur-md lg:hidden">
+          <button
+            type="button"
+            onClick={() => navigate(-1)}
+            aria-label="Voltar"
+            className="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-slate-700 transition-colors hover:bg-slate-100 active:bg-slate-200"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </button>
+          <h1 className="truncate text-lg font-bold tracking-tight text-slate-900">Manual Brasileiro de Fiscalização</h1>
+        </div>
+      )}
+      {scope === 'guarda' && (
+        <div className="flex items-center gap-1 lg:hidden px-1 py-2">
+          <button
+            type="button"
+            onClick={() => navigate(-1)}
+            aria-label="Voltar"
+            className="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-slate-700 transition-colors hover:bg-slate-100 active:bg-slate-200"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </button>
+          <h1 className="truncate text-lg font-bold tracking-tight text-slate-900">Manual Brasileiro de Fiscalização</h1>
+        </div>
+      )}
+      <section className="hidden rounded-[24px] bg-[linear-gradient(140deg,_#111827_0%,_#0f766e_48%,_#f59e0b_100%)] px-4 py-5 text-white md:rounded-[32px] md:px-6 md:py-6 lg:block">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div className="min-w-0 flex-1">
             <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-white/65 md:text-[11px]">Fiscalização de Trânsito</p>

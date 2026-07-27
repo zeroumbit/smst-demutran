@@ -385,8 +385,49 @@ const GuardaDashboard = () => {
   return (
     <>
       <GuardsLayout>
-      <div className="space-y-4 sm:space-y-6">
-        <section className="rounded-[24px] bg-[linear-gradient(135deg,_#0f172a_0%,_#1e293b_45%,_#2563eb_100%)] px-4 py-4 text-white sm:rounded-[34px] sm:px-6 sm:py-5">
+      <div className="space-y-2 sm:space-y-6">
+        {/* Header mobile — saudação + label */}
+        <div className="pl-[var(--safe-area-left)] pr-[var(--safe-area-right)] pt-[var(--safe-area-top)] lg:hidden">
+          <div className="px-4 pb-0 pt-3">
+            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">Guarda Municipal</p>
+            <p className="mt-0.5 text-sm font-semibold text-slate-500">
+              {guardaNome ? `Olá, ${guardaNome.split(' ')[0]}!` : ''}
+            </p>
+          </div>
+        </div>
+
+        {/* Home + Cards em scroll horizontal — nativo com peek */}
+        <div className="-mx-4 overflow-x-auto px-4 pb-1 lg:hidden">
+          <p className="px-4 pb-1 text-xl font-black leading-tight text-slate-900">Home</p>
+          <div className="flex snap-x snap-mandatory gap-3">
+            {stats.map((s) => {
+              const Icon = s.icon;
+              return (
+                <div
+                  key={s.label}
+                  className="snap-start shrink-0 rounded-[22px] border border-slate-200/80 bg-white p-4 pb-5 shadow-sm shadow-slate-200/60 active:scale-[0.97] transition-transform"
+                  style={{ width: 'calc(100vw - 3rem)' }}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-slate-400">{s.label}</p>
+                      <p className="mt-2 text-[28px] font-black leading-none tracking-[-0.03em] text-slate-900">{s.value}</p>
+                      {s.sub && <p className="mt-1 text-[13px] font-medium text-slate-500">{s.sub}</p>}
+                    </div>
+                    <div className="shrink-0 rounded-2xl bg-slate-100 p-3 text-slate-500">
+                      <Icon className="h-5 w-5" />
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+            {/* Espaçador para o último card ter peek à direita */}
+            <div className="shrink-0 w-4" />
+          </div>
+        </div>
+
+        {/* Banner gradiente — desktop apenas */}
+        <section className="hidden rounded-[24px] bg-[linear-gradient(135deg,_#0f172a_0%,_#1e293b_45%,_#2563eb_100%)] px-4 py-4 text-white sm:rounded-[34px] sm:px-6 sm:py-5 lg:block">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div className="min-w-0">
               <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-sky-100/70 sm:text-[11px]">Guarda Municipal</p>
@@ -395,17 +436,6 @@ const GuardaDashboard = () => {
               </h1>
               <p className="mt-1.5 hidden max-w-xl text-[13px] leading-5 text-white md:block md:mt-2 md:text-[14px] md:leading-6">Resumo do mês de {mesAtual}.</p>
             </div>
-          </div>
-          <div className="mt-3 flex snap-x snap-mandatory gap-2 overflow-x-auto pb-1 native-scrollbar whitespace-nowrap sm:hidden">
-            <Badge variant="outline" className="snap-start whitespace-nowrap rounded-full border-white/15 bg-white/10 px-3 py-1 text-[11px] font-bold text-white">
-              Painel pessoal
-            </Badge>
-            <Badge variant="outline" className="snap-start whitespace-nowrap rounded-full border-white/15 bg-white/10 px-3 py-1 text-[11px] font-bold text-white">
-              Limite mensal {LIMITE_IRO_MES}h
-            </Badge>
-            <Badge variant="outline" className="snap-start whitespace-nowrap rounded-full border-white/15 bg-white/10 px-3 py-1 text-[11px] font-bold text-white">
-              Atualização em tempo real
-            </Badge>
           </div>
           <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
             {stats.map((s) => {

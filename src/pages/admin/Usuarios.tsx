@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Building2, Check, CheckCircle, ChevronDown, Eye, EyeOff, GraduationCap, IdCard, Plus, Search, ShieldCheck, SlidersHorizontal, Users, X } from 'lucide-react';
+import { ArrowLeft, Building2, Check, CheckCircle, ChevronDown, Eye, EyeOff, GraduationCap, IdCard, Plus, Search, ShieldCheck, SlidersHorizontal, Users, X } from 'lucide-react';
 import { useConfirmDialog } from '@/components/ui/use-confirm-dialog';
+import { useNavigate } from 'react-router-dom';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { DataTable } from '@/components/admin/DataTable';
 import { Badge } from '@/components/ui/badge';
@@ -105,6 +106,7 @@ const initialForm = {
 };
 
 const UsuariosPage = () => {
+  const navigate = useNavigate();
   const { isSuperAdmin, setorId: currentSetorId, profile } = useAuth();
   const { confirm, confirmDialog } = useConfirmDialog();
   const [setores, setSetores] = useState<Setor[]>([]);
@@ -626,7 +628,18 @@ const UsuariosPage = () => {
   return (
     <AdminLayout>
       <div className="space-y-6">
-        <section className="rounded-[24px] bg-[linear-gradient(135deg,_#0f172a_0%,_#1e293b_46%,_#2563eb_100%)] md:rounded-[34px]">
+        <div className="flex items-center gap-1 lg:hidden px-1 py-2">
+          <button
+            type="button"
+            onClick={() => navigate(-1)}
+            aria-label="Voltar"
+            className="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-slate-700 transition-colors hover:bg-slate-100 active:bg-slate-200"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </button>
+          <h1 className="truncate text-lg font-bold tracking-tight text-slate-900">Usuários do Sistema</h1>
+        </div>
+        <section className="hidden rounded-[24px] bg-[linear-gradient(135deg,_#0f172a_0%,_#1e293b_46%,_#2563eb_100%)] md:rounded-[34px] lg:block">
           <div className="space-y-4 px-4 pb-4 pt-5 md:space-y-6 md:px-6 md:pb-5 md:pt-6">
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0">
@@ -729,10 +742,20 @@ const UsuariosPage = () => {
           <SlidersHorizontal className="h-6 w-6" />
         </button>
 
+        <button
+          type="button"
+          onClick={() => setIsDialogOpen(true)}
+          aria-label="Criar usuário"
+          title="Criar usuário"
+          className="fixed bottom-[calc(6rem+var(--safe-area-bottom))] right-[calc(1.25rem+var(--safe-area-right))] z-40 flex size-14 items-center justify-center rounded-full bg-teal-700 text-white shadow-[0_8px_28px_-6px_rgba(15,118,110,0.55)] transition-all active:scale-90 sm:hidden"
+        >
+          <Plus className="h-6 w-6" />
+        </button>
+
         <div className="flex items-center justify-end gap-2">
           <Button
             onClick={() => setIsDialogOpen(true)}
-            className="gap-2"
+            className="hidden gap-2 sm:inline-flex"
             disabled={!isSuperAdmin && !currentSetorId}
           >
             <IdCard className="h-4 w-4" />

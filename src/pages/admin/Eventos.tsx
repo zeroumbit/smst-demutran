@@ -176,11 +176,21 @@ const Eventos = ({ layout = true }: { layout?: boolean } = {}) => {
           <h1 className="text-3xl font-bold">Eventos</h1>
           <p className="text-muted-foreground mt-1">Gerencie eventos globais ou vinculados a setores.</p>
         </div>
-        <Button onClick={() => setIsDialogOpen(true)} className="gap-2">
+        <Button onClick={() => setIsDialogOpen(true)} className="hidden gap-2 sm:inline-flex">
           <Plus className="w-4 h-4" />
           Novo Evento
         </Button>
       </div>
+
+      <button
+        type="button"
+        onClick={() => setIsDialogOpen(true)}
+        aria-label="Novo evento"
+        title="Novo evento"
+        className="fixed bottom-[calc(6rem+var(--safe-area-bottom))] right-[calc(1.25rem+var(--safe-area-right))] z-40 flex size-14 items-center justify-center rounded-full bg-teal-700 text-white shadow-[0_8px_28px_-6px_rgba(15,118,110,0.55)] transition-all active:scale-90 sm:hidden"
+      >
+        <Plus className="h-6 w-6" />
+      </button>
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="relative max-w-sm w-full">

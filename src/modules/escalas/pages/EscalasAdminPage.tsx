@@ -5,7 +5,7 @@ import { ptBR } from 'date-fns/locale';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
-import { CalendarDays, CheckCircle2, FileDown, FileText, History, MapPin, Plus, Printer, Search, Settings2, Shield, Shuffle, Trash2, Users, XCircle } from 'lucide-react';
+import { ArrowLeft, CalendarDays, CheckCircle2, FileDown, FileText, History, MapPin, Plus, Printer, Search, Settings2, Shield, Shuffle, Trash2, Users, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { Badge } from '@/components/ui/badge';
@@ -676,7 +676,18 @@ export default function EscalasAdminPage() {
   return (
     <AdminLayout>
       <div className="space-y-6">
-        <section className="rounded-[24px] bg-[linear-gradient(135deg,_#0f172a_0%,_#1e293b_45%,_#2563eb_100%)] px-4 py-5 text-white md:rounded-[34px] md:px-6 md:py-6">
+        <div className="flex items-center gap-1 lg:hidden px-1 py-2">
+          <button
+            type="button"
+            onClick={() => navigate(-1)}
+            aria-label="Voltar"
+            className="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-slate-700 transition-colors hover:bg-slate-100 active:bg-slate-200"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </button>
+          <h1 className="truncate text-lg font-bold tracking-tight text-slate-900">Escalas de Serviço</h1>
+        </div>
+        <section className="hidden rounded-[24px] bg-[linear-gradient(135deg,_#0f172a_0%,_#1e293b_45%,_#2563eb_100%)] px-4 py-5 text-white md:rounded-[34px] md:px-6 md:py-6 lg:block">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div className="min-w-0 flex-1">
               <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-sky-100/70 md:text-[11px]">Guarda Municipal</p>
@@ -700,6 +711,28 @@ export default function EscalasAdminPage() {
           </div>
         </section>
 
+        {/* Stat cards - mobile */}
+        <div className="flex gap-3 overflow-x-auto px-1 pb-1 scrollbar-none lg:hidden" style={{ WebkitOverflowScrolling: 'touch', scrollSnapType: 'x mandatory' }}>
+          <div className="min-w-[75vw] snap-start sm:min-w-0">
+            <StatCardMobile label="Em serviço agora" value={String(stats.emServico)} icon={Shield} />
+          </div>
+          <div className="min-w-[75vw] snap-start sm:min-w-0">
+            <StatCardMobile label="Escalados hoje" value={String(stats.escaladosHoje)} icon={Users} />
+          </div>
+          <div className="min-w-[75vw] snap-start sm:min-w-0">
+            <StatCardMobile label="Próximos serviços" value={String(stats.futuras)} icon={CalendarDays} />
+          </div>
+          <div className="min-w-[75vw] snap-start sm:min-w-0">
+            <StatCardMobile label="Rascunhos" value={String(stats.rascunho)} icon={FileText} />
+          </div>
+          <div className="min-w-[75vw] snap-start sm:min-w-0">
+            <StatCardMobile label="Trocas aprovação" value={String(stats.trocasPendentes)} icon={Shuffle} />
+          </div>
+          <div className="min-w-[75vw] snap-start sm:min-w-0">
+            <StatCardMobile label="Ciências pendentes" value={String(stats.cienciasPendentes)} icon={CheckCircle2} />
+          </div>
+        </div>
+
         <div className="flex items-center justify-between gap-3">
           <div className="inline-flex overflow-x-auto rounded-[26px] bg-slate-100/80 p-1.5 scrollbar-none">
             {navItems.filter(([key]) => key !== 'nova').map(([key, label]) => (
@@ -719,7 +752,7 @@ export default function EscalasAdminPage() {
               </button>
             ))}
           </div>
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="hidden sm:flex items-center gap-2 shrink-0">
             <Button variant="outline" size="sm" onClick={openOperacaoPdfDialog} className="gap-1.5 text-xs md:text-sm">
               <Printer className="h-4 w-4" />
               Escala de Operação (PDF)
@@ -1145,6 +1178,14 @@ export default function EscalasAdminPage() {
         </DialogContent>
       </Dialog>
       </div>
+
+      {/* FAB - Nova escala */}
+      <button
+        onClick={() => openEscalaForm(null)}
+        className="fixed bottom-[calc(4.5rem+var(--safe-area-bottom))] right-[calc(1.25rem+var(--safe-area-right))] z-50 flex size-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-[0_8px_28px_-6px_rgba(37,99,235,0.55)] transition-all active:scale-90 sm:hidden"
+      >
+        <Plus className="h-7 w-7" />
+      </button>
     </AdminLayout>
   );
 }
@@ -1390,6 +1431,20 @@ function StatCardEscalas({ label, value, icon: Icon }: { label: string; value: s
       <div className="min-w-0">
         <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-white/60">{label}</p>
         <p className="mt-0.5 text-2xl font-black tracking-tight text-white">{value}</p>
+      </div>
+    </div>
+  );
+}
+
+function StatCardMobile({ label, value, icon: Icon }: { label: string; value: string; icon: typeof Shield }) {
+  return (
+    <div className="flex items-center gap-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-slate-100">
+        <Icon className="h-6 w-6 text-slate-600" />
+      </div>
+      <div className="min-w-0">
+        <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-slate-500">{label}</p>
+        <p className="mt-0.5 text-2xl font-black tracking-tight text-slate-900">{value}</p>
       </div>
     </div>
   );

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, FC } from 'react';
-import { Eye, FileText, Loader2, Plus, Search, SlidersHorizontal, Upload, X } from 'lucide-react';
+import { ArrowLeft, Eye, FileText, Loader2, Plus, Search, SlidersHorizontal, Upload, X } from 'lucide-react';
 import { useConfirmDialog } from '@/components/ui/use-confirm-dialog';
+import { useNavigate } from 'react-router-dom';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { DataTable } from '@/components/admin/DataTable';
 import { Badge } from '@/components/ui/badge';
@@ -156,6 +157,7 @@ const DocumentoForm: FC<DocumentoFormProps> = ({
 };
 
 const Documentos = () => {
+  const navigate = useNavigate();
   const { isSuperAdmin, setorId, profile } = useAuth();
   const { confirm, confirmDialog } = useConfirmDialog();
   const [documentos, setDocumentos] = useState<Documento[]>([]);
@@ -450,7 +452,18 @@ const Documentos = () => {
   return (
     <AdminLayout>
       <div className="space-y-6">
-        <section className="rounded-[24px] bg-[linear-gradient(135deg,_#0f172a_0%,_#1e293b_46%,_#2563eb_100%)] md:rounded-[34px]">
+        <div className="flex items-center gap-1 lg:hidden px-1 py-2">
+          <button
+            type="button"
+            onClick={() => navigate(-1)}
+            aria-label="Voltar"
+            className="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-slate-700 transition-colors hover:bg-slate-100 active:bg-slate-200"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </button>
+          <h1 className="truncate text-lg font-bold tracking-tight text-slate-900">Documentos</h1>
+        </div>
+        <section className="hidden rounded-[24px] bg-[linear-gradient(135deg,_#0f172a_0%,_#1e293b_46%,_#2563eb_100%)] md:rounded-[34px] lg:block">
           <div className="space-y-4 px-4 pb-4 pt-5 md:space-y-6 md:px-6 md:pb-5 md:pt-6">
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0">
@@ -509,7 +522,7 @@ const Documentos = () => {
                   </SelectContent>
                 </Select>
               )}
-              <Button onClick={() => setIsDialogOpen(true)} className="h-12 flex-1 gap-2 rounded-[18px] bg-white text-slate-900 hover:bg-slate-100">
+              <Button onClick={() => setIsDialogOpen(true)} className="hidden h-12 flex-1 gap-2 rounded-[18px] bg-white text-slate-900 hover:bg-slate-100 sm:inline-flex">
                 <Plus className="h-4 w-4" />
                 Novo
               </Button>
@@ -594,6 +607,16 @@ const Documentos = () => {
           className={`admin-floating-action fixed z-50 flex h-14 w-14 items-center justify-center rounded-full bg-slate-900 text-white shadow-[0_8px_32px_-8px_rgba(15,23,42,0.45)] transition-all hover:bg-slate-800 active:scale-95 lg:hidden ${filtrosAbertos ? 'hidden' : ''}`}
         >
           <SlidersHorizontal className="h-6 w-6" />
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setIsDialogOpen(true)}
+          aria-label="Novo documento"
+          title="Novo documento"
+          className="fixed bottom-[calc(6rem+var(--safe-area-bottom))] right-[calc(1.25rem+var(--safe-area-right))] z-40 flex size-14 items-center justify-center rounded-full bg-teal-700 text-white shadow-[0_8px_28px_-6px_rgba(15,118,110,0.55)] transition-all active:scale-90 sm:hidden"
+        >
+          <Plus className="h-6 w-6" />
         </button>
 
         {loading ? (

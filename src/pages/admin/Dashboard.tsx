@@ -741,10 +741,25 @@ const Dashboard = () => {
 
   return (
     <AdminLayout>
-      <div className="space-y-8 p-1">
+      <div className="space-y-4 p-1 lg:space-y-8">
+        {isGuardaScope && (
+          <div className="pl-[var(--safe-area-left)] pr-[var(--safe-area-right)] pt-[var(--safe-area-top)] lg:hidden">
+            <div className="px-4 pb-0 pt-3">
+              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">Guarda Municipal</p>
+              <p className="mt-0.5 text-sm font-semibold text-slate-500">
+                {profile?.name ? `Olá, ${profile.name.split(' ')[0]}!` : ''}
+              </p>
+            </div>
+          </div>
+        )}
+        {isGuardaScope && (
+          <div className="-mx-4 overflow-x-auto px-4 pb-1 lg:hidden">
+            <p className="px-4 pb-0 text-xl font-black leading-tight text-slate-900">Home</p>
+          </div>
+        )}
         <section className="space-y-6">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900 md:text-3xl">
+            <h1 className="hidden lg:block text-2xl font-bold tracking-tight text-slate-900 md:text-3xl">
               Centro de comando
             </h1>
           </div>
@@ -838,10 +853,10 @@ const Dashboard = () => {
           <Card className="overflow-hidden rounded-[28px] border border-slate-200/80 bg-white shadow-[0_12px_32px_-22px_rgba(15,23,42,0.2)]">
             <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
               <div>
-                <CardTitle className="font-heading text-[1.35rem] font-bold uppercase tracking-[-0.02em] text-slate-800">
+                <CardTitle className="font-heading text-base font-bold tracking-[-0.02em] text-slate-800">
                   {isGuardaScope ? 'Escalas Mensais - IRO' : 'Fluxo mensal - Demutran'}
                 </CardTitle>
-                <CardDescription className="mt-1 text-sm leading-6 text-[#89a0bf]">
+                <CardDescription className="mt-1 hidden text-sm leading-6 text-[#89a0bf] lg:block">
                   {isGuardaScope 
                     ? 'Evolução de candidaturas confirmadas e escalas concluídas da Guarda nos últimos meses'
                     : 'Veiculos recolhidos vs regularizados nos ultimos meses'}
@@ -942,8 +957,8 @@ const Dashboard = () => {
           <section className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
             <Card className="overflow-hidden rounded-[28px] border border-slate-200/80 bg-white shadow-[0_12px_32px_-22px_rgba(15,23,42,0.2)]">
               <CardHeader>
-                <CardTitle className="font-heading text-[1.35rem] font-bold uppercase tracking-[-0.02em] text-slate-800">Concessionarios por categoria</CardTitle>
-                <CardDescription className="mt-1 text-sm leading-6 text-[#89a0bf]">
+                <CardTitle className="font-heading text-base font-bold tracking-[-0.02em] text-slate-800">Concessionarios por categoria</CardTitle>
+                <CardDescription className="mt-1 hidden text-sm leading-6 text-[#89a0bf] lg:block">
                   Total de cadastros e base ativa do novo modulo de permissionarios.
                 </CardDescription>
               </CardHeader>
@@ -965,8 +980,8 @@ const Dashboard = () => {
 
             <Card className="overflow-hidden rounded-[28px] border border-slate-200/80 bg-white shadow-[0_12px_32px_-22px_rgba(15,23,42,0.2)]">
               <CardHeader>
-                <CardTitle className="font-heading text-[1.35rem] font-bold uppercase tracking-[-0.02em] text-slate-800">Recursos e credenciais</CardTitle>
-                <CardDescription className="mt-1 text-sm leading-6 text-[#89a0bf]">
+                <CardTitle className="font-heading text-base font-bold tracking-[-0.02em] text-slate-800">Recursos e credenciais</CardTitle>
+                <CardDescription className="mt-1 hidden text-sm leading-6 text-[#89a0bf] lg:block">
                   Acompanhe o volume de recursos e credenciais em aberto no DEMUTRAN.
                 </CardDescription>
               </CardHeader>
@@ -1022,57 +1037,63 @@ const Dashboard = () => {
           <section className="grid gap-6 xl:grid-cols-[1fr_1fr]">
             <Card className="overflow-hidden rounded-[28px] border border-slate-200/80 bg-white shadow-[0_12px_32px_-22px_rgba(15,23,42,0.2)]">
               <CardHeader>
-                <CardTitle className="font-heading text-[1.35rem] font-bold uppercase tracking-[-0.02em] text-slate-800">Frota da Guarda</CardTitle>
-                <CardDescription className="mt-1 text-sm leading-6 text-[#89a0bf]">
+                <CardTitle className="font-heading text-base font-bold tracking-[-0.02em] text-slate-800">Frota da Guarda</CardTitle>
+                <CardDescription className="mt-1 hidden text-sm leading-6 text-[#89a0bf] lg:block">
                   Situação dos veículos operacionais da Guarda Municipal.
                 </CardDescription>
               </CardHeader>
-              <CardContent className="grid gap-3 md:grid-cols-3">
-                <div className="rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-4">
-                  <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">Disponíveis</p>
-                  <p className="mt-2 text-3xl font-extrabold tracking-[-0.05em] text-emerald-600">{state.frotaDisponivel}</p>
-                  <p className="mt-2 text-sm leading-6 text-slate-500">Viaturas prontas para uso</p>
-                </div>
-                <div className="rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-4">
-                  <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">Em Serviço</p>
-                  <p className="mt-2 text-3xl font-extrabold tracking-[-0.05em] text-blue-600">{state.frotaEmServico}</p>
-                  <p className="mt-2 text-sm leading-6 text-slate-500">Viaturas em operação</p>
-                </div>
-                <div className="rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-4">
-                  <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">Em Manutenção</p>
-                  <p className="mt-2 text-3xl font-extrabold tracking-[-0.05em] text-amber-600">{state.frotaEmManutencao}</p>
-                  <p className="mt-2 text-sm leading-6 text-slate-500">Viaturas em oficina</p>
+              <CardContent>
+                <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto md:grid md:grid-cols-3 md:overflow-x-visible">
+                  <div className="w-[70vw] shrink-0 snap-start rounded-2xl border border-slate-200 bg-slate-50/70 px-5 py-5 md:w-auto">
+                    <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">Disponíveis</p>
+                    <p className="mt-2 text-[28px] font-extrabold tracking-[-0.04em] text-emerald-600">{state.frotaDisponivel}</p>
+                    <p className="mt-1 text-[13px] leading-5 text-slate-500">Viaturas prontas para uso</p>
+                  </div>
+                  <div className="w-[70vw] shrink-0 snap-start rounded-2xl border border-slate-200 bg-slate-50/70 px-5 py-5 md:w-auto">
+                    <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">Em Serviço</p>
+                    <p className="mt-2 text-[28px] font-extrabold tracking-[-0.04em] text-blue-600">{state.frotaEmServico}</p>
+                    <p className="mt-1 text-[13px] leading-5 text-slate-500">Viaturas em operação</p>
+                  </div>
+                  <div className="w-[70vw] shrink-0 snap-start rounded-2xl border border-slate-200 bg-slate-50/70 px-5 py-5 md:w-auto">
+                    <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">Em Manutenção</p>
+                    <p className="mt-2 text-[28px] font-extrabold tracking-[-0.04em] text-amber-600">{state.frotaEmManutencao}</p>
+                    <p className="mt-1 text-[13px] leading-5 text-slate-500">Viaturas em oficina</p>
+                  </div>
+                  <div className="hidden shrink-0 w-4 md:hidden" />
                 </div>
               </CardContent>
             </Card>
 
             <Card className="overflow-hidden rounded-[28px] border border-slate-200/80 bg-white shadow-[0_12px_32px_-22px_rgba(15,23,42,0.2)]">
               <CardHeader>
-                <CardTitle className="font-heading text-[1.35rem] font-bold uppercase tracking-[-0.02em] text-slate-800">Conteúdo e Operação</CardTitle>
-                <CardDescription className="mt-1 text-sm leading-6 text-[#89a0bf]">
+                <CardTitle className="font-heading text-base font-bold tracking-[-0.02em] text-slate-800">Conteúdo e Operação</CardTitle>
+                <CardDescription className="mt-1 hidden text-sm leading-6 text-[#89a0bf] lg:block">
                   Publicações e atividades do setor da Guarda Municipal.
                 </CardDescription>
               </CardHeader>
-              <CardContent className="grid gap-3 md:grid-cols-2">
-                <div className="rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-4">
-                  <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">Notícias</p>
-                  <p className="mt-2 text-3xl font-extrabold tracking-[-0.05em] text-blue-600">{state.noticiasSetor}</p>
-                  <p className="mt-2 text-sm leading-6 text-slate-500">Notícias publicadas do setor</p>
-                </div>
-                <div className="rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-4">
-                  <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">Eventos</p>
-                  <p className="mt-2 text-3xl font-extrabold tracking-[-0.05em] text-emerald-600">{state.eventosSetor}</p>
-                  <p className="mt-2 text-sm leading-6 text-slate-500">Eventos cadastrados no setor</p>
-                </div>
-                <div className="rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-4">
-                  <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">Equipes</p>
-                  <p className="mt-2 text-3xl font-extrabold tracking-[-0.05em] text-purple-600">{state.equipesAtivas}</p>
-                  <p className="mt-2 text-sm leading-6 text-slate-500">Equipes de trabalho ativas</p>
-                </div>
-                <div className="rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-4">
-                  <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">Escalas IRO</p>
-                  <p className="mt-2 text-3xl font-extrabold tracking-[-0.05em] text-emerald-600">{state.candidaturasIro}</p>
-                  <p className="mt-2 text-sm leading-6 text-slate-500">Candidaturas de reforço confirmadas</p>
+              <CardContent>
+                <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto md:grid md:grid-cols-2 md:overflow-x-visible">
+                  <div className="w-[70vw] shrink-0 snap-start rounded-2xl border border-slate-200 bg-slate-50/70 px-5 py-5 md:w-auto">
+                    <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">Notícias</p>
+                    <p className="mt-2 text-[28px] font-extrabold tracking-[-0.04em] text-blue-600">{state.noticiasSetor}</p>
+                    <p className="mt-1 text-[13px] leading-5 text-slate-500">Notícias publicadas do setor</p>
+                  </div>
+                  <div className="w-[70vw] shrink-0 snap-start rounded-2xl border border-slate-200 bg-slate-50/70 px-5 py-5 md:w-auto">
+                    <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">Eventos</p>
+                    <p className="mt-2 text-[28px] font-extrabold tracking-[-0.04em] text-emerald-600">{state.eventosSetor}</p>
+                    <p className="mt-1 text-[13px] leading-5 text-slate-500">Eventos cadastrados no setor</p>
+                  </div>
+                  <div className="w-[70vw] shrink-0 snap-start rounded-2xl border border-slate-200 bg-slate-50/70 px-5 py-5 md:w-auto">
+                    <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">Equipes</p>
+                    <p className="mt-2 text-[28px] font-extrabold tracking-[-0.04em] text-purple-600">{state.equipesAtivas}</p>
+                    <p className="mt-1 text-[13px] leading-5 text-slate-500">Equipes de trabalho ativas</p>
+                  </div>
+                  <div className="w-[70vw] shrink-0 snap-start rounded-2xl border border-slate-200 bg-slate-50/70 px-5 py-5 md:w-auto">
+                    <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">Escalas IRO</p>
+                    <p className="mt-2 text-[28px] font-extrabold tracking-[-0.04em] text-emerald-600">{state.candidaturasIro}</p>
+                    <p className="mt-1 text-[13px] leading-5 text-slate-500">Candidaturas de reforço confirmadas</p>
+                  </div>
+                  <div className="hidden shrink-0 w-4 md:hidden" />
                 </div>
               </CardContent>
             </Card>
@@ -1084,10 +1105,10 @@ const Dashboard = () => {
             <Card className="overflow-hidden rounded-[28px] border border-slate-200/80 bg-white shadow-[0_12px_32px_-22px_rgba(15,23,42,0.2)]">
               <CardHeader className="flex flex-row items-center justify-between space-y-0">
                 <div>
-                  <CardTitle className="font-heading text-[1.35rem] font-bold uppercase tracking-[-0.02em] text-slate-800">
+                  <CardTitle className="font-heading text-base font-bold tracking-[-0.02em] text-slate-800">
                     Efetivo por Graduação
                   </CardTitle>
-                  <CardDescription className="mt-1 text-sm leading-6 text-[#89a0bf]">
+                  <CardDescription className="mt-1 hidden text-sm leading-6 text-[#89a0bf] lg:block">
                     Distribuição proporcional do efetivo ativo entre as graduações da Guarda
                   </CardDescription>
                 </div>
@@ -1112,15 +1133,15 @@ const Dashboard = () => {
                   <div className="grid grid-cols-3 gap-3 border-t border-slate-200 pt-5">
                     <div className="text-center">
                       <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-[#8ea0bd]">Total de Guardas</p>
-                      <p className="mt-2 text-[2rem] font-extrabold tracking-[-0.05em] text-[#2563eb]">{state.guardasAtivos || 0}</p>
+                      <p className="mt-2 text-[22px] font-extrabold tracking-[-0.04em] text-[#2563eb] md:text-[2rem]">{state.guardasAtivos || 0}</p>
                     </div>
                     <div className="text-center">
                       <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-[#8ea0bd]">Graduações</p>
-                      <p className="mt-2 text-[2rem] font-extrabold tracking-[-0.05em] text-[#10b981]">{state.distribuicaoGraduacoes?.length || 0}</p>
+                      <p className="mt-2 text-[22px] font-extrabold tracking-[-0.04em] text-[#10b981] md:text-[2rem]">{state.distribuicaoGraduacoes?.length || 0}</p>
                     </div>
                     <div className="text-center">
                       <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-[#8ea0bd]">Média p/ Grad.</p>
-                      <p className="mt-2 text-[2rem] font-extrabold tracking-[-0.05em] text-[#8b5cf6]">
+                      <p className="mt-2 text-[22px] font-extrabold tracking-[-0.04em] text-[#8b5cf6] md:text-[2rem]">
                         {state.distribuicaoGraduacoes?.length 
                           ? Math.round((state.guardasAtivos || 0) / state.distribuicaoGraduacoes.length) 
                           : 0}
@@ -1133,31 +1154,34 @@ const Dashboard = () => {
 
             <Card className="overflow-hidden rounded-[28px] border border-slate-200/80 bg-white shadow-[0_12px_32px_-22px_rgba(15,23,42,0.2)]">
               <CardHeader>
-                <CardTitle className="font-heading text-[1.35rem] font-bold uppercase tracking-[-0.02em] text-slate-800">IRO e Banco de Horas</CardTitle>
-                <CardDescription className="mt-1 text-sm leading-6 text-[#89a0bf]">
+                <CardTitle className="font-heading text-base font-bold tracking-[-0.02em] text-slate-800">IRO e Banco de Horas</CardTitle>
+                <CardDescription className="mt-1 hidden text-sm leading-6 text-[#89a0bf] lg:block">
                   Métricas consolidadas do módulo de Indenização de Reforço Operacional.
                 </CardDescription>
               </CardHeader>
-              <CardContent className="grid gap-3 md:grid-cols-2">
-                <div className="rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-4">
-                  <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">Operações IRO</p>
-                  <p className="mt-2 text-3xl font-extrabold tracking-[-0.05em] text-blue-600">{state.operacoesAtivasIro}</p>
-                  <p className="mt-2 text-sm leading-6 text-slate-500">Operações ativas de reforço cadastradas</p>
-                </div>
-                <div className="rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-4">
-                  <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">Escalas Confirmadas</p>
-                  <p className="mt-2 text-3xl font-extrabold tracking-[-0.05em] text-emerald-600">{state.candidaturasIro}</p>
-                  <p className="mt-2 text-sm leading-6 text-slate-500">Total de candidaturas de reforço confirmadas</p>
-                </div>
-                <div className="rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-4">
-                  <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">Banco de Horas</p>
-                  <p className="mt-2 text-3xl font-extrabold tracking-[-0.05em] text-amber-600">{state.totalBancoHoras}h</p>
-                  <p className="mt-2 text-sm leading-6 text-slate-500">Total de horas extras registradas no banco</p>
-                </div>
-                <div className="rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-4">
-                  <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">Demandas Ouvidoria</p>
-                  <p className="mt-2 text-3xl font-extrabold tracking-[-0.05em] text-rose-600">{state.demandasFalaCidadaoCount}</p>
-                  <p className="mt-2 text-sm leading-6 text-slate-500">Solicitações Ouvidoria (Fala Cidadão) pendentes</p>
+              <CardContent>
+                <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto md:grid md:grid-cols-2 md:overflow-x-visible">
+                  <div className="w-[70vw] shrink-0 snap-start rounded-2xl border border-slate-200 bg-slate-50/70 px-5 py-5 md:w-auto">
+                    <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">Operações IRO</p>
+                    <p className="mt-2 text-[28px] font-extrabold tracking-[-0.04em] text-blue-600">{state.operacoesAtivasIro}</p>
+                    <p className="mt-1 text-[13px] leading-5 text-slate-500">Operações ativas de reforço cadastradas</p>
+                  </div>
+                  <div className="w-[70vw] shrink-0 snap-start rounded-2xl border border-slate-200 bg-slate-50/70 px-5 py-5 md:w-auto">
+                    <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">Escalas Confirmadas</p>
+                    <p className="mt-2 text-[28px] font-extrabold tracking-[-0.04em] text-emerald-600">{state.candidaturasIro}</p>
+                    <p className="mt-1 text-[13px] leading-5 text-slate-500">Total de candidaturas de reforço confirmadas</p>
+                  </div>
+                  <div className="w-[70vw] shrink-0 snap-start rounded-2xl border border-slate-200 bg-slate-50/70 px-5 py-5 md:w-auto">
+                    <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">Banco de Horas</p>
+                    <p className="mt-2 text-[28px] font-extrabold tracking-[-0.04em] text-amber-600">{state.totalBancoHoras}h</p>
+                    <p className="mt-1 text-[13px] leading-5 text-slate-500">Total de horas extras registradas no banco</p>
+                  </div>
+                  <div className="w-[70vw] shrink-0 snap-start rounded-2xl border border-slate-200 bg-slate-50/70 px-5 py-5 md:w-auto">
+                    <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">Demandas Ouvidoria</p>
+                    <p className="mt-2 text-[28px] font-extrabold tracking-[-0.04em] text-rose-600">{state.demandasFalaCidadaoCount}</p>
+                    <p className="mt-1 text-[13px] leading-5 text-slate-500">Solicitações Ouvidoria (Fala Cidadão) pendentes</p>
+                  </div>
+                  <div className="hidden shrink-0 w-4 md:hidden" />
                 </div>
               </CardContent>
             </Card>

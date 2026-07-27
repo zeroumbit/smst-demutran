@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { CalendarOff, ClipboardList, Copy, GraduationCap, Pencil, Plus, RefreshCcw, Shield, ToggleLeft, ToggleRight, Trash2, UserCheck } from 'lucide-react';
+import { ArrowLeft, CalendarOff, ClipboardList, Copy, GraduationCap, MoreHorizontal, Pencil, Plus, RefreshCcw, Shield, Trash2, UserCheck } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -7,7 +8,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ResponsiveDialog } from '@/components/ui/responsive-dialog';
+import { Switch } from '@/components/ui/switch';
 import { useConfirmDialog } from '@/components/ui/use-confirm-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from '@/hooks/use-toast';
@@ -52,6 +55,7 @@ const formatDateBR = (date: string) => {
 const sectionLabels: Record<Section, string> = { guardas: 'Guardas', graduacoes: 'Graduações' };
 
 const GuardasMunicipaisPage = () => {
+  const navigate = useNavigate();
   const { confirm, confirmDialog } = useConfirmDialog();
   const { isSuperAdmin } = useAuth();
   const [canManageAfastamentos, setCanManageAfastamentos] = useState(isSuperAdmin);
@@ -302,7 +306,18 @@ const GuardasMunicipaisPage = () => {
   return (
     <AdminLayout>
       <div className="space-y-6">
-        <section className="rounded-[24px] bg-[linear-gradient(135deg,_#0f172a_0%,_#1e293b_45%,_#2563eb_100%)] px-4 py-5 text-white md:rounded-[34px] md:px-6 md:py-6">
+        <div className="flex items-center gap-1 lg:hidden px-1 py-2">
+          <button
+            type="button"
+            onClick={() => navigate(-1)}
+            aria-label="Voltar"
+            className="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-slate-700 transition-colors hover:bg-slate-100 active:bg-slate-200"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </button>
+          <h1 className="truncate text-lg font-bold tracking-tight text-slate-900">Guardas Municipais</h1>
+        </div>
+        <section className="hidden rounded-[24px] bg-[linear-gradient(135deg,_#0f172a_0%,_#1e293b_45%,_#2563eb_100%)] px-4 py-5 text-white md:rounded-[34px] md:px-6 md:py-6 lg:block">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-sky-100/70 md:text-[11px]">Guarda Municipal</p>
@@ -358,7 +373,7 @@ const GuardasMunicipaisPage = () => {
                   {sectionLabels[s]}
                 </button>
               ))}
-              <div className="ml-auto">
+              <div className="ml-auto hidden sm:block">
                 <Button size="sm" onClick={section === 'guardas' ? openCreateGuarda : openCreateGraduacao}>
                   <Plus className="mr-1.5 h-4 w-4" />
                   {section === 'guardas' ? 'Novo guarda' : 'Nova graduação'}
@@ -411,24 +426,35 @@ const GuardasMunicipaisPage = () => {
                     )}
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
+                    <Switch
+                      checked={item.ativo}
+                      onCheckedChange={() => void handleToggleAtivo(item)}
+                      className={cn(item.ativo ? 'data-[state=checked]:bg-emerald-500' : '')}
+                    />
+                    <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => openEditGuarda(item)}>
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-9 w-9 text-red-600 hover:text-red-700" onClick={() => handleDeleteGuarda(item)}>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                     {canManageAfastamentos && (
-                      <Button variant="outline" size="sm" onClick={() => openAfastamentos(item)}>
-                        <CalendarOff className="mr-1.5 h-4 w-4" />
-                        Afastamentos
-                      </Button>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-9 w-9">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent align="end" className="w-48 p-1">
+                          <button
+                            onClick={() => { openAfastamentos(item); }}
+                            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-700 transition-colors hover:bg-slate-100"
+                          >
+                            <CalendarOff className="h-4 w-4" />
+                            Afastamentos
+                          </button>
+                        </PopoverContent>
+                      </Popover>
                     )}
-                    <Button variant="outline" size="sm" onClick={() => void handleToggleAtivo(item)}>
-                      {item.ativo ? <ToggleLeft className="mr-1.5 h-4 w-4" /> : <ToggleRight className="mr-1.5 h-4 w-4" />}
-                      {item.ativo ? 'Desabilitar' : 'Habilitar'}
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={() => openEditGuarda(item)}>
-                      <Pencil className="mr-1.5 h-4 w-4" />
-                      Editar
-                    </Button>
-                    <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700" onClick={() => handleDeleteGuarda(item)}>
-                      <Trash2 className="mr-1.5 h-4 w-4" />
-                      Excluir
-                    </Button>
                   </div>
                 </div>
               </article>
@@ -453,13 +479,11 @@ const GuardasMunicipaisPage = () => {
                     <h2 className="text-lg font-bold text-slate-900">{item.nome}</h2>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Button variant="outline" size="sm" onClick={() => openEditGraduacao(item)}>
-                      <Pencil className="mr-1.5 h-4 w-4" />
-                      Editar
+                    <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => openEditGraduacao(item)}>
+                      <Pencil className="h-4 w-4" />
                     </Button>
-                    <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700" onClick={() => void handleDeleteGraduacao(item)}>
-                      <Trash2 className="mr-1.5 h-4 w-4" />
-                      Excluir
+                    <Button variant="ghost" size="icon" className="h-9 w-9 text-red-600 hover:text-red-700" onClick={() => void handleDeleteGraduacao(item)}>
+                      <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
                 </div>
@@ -681,6 +705,14 @@ const GuardasMunicipaisPage = () => {
 
         {confirmDialog}
       </div>
+
+      {/* FAB - Novo guarda / Nova graduação */}
+      <button
+        onClick={section === 'guardas' ? openCreateGuarda : openCreateGraduacao}
+        className="fixed bottom-[calc(4.5rem+var(--safe-area-bottom))] right-[calc(1.25rem+var(--safe-area-right))] z-50 flex size-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-[0_8px_28px_-6px_rgba(37,99,235,0.55)] transition-all active:scale-90 sm:hidden"
+      >
+        <Plus className="h-7 w-7" />
+      </button>
     </AdminLayout>
   );
 };
