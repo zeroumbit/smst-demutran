@@ -61,6 +61,40 @@ Deno.serve(async (req) => {
       return jsonResponse(404, { error: 'Guarda não possui usuário auth vinculado.' });
     }
 
+    // Verificar se o requisitante tem permissão (é o próprio guarda OU administrador/gestor/técnico do setor da Guarda)
+    const isSelf = vinculo.usuario_id === requester.id;
+
+    if (!isSelf) {
+      const { data: requesterProfile } = await adminClient
+        .from('perfis_usuarios')
+        .select('papel, setor_id, ativo')
+        .eq('user_id', requester.id)
+        .eq('ativo', true)
+        .limit(1)
+        .maybeSingle();
+
+      const isSuperAdmin = requesterProfile?.papel === 'super_admin';
+      const isGestor = requesterProfile?.papel === 'gestor';
+
+      const { data: sectorData } = await adminClient
+        .from('setores')
+        .select('id')
+        .eq('slug', 'guarda-municipal')
+        .limit(1)
+        .maybeSingle();
+      const guardSectorId = sectorData?.id;
+
+      const isGuardTecnico = requesterProfile?.papel === 'tecnico' &&
+                             guardSectorId &&
+                             requesterProfile?.setor_id === guardSectorId;
+
+      const isAuthorized = isSuperAdmin || isGestor || isGuardTecnico;
+
+      if (!isAuthorized) {
+        return jsonResponse(403, { error: 'Você não tem permissão para alterar a senha deste guarda.' });
+      }
+    }
+
     const { error: updateError } = await adminClient.auth.admin.updateUserById(
       vinculo.usuario_id,
       { password: nova_senha }

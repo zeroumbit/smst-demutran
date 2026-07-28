@@ -1,5 +1,5 @@
 import { ArrowLeft, Mail, ShieldCheck, UserCircle2 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -10,9 +10,23 @@ const papelLabels: Record<string, string> = {
   tecnico: 'Tecnico',
 };
 
+const jgcPerfilLabels: Record<string, string> = {
+  gestor: 'Gestor',
+  administrativo: 'Administrativo',
+  professor: 'Professor',
+  multiprofissional: 'Multiprofissional',
+};
+
 const Profile = () => {
   const { profile } = useAuth();
   const navigate = useNavigate();
+  const { setorSlug } = useParams<{ setorSlug?: string }>();
+  const isJovemGuarda = setorSlug === 'jovem-guarda';
+  const papelValue = isJovemGuarda && profile?.jgc_perfil
+    ? (jgcPerfilLabels[profile.jgc_perfil] || profile.jgc_perfil)
+    : profile?.papel
+      ? (papelLabels[profile.papel] || profile.papel)
+      : 'Sem perfil';
 
   return (
     <AdminLayout>
@@ -56,8 +70,8 @@ const Profile = () => {
                 value={profile?.name || '-'}
               />
               <ProfileField
-                label="Papel"
-                value={profile?.papel ? (papelLabels[profile.papel] || profile.papel) : 'Sem perfil'}
+                label={isJovemGuarda ? 'Perfil' : 'Papel'}
+                value={papelValue}
               />
               {profile?.papel !== 'super_admin' && (
                 <ProfileField
@@ -75,8 +89,8 @@ const Profile = () => {
                 icon={UserCircle2}
               />
               <ProfileCard
-                label="Papel"
-                value={profile?.papel ? (papelLabels[profile.papel] || profile.papel) : 'Sem perfil'}
+                label={isJovemGuarda ? 'Perfil' : 'Papel'}
+                value={papelValue}
                 icon={ShieldCheck}
               />
               {profile?.papel !== 'super_admin' && (

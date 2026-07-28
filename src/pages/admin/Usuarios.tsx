@@ -57,6 +57,18 @@ const papelBadgeVariant: Record<PapelUsuario, string> = {
   tecnico: 'bg-slate-100 text-slate-800 border-slate-200',
 };
 
+const jgcPapelLabels: Record<string, string> = {
+  administrativo: 'Administrativo',
+  professor: 'Professor',
+  multiprofissional: 'Profissional multiprofissional',
+};
+
+const jgcPapelBadgeVariant: Record<string, string> = {
+  administrativo: 'bg-slate-100 text-slate-800 border-slate-200',
+  professor: 'bg-amber-100 text-amber-800 border-amber-200',
+  multiprofissional: 'bg-teal-100 text-teal-800 border-teal-200',
+};
+
 type JgcPermissionModule = {
   id: ModuloSistema;
   label: string;
@@ -472,11 +484,22 @@ const UsuariosPage = () => {
     { header: 'Email', accessor: 'email' as const },
     {
       header: 'Papel',
-      accessor: (item: AdminProfileRow) => (
-        <Badge variant="outline" className={cn('rounded-full px-3 py-1 text-xs font-bold', papelBadgeVariant[item.papel])}>
-          {papelLabels[item.papel]}
-        </Badge>
-      ),
+      accessor: (item: AdminProfileRow) => {
+        const isJgc = item.setor_slug === 'jovem-guarda';
+        const jgcPerfil = isJgc ? (item.jgc_perfil || null) : null;
+        if (jgcPerfil && jgcPapelLabels[jgcPerfil]) {
+          return (
+            <Badge variant="outline" className={cn('rounded-full px-3 py-1 text-xs font-bold', jgcPapelBadgeVariant[jgcPerfil])}>
+              {jgcPapelLabels[jgcPerfil]}
+            </Badge>
+          );
+        }
+        return (
+          <Badge variant="outline" className={cn('rounded-full px-3 py-1 text-xs font-bold', papelBadgeVariant[item.papel])}>
+            {papelLabels[item.papel]}
+          </Badge>
+        );
+      },
     },
     { header: 'Setor', accessor: (item: AdminProfileRow) => item.setor_nome || 'Sem setor' },
     {
@@ -558,9 +581,22 @@ const UsuariosPage = () => {
           <div className="rounded-xl bg-slate-50 px-3 py-2">
             <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">Papel</p>
             <div className="mt-0.5 font-semibold text-slate-800">
-              <Badge variant="outline" className={cn('rounded-full px-2 py-0.5 text-[11px] font-bold', papelBadgeVariant[item.papel])}>
-                {papelLabels[item.papel]}
-              </Badge>
+              {(() => {
+                const isJgc = item.setor_slug === 'jovem-guarda';
+                const jgcPerfil = isJgc ? (item.jgc_perfil || null) : null;
+                if (jgcPerfil && jgcPapelLabels[jgcPerfil]) {
+                  return (
+                    <Badge variant="outline" className={cn('rounded-full px-2 py-0.5 text-[11px] font-bold', jgcPapelBadgeVariant[jgcPerfil])}>
+                      {jgcPapelLabels[jgcPerfil]}
+                    </Badge>
+                  );
+                }
+                return (
+                  <Badge variant="outline" className={cn('rounded-full px-2 py-0.5 text-[11px] font-bold', papelBadgeVariant[item.papel])}>
+                    {papelLabels[item.papel]}
+                  </Badge>
+                );
+              })()}
             </div>
           </div>
           <div className="rounded-xl bg-slate-50 px-3 py-2">

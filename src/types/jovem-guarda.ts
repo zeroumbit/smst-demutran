@@ -8,6 +8,7 @@ export interface JgcAluno {
   data_nascimento: string;
   cpf: string | null;
   nis: string | null;
+  foto_url?: string | null;
   naturalidade_cidade: string | null;
   naturalidade_uf: string | null;
   data_entrada: string;
@@ -27,6 +28,7 @@ export interface JgcAluno {
     orientacao_medicamento: string | null;
   } | null;
   turma?: { nome: string } | null;
+  turmas?: { id: string; nome: string }[] | null;
 }
 
 export interface JgcTurma {
@@ -37,6 +39,13 @@ export interface JgcTurma {
   hora_inicio: string | null;
   hora_fim: string | null;
   status: 'ativa' | 'inativa' | 'concluida';
+  professores?: { perfil_usuario_id: string; perfil: { nome: string; sobrenome: string } | null }[];
+}
+
+export interface JgcProfessor {
+  id: string;
+  nome: string;
+  sobrenome: string;
 }
 
 export interface JgcAtendimento {

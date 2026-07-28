@@ -96,6 +96,7 @@ type MenuItem = {
   path?: string;
   disabled?: boolean;
   allowedPapeis?: Array<'super_admin' | 'gestor' | 'admin_setor' | 'tecnico'>;
+  allowedJgcPerfis?: Array<'gestor' | 'administrativo' | 'professor' | 'multiprofissional'>;
   children?: MenuItem[];
 };
 
@@ -178,11 +179,11 @@ const guardaMenuItems: MenuItem[] = [
 const jovemGuardaMenuItems: MenuItem[] = [
   { icon: HouseIcon, label: 'Home', path: '/admin/dashboard/jovem-guarda/dashboard', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
   { icon: Users, label: 'Alunos', path: '/admin/dashboard/jovem-guarda/alunos', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
-  { icon: IdCard, label: 'Responsaveis', path: '/admin/dashboard/jovem-guarda/responsaveis', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
+  { icon: IdCard, label: 'Responsaveis', path: '/admin/dashboard/jovem-guarda/responsaveis', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'], allowedJgcPerfis: ['gestor', 'administrativo'] },
   { icon: Building2, label: 'Turmas', path: '/admin/dashboard/jovem-guarda/turmas', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
   { icon: ClipboardList, label: 'Frequencia', path: '/admin/dashboard/jovem-guarda/diario', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
   { icon: CalendarDays, label: 'Atividades', path: '/admin/dashboard/jovem-guarda/atividades', allowedPapeis: ['super_admin', 'gestor', 'tecnico'] },
-  { icon: BookOpenTextIcon, label: 'Acompanhamentos', path: '/admin/dashboard/jovem-guarda/acompanhamentos', allowedPapeis: ['super_admin', 'gestor', 'tecnico'] },
+  { icon: BookOpenTextIcon, label: 'Acompanhamentos', path: '/admin/dashboard/jovem-guarda/acompanhamentos', allowedPapeis: ['super_admin', 'gestor', 'tecnico'], allowedJgcPerfis: ['gestor', 'administrativo', 'multiprofissional'] },
   { icon: BarChart3, label: 'Relatorios', path: '/admin/dashboard/jovem-guarda/relatorios', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
   { icon: FileText, label: 'Documentos', path: '/admin/documentos/jovem-guarda', allowedPapeis: ['gestor', 'admin_setor'] },
   { icon: Users, label: 'Usuarios', path: '/admin/usuarios/jovem-guarda', allowedPapeis: ['super_admin', 'gestor'] },
@@ -485,6 +486,10 @@ export const AdminLayout = ({ children, backPath, backLabel }: AdminLayoutProps)
         return { ...mappedItem, children: filteredChildren };
       }
 
+      if (sectorContext === 'jovem-guarda' && mappedItem.allowedJgcPerfis) {
+        if (!profile?.jgc_perfil || !mappedItem.allowedJgcPerfis.includes(profile.jgc_perfil as any)) return null;
+      }
+
       if (!mappedItem.allowedPapeis?.length) {
         return mappedItem;
       }
@@ -500,7 +505,9 @@ export const AdminLayout = ({ children, backPath, backLabel }: AdminLayoutProps)
         return mappedItem;
       }
 
-      return hasPapel(...mappedItem.allowedPapeis) ? mappedItem : null;
+      if (!hasPapel(...mappedItem.allowedPapeis)) return null;
+
+      return mappedItem;
     };
 
     const filteredMenuItems = sourceMenuItems
@@ -513,7 +520,7 @@ export const AdminLayout = ({ children, backPath, backLabel }: AdminLayoutProps)
       return items;
     }
     return filteredMenuItems;
-  }, [hasPapel, sectorContext, isSuperAdmin, profile?.papel, profile?.setor_slug, profile?.modulos]);
+  }, [hasPapel, sectorContext, isSuperAdmin, profile?.papel, profile?.setor_slug, profile?.modulos, profile?.jgc_perfil]);
 
   const visibleBottomNavItems = useMemo(() => {
     return guardaBottomNavItems.filter((item) => {
@@ -593,6 +600,9 @@ export const AdminLayout = ({ children, backPath, backLabel }: AdminLayoutProps)
             if (filtered.length === 0) return null;
             return { ...item, children: filtered };
           }
+          if (sectorContext === 'jovem-guarda' && item.allowedJgcPerfis) {
+            if (!profile?.jgc_perfil || !item.allowedJgcPerfis.includes(profile.jgc_perfil as any)) return null;
+          }
           if (!item.allowedPapeis?.length) return item;
           if (hasModulosRestricted) {
             const modulo = moduloItemMap[item.label];
@@ -601,7 +611,8 @@ export const AdminLayout = ({ children, backPath, backLabel }: AdminLayoutProps)
             }
           }
           if (isSuperAdmin && item.allowedPapeis.includes('super_admin')) return item;
-          return hasPapel(...item.allowedPapeis) ? item : null;
+          if (!hasPapel(...item.allowedPapeis)) return null;
+          return item;
         })
         .filter(Boolean) as MenuItem[];
 
@@ -609,7 +620,7 @@ export const AdminLayout = ({ children, backPath, backLabel }: AdminLayoutProps)
     walk(filterByPapel(demutranMenuItems));
     walk(filterByPapel(guardaMenuItems));
     return flat;
-  }, [hasPapel, isSuperAdmin, sectorContext, profile?.papel, profile?.modulos]);
+  }, [hasPapel, isSuperAdmin, sectorContext, profile?.papel, profile?.modulos, profile?.jgc_perfil]);
 
   const filteredSearchItems = searchQuery.trim()
     ? searchableItems.filter((item) =>

@@ -5,6 +5,8 @@ import {
   AlertTriangle,
   ArrowLeft,
   CalendarCheck,
+  Check,
+  ChevronDown,
   ChevronRight,
   ClipboardCheck,
   Clock3,
@@ -19,6 +21,7 @@ import {
   Users,
   UsersRound,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 
 
@@ -45,6 +48,7 @@ import type {
   JgcAtendimento,
   JgcPerfil,
   JgcPrivacidade,
+  JgcProfessor,
   JgcTurma,
 } from "@/types/jovem-guarda";
 import { JgcOperationalSection } from "@/components/jgc/JgcOperationalSections";
@@ -90,6 +94,7 @@ const initialStudent = {
   data_nascimento: "",
   cpf: "",
   nis: "",
+  foto_url: "",
   naturalidade_cidade: "",
   naturalidade_uf: "",
   data_entrada: today,
@@ -97,7 +102,7 @@ const initialStudent = {
   escola_nome: "",
   turno_escola: "",
   horario_escola: "",
-  turma_id: "",
+  turmas_ids: [] as string[],
   projeto_hora_inicio: "",
   projeto_hora_fim: "",
   situacao: "ativo",
@@ -133,12 +138,17 @@ export default function JovemGuardaCidada() {
   const [alunos, setAlunos] = useState<JgcAluno[]>([]);
   const [turmas, setTurmas] = useState<JgcTurma[]>([]);
   const [atendimentos, setAtendimentos] = useState<JgcAtendimento[]>([]);
-  const [actions, setActions] = useState(0);
-  const [referrals, setReferrals] = useState(0);
+  const [actions, setActions] = useState<{aluno_id:string}[]>([]);
+  const [referrals, setReferrals] = useState<{aluno_id:string}[]>([]);
   const [search, setSearch] = useState("");
   const [studentOpen, setStudentOpen] = useState(false);
   const [classOpen, setClassOpen] = useState(false);
   const [serviceOpen, setServiceOpen] = useState(false);
+  const [isTurmaModalOpen, setIsTurmaModalOpen] = useState(false);
+  const [professores, setProfessores] = useState<JgcProfessor[]>([]);
+  const [professorTurmaId, setProfessorTurmaId] = useState<string | null>(null);
+  const [selectedProfessorIds, setSelectedProfessorIds] = useState<string[]>([]);
+  const [meuPerfilUsuarioId, setMeuPerfilUsuarioId] = useState<string | null>(null);
   const [student, setStudent] = useState({ ...initialStudent });
   const [classForm, setClassForm] = useState({
     nome: "",
@@ -165,14 +175,14 @@ export default function JovemGuardaCidada() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [p, s, c, v, a, e] = await Promise.all([
+    const [p, s, c, v, a, e, profList, meuId] = await Promise.all([
       supabase.rpc("jgc_perfil_atual"),
       supabase
         .from("jgc_alunos")
-        .select("*, turma:jgc_turmas(nome), saude:jgc_aluno_saude(*)")
+        .select("*, turma:jgc_turmas(nome), turmas:jgc_aluno_turmas(turma:jgc_turmas(id, nome)), saude:jgc_aluno_saude(*)")
         .is("deleted_at", null)
         .order("nome_completo"),
-      supabase.from("jgc_turmas").select("*").order("nome"),
+      supabase.from("jgc_turmas").select("*, professores:jgc_turma_professores(perfil_usuario_id, perfil:perfis_usuarios(nome, sobrenome))").order("nome"),
       supabase
         .from("jgc_atendimentos")
         .select("*, aluno:jgc_alunos(nome_completo,matricula)")
@@ -181,19 +191,27 @@ export default function JovemGuardaCidada() {
         .limit(50),
       supabase
         .from("jgc_acoes")
-        .select("*", { count: "exact", head: true })
+        .select("aluno_id")
         .in("status", ["pendente", "em_andamento"]),
       supabase
         .from("jgc_encaminhamentos")
-        .select("*", { count: "exact", head: true })
+        .select("aluno_id")
         .in("status", ["pendente", "encaminhado", "em_acompanhamento"]),
+      supabase.rpc("jgc_listar_professores"),
+      supabase.rpc("jgc_meu_perfil_usuario_id"),
     ]);
     setProfile((p.data as JgcPerfil | null) || null);
-    setAlunos((s.data as unknown as JgcAluno[]) || []);
+    const rawAlunos = (s.data as any[]) || [];
+    setAlunos(rawAlunos.map((item: any) => ({
+      ...item,
+      turmas: (item.turmas || []).map((t: any) => t.turma).filter(Boolean),
+    })) as unknown as JgcAluno[]);
     setTurmas((c.data as JgcTurma[]) || []);
     setAtendimentos((v.data as unknown as JgcAtendimento[]) || []);
-    setActions(a.count || 0);
-    setReferrals(e.count || 0);
+    setActions((a.data as {aluno_id:string}[]) || []);
+    setReferrals((e.data as {aluno_id:string}[]) || []);
+    setProfessores((profList.data as JgcProfessor[]) || []);
+    setMeuPerfilUsuarioId((meuId.data as string | null) || null);
     setLoading(false);
   }, []);
   useEffect(() => {
@@ -203,7 +221,32 @@ export default function JovemGuardaCidada() {
   const active = sections.includes(section) ? section : "dashboard";
   const selected = alunos.find((item) => item.id === alunoId);
   const mobileTitle = selected ? selected.nome_completo : sectionTitles[active];
-  const filtered = alunos.filter((item) =>
+  const isProfessorOrMulti = (profile === "professor" || profile === "multiprofissional") && meuPerfilUsuarioId;
+  const globalFilteredTurmas = isProfessorOrMulti
+    ? turmas.filter((t) =>
+        t.professores?.some((p) => p.perfil_usuario_id === meuPerfilUsuarioId),
+      )
+    : turmas;
+  const filteredTurmas = profile === "professor" && meuPerfilUsuarioId
+    ? turmas.filter((t) =>
+        t.professores?.some((p) => p.perfil_usuario_id === meuPerfilUsuarioId),
+      )
+    : turmas;
+  const globalFilteredTurmasIds = new Set(globalFilteredTurmas.map((t) => t.id));
+  const globalFilteredAlunos = isProfessorOrMulti
+    ? alunos.filter((a) => a.turmas?.some((t) => globalFilteredTurmasIds.has(t.id)))
+    : alunos;
+  const globalFilteredAlunosIds = new Set(globalFilteredAlunos.map((a) => a.id));
+  const filteredAtendimentosDashboard = isProfessorOrMulti
+    ? atendimentos.filter((a) => globalFilteredAlunosIds.has(a.aluno_id))
+    : atendimentos;
+  const filteredActions = isProfessorOrMulti
+    ? actions.filter((a) => globalFilteredAlunosIds.has(a.aluno_id)).length
+    : actions.length;
+  const filteredReferrals = isProfessorOrMulti
+    ? referrals.filter((r) => globalFilteredAlunosIds.has(r.aluno_id)).length
+    : referrals.length;
+  const filtered = globalFilteredAlunos.filter((item) =>
     `${item.nome_completo} ${item.matricula} ${item.escola_nome || ""}`
       .toLowerCase()
       .includes(search.toLowerCase()),
@@ -222,7 +265,13 @@ export default function JovemGuardaCidada() {
     isSuperAdmin ||
     account?.papel === "gestor" ||
     account?.papel === "admin_setor";
+  const isAcompanhamentoModule = (moduleId: string) =>
+    moduleId === "jgc_acompanhamentos" || moduleId === "acompanhamento" || moduleId === "acompanhamentos";
+  const isResponsaveisModule = (moduleId: string) =>
+    moduleId === "jgc_responsaveis" || moduleId === "responsaveis";
   const hasModule = (moduleId: string) => {
+    if (profile === "professor" && (isAcompanhamentoModule(moduleId) || isResponsaveisModule(moduleId))) return false;
+    if (profile === "multiprofissional" && isResponsaveisModule(moduleId)) return false;
     if (unrestricted) return true;
     if (
       profile === "multiprofissional" &&
@@ -238,6 +287,9 @@ export default function JovemGuardaCidada() {
     );
   };
   const can = (moduleId: string, action: string) => {
+    if (profile === "professor" && (isAcompanhamentoModule(moduleId) || isResponsaveisModule(moduleId))) return false;
+    if (profile === "multiprofissional" && isResponsaveisModule(moduleId)) return false;
+    if ((profile === "professor" || profile === "multiprofissional") && moduleId === "turmas" && action !== "visualizar") return false;
     if (unrestricted) return true;
     if (
       profile === "multiprofissional" &&
@@ -295,7 +347,10 @@ export default function JovemGuardaCidada() {
       return;
     }
     const { error } = await supabase.rpc("jgc_criar_aluno", {
-      _dados: student,
+      _dados: {
+        ...student,
+        turma_id: (student as any).turmas_ids.length > 0 ? (student as any).turmas_ids[0] : "",
+      },
     });
     if (error) {
       toast({
@@ -333,6 +388,20 @@ export default function JovemGuardaCidada() {
     }
     toast({ title: "Turma criada" });
     setClassOpen(false);
+    void load();
+  }
+  async function saveProfessorLink() {
+    if (!professorTurmaId) return;
+    const { error } = await supabase.rpc("jgc_vincular_professores_turma", {
+      _turma_id: professorTurmaId,
+      _professor_ids: selectedProfessorIds,
+    });
+    if (error) {
+      toast({ title: "Erro ao vincular professores", description: error.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: "Professores vinculados" });
+    setProfessorTurmaId(null);
     void load();
   }
   async function saveService() {
@@ -449,11 +518,11 @@ export default function JovemGuardaCidada() {
         ) : active === "dashboard" ? (
           <Dashboard
             profile={profile!}
-            alunos={alunos}
-            turmas={turmas}
-            services={atendimentos}
-            actions={actions}
-            referrals={referrals}
+            alunos={globalFilteredAlunos}
+            turmas={globalFilteredTurmas}
+            services={filteredAtendimentosDashboard}
+            actions={filteredActions}
+            referrals={filteredReferrals}
             onService={
               can("acompanhamento", "criar")
                 ? () => setServiceOpen(true)
@@ -498,7 +567,11 @@ export default function JovemGuardaCidada() {
                     }
                     className="group flex w-full items-center gap-4 rounded-2xl border bg-white p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-teal-300 hover:shadow-md"
                   >
-                    <Initials name={item.nome_completo} />
+                    {item.foto_url ? (
+                      <img src={item.foto_url} alt={item.nome_completo} className="h-11 w-11 shrink-0 rounded-2xl object-cover" />
+                    ) : (
+                      <Initials name={item.nome_completo} />
+                    )}
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
                         <strong className="truncate text-slate-900">
@@ -511,7 +584,7 @@ export default function JovemGuardaCidada() {
                         </Badge>
                       </div>
                       <p className="mt-1 truncate text-sm text-slate-500">
-                        {item.matricula} · {item.turma?.nome || "Sem turma"} ·{" "}
+                        {item.matricula} · {(item.turmas && item.turmas.length > 0) ? item.turmas.map((t: any) => t.nome).join(", ") : "Sem turma"} ·{" "}
                         {item.escola_nome || "Escola não informada"}
                       </p>
                     </div>
@@ -553,9 +626,9 @@ export default function JovemGuardaCidada() {
                 </Button>
               }
             />
-            {turmas.length ? (
+            {filteredTurmas.length ? (
               <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                {turmas.map((item) => (
+                {filteredTurmas.map((item) => (
                   <Card
                     key={item.id}
                     className="rounded-2xl border-0 shadow-sm"
@@ -584,12 +657,43 @@ export default function JovemGuardaCidada() {
                       <p>
                         <Users className="mr-2 inline h-4 w-4" />
                         {
-                          alunos.filter(
-                            (studentItem) => studentItem.turma_id === item.id,
+                          globalFilteredAlunos.filter(
+                            (studentItem) => studentItem.turmas?.some((t: any) => t.id === item.id),
                           ).length
                         }{" "}
                         aluno(s)
                       </p>
+                      {item.professores && item.professores.length > 0 && (
+                        <p>
+                          <Users className="mr-2 inline h-4 w-4" />
+                          {item.professores
+                            .map((p) =>
+                              p.perfil
+                                ? `${p.perfil.nome} ${p.perfil.sobrenome}`
+                                : "",
+                            )
+                            .filter(Boolean)
+                            .join(", ")}
+                        </p>
+                      )}
+                      {can("turmas", "gerenciar_alunos") && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full gap-2"
+                          onClick={() => {
+                            setProfessorTurmaId(item.id);
+                            setSelectedProfessorIds(
+                              (item.professores || []).map(
+                                (p) => p.perfil_usuario_id,
+                              ),
+                            );
+                          }}
+                        >
+                          <Users className="h-4 w-4" />
+                          Vincular professores
+                        </Button>
+                      )}
                     </CardContent>
                   </Card>
                 ))}
@@ -634,10 +738,10 @@ export default function JovemGuardaCidada() {
                 value={atendimentos.length}
                 icon={HeartPulse}
               />
-              <Stat label="Ações abertas" value={actions} icon={ListChecks} />
+              <Stat label="Ações abertas" value={actions.length} icon={ListChecks} />
               <Stat
                 label="Encaminhamentos"
-                value={referrals}
+                value={referrals.length}
                 icon={ChevronRight}
               />
             </div>
@@ -696,8 +800,8 @@ export default function JovemGuardaCidada() {
         ) : (
           <JgcOperationalSection
             section={active}
-            alunos={alunos}
-            turmas={turmas}
+            alunos={globalFilteredAlunos}
+            turmas={globalFilteredTurmas}
             can={can}
             reload={load}
           />
@@ -799,6 +903,43 @@ export default function JovemGuardaCidada() {
                   }
                 />
               </Field>
+              <div className="sm:col-span-2">
+                <Field label="Foto do aluno">
+                  <div className="flex items-center gap-4">
+                    {student.foto_url && (
+                      <img src={student.foto_url} alt="Preview" className="h-20 w-20 rounded-2xl object-cover" />
+                    )}
+                    <div className="flex-1 space-y-2">
+                      <Input
+                        type="file"
+                        accept="image/*"
+                        onChange={async (event) => {
+                          const file = event.target.files?.[0];
+                          if (!file) return;
+                          const ext = file.name.split('.').pop();
+                          const path = `temp/${Date.now()}.${ext}`;
+                          const { data: uploadData, error: uploadError } = await supabase.storage
+                            .from('jgc-fotos')
+                            .upload(path, file, { upsert: true });
+                          if (uploadError) {
+                            toast({ title: 'Erro ao enviar foto', description: uploadError.message, variant: 'destructive' });
+                            return;
+                          }
+                          const { data: { publicUrl } } = supabase.storage
+                            .from('jgc-fotos')
+                            .getPublicUrl(path);
+                          setStudent({ ...student, foto_url: publicUrl });
+                        }}
+                      />
+                      {student.foto_url && (
+                        <Button type="button" variant="ghost" size="sm" onClick={() => setStudent({ ...student, foto_url: '' })}>
+                          Remover foto
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </Field>
+              </div>
             </div>
           </TabsContent>
           <TabsContent value="escola">
@@ -872,27 +1013,24 @@ export default function JovemGuardaCidada() {
                   }
                 />
               </Field>
-              <Field label="Turma">
-                <Choice
-                  value={student.turma_id}
-                  onChange={(value) => {
-                    const selectedClass = turmas.find(
-                      (item) => item.id === value,
-                    );
-                    setStudent({
-                      ...student,
-                      turma_id: value,
-                      projeto_hora_inicio:
-                        selectedClass?.hora_inicio?.slice(0, 5) || "",
-                      projeto_hora_fim:
-                        selectedClass?.hora_fim?.slice(0, 5) || "",
-                    });
-                  }}
-                  options={turmas.map((item) => ({
-                    value: item.id,
-                    label: item.nome,
-                  }))}
-                />
+              <Field label="Turmas">
+                <button
+                  type="button"
+                  onClick={() => setIsTurmaModalOpen(true)}
+                  className="flex w-full items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-3 text-left text-sm transition-all hover:border-teal-300 hover:bg-teal-50/50"
+                >
+                  <Users className="h-4 w-4 text-slate-400" />
+                  <span className="flex-1">
+                    {(student as any).turmas_ids.length === 0 ? (
+                      <span className="text-slate-400">Nenhuma turma selecionada</span>
+                    ) : (
+                      <span className="text-slate-900">
+                        {(student as any).turmas_ids.length} turma(s) selecionada(s)
+                      </span>
+                    )}
+                  </span>
+                  <ChevronDown className="h-4 w-4 text-slate-400" />
+                </button>
               </Field>
               <Field label="Entrada">
                 <Input
@@ -919,6 +1057,64 @@ export default function JovemGuardaCidada() {
                 />
               </Field>
             </Grid>
+            <ResponsiveDialog
+              open={isTurmaModalOpen}
+              onOpenChange={setIsTurmaModalOpen}
+              title="Selecionar turmas"
+              description="Marque as turmas que este aluno frequentará."
+              onCancel={() => setIsTurmaModalOpen(false)}
+              onConfirm={() => setIsTurmaModalOpen(false)}
+              confirmLabel="Concluído"
+            >
+              <div className="max-h-[55vh] space-y-2 overflow-y-auto py-2">
+                {turmas.map((turma) => {
+                  const selected = (student as any).turmas_ids.includes(turma.id);
+                  return (
+                    <button
+                      key={turma.id}
+                      type="button"
+                      onClick={() => {
+                        const current = (student as any).turmas_ids as string[];
+                        const next = selected
+                          ? current.filter((id: string) => id !== turma.id)
+                          : [...current, turma.id];
+                        const lastSelected = next.length > 0 ? turmas.find((t) => t.id === next[next.length - 1]) : null;
+                        setStudent({
+                          ...student,
+                          turmas_ids: next,
+                          projeto_hora_inicio: lastSelected?.hora_inicio?.slice(0, 5) || "",
+                          projeto_hora_fim: lastSelected?.hora_fim?.slice(0, 5) || "",
+                        });
+                      }}
+                      className={cn(
+                        'flex w-full items-center gap-3 rounded-lg border px-4 py-3 text-left text-sm transition-all',
+                        selected
+                          ? 'border-teal-300 bg-teal-50 font-medium text-teal-800'
+                          : 'border-slate-200 text-slate-600 hover:border-teal-200 hover:bg-teal-50/50',
+                      )}
+                    >
+                      <div
+                        className={cn(
+                          'flex h-5 w-5 shrink-0 items-center justify-center rounded border transition-all',
+                          selected ? 'border-teal-600 bg-teal-600 text-white' : 'border-slate-300',
+                        )}
+                      >
+                        {selected && <Check className="h-3.5 w-3.5" />}
+                      </div>
+                      <span>{turma.nome}</span>
+                      {turma.hora_inicio && (
+                        <span className="ml-auto text-xs text-slate-400">
+                          {turma.hora_inicio.slice(0, 5)} às {turma.hora_fim?.slice(0, 5) || "—"}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+                {turmas.length === 0 && (
+                  <p className="py-8 text-center text-sm text-slate-400">Nenhuma turma cadastrada.</p>
+                )}
+              </div>
+            </ResponsiveDialog>
           </TabsContent>
           <TabsContent value="saude">
             <div className="mt-3 rounded-xl bg-amber-50 p-3 text-xs text-amber-900">
@@ -1058,6 +1254,44 @@ export default function JovemGuardaCidada() {
               />
             </Field>
           </div>
+        </div>
+      </ResponsiveDialog>
+      <ResponsiveDialog
+        open={professorTurmaId !== null}
+        onOpenChange={(open) => { if (!open) setProfessorTurmaId(null); }}
+        title="Vincular professores"
+        description="Selecione os professores desta turma."
+        onCancel={() => setProfessorTurmaId(null)}
+        onConfirm={saveProfessorLink}
+        confirmLabel="Salvar"
+      >
+        <div className="grid gap-3 py-2">
+          {professores.length === 0 && (
+            <p className="text-sm text-slate-500">Nenhum professor cadastrado.</p>
+          )}
+          {professores.map((prof) => {
+            const checked = selectedProfessorIds.includes(prof.id);
+            return (
+              <label
+                key={prof.id}
+                className="flex cursor-pointer items-center gap-3 rounded-xl border border-slate-200 px-4 py-3 text-sm hover:bg-slate-50 has-[:checked]:border-teal-500 has-[:checked]:bg-teal-50"
+              >
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  onChange={() =>
+                    setSelectedProfessorIds((prev) =>
+                      checked
+                        ? prev.filter((id) => id !== prof.id)
+                        : [...prev, prof.id],
+                    )
+                  }
+                  className="h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
+                />
+                <span>{prof.nome} {prof.sobrenome}</span>
+              </label>
+            );
+          })}
         </div>
       </ResponsiveDialog>
       <ResponsiveDialog
@@ -1340,7 +1574,7 @@ function Dashboard({
   const activeAlerts = birthdayAlerts.filter((a) => !dismissed.has(a.id));
   const ativos = alunos.filter((item) => item.situacao === "ativo").length;
   const semTurma = alunos.filter(
-    (item) => item.situacao === "ativo" && !item.turma_id,
+    (item) => item.situacao === "ativo" && (!item.turmas || item.turmas.length === 0),
   ).length;
   const turmasAtivas = turmas.filter((item) => item.status === "ativa").length;
   const alunoPorTurma = turmasAtivas ? Math.round(ativos / turmasAtivas) : 0;

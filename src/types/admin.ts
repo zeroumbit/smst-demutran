@@ -81,6 +81,8 @@ export interface AdminProfile {
   aceitou_lei_iro_at?: string | null;
   can_manage_guarda_iros?: boolean;
   guarda_setor_id?: string | null;
+  jgc_perfil?: string | null;
+  jgc_area_atuacao?: string | null;
 }
 
 export interface Setor {
@@ -293,6 +295,8 @@ export interface AdminProfileRow {
   created_at?: string | null;
   graduacao_id?: string | null;
   graduacao_nome?: string | null;
+  jgc_perfil?: string | null;
+  jgc_area_atuacao?: string | null;
 }
 
 export interface VeiculoRecolhido {
