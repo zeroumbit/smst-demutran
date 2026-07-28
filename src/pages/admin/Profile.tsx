@@ -18,7 +18,7 @@ const Profile = () => {
     <AdminLayout>
       <div className="space-y-6">
         {/* Header mobile estilo app nativo */}
-        <div className="sticky top-0 z-20 flex items-center gap-1 border-b border-slate-200/80 bg-white/95 px-1 py-2 backdrop-blur-md lg:hidden">
+        <div className="flex items-center gap-1 px-1 py-2 lg:hidden">
           <button
             type="button"
             onClick={() => navigate(-1)}

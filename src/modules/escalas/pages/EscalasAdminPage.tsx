@@ -5,18 +5,20 @@ import { ptBR } from 'date-fns/locale';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
-import { ArrowLeft, CalendarDays, CheckCircle2, FileDown, FileText, History, MapPin, Plus, Printer, Search, Settings2, Shield, Shuffle, Trash2, Users, XCircle } from 'lucide-react';
+import { ArrowLeft, CalendarDays, CheckCircle2, FileDown, FileText, History, MapPin, Plus, Printer, Search, Settings2, Shield, Shuffle, Trash2, Users, XCircle, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription, DrawerFooter, DrawerClose } from '@/components/ui/drawer';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { supabase } from '@/lib/supabase';
 import { escalasService } from '../services/escalas.service';
 import { useEscalas, useEscalasApoio, useEscalasHistorico, useEscalasMutations, useEscalasTrocas } from '../hooks/useEscalas';
@@ -112,6 +114,7 @@ export default function EscalasAdminPage() {
   const [conflict, setConflict] = useState<any[] | null>(null);
   const [novaRouteHandled, setNovaRouteHandled] = useState(false);
 
+  const isMobile = useIsMobile();
   const [operacaoPdfModalOpen, setOperacaoPdfModalOpen] = useState(false);
   const [operacoesIroList, setOperacoesIroList] = useState<any[]>([]);
   const [loadingOperacoes, setLoadingOperacoes] = useState(false);
@@ -617,21 +620,22 @@ export default function EscalasAdminPage() {
   };
 
   const exportExcel = () => {
-    const rows = filteredEscalas.flatMap((escala) => (escala.agentes?.length ? escala.agentes : [null]).map((agente) => ({
-      escala: escala.titulo,
-      status: statusLabels[getEscalaStatusCalculado(escala)],
-      inicio: formatDateTime(escala.data_inicio),
-      fim: formatDateTime(escala.data_fim),
-      tipo: escala.tipo_servico?.nome ?? '',
-      local: escala.posto?.nome ?? escala.local_texto ?? '',
+    if (!selectedEscala) return;
+    const rows = (selectedEscala.agentes?.length ? selectedEscala.agentes : [null]).map((agente) => ({
+      escala: selectedEscala.titulo,
+      status: statusLabels[getEscalaStatusCalculado(selectedEscala)],
+      inicio: formatDateTime(selectedEscala.data_inicio),
+      fim: formatDateTime(selectedEscala.data_fim),
+      tipo: selectedEscala.tipo_servico?.nome ?? '',
+      local: selectedEscala.posto?.nome ?? selectedEscala.local_texto ?? '',
       guarda: agente?.guarda?.nome ?? '',
       matricula: agente?.guarda?.matricula ?? '',
       funcao: agente?.funcao ?? '',
-    })));
+    }));
     const worksheet = XLSX.utils.json_to_sheet(rows);
     const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Escalas');
-    XLSX.writeFile(workbook, 'escalas-guarda.xlsx');
+    XLSX.utils.book_append_sheet(workbook, worksheet, selectedEscala.titulo.slice(0, 31));
+    XLSX.writeFile(workbook, `escala-${selectedEscala.titulo.replace(/[^a-zA-Z0-9]/g, '-')}.xlsx`);
   };
 
   const saveConfig = async () => {
@@ -695,9 +699,7 @@ export default function EscalasAdminPage() {
               <p className="mt-1.5 hidden max-w-3xl text-[13px] leading-5 text-slate-100 md:block md:mt-2 md:text-sm md:leading-6">Gestao oficial de escalas, publicacao, ciencia, viaturas, equipes e trocas de servico.</p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <Button variant="outline" size="sm" onClick={exportExcel} className="h-9 border-white/20 bg-white/10 text-xs text-white hover:bg-white/20 md:h-10 md:text-sm"><FileDown className="mr-1.5 h-4 w-4" />Excel</Button>
-              <Button variant="outline" size="sm" onClick={openOperacaoPdfDialog} className="h-9 border-white/20 bg-white/10 text-xs text-white hover:bg-white/20 md:h-10 md:text-sm"><Printer className="mr-1.5 h-4 w-4" />Escala de Operação (PDF)</Button>
-              <Button size="sm" onClick={() => openEscalaForm(null)} className="h-9 gap-1.5 text-xs md:h-10 md:text-sm md:gap-2"><Plus className="h-4 w-4" />Nova escala</Button>
+              {selectedEscala && <Button variant="outline" size="sm" onClick={exportExcel} className="h-9 border-white/20 bg-white/10 text-xs text-white hover:bg-white/20 md:h-10 md:text-sm"><FileDown className="mr-1.5 h-4 w-4" />Excel</Button>}
             </div>
           </div>
 
@@ -733,8 +735,8 @@ export default function EscalasAdminPage() {
           </div>
         </div>
 
-        <div className="flex items-center justify-between gap-3">
-          <div className="inline-flex overflow-x-auto rounded-[26px] bg-slate-100/80 p-1.5 scrollbar-none">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex w-full overflow-x-auto rounded-[26px] bg-slate-100/80 p-1.5 native-scrollbar">
             {navItems.filter(([key]) => key !== 'nova').map(([key, label]) => (
               <button
                 key={key}
@@ -752,14 +754,18 @@ export default function EscalasAdminPage() {
               </button>
             ))}
           </div>
-          <div className="hidden sm:flex items-center gap-2 shrink-0">
-            <Button variant="outline" size="sm" onClick={openOperacaoPdfDialog} className="gap-1.5 text-xs md:text-sm">
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
+            {selectedEscala && <Button variant="outline" size="sm" onClick={exportExcel} className="gap-1.5 text-xs md:text-sm">
+              <FileDown className="h-4 w-4" />
+              Excel
+            </Button>}
+            <Button variant="outline" size="sm" onClick={openOperacaoPdfDialog} className="gap-1.5 text-xs md:text-sm max-sm:hidden">
               <Printer className="h-4 w-4" />
               Escala de Operação (PDF)
             </Button>
-            <Button size="sm" onClick={() => openEscalaForm(null)} className="gap-2">
+            <Button size="sm" onClick={() => openEscalaForm(null)} className="gap-1.5 text-xs md:text-sm max-sm:hidden">
               <Plus className="h-4 w-4" />
-              Nova
+              Nova Escala
             </Button>
           </div>
         </div>
@@ -832,13 +838,17 @@ export default function EscalasAdminPage() {
           </div>
         )}
 
-      <Dialog open={dialogMode === 'escala'} onOpenChange={(open) => !open && setDialogMode(null)}>
-        <DialogContent className="max-h-[calc(100dvh-var(--safe-area-top)-var(--safe-area-bottom)-2rem)] max-w-4xl overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{editingEscala ? 'Editar escala' : 'Criar escala'}</DialogTitle>
-            <DialogDescription>A escala nasce como rascunho e so aparece para os guardas apos publicacao.</DialogDescription>
-          </DialogHeader>
-          <form onSubmit={saveEscala} className="space-y-5">
+      {(() => {
+        const escalaFooter = (
+          <div className="flex gap-2 w-full">
+            <Button type="button" variant="outline" onClick={() => setDialogMode(null)} className="flex-1">Cancelar</Button>
+            <Button type="submit" variant="outline" disabled={mutations.createEscalaCompleta.isPending || mutations.updateEscala.isPending} onClick={() => setSubmitAction('draft')} className="flex-1">Rascunho</Button>
+            {!editingEscala && <Button type="submit" disabled={mutations.createEscalaCompleta.isPending} onClick={() => setSubmitAction('publish')} className="flex-1">Publicar</Button>}
+          </div>
+        );
+
+        const escalaContent = (
+          <>
             <section className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
               <h3 className="text-sm font-black uppercase tracking-[0.14em] text-slate-500">Servico</h3>
               <div className="mt-3 grid gap-4 md:grid-cols-2">
@@ -1009,15 +1019,50 @@ export default function EscalasAdminPage() {
                 <div className="md:col-span-2 grid gap-2"><Label>Observacoes</Label><Textarea value={escalaForm.observacoes ?? ''} onChange={(event) => setEscalaForm((current) => ({ ...current, observacoes: event.target.value }))} placeholder="Informacoes adicionais para os guardas" /></div>
               </div>
             </details>
+          </>
+        );
 
-            <DialogFooter className="gap-2">
-              <Button type="button" variant="outline" onClick={() => setDialogMode(null)}>Cancelar</Button>
-              <Button type="submit" variant="outline" disabled={mutations.createEscalaCompleta.isPending || mutations.updateEscala.isPending} onClick={() => setSubmitAction('draft')}>Salvar rascunho</Button>
-              {!editingEscala && <Button type="submit" disabled={mutations.createEscalaCompleta.isPending} onClick={() => setSubmitAction('publish')}>Criar e publicar</Button>}
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+        if (isMobile) {
+          return (
+            <Drawer open={dialogMode === 'escala'} onOpenChange={(open) => !open && setDialogMode(null)}>
+              <DrawerContent className="max-h-[85dvh] rounded-t-[28px]">
+                <DrawerHeader className="text-left relative shrink-0">
+                  <DrawerClose className="absolute right-4 top-4 rounded-sm opacity-70 hover:opacity-100 transition-opacity">
+                    <X className="h-5 w-5" />
+                  </DrawerClose>
+                  <DrawerTitle>{editingEscala ? 'Editar escala' : 'Criar escala'}</DrawerTitle>
+                  <DrawerDescription>A escala nasce como rascunho e so aparece para os guardas apos publicacao.</DrawerDescription>
+                </DrawerHeader>
+                <form onSubmit={saveEscala} className="flex flex-col overflow-hidden">
+                  <div className="flex-1 overflow-y-auto px-4 space-y-5 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+                    {escalaContent}
+                  </div>
+                  <DrawerFooter className="mt-0 pt-2 bg-background border-t pb-[calc(1rem+var(--safe-area-bottom))]">
+                    {escalaFooter}
+                  </DrawerFooter>
+                </form>
+              </DrawerContent>
+            </Drawer>
+          );
+        }
+
+        return (
+          <Dialog open={dialogMode === 'escala'} onOpenChange={(open) => !open && setDialogMode(null)}>
+            <DialogContent className="max-h-[calc(100dvh-var(--safe-area-top)-var(--safe-area-bottom)-2rem)] max-w-4xl overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>{editingEscala ? 'Editar escala' : 'Criar escala'}</DialogTitle>
+                <DialogDescription>A escala nasce como rascunho e so aparece para os guardas apos publicacao.</DialogDescription>
+              </DialogHeader>
+              <form onSubmit={saveEscala} className="space-y-5">
+                {escalaContent}
+                <DialogFooter className="gap-2">
+                  {escalaFooter}
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
+        );
+      })()}
 
       <Dialog open={dialogMode === 'agente'} onOpenChange={(open) => !open && setDialogMode(null)}>
         <DialogContent>
@@ -1098,86 +1143,89 @@ export default function EscalasAdminPage() {
         <DialogContent><DialogHeader><DialogTitle>{decisionTroca?.aprovar ? 'Aprovar troca' : 'Rejeitar troca'}</DialogTitle></DialogHeader><Textarea value={decisionReason} onChange={(event) => setDecisionReason(event.target.value)} placeholder="Motivo ou observacao" /><DialogFooter><Button variant="outline" onClick={() => setDialogMode(null)}>Voltar</Button><Button onClick={decideTroca}>{decisionTroca?.aprovar ? 'Aprovar' : 'Rejeitar'}</Button></DialogFooter></DialogContent>
       </Dialog>
 
-      <Dialog open={dialogMode === 'operacao-pdf'} onOpenChange={(open) => !open && setDialogMode(null)}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-slate-900">
-              <Printer className="h-5 w-5 text-brand-600" />
-              Escala da Operação (PDF)
-            </DialogTitle>
-            <DialogDescription>
-              Selecione uma Operação IRO cadastrada para gerar e baixar a Escala de Serviço em PDF.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4 py-2">
-            <div className="space-y-1.5">
-              <Label>Operação IRO</Label>
-              {loadingOperacoes ? (
-                <div className="py-2 text-xs text-slate-500">Carregando operações...</div>
-              ) : operacoesIroList.length === 0 ? (
-                <div className="rounded-lg border border-dashed p-3 text-xs text-slate-500">Nenhuma operação encontrada.</div>
-              ) : (
-                <Select value={selectedOperacaoId} onValueChange={setSelectedOperacaoId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione uma operação" />
-                  </SelectTrigger>
-                  <SelectContent className="max-h-60">
-                    {operacoesIroList.map((op) => (
-                      <SelectItem key={op.id} value={op.id}>
-                        {op.codigo ? `[${op.codigo}] ` : ''}{op.nome} {!op.ativo ? '(Encerrada)' : '(Ativa)'}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-            </div>
-
-            {operacaoDatasList.length > 0 && (
-              <div className="space-y-1.5">
-                <Label>Data Específica (Opcional)</Label>
-                <Select value={selectedDataFilter} onValueChange={setSelectedDataFilter}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Todas as datas" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="todas">Todas as datas da operação</SelectItem>
-                    {operacaoDatasList.map((dt) => (
-                      <SelectItem key={dt} value={dt}>
-                        {formatDate(dt)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-
-            <div className="space-y-1.5">
-              <Label>Filtro de Inscritos</Label>
-              <Select value={statusFilter} onValueChange={(val: any) => setStatusFilter(val)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="confirmados">Apenas guardas confirmados / realizados</SelectItem>
-                  <SelectItem value="todos">Todos os inscritos (incluindo pendentes)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="outline" onClick={() => setDialogMode(null)}>
+      <ResponsiveModal
+        open={dialogMode === 'operacao-pdf'}
+        onOpenChange={(open) => !open && setDialogMode(null)}
+        title="Escala da Operação (PDF)"
+        description="Selecione uma Operação IRO cadastrada para gerar e baixar a Escala de Serviço em PDF."
+        className="max-w-md"
+        footer={
+          <div className="flex gap-2 w-full">
+            <Button variant="outline" onClick={() => setDialogMode(null)} className="flex-1">
               Cancelar
             </Button>
-            <Button onClick={handleGerarPdfOperacao} disabled={generatingPdf || !selectedOperacaoId} className="gap-2">
+            <Button onClick={handleGerarPdfOperacao} disabled={generatingPdf || !selectedOperacaoId} className="gap-2 flex-1">
               <Printer className="h-4 w-4" />
               {generatingPdf ? 'Gerando PDF...' : 'Gerar e Baixar PDF'}
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </div>
+        }
+      >
+        <div className="space-y-4 py-2">
+          <div className="space-y-1.5">
+            <Label>Operação IRO</Label>
+            {loadingOperacoes ? (
+              <div className="py-2 text-xs text-slate-500">Carregando operações...</div>
+            ) : operacoesIroList.length === 0 ? (
+              <div className="rounded-lg border border-dashed p-3 text-xs text-slate-500">Nenhuma operação encontrada.</div>
+            ) : (
+              <Select value={selectedOperacaoId} onValueChange={setSelectedOperacaoId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione uma operação" />
+                </SelectTrigger>
+                <SelectContent className="max-h-60">
+                  {operacoesIroList.map((op) => (
+                    <SelectItem key={op.id} value={op.id}>
+                      {op.codigo ? `[${op.codigo}] ` : ''}{op.nome} {!op.ativo ? '(Encerrada)' : '(Ativa)'}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </div>
+
+          {operacaoDatasList.length > 0 && (
+            <div className="space-y-1.5">
+              <Label>Data Específica (Opcional)</Label>
+              <Select value={selectedDataFilter} onValueChange={setSelectedDataFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Todas as datas" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todas">Todas as datas da operação</SelectItem>
+                  {operacaoDatasList.map((dt) => (
+                    <SelectItem key={dt} value={dt}>
+                      {formatDate(dt)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          <div className="space-y-1.5">
+            <Label>Filtro de Inscritos</Label>
+            <Select value={statusFilter} onValueChange={(val: any) => setStatusFilter(val)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="confirmados">Apenas guardas confirmados / realizados</SelectItem>
+                <SelectItem value="todos">Todos os inscritos (incluindo pendentes)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      </ResponsiveModal>
       </div>
+
+      {/* FAB - Escala de Operacao PDF */}
+      <button
+        onClick={openOperacaoPdfDialog}
+        className="fixed bottom-[calc(10rem+var(--safe-area-bottom))] right-[calc(1.25rem+var(--safe-area-right))] z-50 flex size-14 items-center justify-center rounded-full border-2 border-primary bg-white text-primary shadow-[0_8px_28px_-6px_rgba(37,99,235,0.55)] transition-all active:scale-90 sm:hidden"
+      >
+        <Printer className="h-6 w-6" />
+      </button>
 
       {/* FAB - Nova escala */}
       <button
@@ -1447,5 +1495,54 @@ function StatCardMobile({ label, value, icon: Icon }: { label: string; value: st
         <p className="mt-0.5 text-2xl font-black tracking-tight text-slate-900">{value}</p>
       </div>
     </div>
+  );
+}
+
+function ResponsiveModal({ open, onOpenChange, title, description, children, footer, className }: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  title: string;
+  description?: string;
+  children: React.ReactNode;
+  footer?: React.ReactNode;
+  className?: string;
+}) {
+  const isMobile = useIsMobile();
+
+  if (isMobile) {
+    return (
+      <Drawer open={open} onOpenChange={onOpenChange}>
+        <DrawerContent className={`max-h-[85dvh] rounded-t-[28px] ${className ?? ''}`}>
+          <DrawerHeader className="text-left relative shrink-0">
+            <DrawerClose className="absolute right-4 top-4 rounded-sm opacity-70 hover:opacity-100 transition-opacity">
+              <X className="h-5 w-5" />
+            </DrawerClose>
+            <DrawerTitle>{title}</DrawerTitle>
+            {description && <DrawerDescription>{description}</DrawerDescription>}
+          </DrawerHeader>
+          <div className="flex-1 overflow-y-auto px-4 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+            {children}
+          </div>
+          {footer && (
+            <DrawerFooter className="mt-0 pt-2 bg-background border-t pb-[calc(1rem+var(--safe-area-bottom))]">
+              {footer}
+            </DrawerFooter>
+          )}
+        </DrawerContent>
+      </Drawer>
+    );
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className={className}>
+        <DialogHeader>
+          <DialogTitle>{title}</DialogTitle>
+          {description && <DialogDescription>{description}</DialogDescription>}
+        </DialogHeader>
+        {children}
+        {footer && <DialogFooter>{footer}</DialogFooter>}
+      </DialogContent>
+    </Dialog>
   );
 }

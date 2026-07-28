@@ -1466,8 +1466,7 @@ const GuardaMunicipalIros = () => {
         </div>
 
         <div className="shrink-0">
-          <div className="mb-3 text-right text-xs text-slate-500">{TEMPO_SOLICITACAO_LABEL[item.tempo_solicitacao] || item.tempo_solicitacao}</div>
-          <div className="flex gap-2">
+          <div className="flex items-center justify-end gap-2 lg:justify-start">
             {canManageOperacoes && <Switch checked={item.ativo} onCheckedChange={() => void handleToggleAtiva(item)} disabled={item.data_fim < todayStr()} />}
             <Button size="sm" variant="outline" onClick={() => void openOperacaoDetails(item)}>
               <Eye className="h-4 w-4" />
@@ -1483,9 +1482,17 @@ const GuardaMunicipalIros = () => {
                 >
                   <Pencil className="h-4 w-4" />
                 </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => openDeleteConfirm(item)}
+                  className="border-red-200 text-red-700 hover:bg-red-50 hidden lg:inline-flex"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
                 <Popover>
                   <PopoverTrigger asChild>
-                    <Button size="sm" variant="outline">
+                    <Button size="sm" variant="outline" className="lg:hidden">
                       <MoreHorizontal className="h-4 w-4" />
                     </Button>
                   </PopoverTrigger>
@@ -1946,21 +1953,6 @@ const GuardaMunicipalIros = () => {
           <h1 className="truncate text-lg font-bold tracking-tight text-slate-900">IROs</h1>
         </div>
 
-        <div className="flex gap-3 overflow-x-auto px-1 pb-1 scrollbar-none sm:grid sm:grid-cols-4 sm:gap-3 sm:overflow-visible sm:pb-0 lg:px-0" style={{ WebkitOverflowScrolling: 'touch', scrollSnapType: 'x mandatory' }}>
-          <div className="min-w-[78vw] snap-start sm:min-w-0">
-            <StatCard label="Operações ativas" value={String(stats.operacoesAtivas)} icon={Calendar} />
-          </div>
-          <div className="min-w-[78vw] snap-start sm:min-w-0">
-            <StatCard label="Candidaturas no mês" value={String(stats.candidaturasMes)} icon={Users} />
-          </div>
-          <div className="min-w-[78vw] snap-start sm:min-w-0">
-            <StatCard label="Horas no mês" value={`${stats.horasMes}h`} icon={Clock} />
-          </div>
-          <div className="min-w-[78vw] snap-start sm:min-w-0">
-            <StatCard label="Banco de horas" value={`${stats.totalBancoHoras}h`} icon={Hourglass} />
-          </div>
-        </div>
-
         <section className="hidden rounded-[24px] bg-[linear-gradient(135deg,_#0f172a_0%,_#1e293b_45%,_#2563eb_100%)] px-4 py-5 text-white md:rounded-[34px] md:px-6 md:py-6 lg:block">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div className="min-w-0 flex-1">
@@ -1980,7 +1972,29 @@ const GuardaMunicipalIros = () => {
               </Button>
             </div>
           </div>
+
+          <div className="mt-4 hidden gap-3 sm:grid sm:grid-cols-4 md:mt-6 lg:grid">
+            <StatCard dark label="Operações ativas" value={String(stats.operacoesAtivas)} icon={Calendar} />
+            <StatCard dark label="Candidaturas no mês" value={String(stats.candidaturasMes)} icon={Users} />
+            <StatCard dark label="Horas no mês" value={`${stats.horasMes}h`} icon={Clock} />
+            <StatCard dark label="Banco de horas" value={`${stats.totalBancoHoras}h`} icon={Hourglass} />
+          </div>
         </section>
+
+        <div className="flex gap-3 overflow-x-auto px-1 pb-1 scrollbar-none lg:hidden" style={{ WebkitOverflowScrolling: 'touch', scrollSnapType: 'x mandatory' }}>
+          <div className="min-w-[78vw] snap-start">
+            <StatCard label="Operações ativas" value={String(stats.operacoesAtivas)} icon={Calendar} />
+          </div>
+          <div className="min-w-[78vw] snap-start">
+            <StatCard label="Candidaturas no mês" value={String(stats.candidaturasMes)} icon={Users} />
+          </div>
+          <div className="min-w-[78vw] snap-start">
+            <StatCard label="Horas no mês" value={`${stats.horasMes}h`} icon={Clock} />
+          </div>
+          <div className="min-w-[78vw] snap-start">
+            <StatCard label="Banco de horas" value={`${stats.totalBancoHoras}h`} icon={Hourglass} />
+          </div>
+        </div>
 
         {podeVerTudo && (
           <div className="flex gap-1 rounded-[26px] bg-slate-100/80 p-1.5">
@@ -2877,7 +2891,22 @@ const GuardaMunicipalIros = () => {
   );
 };
 
-function StatCard({ label, value, icon: Icon }: { label: string; value: string; icon: typeof Calendar }) {
+function StatCard({ label, value, icon: Icon, dark }: { label: string; value: string; icon: typeof Calendar; dark?: boolean }) {
+  if (dark) {
+    return (
+      <div className="rounded-[22px] border border-white/10 bg-white/5 p-3 shadow-none backdrop-blur-sm md:p-4">
+        <div className="flex items-start justify-between gap-2 md:gap-3">
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/60 md:text-[11px]">{label}</p>
+            <p className="mt-1 text-2xl font-black tracking-[-0.05em] text-white md:mt-2 md:text-3xl">{value}</p>
+          </div>
+          <div className="rounded-full bg-white/10 p-2 text-white md:rounded-[18px] md:p-3">
+            <Icon className="size-4 md:size-5" />
+          </div>
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="rounded-[22px] border border-slate-200/80 bg-white p-3 shadow-[0_8px_24px_-16px_rgba(15,23,42,0.18)] md:p-4">
       <div className="flex items-start justify-between gap-2 md:gap-3">
