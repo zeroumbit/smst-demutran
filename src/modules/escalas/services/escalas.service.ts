@@ -131,10 +131,27 @@ export const escalasService = {
   },
 
   async listMinhasEscalas() {
+    const userId = (await supabase.auth.getUser()).data.user?.id;
+    if (!userId) return [];
+
+    const { data: guardaId } = await supabase
+      .rpc('get_guarda_id_by_user', { p_user_id: userId });
+
+    if (!guardaId) return [];
+
+    const { data: agentes } = await supabase
+      .from('guarda_escala_agentes')
+      .select('escala_id')
+      .eq('guarda_id', guardaId as string);
+
+    const escalaIds = [...new Set((agentes || []).map((a) => a.escala_id))];
+    if (escalaIds.length === 0) return [];
+
     const { data, error } = await supabase
       .from('guarda_escalas')
       .select(escalaSelect)
       .eq('status', 'PUBLICADA')
+      .in('id', escalaIds)
       .order('data_inicio', { ascending: true });
 
     if (error) throw error;
@@ -450,4 +467,31 @@ export const escalasService = {
     if (error) throw error;
     return data as RpcResult;
   },
+
+  async obterResumoCienciasGestor(escalaId: string) {
+    const { data, error } = await supabase.rpc('obter_resumo_ciencias_gestor', { p_escala_id: escalaId });
+    if (error) throw error;
+    return data as import('../types/escalas.types').GuardaEscalaResumoCienciaGestor;
+  },
+
+  async solicitarEsclarecimento(escalaId: string, assunto: string, descricao: string) {
+    const { data, error } = await supabase.rpc('solicitar_esclarecimento_escala', {
+      p_escala_id: escalaId,
+      p_assunto: assunto,
+      p_descricao: descricao,
+    });
+    if (error) throw error;
+    return data as RpcResult;
+  },
+
+  async listVersoes(escalaId: string) {
+    const { data, error } = await supabase
+      .from('guarda_escala_versoes')
+      .select('*')
+      .eq('escala_id', escalaId)
+      .order('versao', { ascending: false });
+    if (error) throw error;
+    return (data || []) as import('../types/escalas.types').GuardaEscalaVersao[];
+  },
 };
+

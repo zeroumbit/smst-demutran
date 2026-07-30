@@ -85,6 +85,30 @@ export default function MinhasEscalasPage() {
     else toast.error(result.mensagem);
   };
 
+  const [esclarecerOpen, setEsclarecerOpen] = useState(false);
+  const [esclarecerForm, setEsclarecerForm] = useState({ assunto: '', descricao: '' });
+
+  const openEsclarecer = (escala: GuardaEscala) => {
+    setSelected(escala);
+    setEsclarecerForm({ assunto: `Esclarecimento sobre escala: ${escala.titulo}`, descricao: '' });
+    setEsclarecerOpen(true);
+  };
+
+  const solicitarEsclarecimento = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!selected || !esclarecerForm.assunto) {
+      toast.error('Informe o assunto.');
+      return;
+    }
+    const result = await escalasService.solicitarEsclarecimento(selected.id, esclarecerForm.assunto, esclarecerForm.descricao);
+    if (result.sucesso) {
+      toast.success(result.mensagem || 'Solicitação enviada com sucesso!');
+      setEsclarecerOpen(false);
+    } else {
+      toast.error(result.mensagem || 'Erro ao enviar solicitação.');
+    }
+  };
+
   return (
     <GuardsLayout>
       <div className="space-y-5">
@@ -117,14 +141,14 @@ export default function MinhasEscalasPage() {
             <Card className="rounded-[22px] border-slate-200">
               <CardHeader><CardTitle>Proximo servico</CardTitle></CardHeader>
               <CardContent>
-                {proxima ? <EscalaCard escala={proxima} destaque onConfirmar={() => confirmar(proxima)} onTroca={() => openTroca(proxima)} /> : <p className="text-sm text-slate-500">Nenhuma escala futura publicada para voce.</p>}
+                {proxima ? <EscalaCard escala={proxima} destaque onConfirmar={() => confirmar(proxima)} onTroca={() => openTroca(proxima)} onEsclarecer={() => openEsclarecer(proxima)} /> : <p className="text-sm text-slate-500">Nenhuma escala futura publicada para voce.</p>}
               </CardContent>
             </Card>
 
             <Card className="rounded-[22px] border-slate-200">
               <CardHeader><CardTitle>Proximas escalas</CardTitle></CardHeader>
               <CardContent className="space-y-3">
-                {futuras.slice(0, 8).map((escala) => <EscalaCard key={escala.id} escala={escala} onConfirmar={() => confirmar(escala)} onTroca={() => openTroca(escala)} />)}
+                {futuras.slice(0, 8).map((escala) => <EscalaCard key={escala.id} escala={escala} onConfirmar={() => confirmar(escala)} onTroca={() => openTroca(escala)} onEsclarecer={() => openEsclarecer(escala)} />)}
                 {futuras.length === 0 && <p className="text-sm text-slate-500">Sem proximas escalas.</p>}
               </CardContent>
             </Card>
@@ -209,6 +233,32 @@ export default function MinhasEscalasPage() {
           <Field label="Observação"><Textarea className="rounded-xl min-h-[80px]" value={trocaForm.observacao} onChange={(event) => setTrocaForm((current) => ({ ...current, observacao: event.target.value }))} /></Field>
         </form>
       </ResponsiveDialog>
+
+      <ResponsiveDialog
+        open={esclarecerOpen}
+        onOpenChange={setEsclarecerOpen}
+        title="Solicitar Esclarecimento de Escala"
+        description="Abra um protocolo na Central de Solicitações diretamente vinculado a esta escala."
+        footer={
+          <div className="flex gap-2 w-full">
+            <Button type="button" variant="outline" className="flex-1 rounded-xl text-[13px] font-semibold" onClick={() => setEsclarecerOpen(false)}>Cancelar</Button>
+            <Button type="submit" form="esclarecer-form" className="flex-1 rounded-xl text-[13px] font-semibold bg-amber-600 hover:bg-amber-700 text-white">Enviar Esclarecimento</Button>
+          </div>
+        }
+      >
+        <form id="esclarecer-form" onSubmit={solicitarEsclarecimento} className="space-y-4 py-2">
+          <div className="rounded-xl bg-amber-50 p-4 text-xs text-amber-800 border border-amber-200">
+            <strong>Escala: {selected?.titulo}</strong><br />
+            Data: {selected ? formatDateTime(selected.data_inicio) : ''}
+          </div>
+          <Field label="Assunto">
+            <Input className="rounded-xl" value={esclarecerForm.assunto} onChange={(e) => setEsclarecerForm((curr) => ({ ...curr, assunto: e.target.value }))} required />
+          </Field>
+          <Field label="Descrição / Dúvida">
+            <Textarea className="rounded-xl min-h-[100px]" placeholder="Descreva sua dúvida ou problema referente a esta escala..." value={esclarecerForm.descricao} onChange={(e) => setEsclarecerForm((curr) => ({ ...curr, descricao: e.target.value }))} required />
+          </Field>
+        </form>
+      </ResponsiveDialog>
     </GuardsLayout>
   );
 }
@@ -221,10 +271,14 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   return <div className="grid gap-2"><Label>{label}</Label>{children}</div>;
 }
 
-function EscalaCard({ escala, destaque, onConfirmar, onTroca }: { escala: GuardaEscala; destaque?: boolean; onConfirmar?: () => void; onTroca?: () => void }) {
+function EscalaCard({ escala, destaque, onConfirmar, onTroca, onEsclarecer }: { escala: GuardaEscala; destaque?: boolean; onConfirmar?: () => void; onTroca?: () => void; onEsclarecer?: () => void }) {
   const status = getEscalaStatusCalculado(escala);
   const minhaCiencia = escala.ciencias?.find((ciencia) => ciencia.escala_id === escala.id);
   const agente = escala.agentes?.[0];
+  const versaoAtual = escala.versao ?? 1;
+  const cienciaVersao = minhaCiencia?.escala_versao ?? 1;
+  const alteradaAposCiencia = minhaCiencia?.status_ciencia === 'ALTERADA_APOS_CIENCIA' || (minhaCiencia?.confirmado_em && cienciaVersao < versaoAtual);
+
   return (
     <div className={`rounded-xl border p-4 ${destaque ? 'border-brand-200 bg-brand-50' : 'border-slate-200 bg-white'}`}>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -232,6 +286,7 @@ function EscalaCard({ escala, destaque, onConfirmar, onTroca }: { escala: Guarda
           <div className="flex flex-wrap items-center gap-2">
             <p className="text-[15px] font-semibold text-slate-900">{escala.titulo}</p>
             <Badge variant="outline" className={statusClassName(status)}>{statusLabels[status]}</Badge>
+            {versaoAtual > 1 && <Badge variant="secondary" className="text-[10px]">v{versaoAtual}</Badge>}
           </div>
           <p className="mt-1 text-sm text-slate-500">{formatDate(escala.data_inicio)} - {formatTime(escala.data_inicio)} ate {formatTime(escala.data_fim)}</p>
           <p className="mt-2 text-sm text-slate-600">{escala.posto?.nome ?? escala.local_texto ?? 'Local nao definido'}</p>
@@ -240,13 +295,46 @@ function EscalaCard({ escala, destaque, onConfirmar, onTroca }: { escala: Guarda
             <span className="flex items-center gap-1"><UserCheck className="h-3.5 w-3.5" />{escala.equipe?.nome ?? 'Sem equipe'}</span>
             <span className="flex items-center gap-1"><RefreshCw className="h-3.5 w-3.5" />{escala.viaturas?.[0]?.veiculo?.prefixo ?? 'Sem viatura'}</span>
           </div>
+
+          {/* Status de Ciência Informativo */}
+          <div className="mt-3">
+            {alteradaAposCiencia ? (
+              <div className="rounded-lg bg-amber-50 p-2 text-xs text-amber-800 border border-amber-200 flex items-center gap-1.5">
+                <span className="font-semibold">⚠️ Escala alterada após ciência.</span> Por favor, confirme a nova versão.
+              </div>
+            ) : minhaCiencia?.confirmado_em ? (
+              <p className="text-xs text-emerald-600 font-medium flex items-center gap-1">
+                <CheckCircle2 className="h-3.5 w-3.5" /> Ciência confirmada em {formatDateTime(minhaCiencia.confirmado_em)}
+              </p>
+            ) : null}
+          </div>
         </div>
+
         <div className="flex flex-wrap gap-2">
-          {onConfirmar && !minhaCiencia?.confirmado_em && <Button size="sm" onClick={onConfirmar} className="gap-2 text-[13px]"><CheckCircle2 className="h-4 w-4" />Confirmar ciencia</Button>}
-          {minhaCiencia?.confirmado_em && <Badge className="bg-emerald-50 text-emerald-700 text-[13px]"><CheckCircle2 className="mr-1 h-3.5 w-3.5" />Ciente</Badge>}
-          {onTroca && new Date(escala.data_inicio) > new Date() && <Button size="sm" variant="outline" onClick={onTroca} className="gap-2 text-[13px]"><Shuffle className="h-4 w-4" />Solicitar troca</Button>}
+          {onConfirmar && (!minhaCiencia?.confirmado_em || alteradaAposCiencia) && (
+            <Button size="sm" onClick={onConfirmar} className={`gap-2 text-[13px] ${alteradaAposCiencia ? 'bg-amber-600 hover:bg-amber-700 text-white' : ''}`}>
+              <CheckCircle2 className="h-4 w-4" />
+              {alteradaAposCiencia ? 'Confirmar nova versão' : 'Confirmar ciência'}
+            </Button>
+          )}
+          {minhaCiencia?.confirmado_em && !alteradaAposCiencia && (
+            <Badge className="bg-emerald-50 text-emerald-700 text-[13px] border border-emerald-200">
+              <CheckCircle2 className="mr-1 h-3.5 w-3.5" /> Ciente
+            </Badge>
+          )}
+          {onEsclarecer && (
+            <Button size="sm" variant="outline" onClick={onEsclarecer} className="gap-1 text-[12px] border-amber-300 text-amber-800 hover:bg-amber-50">
+              Solicitar esclarecimento
+            </Button>
+          )}
+          {onTroca && new Date(escala.data_inicio) > new Date() && (
+            <Button size="sm" variant="outline" onClick={onTroca} className="gap-2 text-[13px]">
+              <Shuffle className="h-4 w-4" /> Solicitar troca
+            </Button>
+          )}
         </div>
       </div>
     </div>
   );
 }
+

@@ -68,12 +68,34 @@ export type GuardaEscalaViatura = {
   } | null;
 };
 
+export type CienciaStatus = 'PENDENTE_CIENCIA' | 'CIENTE' | 'ALTERADA_APOS_CIENCIA' | 'CIENTE_ALTERACAO';
+
 export type GuardaEscalaCiencia = {
   id: string;
   escala_id: string;
   guarda_id: string;
   visualizado_em: string | null;
   confirmado_em: string | null;
+  escala_versao?: number;
+  status_ciencia?: CienciaStatus;
+};
+
+export type GuardaEscalaVersao = {
+  id: string;
+  escala_id: string;
+  versao: number;
+  titulo: string;
+  data_inicio: string;
+  data_fim: string;
+  posto_texto: string | null;
+  tipo_servico_nome: string | null;
+  equipe_nome: string | null;
+  grupamento: string | null;
+  ponto_apresentacao: string | null;
+  observacoes: string | null;
+  agentes_snapshot: Array<{ id: string; nome: string; funcao: string }>;
+  viaturas_snapshot: Array<{ veiculo: string; agente?: string }>;
+  created_at: string;
 };
 
 export type GuardaEscala = {
@@ -91,6 +113,7 @@ export type GuardaEscala = {
   area_atuacao: string | null;
   equipe_id: string | null;
   grupamento: string | null;
+  versao?: number;
   status: EscalaStatus;
   recorrencia_tipo: RecorrenciaTipo;
   recorrencia_config: Record<string, unknown>;
@@ -106,6 +129,26 @@ export type GuardaEscala = {
   agentes?: GuardaEscalaAgente[];
   viaturas?: GuardaEscalaViatura[];
   ciencias?: GuardaEscalaCiencia[];
+};
+
+export type GuardaEscalaResumoCienciaAgente = {
+  guarda_id: string;
+  nome: string;
+  matricula: string;
+  funcao: string;
+  status_ciencia: CienciaStatus;
+  confirmado_em: string | null;
+  escala_versao: number | null;
+};
+
+export type GuardaEscalaResumoCienciaGestor = {
+  sucesso: boolean;
+  versao_atual: number;
+  total_agentes: number;
+  cientes: number;
+  pendentes: number;
+  alteradas_pendentes: number;
+  agentes: GuardaEscalaResumoCienciaAgente[];
 };
 
 export type GuardaEscalaPayload = {
@@ -178,3 +221,51 @@ export type GuardaEscalaCompletaPayload = {
   viatura_id?: string | null;
   publicar?: boolean;
 };
+
+export type GuardaSolicitacaoTipo =
+  | 'TROCA_SERVICO'
+  | 'ESCLARECIMENTO_ESCALA'
+  | 'CORRECAO_ESCALA'
+  | 'ATUALIZACAO_CADASTRAL'
+  | 'PROBLEMA_EQUIPAMENTO'
+  | 'SOLICITACAO_ADMINISTRATIVA'
+  | 'OUTRO';
+
+export type GuardaSolicitacaoStatus =
+  | 'PENDENTE'
+  | 'EM_ANALISE'
+  | 'AGUARDANDO_INFORMACAO'
+  | 'APROVADA'
+  | 'RECUSADA'
+  | 'CONCLUIDA'
+  | 'CANCELADA';
+
+export type GuardaSolicitacaoInteracao = {
+  id: string;
+  autor_usuario_id: string | null;
+  autor_tipo: 'GUARDA' | 'GESTAO' | 'SISTEMA';
+  mensagem: string;
+  anexos: Array<{ nome: string; url: string }>;
+  status_anterior: string | null;
+  status_novo: string | null;
+  created_at: string;
+};
+
+export type GuardaSolicitacao = {
+  id: string;
+  protocolo: string;
+  guarda_id: string;
+  guarda_nome?: string;
+  tipo: GuardaSolicitacaoTipo;
+  assunto: string;
+  descricao: string | null;
+  escala_id: string | null;
+  escala_titulo?: string | null;
+  status: GuardaSolicitacaoStatus;
+  resposta_gestao?: string | null;
+  analisado_em?: string | null;
+  created_at: string;
+  updated_at: string;
+  interacoes?: GuardaSolicitacaoInteracao[];
+};
+
