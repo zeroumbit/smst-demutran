@@ -259,7 +259,7 @@ export default function OrdensServicoPage() {
   };
 
   const handleBaixarPdf = async (os: OrdemServico) => {
-    gerarPdfOrdemServico(os);
+    await gerarPdfOrdemServico(os);
     try {
       await ordemServicoService.registrarAcesso(os.id, 'DOWNLOAD');
     } catch {
@@ -268,7 +268,7 @@ export default function OrdensServicoPage() {
   };
 
   const handleImprimir = async (os: OrdemServico) => {
-    gerarPdfOrdemServico(os);
+    await gerarPdfOrdemServico(os);
     try {
       await ordemServicoService.registrarAcesso(os.id, 'IMPRESSAO');
     } catch {
@@ -435,55 +435,123 @@ export default function OrdensServicoPage() {
                       )}
                     </div>
 
-                    {/* Ações */}
-                    <div className="flex flex-wrap lg:flex-col items-center lg:items-end justify-end gap-2 border-t lg:border-t-0 pt-3 lg:pt-0 border-slate-100">
-                      <div className="flex items-center gap-1.5">
-                        <Button size="sm" variant="outline" onClick={() => handleVerDetalhes(os)} className="gap-1 rounded-xl text-xs">
-                          <Eye className="h-3.5 w-3.5" /> Detalhes
-                        </Button>
-                        {os.status !== 'RASCUNHO' && (
-                          <>
-                            <Button size="sm" variant="outline" onClick={() => handleBaixarPdf(os)} className="gap-1 rounded-xl text-xs text-brand-700">
-                              <Download className="h-3.5 w-3.5" /> PDF
-                            </Button>
-                            <Button size="sm" variant="ghost" onClick={() => handleImprimir(os)} className="gap-1 rounded-xl text-xs" title="Imprimir">
-                              <Printer className="h-3.5 w-3.5" />
-                            </Button>
-                          </>
-                        )}
-                      </div>
+                    {/* Ações em linha única horizontal */}
+                    <div className="flex flex-row items-center flex-wrap justify-end gap-1.5 border-t lg:border-t-0 pt-3 lg:pt-0 border-slate-100">
+                      {/* Botão Ver Detalhes - Apenas Ícone */}
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleVerDetalhes(os)}
+                        className="h-9 w-9 p-0 grid place-items-center rounded-xl"
+                        title="Ver Detalhes"
+                        aria-label="Ver Detalhes"
+                      >
+                        <Eye className="h-4 w-4 text-slate-700" />
+                      </Button>
 
-                      {/* Ações exclusivas do Gestor */}
-                      {isGestor && (
-                        <div className="flex flex-wrap items-center gap-1.5">
-                          {os.status === 'RASCUNHO' && (
-                            <>
-                              <Button size="sm" variant="outline" onClick={() => handleOpenForm(os)} className="gap-1 rounded-xl text-xs">
-                                <Edit className="h-3.5 w-3.5" /> Editar
-                              </Button>
-                              <Button size="sm" onClick={() => handlePublicar(os.id)} disabled={submitting} className="gap-1 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-xs">
-                                <Send className="h-3.5 w-3.5" /> Publicar
-                              </Button>
-                            </>
-                          )}
+                      {/* Ações de Rascunho */}
+                      {isGestor && os.status === 'RASCUNHO' && (
+                        <>
+                          {/* Editar - Apenas Ícone */}
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleOpenForm(os)}
+                            className="h-9 w-9 p-0 grid place-items-center rounded-xl"
+                            title="Editar Rascunho"
+                            aria-label="Editar Rascunho"
+                          >
+                            <Edit className="h-4 w-4 text-slate-700" />
+                          </Button>
+                          {/* Publicar - Ícone + Nome */}
+                          <Button
+                            size="sm"
+                            onClick={() => handlePublicar(os.id)}
+                            disabled={submitting}
+                            className="gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold px-3"
+                          >
+                            <Send className="h-3.5 w-3.5" /> Publicar
+                          </Button>
+                        </>
+                      )}
 
-                          {os.status === 'PUBLICADA' && (
-                            <>
-                              <Button size="sm" variant="outline" onClick={() => { setSelectedOS(os); setDistribuicaoOpen(true); }} className="gap-1 rounded-xl text-xs">
-                                <Users className="h-3.5 w-3.5 text-sky-600" /> Distribuição
-                              </Button>
-                              <Button size="sm" variant="outline" onClick={() => handleSubstituir(os)} disabled={submitting} className="gap-1 rounded-xl text-xs text-amber-700 border-amber-200 bg-amber-50">
-                                <RefreshCw className="h-3.5 w-3.5" /> Substituir
-                              </Button>
-                              <Button size="sm" variant="outline" onClick={() => { setSelectedOS(os); setCancelarOpen(true); }} className="gap-1 rounded-xl text-xs text-red-600 border-red-200 hover:bg-red-50">
-                                <XCircle className="h-3.5 w-3.5" /> Cancelar
-                              </Button>
-                              <Button size="sm" variant="ghost" onClick={() => handleArquivar(os.id)} className="gap-1 rounded-xl text-xs text-slate-500" title="Arquivar">
-                                <Archive className="h-3.5 w-3.5" />
-                              </Button>
-                            </>
-                          )}
-                        </div>
+                      {/* Ações de O.S. Publicada */}
+                      {os.status !== 'RASCUNHO' && (
+                        <>
+                          {/* Baixar PDF - Apenas Ícone */}
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleBaixarPdf(os)}
+                            className="h-9 w-9 p-0 grid place-items-center rounded-xl text-brand-700 hover:bg-brand-50"
+                            title="Baixar PDF"
+                            aria-label="Baixar PDF"
+                          >
+                            <Download className="h-4 w-4" />
+                          </Button>
+                          {/* Imprimir - Apenas Ícone */}
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleImprimir(os)}
+                            className="h-9 w-9 p-0 grid place-items-center rounded-xl text-slate-600"
+                            title="Imprimir"
+                            aria-label="Imprimir"
+                          >
+                            <Printer className="h-4 w-4" />
+                          </Button>
+                        </>
+                      )}
+
+                      {/* Ações Adicionais do Gestor em O.S. Publicada */}
+                      {isGestor && os.status === 'PUBLICADA' && (
+                        <>
+                          {/* Rastreamento de Distribuição */}
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => { setSelectedOS(os); setDistribuicaoOpen(true); }}
+                            className="h-9 w-9 p-0 grid place-items-center rounded-xl border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100"
+                            title="Consultar Distribuição"
+                            aria-label="Consultar Distribuição"
+                          >
+                            <Users className="h-4 w-4" />
+                          </Button>
+                          {/* Substituir */}
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleSubstituir(os)}
+                            disabled={submitting}
+                            className="h-9 w-9 p-0 grid place-items-center rounded-xl border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100"
+                            title="Substituir por Nova Versão"
+                            aria-label="Substituir por Nova Versão"
+                          >
+                            <RefreshCw className="h-4 w-4" />
+                          </Button>
+                          {/* Cancelar */}
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => { setSelectedOS(os); setCancelarOpen(true); }}
+                            className="h-9 w-9 p-0 grid place-items-center rounded-xl border-red-200 text-red-600 hover:bg-red-50"
+                            title="Cancelar Ordem de Serviço"
+                            aria-label="Cancelar Ordem de Serviço"
+                          >
+                            <XCircle className="h-4 w-4" />
+                          </Button>
+                          {/* Arquivar */}
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleArquivar(os.id)}
+                            className="h-9 w-9 p-0 grid place-items-center rounded-xl text-slate-500 hover:bg-slate-100"
+                            title="Arquivar"
+                            aria-label="Arquivar"
+                          >
+                            <Archive className="h-4 w-4" />
+                          </Button>
+                        </>
                       )}
                     </div>
                   </div>
@@ -690,11 +758,48 @@ export default function OrdensServicoPage() {
                 />
               </div>
               <div>
-                <Label className="text-xs">Telefone / Contato</Label>
+                <Label className="text-xs">Telefone de Contato</Label>
                 <Input
                   value={formData.solicitante_telefone || ''}
-                  onChange={(e) => setFormData({ ...formData, solicitante_telefone: e.target.value })}
-                  placeholder="(88) 9XXXX-XXXX"
+                  onChange={(e) => {
+                    const digits = e.target.value.replace(/\D/g, '').slice(0, 11);
+                    let masked = digits;
+                    if (digits.length <= 2) masked = digits ? `(${digits}` : '';
+                    else if (digits.length <= 6) masked = `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+                    else if (digits.length <= 10) masked = `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
+                    else masked = `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7, 11)}`;
+                    setFormData({ ...formData, solicitante_telefone: masked });
+                  }}
+                  placeholder="(88) 99999-9999"
+                  maxLength={15}
+                  className="rounded-xl mt-1 text-xs"
+                />
+              </div>
+              <div>
+                <Label className="text-xs">WhatsApp</Label>
+                <Input
+                  value={formData.solicitante_whatsapp || ''}
+                  onChange={(e) => {
+                    const digits = e.target.value.replace(/\D/g, '').slice(0, 11);
+                    let masked = digits;
+                    if (digits.length <= 2) masked = digits ? `(${digits}` : '';
+                    else if (digits.length <= 6) masked = `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+                    else if (digits.length <= 10) masked = `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
+                    else masked = `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7, 11)}`;
+                    setFormData({ ...formData, solicitante_whatsapp: masked });
+                  }}
+                  placeholder="(88) 99999-9999"
+                  maxLength={15}
+                  className="rounded-xl mt-1 text-xs"
+                />
+              </div>
+              <div>
+                <Label className="text-xs">E-mail do Solicitante</Label>
+                <Input
+                  type="email"
+                  value={formData.solicitante_email || ''}
+                  onChange={(e) => setFormData({ ...formData, solicitante_email: e.target.value.toLowerCase().trim() })}
+                  placeholder="exemplo@orgao.gov.br"
                   className="rounded-xl mt-1 text-xs"
                 />
               </div>
