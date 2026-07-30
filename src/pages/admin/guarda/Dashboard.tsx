@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { GuardsLayout } from '@/components/admin/GuardsLayout';
+import { NotificationDropdown } from '@/components/admin/NotificationDropdown';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -386,13 +387,19 @@ const GuardaDashboard = () => {
     <>
       <GuardsLayout>
       <div className="space-y-2 sm:space-y-6">
-        {/* Header mobile — saudação + label */}
+        {/* Header mobile — saudação + botão sininho no topo direito */}
         <div className="pl-[var(--safe-area-left)] pr-[var(--safe-area-right)] pt-[var(--safe-area-top)] lg:hidden">
-          <div className="px-4 pb-0 pt-3">
-            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">Guarda Municipal</p>
-            <p className="mt-0.5 text-sm font-semibold text-slate-500">
-              {guardaNome ? `Olá, ${guardaNome.split(' ')[0]}!` : ''}
-            </p>
+          <div className="px-4 pb-0 pt-3 flex items-center justify-between">
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">Guarda Municipal</p>
+              <p className="mt-0.5 text-sm font-semibold text-slate-500">
+                {guardaNome ? `Olá, ${guardaNome.split(' ')[0]}!` : ''}
+              </p>
+            </div>
+            <NotificationDropdown
+              userId={profile?.user_id ?? user?.id}
+              triggerClassName="relative flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-600 shadow-sm hover:bg-slate-50 active:scale-95 transition-all"
+            />
           </div>
         </div>
 
@@ -434,6 +441,12 @@ const GuardaDashboard = () => {
                 {guardaNome ? `Olá, ${guardaNome.split(' ')[0]}!` : 'Dashboard'}
               </h1>
               <p className="mt-1.5 hidden max-w-xl text-[13px] leading-5 text-white md:block md:mt-2 md:text-[14px] md:leading-6">Resumo do mês de {mesAtual}.</p>
+            </div>
+            <div className="flex items-center gap-3">
+              <NotificationDropdown
+                userId={profile?.user_id ?? user?.id}
+                triggerClassName="relative flex h-11 w-11 items-center justify-center rounded-2xl border border-white/20 bg-white/10 text-white hover:bg-white/20 transition-colors"
+              />
             </div>
           </div>
           <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">

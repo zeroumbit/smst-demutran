@@ -8,7 +8,7 @@ import type {
 
 export const solicitacoesService = {
   async listarSolicitacoes(status?: GuardaSolicitacaoStatus | null, tipo?: GuardaSolicitacaoTipo | null) {
-    const { data, error } = await supabase.rpc('listar_minhas_solicitacoes', {
+    const { data, error } = await supabase.rpc('listar_guarda_solicitacoes', {
       p_status: status || null,
       p_tipo: tipo || null,
     });

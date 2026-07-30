@@ -318,8 +318,8 @@ BEGIN
 END;
 $$;
 
--- 11. RPC: Listar Minhas Solicitações
-CREATE OR REPLACE FUNCTION public.listar_minhas_solicitacoes(
+-- 11. RPC: Listar Solicitações da Guarda
+CREATE OR REPLACE FUNCTION public.listar_guarda_solicitacoes(
   p_status text DEFAULT NULL,
   p_tipo text DEFAULT NULL
 )
@@ -574,7 +574,7 @@ GRANT EXECUTE ON FUNCTION public.confirmar_ciencia_guarda_escala(uuid) TO authen
 GRANT EXECUTE ON FUNCTION public.obter_resumo_ciencias_gestor(uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.solicitar_esclarecimento_escala(uuid, text, text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.criar_guarda_solicitacao(text, text, text, uuid, jsonb) TO authenticated;
-GRANT EXECUTE ON FUNCTION public.listar_minhas_solicitacoes(text, text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.listar_guarda_solicitacoes(text, text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.obter_detalhes_solicitacao(uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.adicionar_solicitacao_interacao(uuid, text, jsonb, text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.cancelar_guarda_solicitacao(uuid) TO authenticated;

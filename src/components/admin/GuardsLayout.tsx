@@ -128,7 +128,12 @@ export const GuardsLayout = ({ children }: GuardsLayoutProps) => {
   };
 
   const allNavItems = [...adminNavItems, ...pessoalNavItems];
-  const mobileNavItems = allNavItems.filter(item => item.label !== FISCALIZACAO_LABEL);
+  const mobileBottomNavItems: NavItem[] = [
+    { icon: HouseIcon, label: 'Home', path: '/admin/perfil-guardas/guarda-municipal/dashboard' },
+    { icon: NotebookPen, label: 'Anotacoes', path: '/admin/perfil-guardas/guarda-municipal/anotacoes' },
+    { icon: FileWarning, label: 'IROs', path: '/admin/perfil-guardas/guarda-municipal/iros' },
+    { icon: CalendarDays, label: 'Escalas', path: '/admin/perfil-guardas/guarda-municipal/escalas' },
+  ];
   const isActive = (path: string) => location.pathname === path || location.pathname.startsWith(path + '/');
   const [menuModalOpen, setMenuModalOpen] = useState(false);
   const isHomePage = location.pathname === '/admin/perfil-guardas/guarda-municipal/dashboard';
@@ -250,42 +255,13 @@ export const GuardsLayout = ({ children }: GuardsLayoutProps) => {
         </main>
       </div>
 
-      {/* ─── Mobile bottom tab bar ─── */}
+      {/* ─── Mobile bottom tab bar (Trava fixa de 5 itens) ─── */}
       {isHomePage && (
       <nav className="fixed bottom-0 left-0 right-0 z-50 pl-[calc(0.75rem+var(--safe-area-left))] pr-[calc(0.75rem+var(--safe-area-right))] pb-[calc(0.7rem+var(--safe-area-bottom))] pt-2 lg:hidden pointer-events-none">
         <div className="mx-auto grid max-w-5xl grid-cols-5 gap-2 rounded-[24px] bg-white/90 p-1.5 shadow-[0_14px_34px_-24px_rgba(15,23,42,0.3)] ring-1 ring-slate-200/70 backdrop-blur-xl pointer-events-auto">
-          {mobileNavItems.map((item) => {
+          {mobileBottomNavItems.map((item) => {
             const Icon = item.icon;
             const active = isActive(item.path);
-
-            if (item.label === 'Perfil') {
-              return (
-                <button
-                  key={item.path}
-                  onClick={() => setMenuModalOpen(true)}
-                  className={`flex min-w-0 flex-col items-center justify-center gap-1 rounded-[18px] px-1 py-2.5 transition-all active:scale-[0.98] ${
-                    active ? 'bg-brand-50/90 shadow-[inset_0_1px_0_rgba(255,255,255,0.75)]' : ''
-                  }`}
-                >
-                  <div className={`flex items-center justify-center rounded-xl p-1.5 transition-colors ${
-                    active ? 'bg-white shadow-[0_8px_18px_-14px_rgba(37,99,235,0.55)]' : ''
-                  }`}>
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`h-5 w-5 ${
-                      active ? 'text-brand-600' : 'text-slate-400'
-                    }`}>
-                      <path d="M4 5h16"/>
-                      <path d="M4 12h16"/>
-                      <path d="M4 19h16"/>
-                    </svg>
-                  </div>
-                  <span className={`max-w-full truncate text-[10px] font-bold ${
-                    active ? 'text-brand-600' : 'text-slate-400'
-                  }`}>
-                    Menu
-                  </span>
-                </button>
-              );
-            }
 
             return (
               <Link
@@ -311,6 +287,24 @@ export const GuardsLayout = ({ children }: GuardsLayoutProps) => {
               </Link>
             );
           })}
+
+          {/* 5º Item: Menu Hambúrguer */}
+          <button
+            type="button"
+            onClick={() => setMenuModalOpen(true)}
+            className="flex min-w-0 flex-col items-center justify-center gap-1 rounded-[18px] px-1 py-2.5 transition-all active:scale-[0.98]"
+          >
+            <div className="flex items-center justify-center rounded-xl p-1.5 transition-colors">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5 text-slate-400">
+                <path d="M4 5h16"/>
+                <path d="M4 12h16"/>
+                <path d="M4 19h16"/>
+              </svg>
+            </div>
+            <span className="max-w-full truncate text-[10px] font-bold text-slate-400">
+              Menu
+            </span>
+          </button>
         </div>
       </nav>
       )}

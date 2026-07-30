@@ -181,9 +181,6 @@ export default function MinhasSolicitacoesPage() {
             </button>
             <h1 className="truncate text-lg font-bold tracking-tight text-slate-900">Minhas Solicitações</h1>
           </div>
-          <Button size="sm" onClick={() => setNovaOpen(true)} className="gap-1.5 rounded-xl text-xs">
-            <Plus className="h-4 w-4" /> Nova
-          </Button>
         </div>
 
         <section className="hidden rounded-[24px] bg-[linear-gradient(135deg,_#0f172a_0%,_#1e293b_48%,_#2563eb_100%)] p-4 text-white sm:rounded-[28px] sm:p-6 lg:flex lg:items-center lg:justify-between">
@@ -196,6 +193,16 @@ export default function MinhasSolicitacoesPage() {
             <Plus className="h-4 w-4 text-brand-600" /> Nova Solicitação
           </Button>
         </section>
+
+        {/* Botão Flutuante (FAB) para Mobile - Círculo com + sem texto */}
+        <button
+          type="button"
+          onClick={() => setNovaOpen(true)}
+          className="fixed bottom-[calc(5.5rem+var(--safe-area-bottom))] right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-brand-600 text-white shadow-[0_10px_25px_-5px_rgba(37,99,235,0.55)] transition-all hover:bg-brand-700 active:scale-95 lg:hidden"
+          aria-label="Nova Solicitação"
+        >
+          <Plus className="h-6 w-6 stroke-[2.5]" />
+        </button>
 
         {/* Filtros */}
         <Card className="rounded-[22px] border-slate-200">
