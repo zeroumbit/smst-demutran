@@ -17,6 +17,7 @@ import {
   X,
   LifeBuoy,
   Inbox,
+  FileText,
 } from 'lucide-react';
 import guardaLogo from '@/guarda.png';
 
@@ -59,6 +60,7 @@ const adminNavItems: NavItem[] = [
 const pessoalNavItems: NavItem[] = [
   { icon: FileWarning, label: 'IROs', path: '/admin/perfil-guardas/guarda-municipal/iros' },
   { icon: CalendarDays, label: 'Escalas', path: '/admin/perfil-guardas/guarda-municipal/escalas' },
+  { icon: FileText, label: 'Ordens de Serviço', path: '/admin/perfil-guardas/guarda-municipal/ordens-servico' },
   { icon: Inbox, label: 'Solicitações', path: '/admin/perfil-guardas/guarda-municipal/minhas-solicitacoes' },
   { icon: ClipboardList, label: 'Fiscalizacao', path: '/admin/perfil-guardas/guarda-municipal/fiscalizacao/infracoes' },
   { icon: UserCircle, label: 'Perfil', path: '/admin/perfil-guardas/guarda-municipal/perfil' },

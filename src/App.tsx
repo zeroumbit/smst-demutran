@@ -88,6 +88,7 @@ const GuardaDashboard = React.lazy(() => import("./pages/admin/guarda/Dashboard"
 const GuardaIros = React.lazy(() => import("./pages/admin/guarda/Iros"));
 const GuardaIrosHistorico = React.lazy(() => import("./pages/admin/guarda/IrosHistorico"));
 const GuardaMinhasSolicitacoes = React.lazy(() => import("./pages/admin/guarda/MinhasSolicitacoes"));
+const GuardaOrdensServico = React.lazy(() => import("./pages/admin/guarda/OrdensServicoPage"));
 const GuardaFiscalizacaoInfracoes = React.lazy(() => import("./pages/admin/guarda/FiscalizacaoInfracoes"));
 const GuardaFiscalizacaoInfracaoDetalhe = React.lazy(() => import("./pages/admin/guarda/FiscalizacaoInfracaoDetalhe"));
 const GuardaFiscalizacaoCategorias = React.lazy(() => import("./pages/admin/guarda/FiscalizacaoCategorias"));
@@ -776,6 +777,20 @@ const App = () => {
               <SuspenseWrapper>
                 <ProtectedRoute requireGuarda>
                   <GuardaMinhasSolicitacoes />
+                </ProtectedRoute>
+              </SuspenseWrapper>
+            } />
+            <Route path="/admin/perfil-guardas/guarda-municipal/ordens-servico" element={
+              <SuspenseWrapper>
+                <ProtectedRoute requireGuarda>
+                  <GuardaOrdensServico />
+                </ProtectedRoute>
+              </SuspenseWrapper>
+            } />
+            <Route path="/admin/guardas/guarda-municipal/ordens-servico" element={
+              <SuspenseWrapper>
+                <ProtectedRoute allowedPapeis={['super_admin', 'gestor', 'admin_setor', 'tecnico']} requiredSetorSlug="guarda-municipal">
+                  <GuardaOrdensServico />
                 </ProtectedRoute>
               </SuspenseWrapper>
             } />
