@@ -32,3 +32,9 @@ export function maskPhone(value: string): string {
 export function isValidEmail(email: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
+
+export function maskCep(value: string): string {
+  const digits = value.replace(/\D/g, '').slice(0, 8);
+  return digits.replace(/(\d{5})(\d{1,3})$/, '$1-$2');
+}
+

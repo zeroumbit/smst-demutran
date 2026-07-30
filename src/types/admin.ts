@@ -144,6 +144,40 @@ export interface GuardaPerfil {
   graduacao_nome: string | null;
   email: string | null;
   telefone: string | null;
+  whatsapp?: string | null;
+  estado?: string | null;
+  cidade?: string | null;
+  logradouro?: string | null;
+  numero?: string | null;
+  bairro?: string | null;
+  complemento?: string | null;
+  cep?: string | null;
+}
+
+export interface GuardaContatoEmergencia {
+  id?: string;
+  guarda_id: string;
+  nome: string;
+  parentesco: string;
+  parentesco_outro?: string | null;
+  telefone: string;
+  whatsapp?: string | null;
+  principal?: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface GuardaInformacoesSaude {
+  id?: string;
+  guarda_id: string;
+  tipo_sanguineo?: string | null;
+  possui_alergias?: string | null;
+  alergias?: string | null;
+  possui_patologias?: string | null;
+  patologias?: string | null;
+  observacoes?: string | null;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface GuardaUsuarioVinculo {

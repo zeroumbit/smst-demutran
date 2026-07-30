@@ -128,6 +128,68 @@ const GuardasMunicipaisPage = () => {
     return () => { active = false; };
   }, [isSuperAdmin]);
 
+  const [batchGraduacaoDialogOpen, setBatchGraduacaoDialogOpen] = useState(false);
+  const [graduacaoOrigemId, setGraduacaoOrigemId] = useState('');
+  const [graduacaoDestinoId, setGraduacaoDestinoId] = useState('');
+  const [savingBatchGraduacao, setSavingBatchGraduacao] = useState(false);
+
+  const guardasCountByGraduacao = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const g of guardas) {
+      if (g.graduacao_id) {
+        counts[g.graduacao_id] = (counts[g.graduacao_id] || 0) + 1;
+      }
+    }
+    return counts;
+  }, [guardas]);
+
+  const openBatchGraduacao = () => {
+    setGraduacaoOrigemId('');
+    setGraduacaoDestinoId('');
+    setBatchGraduacaoDialogOpen(true);
+  };
+
+  const handleSaveBatchGraduacao = async () => {
+    if (!graduacaoOrigemId || !graduacaoDestinoId) {
+      toast({ title: 'Selecione as graduações', description: 'Selecione a graduação de origem e a nova graduação.', variant: 'destructive' });
+      return;
+    }
+    if (graduacaoOrigemId === graduacaoDestinoId) {
+      toast({ title: 'Graduações iguais', description: 'A nova graduação deve ser diferente da graduação de origem.', variant: 'destructive' });
+      return;
+    }
+
+    const afinsCount = guardasCountByGraduacao[graduacaoOrigemId] || 0;
+    if (afinsCount === 0) {
+      toast({ title: 'Sem guardas', description: 'Nenhum guarda cadastrado na graduação selecionada.', variant: 'destructive' });
+      return;
+    }
+
+    setSavingBatchGraduacao(true);
+    const { error } = await supabase
+      .from('guardas_municipais')
+      .update({ graduacao_id: graduacaoDestinoId })
+      .eq('graduacao_id', graduacaoOrigemId);
+
+    setSavingBatchGraduacao(false);
+
+    if (error) {
+      toast({ title: 'Erro ao alterar graduação em massa', description: error.message, variant: 'destructive' });
+      return;
+    }
+
+    const origemNome = graduacoes.find((g) => g.id === graduacaoOrigemId)?.nome || 'Origem';
+    const destinoNome = graduacoes.find((g) => g.id === graduacaoDestinoId)?.nome || 'Destino';
+
+    toast({
+      title: 'Graduação em massa alterada!',
+      description: `${afinsCount} guarda(s) alterados de "${origemNome}" para "${destinoNome}".`,
+    });
+
+    setBatchGraduacaoDialogOpen(false);
+    void loadData();
+  };
+
   const filteredGuardas = useMemo(() => {
     const term = search.trim().toLowerCase();
     return guardas.filter((item) => !term || `${item.matricula} ${item.nome} ${item.cpf || ''} ${item.graduacao_nome || ''}`.toLowerCase().includes(term));
@@ -373,7 +435,18 @@ const GuardasMunicipaisPage = () => {
                   {sectionLabels[s]}
                 </button>
               ))}
-              <div className="ml-auto hidden sm:block">
+              <div className="ml-auto flex items-center gap-2">
+                {section === 'guardas' && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={openBatchGraduacao}
+                    className="border-slate-200 text-slate-700 hover:bg-slate-50 font-semibold"
+                  >
+                    <GraduationCap className="mr-1.5 h-4 w-4 text-amber-600" />
+                    Troca em massa
+                  </Button>
+                )}
                 <Button size="sm" onClick={section === 'guardas' ? openCreateGuarda : openCreateGraduacao}>
                   <Plus className="mr-1.5 h-4 w-4" />
                   {section === 'guardas' ? 'Novo guarda' : 'Nova graduação'}
@@ -702,6 +775,82 @@ const GuardasMunicipaisPage = () => {
             )}
           </AlertDialogContent>
         </AlertDialog>
+
+        {/* Dialog de Alteracao de Graduacao em Massa */}
+        <ResponsiveDialog
+          open={batchGraduacaoDialogOpen}
+          onOpenChange={setBatchGraduacaoDialogOpen}
+          title="Alterar Graduação em Massa"
+          description="Altere a graduação de todos os guardas pertencentes a uma graduação específica para uma nova graduação."
+        >
+          <div className="space-y-4 pt-2">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold uppercase tracking-wider text-slate-500">Graduação de Origem (De)</Label>
+              <Select value={graduacaoOrigemId} onValueChange={setGraduacaoOrigemId}>
+                <SelectTrigger className="h-11 rounded-xl border-slate-200 text-sm font-medium">
+                  <SelectValue placeholder="Selecione a graduação atual..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {graduacoes.map((g) => {
+                    const count = guardasCountByGraduacao[g.id] || 0;
+                    return (
+                      <SelectItem key={g.id} value={g.id}>
+                        {g.nome} ({count} guarda{count === 1 ? '' : 's'})
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold uppercase tracking-wider text-slate-500">Nova Graduação (Para)</Label>
+              <Select value={graduacaoDestinoId} onValueChange={setGraduacaoDestinoId}>
+                <SelectTrigger className="h-11 rounded-xl border-slate-200 text-sm font-medium">
+                  <SelectValue placeholder="Selecione a nova graduação..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {graduacoes
+                    .filter((g) => g.id !== graduacaoOrigemId)
+                    .map((g) => (
+                      <SelectItem key={g.id} value={g.id}>
+                        {g.nome}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {graduacaoOrigemId && graduacaoDestinoId && (
+              <div className="rounded-xl border border-amber-200 bg-amber-50/80 p-3.5 text-xs text-amber-900">
+                <div className="flex items-start gap-2">
+                  <GraduationCap className="h-4 w-4 shrink-0 text-amber-700 mt-0.5" />
+                  <div>
+                    <p className="font-bold">Confirmação da alteração em massa:</p>
+                    <p className="mt-1 leading-normal">
+                      Esta ação alterará a graduação de <strong>{guardasCountByGraduacao[graduacaoOrigemId] || 0} guarda(s)</strong> de{' '}
+                      <strong>"{graduacoes.find((g) => g.id === graduacaoOrigemId)?.nome}"</strong> para{' '}
+                      <strong>"{graduacoes.find((g) => g.id === graduacaoDestinoId)?.nome}"</strong>.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="outline" onClick={() => setBatchGraduacaoDialogOpen(false)} disabled={savingBatchGraduacao} className="rounded-xl">
+                Cancelar
+              </Button>
+              <Button
+                onClick={() => void handleSaveBatchGraduacao()}
+                disabled={savingBatchGraduacao || !graduacaoOrigemId || !graduacaoDestinoId || (guardasCountByGraduacao[graduacaoOrigemId] || 0) === 0}
+                className="rounded-xl font-semibold px-5"
+              >
+                {savingBatchGraduacao ? 'Alterando...' : 'Confirmar alteração'}
+              </Button>
+            </div>
+          </div>
+        </ResponsiveDialog>
 
         {confirmDialog}
       </div>

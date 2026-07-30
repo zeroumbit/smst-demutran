@@ -405,8 +405,7 @@ const GuardaDashboard = () => {
               return (
                 <div
                   key={s.label}
-                  className="snap-start shrink-0 rounded-[22px] border border-slate-200/80 bg-white p-4 pb-5 shadow-sm shadow-slate-200/60 active:scale-[0.97] transition-transform"
-                  style={{ width: 'calc(100vw - 3rem)' }}
+                  className="snap-start shrink-0 w-[220px] rounded-[22px] border border-slate-200/80 bg-white p-4 pb-5 shadow-sm shadow-slate-200/60 active:scale-[0.97] transition-transform"
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">

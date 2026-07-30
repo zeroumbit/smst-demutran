@@ -757,27 +757,66 @@ const Dashboard = () => {
             <p className="px-4 pb-0 text-xl font-black leading-tight text-slate-900">Home</p>
           </div>
         )}
-        <section className="space-y-6">
-          <div>
-            <h1 className="hidden lg:block text-2xl font-bold tracking-tight text-slate-900 md:text-3xl">
-              Centro de comando
-            </h1>
+        {/* Banner Gradiente Escuro com Cards Internos - Versão Web */}
+        <section className="hidden rounded-[24px] bg-[linear-gradient(135deg,_#0f172a_0%,_#1e293b_45%,_#2563eb_100%)] px-4 py-4 text-white sm:rounded-[34px] sm:px-6 sm:py-5 lg:block">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+            <div className="min-w-0">
+              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-sky-100/70 sm:text-[11px]">Guarda Municipal</p>
+              <h1 className="mt-2 text-xl font-black leading-tight text-white sm:text-2xl md:mt-3 md:text-[26px] lg:text-[34px]">
+                {profile?.name ? `Olá, ${profile.name.split(' ')[0]}!` : 'Centro de comando'}
+              </h1>
+              <p className="mt-1.5 hidden max-w-xl text-[13px] leading-5 text-white md:block md:mt-2 md:text-[14px] md:leading-6">
+                Painel operacional e resumo dos indicadores da Guarda Municipal.
+              </p>
+            </div>
           </div>
-
-          <div className="flex gap-4 overflow-x-auto native-scrollbar snap-x-mandatory md:grid md:grid-cols-2 xl:grid-cols-4 md:overflow-x-visible">
+          <div className="mt-6 grid grid-cols-2 gap-3 xl:grid-cols-4">
             {state.serviceStatus.slice(0, 4).map((item) => (
-              <div key={item.label} className="min-w-[75vw] snap-start md:min-w-0 rounded-[24px] border border-slate-200/80 bg-white p-5 shadow-[0_16px_38px_-30px_rgba(15,23,42,0.32)]">
-                <div className="flex items-center justify-between gap-3">
-                  <p className="max-w-[12rem] text-[11px] font-bold uppercase leading-4 tracking-[0.05em] text-[#8ea0bd]">{item.label}</p>
-                  <span className={`inline-flex rounded-2xl border px-2 py-1 text-[10px] font-bold ${serviceToneBadge[item.tone]}`}>
+              <div key={item.label} className="rounded-[22px] bg-white/10 p-3.5 backdrop-blur-sm sm:p-5 flex flex-col justify-between">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-white/60 sm:text-[11px]">{item.label}</p>
+                  <span className={`inline-flex rounded-2xl border px-2 py-0.5 text-[10px] font-bold ${item.tone === 'warning' ? 'bg-amber-500/20 text-amber-200 border-amber-500/30' : item.tone === 'success' ? 'bg-emerald-500/20 text-emerald-200 border-emerald-500/30' : 'bg-blue-500/20 text-blue-200 border-blue-500/30'}`}>
                     {item.tone === 'warning' ? 'Analise' : item.tone === 'success' ? 'Regular' : 'Ativo'}
                   </span>
                 </div>
-                <div className="mt-6 flex items-end justify-between gap-3">
-                  <p className="text-[3rem] font-extrabold leading-none tracking-[-0.06em] text-slate-900">{item.value}</p>
+                <div className="my-2 flex items-end justify-between gap-2">
+                  <p className="break-words text-[22px] font-black leading-none text-white sm:text-3xl">{item.value}</p>
                   <span className={`h-2.5 w-2.5 rounded-full ${serviceToneDot[item.tone]}`} />
                 </div>
-                <p className="mt-3 text-[12px] leading-5 text-[#93a4be]">
+                <p className="text-[12px] leading-5 text-white/70">
+                  {isGuardaScope
+                    ? item.label.toLowerCase().includes('efetivo')
+                      ? 'Guardas municipais ativos'
+                      : item.label.toLowerCase().includes('frota')
+                        ? 'Veículos operacionais'
+                        : item.label.toLowerCase().includes('equipes')
+                          ? 'Equipes ativas'
+                          : item.label.toLowerCase().includes('operações')
+                            ? 'Operações ativas (IRO)'
+                            : 'Total acumulado'
+                    : item.label}
+                </p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* Versão Mobile (Inalterada) */}
+        <section className="lg:hidden space-y-3">
+          <div className="flex gap-4 overflow-x-auto native-scrollbar snap-x-mandatory">
+            {state.serviceStatus.slice(0, 4).map((item) => (
+              <div key={item.label} className="shrink-0 snap-start w-[270px] h-[160px] flex flex-col justify-between rounded-[24px] border border-slate-200/80 bg-white p-4 shadow-[0_16px_38px_-30px_rgba(15,23,42,0.32)]">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="max-w-[12rem] text-[11px] font-bold uppercase leading-4 tracking-[0.05em] text-[#8ea0bd]">{item.label}</p>
+                  <span className={`inline-flex rounded-2xl border px-2 py-0.5 text-[10px] font-bold ${serviceToneBadge[item.tone]}`}>
+                    {item.tone === 'warning' ? 'Analise' : item.tone === 'success' ? 'Regular' : 'Ativo'}
+                  </span>
+                </div>
+                <div className="my-1 flex items-end justify-between gap-3">
+                  <p className="text-[2.5rem] font-extrabold leading-none tracking-[-0.06em] text-slate-900">{item.value}</p>
+                  <span className={`h-2.5 w-2.5 rounded-full ${serviceToneDot[item.tone]}`} />
+                </div>
+                <p className="line-clamp-2 text-[11px] leading-4 text-[#93a4be]">
                   {isGuardaScope
                     ? item.label.toLowerCase().includes('efetivo')
                       ? 'Guardas municipais ativos e cadastrados'
@@ -800,32 +839,6 @@ const Dashboard = () => {
             ))}
           </div>
         </section>
-
-
-
-        {papel === 'gestor' && (
-          <Link
-            to="/admin/usuarios"
-            className="block rounded-[24px] border border-slate-200/80 bg-gradient-to-br from-white to-slate-50/80 p-5 shadow-[0_16px_38px_-30px_rgba(15,23,42,0.32)] transition-all hover:shadow-[0_20px_44px_-30px_rgba(37,99,235,0.35)] hover:border-brand-200/60"
-          >
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <div className="rounded-2xl bg-brand-50 p-3 text-brand-600">
-                  <Users className="h-5 w-5" />
-                </div>
-                <div>
-                  <p className="text-sm font-bold text-slate-900">Gerenciar equipe do setor</p>
-                  <p className="mt-0.5 text-sm text-slate-500">
-                    {state.metrics.find((m) => m.label === 'Equipe ativa')?.value || '0'} perfis ativos — adicione ou gerencie usuarios do seu setor
-                  </p>
-                </div>
-              </div>
-              <div className="rounded-xl bg-brand-50 p-2.5 text-brand-600">
-                <UserPlus className="h-5 w-5" />
-              </div>
-            </div>
-          </Link>
-        )}
 
         <section className="hidden grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           {state.metrics.map((metric) => {

@@ -507,24 +507,7 @@ export default function EquipesGuardaPage() {
                   )}
                 </section>
 
-                <section className="mt-6 space-y-3">
-                  <h3 className="text-sm font-bold uppercase tracking-[0.16em] text-slate-500">Histórico recente</h3>
-                  <div className="space-y-2">
-                    {historico.slice(0, 6).length === 0 ? (
-                      <div className="rounded-2xl border border-dashed border-slate-300 px-4 py-6 text-center text-sm text-slate-500">Nenhum registro de histórico.</div>
-                    ) : (
-                      historico.slice(0, 6).map((item) => (
-                        <div key={item.id} className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm">
-                          <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-                            <p className="font-bold text-slate-900">{item.acao.replaceAll('_', ' ')}</p>
-                            <p className="text-xs text-slate-400">{formatDateTime(item.created_at)}</p>
-                          </div>
-                          {item.descricao && <p className="mt-1 text-sm text-slate-500">{item.descricao}</p>}
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </section>
+
               </div>
             ) : (
               <div className="rounded-[34px] border border-slate-200 bg-white p-5 shadow-sm">

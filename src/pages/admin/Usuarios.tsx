@@ -227,6 +227,18 @@ const UsuariosPage = () => {
       .map((item) => ({ ...item, id: item.perfil_id }));
   }, [usuarios, isSuperAdmin, profile?.user_id, filtroPapel, filtroSetor, searchTerm]);
 
+  const groupedUsuarios = useMemo(() => {
+    const gestores = displayedUsuarios.filter((u) => u.papel === 'super_admin' || u.papel === 'gestor' || u.papel === 'admin_setor');
+    const guardas = displayedUsuarios.filter((u) => u.papel !== 'super_admin' && u.papel !== 'gestor' && u.papel !== 'admin_setor' && Boolean(u.graduacao_nome || u.graduacao_id));
+    const administrativos = displayedUsuarios.filter((u) => u.papel !== 'super_admin' && u.papel !== 'gestor' && u.papel !== 'admin_setor' && !u.graduacao_nome && !u.graduacao_id);
+
+    return [
+      { id: 'gestores', title: 'Gestores de Setor', icon: ShieldCheck, items: gestores },
+      { id: 'administrativos', title: 'Administrativos', icon: Users, items: administrativos },
+      { id: 'guardas', title: 'Guardas Municipais', icon: GraduationCap, items: guardas },
+    ].filter((group) => group.items.length > 0);
+  }, [displayedUsuarios]);
+
   const handleClose = () => {
     setFormData(initialForm);
     setSelectedModulos([]);
@@ -803,30 +815,49 @@ const UsuariosPage = () => {
           <div className="rounded-[22px] border border-border bg-card p-8 text-center text-muted-foreground">
             Carregando usuarios...
           </div>
+        ) : displayedUsuarios.length === 0 ? (
+          <div className="rounded-[26px] border border-dashed border-slate-200 p-8 text-center text-[15px] text-slate-400">
+            {isSuperAdmin ? 'Nenhum usuario encontrado' : 'Nenhum usuario vinculado a este setor'}
+          </div>
         ) : (
-          <>
-            <div className="space-y-3 lg:hidden">
-              {displayedUsuarios.map((item) => renderMobileCard(item))}
-              {displayedUsuarios.length === 0 && (
-                <div className="rounded-[26px] border border-dashed border-slate-200 p-8 text-center text-[15px] text-slate-400">
-                  Nenhum usuario encontrado
+          <div className="space-y-6">
+            {groupedUsuarios.map((group) => {
+              const GroupIcon = group.icon;
+              return (
+                <div key={group.id} className="space-y-3">
+                  <div className="flex items-center gap-2 pt-1">
+                    <div className="flex items-center gap-2 rounded-xl bg-slate-100/90 px-3.5 py-1.5 text-xs font-bold text-slate-800 border border-slate-200/60">
+                      <GroupIcon className="h-4 w-4 text-slate-600" />
+                      <span>{group.title}</span>
+                      <span className="rounded-full bg-slate-200 px-2 py-0.5 text-[11px] font-bold text-slate-700">
+                        {group.items.length}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Renderizacao Mobile */}
+                  <div className="space-y-3 lg:hidden">
+                    {group.items.map((item) => renderMobileCard(item))}
+                  </div>
+
+                  {/* Renderizacao Desktop */}
+                  <div className="hidden overflow-hidden rounded-[22px] border border-border bg-card lg:block">
+                    <DataTable<AdminProfileRow>
+                      data={group.items}
+                      columns={columns}
+                      onEdit={handleEdit}
+                      onDelete={handleDelete}
+                      onToggleAtivo={handleToggleAtivo}
+                      canEdit={canEditItem}
+                      canDelete={canDeleteItem}
+                      canToggleAtivo={canToggleAtivoItem}
+                      emptyMessage="Nenhum usuario nesta categoria"
+                    />
+                  </div>
                 </div>
-              )}
-            </div>
-            <div className="hidden overflow-hidden rounded-[22px] border border-border bg-card lg:block">
-              <DataTable<AdminProfileRow>
-                data={displayedUsuarios}
-                columns={columns}
-                onEdit={handleEdit}
-                onDelete={handleDelete}
-                onToggleAtivo={handleToggleAtivo}
-                canEdit={canEditItem}
-                canDelete={canDeleteItem}
-                canToggleAtivo={canToggleAtivoItem}
-                emptyMessage={isSuperAdmin ? 'Nenhum usuario encontrado' : 'Nenhum usuario vinculado a este setor'}
-              />
-            </div>
-          </>
+              );
+            })}
+          </div>
         )}
 
         {displayedUsuarios.length > 0 && (
