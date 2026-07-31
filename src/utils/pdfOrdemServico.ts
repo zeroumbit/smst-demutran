@@ -42,6 +42,7 @@ export async function montarPdfOrdemServico(ordem: OrdemServico): Promise<{ doc:
   const pageHeight = doc.internal.pageSize.getHeight();
   const marginLeft = 14;
   const marginRight = 14;
+  const isDemutran = ordem.setor_slug === 'demutran';
 
   // --- Marca d'água: logo do Município/Secretaria em alta resolução, ao fundo ---
   if (logoMunicipio.img) {
@@ -94,13 +95,18 @@ export async function montarPdfOrdemServico(ordem: OrdemServico): Promise<{ doc:
 
   doc.setFontSize(9);
   doc.setTextColor(30, 58, 138);
-  doc.text('Guarda Civil Municipal', pageWidth / 2, currentY, { align: 'center' });
-  currentY += 4;
+  if (isDemutran) {
+    doc.text('Departamento Municipal de Trânsito — Demutran', pageWidth / 2, currentY, { align: 'center' });
+    currentY += 5;
+  } else {
+    doc.text('Guarda Civil Municipal', pageWidth / 2, currentY, { align: 'center' });
+    currentY += 4;
 
-  doc.setFontSize(8);
-  doc.setTextColor(71, 85, 105);
-  doc.text('Departamento Municipal de Trânsito', pageWidth / 2, currentY, { align: 'center' });
-  currentY += 5;
+    doc.setFontSize(8);
+    doc.setTextColor(71, 85, 105);
+    doc.text('Departamento Municipal de Trânsito', pageWidth / 2, currentY, { align: 'center' });
+    currentY += 5;
+  }
 
   // Linha separadora
   doc.setDrawColor(30, 58, 138);
@@ -237,35 +243,37 @@ export async function montarPdfOrdemServico(ordem: OrdemServico): Promise<{ doc:
     });
   }
 
-  // Tabela 4: Equipes Destinatárias
-  currentY = (doc as any).lastAutoTable.finalY + 6;
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(30, 58, 138);
-  doc.text('EQUIPES DESTINATÁRIAS E DISTRIBUIÇÃO', marginLeft, currentY);
-  currentY += 3;
+  // Tabela 4: Equipes Destinatárias (apenas Guarda Municipal)
+  if (!isDemutran) {
+    currentY = (doc as any).lastAutoTable.finalY + 6;
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(30, 58, 138);
+    doc.text('EQUIPES DESTINATÁRIAS E DISTRIBUIÇÃO', marginLeft, currentY);
+    currentY += 3;
 
-  const equipesBody = (ordem.equipes || []).map((eq) => [
-    eq.equipe_nome,
-    eq.lider_nome || 'Não informado',
-    eq.primeira_visualizacao_em
-      ? new Date(eq.primeira_visualizacao_em).toLocaleString('pt-BR')
-      : 'Pendente',
-  ]);
+    const equipesBody = (ordem.equipes || []).map((eq) => [
+      eq.equipe_nome,
+      eq.lider_nome || 'Não informado',
+      eq.primeira_visualizacao_em
+        ? new Date(eq.primeira_visualizacao_em).toLocaleString('pt-BR')
+        : 'Pendente',
+    ]);
 
-  if (equipesBody.length === 0) {
-    equipesBody.push(['Todas as Equipes Operacionais', 'Comandante de Turno', 'Distribuído geral']);
+    if (equipesBody.length === 0) {
+      equipesBody.push(['Todas as Equipes Operacionais', 'Comandante de Turno', 'Distribuído geral']);
+    }
+
+    autoTable(doc, {
+      startY: currentY,
+      margin: { left: marginLeft, right: marginRight },
+      theme: 'grid',
+      head: [['Equipe Responsável', 'Responsável no Momento', 'Status de Acesso']],
+      body: equipesBody,
+      headStyles: { fillColor: [30, 58, 138], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 9 },
+      styles: { fontSize: 8.5, cellPadding: 3, textColor: [15, 23, 42] },
+    });
   }
-
-  autoTable(doc, {
-    startY: currentY,
-    margin: { left: marginLeft, right: marginRight },
-    theme: 'grid',
-    head: [['Equipe Responsável', 'Responsável no Momento', 'Status de Acesso']],
-    body: equipesBody,
-    headStyles: { fillColor: [30, 58, 138], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 9 },
-    styles: { fontSize: 8.5, cellPadding: 3, textColor: [15, 23, 42] },
-  });
 
   // Observações Operacionais (se houver)
   if (ordem.observacoes) {
@@ -294,7 +302,14 @@ export async function montarPdfOrdemServico(ordem: OrdemServico): Promise<{ doc:
   doc.setFontSize(8);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(100, 116, 139);
-  doc.text('Secretaria Municipal de Segurança e Trânsito — SMST | Guarda Municipal de Canindé', pageWidth / 2, footerY, { align: 'center' });
+  doc.text(
+    isDemutran
+      ? 'Secretaria Municipal de Segurança e Trânsito — SMST | Departamento Municipal de Trânsito'
+      : 'Secretaria Municipal de Segurança e Trânsito — SMST | Guarda Municipal de Canindé',
+    pageWidth / 2,
+    footerY,
+    { align: 'center' },
+  );
   doc.text(`Documento emitido eletronicamente em ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')}`, pageWidth / 2, footerY + 4, { align: 'center' });
 
   // Download do PDF

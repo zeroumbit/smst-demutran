@@ -794,6 +794,13 @@ const App = () => {
                 </ProtectedRoute>
               </SuspenseWrapper>
             } />
+            <Route path="/admin/demutran/ordens-servico" element={
+              <SuspenseWrapper>
+                <ProtectedRoute allowedPapeis={['super_admin', 'gestor', 'admin_setor', 'tecnico']} requiredSetorSlug="demutran">
+                  <GuardaOrdensServico />
+                </ProtectedRoute>
+              </SuspenseWrapper>
+            } />
             <Route path="/admin/perfil-guardas/guarda-municipal/iros/historico" element={
               <SuspenseWrapper>
                 <ProtectedRoute requireGuarda>

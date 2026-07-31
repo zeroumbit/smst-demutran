@@ -144,6 +144,7 @@ const demutranMenuItems: MenuItem[] = [
   { icon: HouseIcon, label: 'Dashboard', path: '/admin/dashboard/demutran', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
   { icon: MessageSquareText, label: 'Fala Cidadao', path: '/admin/fala-cidadao/demutran', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
   { icon: FileWarning, label: 'IRO', path: '/admin/dashboard/:setorSlug/iro', allowedPapeis: ['gestor', 'admin_setor'] },
+  { icon: FileText, label: 'Ordens de Servico', path: '/admin/demutran/ordens-servico', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
   { icon: NotebookPen, label: 'Anotacoes', path: '/admin/anotacoes/demutran', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
   { icon: BarChart3, label: 'Relatorios', path: '/admin/relatorios', allowedPapeis: ['super_admin'] },
   { icon: CarFront, label: 'Veiculos', path: '/admin/demutran/veiculos', allowedPapeis: ['gestor', 'admin_setor'] },

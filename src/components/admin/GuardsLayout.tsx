@@ -55,15 +55,15 @@ const FISCALIZACAO_LABEL = 'Fiscalizacao';
 
 const adminNavItems: NavItem[] = [
   { icon: HouseIcon, label: 'Home', path: '/admin/perfil-guardas/guarda-municipal/dashboard' },
-  { icon: NotebookPen, label: 'Anotacoes', path: '/admin/perfil-guardas/guarda-municipal/anotacoes' },
+  { icon: ClipboardList, label: 'Fiscalizacao', path: '/admin/perfil-guardas/guarda-municipal/fiscalizacao/infracoes' },
 ];
 
 const pessoalNavItems: NavItem[] = [
+  { icon: NotebookPen, label: 'Anotacoes', path: '/admin/perfil-guardas/guarda-municipal/anotacoes' },
   { icon: FileWarning, label: 'IROs', path: '/admin/perfil-guardas/guarda-municipal/iros' },
   { icon: CalendarDays, label: 'Escalas', path: '/admin/perfil-guardas/guarda-municipal/escalas' },
   { icon: FileText, label: 'Ordens de Serviço', path: '/admin/perfil-guardas/guarda-municipal/ordens-servico' },
   { icon: Inbox, label: 'Solicitações', path: '/admin/perfil-guardas/guarda-municipal/minhas-solicitacoes' },
-  { icon: ClipboardList, label: 'Fiscalizacao', path: '/admin/perfil-guardas/guarda-municipal/fiscalizacao/infracoes' },
   { icon: UserCircle, label: 'Perfil', path: '/admin/perfil-guardas/guarda-municipal/perfil' },
 ];
 

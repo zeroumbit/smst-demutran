@@ -75,6 +75,8 @@ export default function OrdensServicoPage() {
   const location = useLocation();
   const { user, profile } = useAuth();
   const isGuardPortal = location.pathname.startsWith('/admin/perfil-guardas');
+  const isDemutran = location.pathname.startsWith('/admin/demutran');
+  const sectorSlug = isDemutran ? 'demutran' : 'guarda-municipal';
   const isGestor = ['super_admin', 'gestor', 'admin_setor'].includes(profile?.papel || '') || !isGuardPortal;
 
   const [ordens, setOrdens] = useState<OrdemServico[]>([]);
@@ -82,6 +84,7 @@ export default function OrdensServicoPage() {
   const [statusFilter, setStatusFilter] = useState<string>('TODOS');
   const [buscaFilter, setBuscaFilter] = useState('');
   const [equipesList, setEquipesList] = useState<EquipeOption[]>([]);
+  const [setorId, setSetorId] = useState<string | null>(null);
 
   // Modais
   const [formOpen, setFormOpen] = useState(false);
@@ -124,7 +127,8 @@ export default function OrdensServicoPage() {
       const data = await ordemServicoService.listar(
         statusFilter === 'TODOS' ? null : (statusFilter as OrdemServicoStatus),
         null,
-        buscaFilter || null
+        buscaFilter || null,
+        setorId
       );
       setOrdens(data);
     } catch (e: any) {
@@ -135,6 +139,7 @@ export default function OrdensServicoPage() {
   };
 
   const carregarEquipes = async () => {
+    if (isDemutran) return;
     try {
       const { data } = await supabase.from('guarda_equipes').select('id, nome').eq('ativo', true).order('nome');
       setEquipesList(data || []);
@@ -144,9 +149,26 @@ export default function OrdensServicoPage() {
   };
 
   useEffect(() => {
+    let mounted = true;
+    const rpcName = isDemutran ? 'get_demutran_setor_id' : 'get_guarda_municipal_setor_id';
+    const resolverSetor = async () => {
+      if (profile?.setor_slug === sectorSlug && profile?.setor_id) {
+        if (mounted) setSetorId(profile.setor_id);
+        return;
+      }
+      const { data, error } = await supabase.rpc(rpcName);
+      if (!error && data && mounted) setSetorId(data as string);
+    };
+    resolverSetor();
+    return () => {
+      mounted = false;
+    };
+  }, [isDemutran, sectorSlug, profile?.setor_slug, profile?.setor_id]);
+
+  useEffect(() => {
     carregarDados();
     carregarEquipes();
-  }, [statusFilter, buscaFilter]);
+  }, [statusFilter, buscaFilter, setorId, isDemutran]);
 
   const handleOpenForm = (os?: OrdemServico) => {
     if (os) {
@@ -207,7 +229,7 @@ export default function OrdensServicoPage() {
     }
     setSubmitting(true);
     try {
-      await ordemServicoService.salvarRascunho(formData);
+      await ordemServicoService.salvarRascunho(formData, setorId);
       toast({ title: 'Rascunho salvo', description: 'A Ordem de Serviço foi salva com sucesso.' });
       setFormOpen(false);
       carregarDados();
@@ -364,9 +386,15 @@ export default function OrdensServicoPage() {
       <section className="hidden rounded-[24px] bg-[linear-gradient(135deg,_#0f172a_0%,_#1e293b_45%,_#2563eb_100%)] p-5 text-white shadow-lg sm:p-7 lg:block">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-sky-100/80 sm:text-xs">Guarda Municipal de Canindé</p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-sky-100/80 sm:text-xs">
+              {isDemutran ? 'Departamento Municipal de Trânsito — Demutran' : 'Guarda Municipal de Canindé'}
+            </p>
             <h1 className="mt-1 text-2xl font-black text-white sm:text-3xl">Ordens de Serviço (O.S.)</h1>
-            <p className="mt-1 text-xs text-white/80 sm:text-sm">Gestão, emissão oficial, distribuição para equipes e auditoria de cumprimento operacional.</p>
+            <p className="mt-1 text-xs text-white/80 sm:text-sm">
+              {isDemutran
+                ? 'Gestão, emissão oficial e auditoria de cumprimento operacional.'
+                : 'Gestão, emissão oficial, distribuição para equipes e auditoria de cumprimento operacional.'}
+            </p>
           </div>
           {isGestor && (
             <Button
@@ -473,7 +501,7 @@ export default function OrdensServicoPage() {
                       </div>
 
                       {/* Equipes vinculadas */}
-                      {os.equipes && os.equipes.length > 0 && (
+                      {!isDemutran && os.equipes && os.equipes.length > 0 && (
                         <div className="flex items-center gap-1.5 pt-1">
                           <Users className="h-3.5 w-3.5 text-slate-400 shrink-0" />
                           <div className="flex flex-wrap gap-1">
@@ -577,7 +605,7 @@ export default function OrdensServicoPage() {
                       )}
 
                       {/* Ações Adicionais do Gestor em O.S. Publicada */}
-                      {isGestor && os.status === 'PUBLICADA' && (
+                      {!isDemutran && isGestor && os.status === 'PUBLICADA' && (
                         <>
                           {/* Rastreamento de Distribuição */}
                           <ActionTooltip label="Consultar Distribuição" description="Ver quais equipes receberam a O.S. e quem já visualizou.">
@@ -768,7 +796,7 @@ export default function OrdensServicoPage() {
             <Input
               value={formData.ponto_apresentacao || ''}
               onChange={(e) => setFormData({ ...formData, ponto_apresentacao: e.target.value })}
-              placeholder="Ex: Sede da Guarda Municipal às 07:30"
+              placeholder={isDemutran ? 'Ex: Sede do Demutran às 07:30' : 'Ex: Sede da Guarda Municipal às 07:30'}
               className="rounded-xl mt-1"
             />
           </div>
@@ -785,23 +813,25 @@ export default function OrdensServicoPage() {
           </div>
 
           {/* Seleção de Equipes */}
-          <div>
-            <Label className="text-xs font-semibold mb-1 block">Equipes Destinatárias</Label>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 border border-slate-200 rounded-xl p-3 max-h-40 overflow-y-auto">
-              {equipesList.map((eq) => (
-                <div key={eq.id} className="flex items-center gap-2">
-                  <Checkbox
-                    id={`eq_${eq.id}`}
-                    checked={formData.equipes_ids.includes(eq.id)}
-                    onCheckedChange={() => toggleEquipe(eq.id)}
-                  />
-                  <Label htmlFor={`eq_${eq.id}`} className="text-xs text-slate-700 cursor-pointer truncate">
-                    {eq.nome}
-                  </Label>
-                </div>
-              ))}
+          {!isDemutran && (
+            <div>
+              <Label className="text-xs font-semibold mb-1 block">Equipes Destinatárias</Label>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 border border-slate-200 rounded-xl p-3 max-h-40 overflow-y-auto">
+                {equipesList.map((eq) => (
+                  <div key={eq.id} className="flex items-center gap-2">
+                    <Checkbox
+                      id={`eq_${eq.id}`}
+                      checked={formData.equipes_ids.includes(eq.id)}
+                      onCheckedChange={() => toggleEquipe(eq.id)}
+                    />
+                    <Label htmlFor={`eq_${eq.id}`} className="text-xs text-slate-700 cursor-pointer truncate">
+                      {eq.nome}
+                    </Label>
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Solicitante */}
           <div className="border-t border-slate-100 pt-3">
@@ -943,7 +973,7 @@ export default function OrdensServicoPage() {
             )}
 
             {/* Equipes */}
-            {selectedOS.equipes && selectedOS.equipes.length > 0 && (
+            {!isDemutran && selectedOS.equipes && selectedOS.equipes.length > 0 && (
               <div className="border-t border-slate-100 pt-2">
                 <h4 className="text-xs font-bold text-slate-400 uppercase mb-2">Equipes Destinatárias</h4>
                 <div className="space-y-1">

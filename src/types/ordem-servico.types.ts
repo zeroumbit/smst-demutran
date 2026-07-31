@@ -23,6 +23,8 @@ export interface OrdemServicoEquipeInfo {
 
 export interface OrdemServico {
   id: string;
+  setor_id?: string | null;
+  setor_slug?: string | null;
   numero?: number | null;
   ano: number;
   numero_formatado?: string | null;

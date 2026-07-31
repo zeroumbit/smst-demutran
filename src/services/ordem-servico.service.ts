@@ -2,8 +2,9 @@ import { supabase } from '@/lib/supabase';
 import type { OrdemServico, OrdemServicoFormData, OrdemServicoStatus } from '@/types/ordem-servico.types';
 
 export const ordemServicoService = {
-  async salvarRascunho(form: OrdemServicoFormData) {
+  async salvarRascunho(form: OrdemServicoFormData, setorId?: string | null) {
     const { data, error } = await supabase.rpc('salvar_rascunho_ordem_servico', {
+      p_setor_id: setorId || null,
       p_id: form.id || null,
       p_origem: form.origem,
       p_origem_outros: form.origem_outros || null,
@@ -79,11 +80,12 @@ export const ordemServicoService = {
     return data as { sucesso: boolean };
   },
 
-  async listar(status?: OrdemServicoStatus | null, ano?: number | null, busca?: string | null) {
+  async listar(status?: OrdemServicoStatus | null, ano?: number | null, busca?: string | null, setorId?: string | null) {
     const { data, error } = await supabase.rpc('listar_ordens_servico', {
       p_status: status || null,
       p_ano: ano || null,
       p_busca: busca || null,
+      p_setor_id: setorId || null,
     });
     if (error) throw error;
     return (data || []) as OrdemServico[];
