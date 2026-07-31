@@ -1,11 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { GuardsLayout } from '@/components/admin/GuardsLayout';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { ordemServicoService } from '@/services/ordem-servico.service';
-import { gerarPdfOrdemServico } from '@/utils/pdfOrdemServico';
+import { gerarPdfOrdemServico, imprimirPdfOrdemServico } from '@/utils/pdfOrdemServico';
 import type { OrdemServico, OrdemServicoFormData, OrdemServicoStatus } from '@/types/ordem-servico.types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -17,6 +17,8 @@ import { ResponsiveDialog } from '@/components/ui/responsive-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from '@/hooks/use-toast';
+import { useConfirmDialog } from '@/components/ui/use-confirm-dialog';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   FileText,
   Plus,
@@ -38,11 +40,34 @@ import {
   Loader2,
   ChevronRight,
   ArrowLeft,
+  Trash2,
 } from 'lucide-react';
 
 interface EquipeOption {
   id: string;
   nome: string;
+}
+
+interface ActionTooltipProps {
+  label: string;
+  description: string;
+  children: ReactNode;
+}
+
+function ActionTooltip({ label, description, children }: ActionTooltipProps) {
+  return (
+    <Tooltip delayDuration={150}>
+      <TooltipTrigger asChild>{children}</TooltipTrigger>
+      <TooltipContent
+        side="top"
+        align="center"
+        className="max-w-[260px] rounded-xl border border-slate-200 bg-slate-900 px-3 py-2 text-left shadow-lg"
+      >
+        <p className="text-xs font-bold text-white">{label}</p>
+        <p className="mt-0.5 text-[11px] leading-snug text-slate-300">{description}</p>
+      </TooltipContent>
+    </Tooltip>
+  );
 }
 
 export default function OrdensServicoPage() {
@@ -67,6 +92,7 @@ export default function OrdensServicoPage() {
   const [selectedOS, setSelectedOS] = useState<OrdemServico | null>(null);
   const [motivoCancelamento, setMotivoCancelamento] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const { confirm, confirmDialog } = useConfirmDialog();
 
   // Form State
   const [formData, setFormData] = useState<OrdemServicoFormData>({
@@ -247,6 +273,22 @@ export default function OrdensServicoPage() {
     }
   };
 
+  const handleExcluirRascunho = async (os: OrdemServico) => {
+    const confirmed = await confirm({
+      title: 'Excluir rascunho da O.S.',
+      description: `Excluir definitivamente o rascunho "${os.assunto}"? Esta ação não pode ser desfeita.`,
+      confirmText: 'Sim, excluir',
+    });
+    if (!confirmed) return;
+    try {
+      await ordemServicoService.excluirRascunho(os.id);
+      toast({ title: 'Rascunho excluído', description: 'A Ordem de Serviço em rascunho foi excluída.' });
+      carregarDados();
+    } catch (e: any) {
+      toast({ title: 'Erro ao excluir rascunho', description: e.message, variant: 'destructive' });
+    }
+  };
+
   const handleVerDetalhes = async (os: OrdemServico) => {
     setSelectedOS(os);
     setDetalhesOpen(true);
@@ -268,7 +310,7 @@ export default function OrdensServicoPage() {
   };
 
   const handleImprimir = async (os: OrdemServico) => {
-    await gerarPdfOrdemServico(os);
+    await imprimirPdfOrdemServico(os);
     try {
       await ordemServicoService.registrarAcesso(os.id, 'IMPRESSAO');
     } catch {
@@ -303,8 +345,23 @@ export default function OrdensServicoPage() {
 
   const content = (
     <div className="space-y-6 pb-20">
-      {/* Top Banner */}
-      <section className="rounded-[24px] bg-[linear-gradient(135deg,_#0f172a_0%,_#1e293b_45%,_#2563eb_100%)] p-5 text-white shadow-lg sm:p-7">
+      {/* Cabeçalho Mobile (espelha as demais telas) */}
+      <div className="flex items-center justify-between lg:hidden px-1 py-2">
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => navigate(-1)}
+            aria-label="Voltar"
+            className="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-slate-700 transition-colors hover:bg-slate-100 active:bg-slate-200"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </button>
+          <h1 className="truncate text-lg font-bold tracking-tight text-slate-900">Ordens de Serviço</h1>
+        </div>
+      </div>
+
+      {/* Top Banner (desktop) */}
+      <section className="hidden rounded-[24px] bg-[linear-gradient(135deg,_#0f172a_0%,_#1e293b_45%,_#2563eb_100%)] p-5 text-white shadow-lg sm:p-7 lg:block">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-sky-100/80 sm:text-xs">Guarda Municipal de Canindé</p>
@@ -438,31 +495,45 @@ export default function OrdensServicoPage() {
                     {/* Ações em linha única horizontal */}
                     <div className="flex flex-row items-center flex-wrap justify-end gap-1.5 border-t lg:border-t-0 pt-3 lg:pt-0 border-slate-100">
                       {/* Botão Ver Detalhes - Apenas Ícone */}
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleVerDetalhes(os)}
-                        className="h-9 w-9 p-0 grid place-items-center rounded-xl"
-                        title="Ver Detalhes"
-                        aria-label="Ver Detalhes"
-                      >
-                        <Eye className="h-4 w-4 text-slate-700" />
-                      </Button>
+                      <ActionTooltip label="Ver Detalhes" description="Abrir a Ordem de Serviço para consultar todas as informações e o histórico.">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleVerDetalhes(os)}
+                          className="h-9 w-9 p-0 grid place-items-center rounded-xl hover:bg-slate-100 hover:text-slate-900"
+                          aria-label="Ver Detalhes"
+                        >
+                          <Eye className="h-4 w-4 text-slate-700" />
+                        </Button>
+                      </ActionTooltip>
 
                       {/* Ações de Rascunho */}
                       {isGestor && os.status === 'RASCUNHO' && (
                         <>
                           {/* Editar - Apenas Ícone */}
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleOpenForm(os)}
-                            className="h-9 w-9 p-0 grid place-items-center rounded-xl"
-                            title="Editar Rascunho"
-                            aria-label="Editar Rascunho"
-                          >
-                            <Edit className="h-4 w-4 text-slate-700" />
-                          </Button>
+                          <ActionTooltip label="Editar Rascunho" description="Alterar as informações deste rascunho antes de publicar.">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleOpenForm(os)}
+                              className="h-9 w-9 p-0 grid place-items-center rounded-xl hover:bg-slate-100 hover:text-slate-900"
+                              aria-label="Editar Rascunho"
+                            >
+                              <Edit className="h-4 w-4 text-slate-700" />
+                            </Button>
+                          </ActionTooltip>
+                          {/* Excluir Rascunho - Apenas Ícone */}
+                          <ActionTooltip label="Excluir Rascunho" description="Remover permanentemente este rascunho. Esta ação não pode ser desfeita.">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleExcluirRascunho(os)}
+                              className="h-9 w-9 p-0 grid place-items-center rounded-xl border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
+                              aria-label="Excluir Rascunho"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </ActionTooltip>
                           {/* Publicar - Ícone + Nome */}
                           <Button
                             size="sm"
@@ -479,27 +550,29 @@ export default function OrdensServicoPage() {
                       {os.status !== 'RASCUNHO' && (
                         <>
                           {/* Baixar PDF - Apenas Ícone */}
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleBaixarPdf(os)}
-                            className="h-9 w-9 p-0 grid place-items-center rounded-xl text-brand-700 hover:bg-brand-50"
-                            title="Baixar PDF"
-                            aria-label="Baixar PDF"
-                          >
-                            <Download className="h-4 w-4" />
-                          </Button>
+                          <ActionTooltip label="Baixar PDF" description="Gerar e baixar o arquivo PDF oficial da Ordem de Serviço.">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleBaixarPdf(os)}
+                              className="h-9 w-9 p-0 grid place-items-center rounded-xl text-brand-700 hover:bg-brand-50 hover:text-brand-800"
+                              aria-label="Baixar PDF"
+                            >
+                              <Download className="h-4 w-4" />
+                            </Button>
+                          </ActionTooltip>
                           {/* Imprimir - Apenas Ícone */}
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleImprimir(os)}
-                            className="h-9 w-9 p-0 grid place-items-center rounded-xl text-slate-600"
-                            title="Imprimir"
-                            aria-label="Imprimir"
-                          >
-                            <Printer className="h-4 w-4" />
-                          </Button>
+                          <ActionTooltip label="Imprimir" description="Abrir a versão para impressão da Ordem de Serviço.">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleImprimir(os)}
+                              className="h-9 w-9 p-0 grid place-items-center rounded-xl text-slate-600 hover:bg-slate-100 hover:text-slate-800"
+                              aria-label="Imprimir"
+                            >
+                              <Printer className="h-4 w-4" />
+                            </Button>
+                          </ActionTooltip>
                         </>
                       )}
 
@@ -507,50 +580,54 @@ export default function OrdensServicoPage() {
                       {isGestor && os.status === 'PUBLICADA' && (
                         <>
                           {/* Rastreamento de Distribuição */}
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => { setSelectedOS(os); setDistribuicaoOpen(true); }}
-                            className="h-9 w-9 p-0 grid place-items-center rounded-xl border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100"
-                            title="Consultar Distribuição"
-                            aria-label="Consultar Distribuição"
-                          >
-                            <Users className="h-4 w-4" />
-                          </Button>
+                          <ActionTooltip label="Consultar Distribuição" description="Ver quais equipes receberam a O.S. e quem já visualizou.">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => { setSelectedOS(os); setDistribuicaoOpen(true); }}
+                              className="h-9 w-9 p-0 grid place-items-center rounded-xl border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100 hover:text-sky-800"
+                              aria-label="Consultar Distribuição"
+                            >
+                              <Users className="h-4 w-4" />
+                            </Button>
+                          </ActionTooltip>
                           {/* Substituir */}
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleSubstituir(os)}
-                            disabled={submitting}
-                            className="h-9 w-9 p-0 grid place-items-center rounded-xl border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100"
-                            title="Substituir por Nova Versão"
-                            aria-label="Substituir por Nova Versão"
-                          >
-                            <RefreshCw className="h-4 w-4" />
-                          </Button>
+                          <ActionTooltip label="Substituir por Nova Versão" description="Criar uma nova versão corrigida da O.S. em rascunho.">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleSubstituir(os)}
+                              disabled={submitting}
+                              className="h-9 w-9 p-0 grid place-items-center rounded-xl border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 hover:text-amber-800"
+                              aria-label="Substituir por Nova Versão"
+                            >
+                              <RefreshCw className="h-4 w-4" />
+                            </Button>
+                          </ActionTooltip>
                           {/* Cancelar */}
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => { setSelectedOS(os); setCancelarOpen(true); }}
-                            className="h-9 w-9 p-0 grid place-items-center rounded-xl border-red-200 text-red-600 hover:bg-red-50"
-                            title="Cancelar Ordem de Serviço"
-                            aria-label="Cancelar Ordem de Serviço"
-                          >
-                            <XCircle className="h-4 w-4" />
-                          </Button>
+                          <ActionTooltip label="Cancelar Ordem de Serviço" description="Registrar o cancelamento da O.S. informando o motivo.">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => { setSelectedOS(os); setCancelarOpen(true); }}
+                              className="h-9 w-9 p-0 grid place-items-center rounded-xl border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
+                              aria-label="Cancelar Ordem de Serviço"
+                            >
+                              <XCircle className="h-4 w-4" />
+                            </Button>
+                          </ActionTooltip>
                           {/* Arquivar */}
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleArquivar(os.id)}
-                            className="h-9 w-9 p-0 grid place-items-center rounded-xl text-slate-500 hover:bg-slate-100"
-                            title="Arquivar"
-                            aria-label="Arquivar"
-                          >
-                            <Archive className="h-4 w-4" />
-                          </Button>
+                          <ActionTooltip label="Arquivar" description="Mover a O.S. para o histórico de ordens arquivadas.">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleArquivar(os.id)}
+                              className="h-9 w-9 p-0 grid place-items-center rounded-xl text-slate-500 hover:bg-slate-100 hover:text-slate-700"
+                              aria-label="Arquivar"
+                            >
+                              <Archive className="h-4 w-4" />
+                            </Button>
+                          </ActionTooltip>
                         </>
                       )}
                     </div>
@@ -951,6 +1028,8 @@ export default function OrdensServicoPage() {
           </div>
         </ResponsiveDialog>
       )}
+
+      {confirmDialog}
     </div>
   );
 

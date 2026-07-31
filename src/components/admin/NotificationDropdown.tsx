@@ -4,6 +4,7 @@ import { Bell, CheckCheck, Loader2, Info, AlertTriangle, CheckCircle, XCircle } 
 import { useAdminNotifications } from '@/hooks/use-admin-notifications';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import type { AdminNotification } from '@/types/admin';
 
 const tipoIcon: Record<string, typeof Info> = {
@@ -155,12 +156,12 @@ export function NotificationDropdown({ userId, triggerClassName }: NotificationD
     );
   }
 
-  // Versão Desktop — Popover Dropdown
+  // Versão Desktop — Modal Lateral Direito (Sheet Slide-over)
   return (
-    <div ref={dropdownRef} className="relative">
+    <>
       <button
         type="button"
-        onClick={() => setOpen(!open)}
+        onClick={() => setOpen(true)}
         className={
           triggerClassName ??
           'relative hidden h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-600 shadow-[0_8px_22px_-18px_rgba(15,23,42,0.28)] lg:flex hover:bg-slate-50 transition-colors'
@@ -175,31 +176,31 @@ export function NotificationDropdown({ userId, triggerClassName }: NotificationD
         )}
       </button>
 
-      {open && (
-        <div className="absolute right-0 top-full mt-2 w-[380px] max-w-[90vw] rounded-2xl border border-slate-200 bg-white shadow-xl z-50 overflow-hidden">
-          <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
-            <h3 className="text-sm font-bold text-slate-900">Notificações</h3>
+      <Sheet open={open} onOpenChange={setOpen}>
+        <SheetContent side="right" className="w-full sm:max-w-md p-0 flex flex-col h-full bg-white">
+          <SheetHeader className="border-b border-slate-100 px-5 py-4 flex flex-row items-center justify-between space-y-0">
+            <SheetTitle className="text-base font-bold text-slate-900">Notificações</SheetTitle>
             {unreadCount > 0 && (
               <button
                 type="button"
                 onClick={markAllAsRead}
-                className="flex items-center gap-1.5 text-xs font-medium text-brand-600 hover:text-brand-700 transition-colors"
+                className="flex items-center gap-1.5 text-xs font-semibold text-brand-600 hover:text-brand-700 transition-colors pr-6"
               >
-                <CheckCheck className="h-3.5 w-3.5" />
-                Marcar todas como lidas
+                <CheckCheck className="h-4 w-4" />
+                Marcar lidas
               </button>
             )}
-          </div>
+          </SheetHeader>
 
-          <div className="max-h-[360px] overflow-y-auto">
+          <div className="flex-1 overflow-y-auto px-3 py-3 space-y-1">
             {loading ? (
-              <div className="flex items-center justify-center py-10">
-                <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
               </div>
             ) : notifications.length === 0 ? (
-              <div className="flex flex-col items-center py-10 text-center">
-                <Bell className="h-8 w-8 text-slate-200 mb-3" />
-                <p className="text-sm text-slate-400">Nenhuma notificação</p>
+              <div className="flex flex-col items-center justify-center py-16 text-center">
+                <Bell className="h-10 w-10 text-slate-200 mb-3" />
+                <p className="text-sm font-medium text-slate-400">Nenhuma notificação</p>
               </div>
             ) : (
               notifications.map((notification) => {
@@ -210,11 +211,11 @@ export function NotificationDropdown({ userId, triggerClassName }: NotificationD
                     key={notification.id}
                     type="button"
                     onClick={() => handleNotificationClick(notification)}
-                    className={`w-full flex items-start gap-3 px-5 py-4 text-left transition-colors hover:bg-slate-50 border-b border-slate-50 last:border-0 ${
-                      !notification.lida_em ? 'bg-brand-50/40' : ''
+                    className={`w-full flex items-start gap-3 p-3.5 rounded-2xl text-left transition-colors ${
+                      !notification.lida_em ? 'bg-brand-50/70' : 'hover:bg-slate-50'
                     }`}
                   >
-                    <div className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${colorClass}`}>
+                    <div className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${colorClass}`}>
                       <Icon className="h-4 w-4" />
                     </div>
                     <div className="flex-1 min-w-0">
@@ -226,20 +227,20 @@ export function NotificationDropdown({ userId, triggerClassName }: NotificationD
                           {timeAgo(notification.created_at)}
                         </span>
                       </div>
-                      <p className="text-xs text-slate-500 mt-0.5 line-clamp-2">
+                      <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">
                         {notification.mensagem}
                       </p>
                     </div>
                     {!notification.lida_em && (
-                      <span className="mt-2 h-2 w-2 shrink-0 rounded-full bg-brand-500" />
+                      <span className="mt-2 h-2.5 w-2.5 shrink-0 rounded-full bg-brand-600" />
                     )}
                   </button>
                 );
               })
             )}
           </div>
-        </div>
-      )}
-    </div>
+        </SheetContent>
+      </Sheet>
+    </>
   );
 }

@@ -1,8 +1,9 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import type { OrdemServico } from '@/types/ordem-servico.types';
-
-const LOGO_URL = 'https://jpztntmwmrhdobxsyulj.supabase.co/storage/v1/object/public/imagens/logo.png';
+import municipioLogo from '@/logo/municipio.png';
+import guardaLogo from '@/logo/guarda.png';
+import demutranLogo from '@/logo/demutran.png';
 
 function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
@@ -14,10 +15,26 @@ function loadImage(src: string): Promise<HTMLImageElement> {
   });
 }
 
-export async function gerarPdfOrdemServico(ordem: OrdemServico) {
-  const [logoSecretaria, logoGuarda] = await Promise.all([
-    loadImage(LOGO_URL),
-    loadImage('/src/guarda.png'),
+interface LogoImage {
+  img: HTMLImageElement | null;
+  aspect: number;
+}
+
+async function loadLogo(src: string): Promise<LogoImage> {
+  try {
+    const img = await loadImage(src);
+    const aspect = img.naturalWidth / img.naturalHeight;
+    return { img, aspect: aspect || 1 };
+  } catch {
+    return { img: null, aspect: 1 };
+  }
+}
+
+export async function montarPdfOrdemServico(ordem: OrdemServico): Promise<{ doc: jsPDF; nomeArquivo: string }> {
+  const [logoMunicipio, logoGuarda, logoDemutran] = await Promise.all([
+    loadLogo(municipioLogo),
+    loadLogo(guardaLogo),
+    loadLogo(demutranLogo),
   ]);
 
   const doc = new jsPDF();
@@ -26,33 +43,37 @@ export async function gerarPdfOrdemServico(ordem: OrdemServico) {
   const marginLeft = 14;
   const marginRight = 14;
 
-  // --- Marca d'água: logo da Secretaria grande ao fundo ---
-  if (logoSecretaria) {
+  // --- Marca d'água: logo do Município/Secretaria em alta resolução, ao fundo ---
+  if (logoMunicipio.img) {
+    const wmHeight = 130;
+    const wmWidth = wmHeight * logoMunicipio.aspect;
     doc.saveGraphicsState();
     const gState = doc.GState({ opacity: 0.08 });
     doc.setGState(gState);
-    const wmSize = 120;
     doc.addImage(
-      logoSecretaria,
+      logoMunicipio.img,
       'PNG',
-      (pageWidth - wmSize) / 2,
-      (pageHeight - wmSize) / 2 - 20,
-      wmSize,
-      wmSize,
+      (pageWidth - wmWidth) / 2,
+      (pageHeight - wmHeight) / 2,
+      wmWidth,
+      wmHeight,
     );
     doc.restoreGraphicsState();
   }
 
-  // --- TOPO: Logos lado a lado ---
+  // --- TOPO: Logos (Secretaria, Guarda e Demutran) lado a lado, proporção preservada ---
   const logoHeight = 22;
-  const logoWidth = 22;
   const gap = 6;
 
-  const totalLogosWidth = logoWidth + gap + logoWidth;
-  const logosStartX = (pageWidth - totalLogosWidth) / 2;
+  const logos = [logoMunicipio, logoGuarda, logoDemutran].filter((l) => l.img);
+  const logoWidths = logos.map((l) => logoHeight * l.aspect);
+  const totalLogosWidth = logoWidths.reduce((acc, w) => acc + w, 0) + gap * (logos.length - 1);
+  let logosStartX = (pageWidth - totalLogosWidth) / 2;
 
-  doc.addImage(logoSecretaria, 'PNG', logosStartX, 8, logoWidth, logoHeight);
-  doc.addImage(logoGuarda, 'PNG', logosStartX + logoWidth + gap, 8, logoWidth, logoHeight);
+  logos.forEach((l, idx) => {
+    doc.addImage(l.img!, 'PNG', logosStartX, 8, logoWidths[idx], logoHeight);
+    logosStartX += logoWidths[idx] + gap;
+  });
 
   let currentY = 8 + logoHeight + 6;
 
@@ -278,5 +299,51 @@ export async function gerarPdfOrdemServico(ordem: OrdemServico) {
 
   // Download do PDF
   const nomeArquivo = `Ordem_de_Servico_${numFmt.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
+  return { doc, nomeArquivo };
+}
+
+export async function gerarPdfOrdemServico(ordem: OrdemServico) {
+  const { doc, nomeArquivo } = await montarPdfOrdemServico(ordem);
   doc.save(nomeArquivo);
+}
+
+export async function imprimirPdfOrdemServico(ordem: OrdemServico) {
+  const { doc, nomeArquivo } = await montarPdfOrdemServico(ordem);
+  const blob = doc.output('blob');
+  const url = URL.createObjectURL(blob);
+
+  const printWindow = window.open('', '_blank');
+  if (!printWindow) {
+    URL.revokeObjectURL(url);
+    doc.save(nomeArquivo);
+    return;
+  }
+
+  printWindow.document.title = nomeArquivo;
+  printWindow.document.write(
+    `<html><head><title>${nomeArquivo}</title><style>html,body{margin:0;height:100%}iframe{width:100%;height:100%;border:0}</style></head>` +
+      `<body><iframe src="${url}"></iframe></body></html>`,
+  );
+  printWindow.document.close();
+
+  const iframe = printWindow.document.querySelector('iframe');
+  if (iframe) {
+    iframe.onload = () => {
+      setTimeout(() => {
+        try {
+          iframe.contentWindow?.focus();
+          iframe.contentWindow?.print();
+        } catch {
+          // ignore
+        }
+      }, 300);
+    };
+  }
+
+  const closeTimer = window.setInterval(() => {
+    if (printWindow.closed) {
+      window.clearInterval(closeTimer);
+      URL.revokeObjectURL(url);
+    }
+  }, 500);
 }

@@ -57,6 +57,7 @@ import {
   useBirthdayAlerts,
 } from "@/components/jgc/JgcAlertBanner";
 import { JgcStudentJourney } from "@/components/jgc/JgcStudentJourney";
+import { JgcSaibaMaisButton, type JgcSectionKey } from "@/components/jgc/JgcPageHelpModal";
 
 type Section =
   | "dashboard"
@@ -82,7 +83,7 @@ const sectionTitles: Record<Section, string> = {
   alunos: "Alunos",
   responsaveis: "Responsáveis",
   turmas: "Turmas",
-  diario: "Frequência",
+  diario: "Diário",
   atividades: "Atividades",
   acompanhamentos: "Acompanhamentos",
   relatorios: "Relatórios",
@@ -468,7 +469,7 @@ export default function JovemGuardaCidada() {
       </header>
       <div className="min-h-[calc(100vh-8rem)] p-3 sm:p-6 lg:mt-6 lg:p-0">
         {selected ? (
-          <div className="flex items-center gap-1 lg:hidden px-1 py-2">
+          <div className="flex items-center gap-1 lg:hidden px-1 py-2 mb-2">
             <button
               type="button"
               onClick={() => navigate('/admin/dashboard/jovem-guarda/alunos')}
@@ -480,7 +481,7 @@ export default function JovemGuardaCidada() {
             <h1 className="truncate text-lg font-bold tracking-tight text-slate-900">{mobileTitle}</h1>
           </div>
         ) : active !== 'dashboard' ? (
-          <div className="flex items-center gap-1 lg:hidden px-1 py-2">
+          <div className="flex items-center gap-1 lg:hidden px-1 py-2 mb-2">
             <button
               type="button"
               onClick={() => navigate('/admin/dashboard/jovem-guarda')}
@@ -492,7 +493,7 @@ export default function JovemGuardaCidada() {
             <h1 className="truncate text-lg font-bold tracking-tight text-slate-900">{mobileTitle}</h1>
           </div>
         ) : (
-          <div className="lg:hidden px-1 py-2">
+          <div className="lg:hidden px-1 py-2 mb-2">
             <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">Jovem Guarda Cidadã</p>
             <h1 className="text-lg font-bold tracking-tight text-slate-900">{mobileTitle}</h1>
           </div>
@@ -534,6 +535,7 @@ export default function JovemGuardaCidada() {
             <PageHead
               title="Alunos"
               subtitle="Cadastro e trajetória centralizada do jovem"
+              sectionKey="alunos"
               action={
                 can("alunos", "criar") && (
                   <Button
@@ -616,8 +618,9 @@ export default function JovemGuardaCidada() {
             <PageHead
               title="Turmas"
               subtitle="Organize horários, professores e participantes"
-          action={
-            can("turmas", "criar") && <Button
+              sectionKey="turmas"
+              action={
+                can("turmas", "criar") && <Button
                   onClick={() => setClassOpen(true)}
                   className="hidden gap-2 bg-teal-700 sm:inline-flex"
                 >
@@ -722,8 +725,9 @@ export default function JovemGuardaCidada() {
             <PageHead
               title="Acompanhamentos"
               subtitle="Atendimentos, retornos, ações e encaminhamentos"
-          action={
-            can("acompanhamento", "criar") && <Button
+              sectionKey="acompanhamentos"
+              action={
+                can("acompanhamento", "criar") && <Button
                   onClick={() => setServiceOpen(true)}
                   className="hidden gap-2 bg-teal-700 sm:inline-flex"
                 >
@@ -1436,18 +1440,23 @@ function PageHead({
   title,
   subtitle,
   action,
+  sectionKey,
 }: {
   title: string;
   subtitle: string;
   action?: React.ReactNode;
+  sectionKey?: JgcSectionKey;
 }) {
   return (
     <div className="mb-5 flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
-      <div className="hidden lg:block">
+      <div>
         <h2 className="text-2xl font-bold text-slate-950">{title}</h2>
         <p className="mt-1 text-sm text-slate-500">{subtitle}</p>
       </div>
-      {action}
+      <div className="flex flex-wrap items-center justify-end gap-2.5 self-end sm:self-auto">
+        {action}
+        {sectionKey && <JgcSaibaMaisButton sectionKey={sectionKey} />}
+      </div>
     </div>
   );
 }
@@ -1583,6 +1592,7 @@ function Dashboard({
       <PageHead
         title="Visão geral"
         subtitle="Informações consolidadas do programa Jovem Guarda Cidadã."
+        sectionKey="dashboard"
         action={
           onService && (
             <Button

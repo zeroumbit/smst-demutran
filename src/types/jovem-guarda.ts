@@ -61,3 +61,21 @@ export interface JgcAtendimento {
   retorno_data: string | null;
   aluno?: { nome_completo: string; matricula: string } | null;
 }
+
+export interface JgcResponsavel {
+  id: string;
+  aluno_id: string;
+  nome: string;
+  vinculo: string;
+  telefone: string;
+  whatsapp: string | null;
+  email: string | null;
+  logradouro: string | null;
+  numero: string | null;
+  bairro: string | null;
+  endereco: string | null;
+  principal: boolean;
+  autorizado_buscar: boolean;
+  aluno?: { nome_completo: string } | null;
+}
+

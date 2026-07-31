@@ -87,6 +87,11 @@ type DashboardState = {
   totalBancoHoras: number;
   demandasFalaCidadaoCount: number;
   distribuicaoGraduacoes: Array<{ label: string; total: number }>;
+  ordensServicoTotal: number;
+  ordensServicoPublicadas: number;
+  ordensServicoRascunhos: number;
+  ordensServicoCanceladas: number;
+  ordensServicoSubstituidas: number;
   frotaDisponivel: number;
   frotaEmServico: number;
   frotaEmManutencao: number;
@@ -122,6 +127,11 @@ const initialState: DashboardState = {
   totalBancoHoras: 0,
   demandasFalaCidadaoCount: 0,
   distribuicaoGraduacoes: [],
+  ordensServicoTotal: 0,
+  ordensServicoPublicadas: 0,
+  ordensServicoRascunhos: 0,
+  ordensServicoCanceladas: 0,
+  ordensServicoSubstituidas: 0,
   frotaDisponivel: 0,
   frotaEmServico: 0,
   frotaEmManutencao: 0,
@@ -256,6 +266,16 @@ const Dashboard = () => {
     return chartConfig;
   }, [isGuardaScope]);
 
+  const ordensServicoPorStatus = useMemo(() => {
+    const items = [
+      { name: 'Publicadas', value: state.ordensServicoPublicadas, fill: '#10b981' },
+      { name: 'Rascunhos', value: state.ordensServicoRascunhos, fill: '#2563eb' },
+      { name: 'Canceladas', value: state.ordensServicoCanceladas, fill: '#ef4444' },
+      { name: 'Substituídas', value: state.ordensServicoSubstituidas, fill: '#f59e0b' },
+    ];
+    return items.filter((item) => item.value > 0);
+  }, [state.ordensServicoPublicadas, state.ordensServicoRascunhos, state.ordensServicoCanceladas, state.ordensServicoSubstituidas]);
+
   useEffect(() => {
     let mounted = true;
 
@@ -318,6 +338,11 @@ const Dashboard = () => {
       let totalBancoHoras = 0;
       let demandasFalaCidadaoCount = 0;
       let distribuicaoGraduacoes: Array<{ label: string; total: number }> = [];
+      let ordensServicoTotal = 0;
+      let ordensServicoPublicadas = 0;
+      let ordensServicoRascunhos = 0;
+      let ordensServicoCanceladas = 0;
+      let ordensServicoSubstituidas = 0;
       let movementMap = buildLastSixMonths();
       let equipesAtivas = 0;
       let frotaDisponivel = 0;
@@ -428,6 +453,7 @@ const Dashboard = () => {
           equipesResponse,
           noticiasGuardaResponse,
           eventosGuardaResponse,
+          ordensServicoResponse,
         ] = await Promise.all([
           supabase.from('guardas_municipais').select('*', { count: 'exact', head: true }).eq('ativo', true),
           supabase.from('iro_operacoes').select('*', { count: 'exact', head: true }).eq('ativo', true),
@@ -447,6 +473,7 @@ const Dashboard = () => {
           targetSetorId
             ? supabase.from('eventos').select('*', { count: 'exact', head: true }).eq('setor_id', targetSetorId).eq('ativo', true)
             : Promise.resolve({ count: 0, error: null }),
+          supabase.from('guarda_ordens_servico').select('status'),
         ]);
 
         guardasAtivos = guardasCountResponse.count || 0;
@@ -476,6 +503,14 @@ const Dashboard = () => {
           label,
           total
         }));
+
+        // Resumo de Ordens de Serviço por status
+        const osStatusRows = (ordensServicoResponse.data || []) as Array<{ status: string }>;
+        ordensServicoTotal = osStatusRows.length;
+        ordensServicoPublicadas = osStatusRows.filter((row) => row.status === 'PUBLICADA').length;
+        ordensServicoRascunhos = osStatusRows.filter((row) => row.status === 'RASCUNHO').length;
+        ordensServicoCanceladas = osStatusRows.filter((row) => row.status === 'CANCELADA').length;
+        ordensServicoSubstituidas = osStatusRows.filter((row) => row.status === 'SUBSTITUIDA').length;
 
         // Dados da série de escalas mensais
         const movementLookup = new Map(movementMap.map((item) => [item.key, item]));
@@ -715,6 +750,11 @@ const Dashboard = () => {
         totalBancoHoras,
         demandasFalaCidadaoCount,
         distribuicaoGraduacoes,
+        ordensServicoTotal,
+        ordensServicoPublicadas,
+        ordensServicoRascunhos,
+        ordensServicoCanceladas,
+        ordensServicoSubstituidas,
         frotaDisponivel,
         frotaEmServico,
         frotaEmManutencao,
@@ -1119,22 +1159,22 @@ const Dashboard = () => {
               <CardHeader className="flex flex-row items-center justify-between space-y-0">
                 <div>
                   <CardTitle className="font-heading text-base font-bold tracking-[-0.02em] text-slate-800">
-                    Efetivo por Graduação
+                    Ordens de Serviço
                   </CardTitle>
                   <CardDescription className="mt-1 hidden text-sm leading-6 text-[#89a0bf] lg:block">
-                    Distribuição proporcional do efetivo ativo entre as graduações da Guarda
+                    Distribuição das Ordens de Serviço da Guarda por situação
                   </CardDescription>
                 </div>
-                <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-3 text-emerald-600">
-                  <ShieldCheck className="h-5 w-5" />
+                <div className="rounded-2xl border border-blue-100 bg-blue-50 p-3 text-blue-600">
+                  <FileText className="h-5 w-5" />
                 </div>
               </CardHeader>
               <CardContent className="space-y-4 bg-[linear-gradient(180deg,_rgba(248,250,252,0.55)_0%,_rgba(255,255,255,1)_100%)]">
                 <ChartContainer className="mx-auto h-[240px] max-w-[280px]" config={resolvedChartConfig}>
                   <PieChart>
                     <ChartTooltip content={<ChartTooltipContent hideLabel />} />
-                    <Pie data={state.sectorHealth} dataKey="value" nameKey="name" innerRadius={70} outerRadius={96} paddingAngle={4}>
-                      {state.sectorHealth.map((entry) => (
+                    <Pie data={ordensServicoPorStatus} dataKey="value" nameKey="name" innerRadius={70} outerRadius={96} paddingAngle={4}>
+                      {ordensServicoPorStatus.map((entry) => (
                         <Cell key={entry.name} fill={entry.fill} />
                       ))}
                     </Pie>
@@ -1145,19 +1185,17 @@ const Dashboard = () => {
                 <div className="grid gap-3">
                   <div className="grid grid-cols-3 gap-3 border-t border-slate-200 pt-5">
                     <div className="text-center">
-                      <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-[#8ea0bd]">Total de Guardas</p>
-                      <p className="mt-2 text-[22px] font-extrabold tracking-[-0.04em] text-[#2563eb] md:text-[2rem]">{state.guardasAtivos || 0}</p>
+                      <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-[#8ea0bd]">Total de O.S.</p>
+                      <p className="mt-2 text-[22px] font-extrabold tracking-[-0.04em] text-[#2563eb] md:text-[2rem]">{state.ordensServicoTotal || 0}</p>
                     </div>
                     <div className="text-center">
-                      <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-[#8ea0bd]">Graduações</p>
-                      <p className="mt-2 text-[22px] font-extrabold tracking-[-0.04em] text-[#10b981] md:text-[2rem]">{state.distribuicaoGraduacoes?.length || 0}</p>
+                      <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-[#8ea0bd]">Publicadas</p>
+                      <p className="mt-2 text-[22px] font-extrabold tracking-[-0.04em] text-[#10b981] md:text-[2rem]">{state.ordensServicoPublicadas || 0}</p>
                     </div>
                     <div className="text-center">
-                      <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-[#8ea0bd]">Média p/ Grad.</p>
-                      <p className="mt-2 text-[22px] font-extrabold tracking-[-0.04em] text-[#8b5cf6] md:text-[2rem]">
-                        {state.distribuicaoGraduacoes?.length 
-                          ? Math.round((state.guardasAtivos || 0) / state.distribuicaoGraduacoes.length) 
-                          : 0}
+                      <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-[#8ea0bd]">Rascunhos</p>
+                      <p className="mt-2 text-[22px] font-extrabold tracking-[-0.04em] text-[#f59e0b] md:text-[2rem]">
+                        {state.ordensServicoRascunhos || 0}
                       </p>
                     </div>
                   </div>

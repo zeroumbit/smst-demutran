@@ -49,6 +49,12 @@ export const ordemServicoService = {
     return data as { sucesso: boolean; nova_ordem_id: string; versao: number };
   },
 
+  async excluirRascunho(id: string) {
+    const { data, error } = await supabase.rpc('excluir_rascunho_ordem_servico', { p_id: id });
+    if (error) throw error;
+    return data as { sucesso: boolean; ordem_servico_id: string };
+  },
+
   async cancelar(id: string, motivo: string) {
     const { data, error } = await supabase.rpc('cancelar_ordem_servico', {
       p_id: id,

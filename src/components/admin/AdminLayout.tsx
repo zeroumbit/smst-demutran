@@ -182,7 +182,7 @@ const jovemGuardaMenuItems: MenuItem[] = [
   { icon: Users, label: 'Alunos', path: '/admin/dashboard/jovem-guarda/alunos', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
   { icon: IdCard, label: 'Responsaveis', path: '/admin/dashboard/jovem-guarda/responsaveis', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'], allowedJgcPerfis: ['gestor', 'administrativo'] },
   { icon: Building2, label: 'Turmas', path: '/admin/dashboard/jovem-guarda/turmas', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
-  { icon: ClipboardList, label: 'Frequencia', path: '/admin/dashboard/jovem-guarda/diario', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
+  { icon: ClipboardList, label: 'Diário', path: '/admin/dashboard/jovem-guarda/diario', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
   { icon: CalendarDays, label: 'Atividades', path: '/admin/dashboard/jovem-guarda/atividades', allowedPapeis: ['super_admin', 'gestor', 'tecnico'] },
   { icon: BookOpenTextIcon, label: 'Acompanhamentos', path: '/admin/dashboard/jovem-guarda/acompanhamentos', allowedPapeis: ['super_admin', 'gestor', 'tecnico'], allowedJgcPerfis: ['gestor', 'administrativo', 'multiprofissional'] },
   { icon: BarChart3, label: 'Relatorios', path: '/admin/dashboard/jovem-guarda/relatorios', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
@@ -913,8 +913,6 @@ export const AdminLayout = ({ children, backPath, backLabel }: AdminLayoutProps)
               {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </button>
 
-            <NotificationDropdown userId={profile?.user_id} />
-
             {profile?.setor_nome && !sectorContext && (
               <div className="hidden md:flex items-center gap-2">
                 <Badge className="rounded-full border-slate-200 bg-white text-slate-600" variant="outline">{profile.setor_nome}</Badge>
@@ -930,6 +928,8 @@ export const AdminLayout = ({ children, backPath, backLabel }: AdminLayoutProps)
               <LogOut className="w-4 h-4" />
               <span className="hidden sm:inline">Sair</span>
             </Button>
+
+            <NotificationDropdown userId={profile?.user_id} />
           </div>
         </header>
 

@@ -432,6 +432,18 @@ const GuardaDashboard = () => {
           </div>
         </div>
 
+        {/* Top Header desktop — Notificação acima do banner principal */}
+        <div className="hidden lg:flex lg:items-center lg:justify-between lg:mb-3">
+          <div>
+            <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">Painel do Guarda</p>
+            <h2 className="text-xl font-bold text-slate-900">Visão Geral</h2>
+          </div>
+          <NotificationDropdown
+            userId={profile?.user_id ?? user?.id}
+            triggerClassName="relative flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-600 shadow-sm hover:bg-slate-50 transition-colors"
+          />
+        </div>
+
         {/* Banner gradiente — desktop apenas */}
         <section className="hidden rounded-[24px] bg-[linear-gradient(135deg,_#0f172a_0%,_#1e293b_45%,_#2563eb_100%)] px-4 py-4 text-white sm:rounded-[34px] sm:px-6 sm:py-5 lg:block">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
@@ -441,12 +453,6 @@ const GuardaDashboard = () => {
                 {guardaNome ? `Olá, ${guardaNome.split(' ')[0]}!` : 'Dashboard'}
               </h1>
               <p className="mt-1.5 hidden max-w-xl text-[13px] leading-5 text-white md:block md:mt-2 md:text-[14px] md:leading-6">Resumo do mês de {mesAtual}.</p>
-            </div>
-            <div className="flex items-center gap-3">
-              <NotificationDropdown
-                userId={profile?.user_id ?? user?.id}
-                triggerClassName="relative flex h-11 w-11 items-center justify-center rounded-2xl border border-white/20 bg-white/10 text-white hover:bg-white/20 transition-colors"
-              />
             </div>
           </div>
           <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">

@@ -13,6 +13,7 @@ import { ResponsiveDialog } from '@/components/ui/responsive-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useConfirmDialog } from '@/components/ui/use-confirm-dialog';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
@@ -101,6 +102,7 @@ type ValorGraduacaoRow = {
 
 type IROCandidaturaRow = IROCandidatura & {
   iro_operacoes?: { nome?: string | null } | null;
+  gestor_responsavel?: { nome: string; sobrenome: string } | null;
 };
 
 type IRODisponibilidadeDia = {
@@ -279,6 +281,28 @@ const monthLabel = (key: string) => {
   return label.charAt(0).toUpperCase() + label.slice(1);
 };
 
+interface ActionTooltipProps {
+  label: string;
+  description: string;
+  children: ReactNode;
+}
+
+function ActionTooltip({ label, description, children }: ActionTooltipProps) {
+  return (
+    <Tooltip delayDuration={150}>
+      <TooltipTrigger asChild>{children}</TooltipTrigger>
+      <TooltipContent
+        side="top"
+        align="center"
+        className="max-w-[260px] rounded-xl border border-slate-200 bg-slate-900 px-3 py-2 text-left shadow-lg"
+      >
+        <p className="text-xs font-bold text-white">{label}</p>
+        <p className="mt-0.5 text-[11px] leading-snug text-slate-300">{description}</p>
+      </TooltipContent>
+    </Tooltip>
+  );
+}
+
 const GuardaMunicipalIros = () => {
   const { confirm, confirmDialog } = useConfirmDialog();
   const { setorId, profile, user } = useAuth();
@@ -368,8 +392,8 @@ const GuardaMunicipalIros = () => {
       const [opRes, candRes, bhRes, notifRes, userRes, valoresRes, guardasRes] = await Promise.all([
         applySetorFilter(supabase.from('iro_operacoes').select('*').order('data_inicio', { ascending: false })),
         podeVerTudo
-          ? supabase.from('iro_candidaturas').select('*, iro_operacoes(nome)').order('created_at', { ascending: false })
-          : supabase.from('iro_candidaturas').select('*, iro_operacoes(nome)').eq('usuario_id', user!.user_id).order('created_at', { ascending: false }),
+          ? supabase.from('iro_candidaturas').select('*, iro_operacoes(nome), gestor_responsavel:perfis_usuarios(nome, sobrenome)').order('created_at', { ascending: false })
+          : supabase.from('iro_candidaturas').select('*, iro_operacoes(nome), gestor_responsavel:perfis_usuarios(nome, sobrenome)').eq('usuario_id', user!.user_id).order('created_at', { ascending: false }),
         podeVerTudo
           ? supabase.from('iro_banco_horas').select('*').order('created_at', { ascending: false })
           : supabase.from('iro_banco_horas').select('*').eq('usuario_id', user!.user_id).order('created_at', { ascending: false }),
@@ -1468,28 +1492,41 @@ const GuardaMunicipalIros = () => {
         <div className="shrink-0">
           <div className="flex items-center justify-end gap-2 lg:justify-start">
             {canManageOperacoes && <Switch checked={item.ativo} onCheckedChange={() => void handleToggleAtiva(item)} disabled={item.data_fim < todayStr()} />}
-            <Button size="sm" variant="outline" onClick={() => void openOperacaoDetails(item)}>
-              <Eye className="h-4 w-4" />
-            </Button>
+            <ActionTooltip label="Ver Detalhes" description="Abrir os detalhes da operação, inscrições e acompanhamento da IRO.">
+              <Button size="sm" variant="outline" onClick={() => void openOperacaoDetails(item)} className="h-9 w-9 p-0 grid place-items-center rounded-xl hover:bg-slate-100 hover:text-slate-900" aria-label="Ver Detalhes">
+                <Eye className="h-4 w-4 text-slate-700" />
+              </Button>
+            </ActionTooltip>
             {canManageOperacoes && (
               <>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => openEditOperacao(item)}
-                  disabled={operacoesComConfirmados.has(item.id)}
-                  title={operacoesComConfirmados.has(item.id) ? 'Já existem candidaturas confirmadas para esta operação' : 'Editar'}
+                <ActionTooltip
+                  label={operacoesComConfirmados.has(item.id) ? 'Operação bloqueada' : 'Editar Operação'}
+                  description={operacoesComConfirmados.has(item.id)
+                    ? 'Já existem candidaturas confirmadas para esta operação. Não é possível editá-la.'
+                    : 'Alterar as informações da operação antes do início das inscrições.'}
                 >
-                  <Pencil className="h-4 w-4" />
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => openDeleteConfirm(item)}
-                  className="border-red-200 text-red-700 hover:bg-red-50 hidden lg:inline-flex"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => openEditOperacao(item)}
+                    disabled={operacoesComConfirmados.has(item.id)}
+                    className="h-9 w-9 p-0 grid place-items-center rounded-xl hover:bg-slate-100 hover:text-slate-900"
+                    aria-label={operacoesComConfirmados.has(item.id) ? 'Operação bloqueada' : 'Editar Operação'}
+                  >
+                    <Pencil className="h-4 w-4 text-slate-700" />
+                  </Button>
+                </ActionTooltip>
+                <ActionTooltip label="Excluir Operação" description="Remover permanentemente esta operação. Esta ação não pode ser desfeita.">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => openDeleteConfirm(item)}
+                    className="h-9 w-9 p-0 grid place-items-center rounded-xl border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 hidden lg:inline-flex"
+                    aria-label="Excluir Operação"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </ActionTooltip>
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button size="sm" variant="outline" className="lg:hidden">
@@ -1524,6 +1561,11 @@ const GuardaMunicipalIros = () => {
           {item.adicionado_manual && (
             <Badge variant="outline" className="rounded-full border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700">
               Manual
+            </Badge>
+          )}
+          {item.gestor_responsavel && (
+            <Badge variant="outline" className="rounded-full border-violet-200 bg-violet-50 px-3 py-1 text-xs font-bold text-violet-700">
+              {item.gestor_responsavel.nome} {item.gestor_responsavel.sobrenome}
             </Badge>
           )}
         </div>

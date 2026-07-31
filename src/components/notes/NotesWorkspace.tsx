@@ -27,6 +27,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { toast } from '@/hooks/use-toast';
 import { DEFAULT_NOTE_CATEGORIES, EMPTY_NOTE_FORM, type NoteFormValues, type NoteRecord } from '@/types/notes';
+import { JgcSaibaMaisButton } from '@/components/jgc/JgcPageHelpModal';
 
 type NotesWorkspaceProps = {
   variant: 'admin' | 'guard';
@@ -452,40 +453,49 @@ export function NotesWorkspace({ variant }: NotesWorkspaceProps) {
   return (
     <div className="space-y-6">
       {variant === 'admin' && (
-        <div className="sticky top-0 z-20 flex items-center gap-1 border-b border-slate-200/80 bg-white/95 px-1 py-2 backdrop-blur-md lg:hidden">
-          <button
-            type="button"
-            onClick={() => navigate(-1)}
-            aria-label="Voltar"
-            className="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-slate-700 transition-colors hover:bg-slate-100 active:bg-slate-200"
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </button>
-          <h1 className="truncate text-lg font-bold tracking-tight text-slate-900">Anotações</h1>
+        <div className="sticky top-0 z-20 flex items-center justify-between gap-1 border-b border-slate-200/80 bg-white/95 px-1 py-2 backdrop-blur-md lg:hidden">
+          <div className="flex items-center gap-1 min-w-0">
+            <button
+              type="button"
+              onClick={() => navigate(-1)}
+              aria-label="Voltar"
+              className="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-slate-700 transition-colors hover:bg-slate-100 active:bg-slate-200"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </button>
+            <h1 className="truncate text-lg font-bold tracking-tight text-slate-900">Anotações</h1>
+          </div>
+          <JgcSaibaMaisButton sectionKey="anotacoes" size="xs" />
         </div>
       )}
       {variant === 'guard' && (
-        <div className="flex items-center gap-1 lg:hidden px-1 py-2">
-          <button
-            type="button"
-            onClick={() => navigate(-1)}
-            aria-label="Voltar"
-            className="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-slate-700 transition-colors hover:bg-slate-100 active:bg-slate-200"
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </button>
-          <h1 className="truncate text-lg font-bold tracking-tight text-slate-900">Anotações</h1>
+        <div className="flex items-center justify-between gap-1 lg:hidden px-1 py-2">
+          <div className="flex items-center gap-1 min-w-0">
+            <button
+              type="button"
+              onClick={() => navigate(-1)}
+              aria-label="Voltar"
+              className="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-slate-700 transition-colors hover:bg-slate-100 active:bg-slate-200"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </button>
+            <h1 className="truncate text-lg font-bold tracking-tight text-slate-900">Anotações</h1>
+          </div>
+          <JgcSaibaMaisButton sectionKey="anotacoes" size="xs" />
         </div>
       )}
 
       <section className="lg:overflow-hidden lg:rounded-[30px] lg:border lg:border-slate-200 lg:bg-[linear-gradient(135deg,_rgba(15,23,42,0.98)_0%,_rgba(15,118,110,0.94)_55%,_rgba(45,212,191,0.88)_100%)] lg:text-white lg:shadow-[0_28px_56px_-34px_rgba(15,23,42,0.5)]">
         <div className="lg:px-8 lg:py-8">
-          <div className="hidden max-w-3xl lg:block">
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.18em] text-white/80 md:px-3 md:py-1 md:text-[11px]">
-              <NotebookPen className="h-3 w-3 md:h-3.5 md:w-3.5" />
-              {audienceLabel}
+          <div className="hidden max-w-[95%] lg:block">
+            <div className="flex items-center justify-between gap-4">
+              <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.18em] text-white/80 md:px-3 md:py-1 md:text-[11px]">
+                <NotebookPen className="h-3 w-3 md:h-3.5 md:w-3.5" />
+                {audienceLabel}
+              </div>
+              <JgcSaibaMaisButton sectionKey="anotacoes" />
             </div>
-            <h1 className="mt-2 text-xl font-black tracking-[-0.05em] text-white sm:text-2xl md:mt-4 md:text-[32px] md:tracking-[-0.06em] lg:text-[40px]">Anotacoes</h1>
+            <h1 className="mt-2 text-xl font-black tracking-[-0.05em] text-white sm:text-2xl md:mt-4 md:text-[32px] md:tracking-[-0.06em] lg:text-[40px]">Anotações</h1>
             <p className="mt-1.5 hidden max-w-2xl text-[13px] leading-5 text-white/80 md:block md:mt-3 md:text-sm md:leading-6">
               {boardSubtitle}
             </p>

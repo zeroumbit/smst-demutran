@@ -2,6 +2,7 @@ import { ReactNode, ComponentType, useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAdminNotifications } from '@/hooks/use-admin-notifications';
+import { NotificationDropdown } from '@/components/admin/NotificationDropdown';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/lib/supabase';
 import { OnboardingWizard } from '@/components/onboarding/OnboardingWizard';
@@ -164,15 +165,17 @@ export const GuardsLayout = ({ children }: GuardsLayoutProps) => {
     <div className="min-h-screen min-h-dvh bg-[#f3f6fb] text-slate-900">
       {/* ─── Desktop sidebar ─── */}
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-slate-200 bg-white/95 backdrop-blur-xl lg:flex">
-        <div className="flex items-center gap-3 border-b border-slate-200/80 px-5 py-5">
-          <GuardaLogo />
-          <div className="min-w-0">
-            <span className="block truncate text-lg font-bold text-slate-900">
-              Guarda Municipal
-            </span>
-            {profile?.name && (
-              <span className="block truncate text-xs font-medium text-slate-400">{profile.name.split(' ')[0]}</span>
-            )}
+        <div className="flex items-center justify-between gap-2 border-b border-slate-200/80 px-4 py-4">
+          <div className="flex min-w-0 items-center gap-3">
+            <GuardaLogo />
+            <div className="min-w-0">
+              <span className="block truncate text-lg font-bold text-slate-900">
+                Guarda Municipal
+              </span>
+              {profile?.name && (
+                <span className="block truncate text-xs font-medium text-slate-400">{profile.name.split(' ')[0]}</span>
+              )}
+            </div>
           </div>
         </div>
 

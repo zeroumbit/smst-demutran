@@ -249,6 +249,7 @@ export interface IROCandidatura {
   observacao: string | null;
   motivo_manual?: string | null;
   gestor_responsavel_id?: string | null;
+  gestor_responsavel?: { nome: string; sobrenome: string } | null;
   created_at: string;
   updated_at: string;
   operacao_nome?: string;
