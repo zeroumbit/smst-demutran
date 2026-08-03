@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { ResponsiveDialog } from '@/components/ui/responsive-dialog';
-import { Calendar, CheckCircle2, Clock, Hourglass, Search, AlertTriangle, Gavel, DollarSign, X } from 'lucide-react';
+import { Calendar, CheckCircle2, Clock, Hourglass, Search, AlertTriangle, Gavel, DollarSign, X, ShieldCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
 import type { IROOperacao, IROCandidatura } from '@/types/admin';
@@ -94,7 +94,7 @@ const MinhasIrosGestor = () => {
           supabase.from('iro_operacoes').select('*').order('data_inicio', { ascending: false })
         ),
         supabase.from('iro_candidaturas')
-          .select('*, iro_operacoes!inner(nome, setor_id)')
+          .select('*, iro_operacoes!inner(nome, setor_id), justificativas_iro(*)')
           .eq('usuario_id', user!.user_id)
           .order('data_operacao', { ascending: false }),
       ]);
@@ -457,10 +457,15 @@ const MinhasIrosGestor = () => {
                     <p className="text-[15px] font-bold text-slate-900">{c.operacao_nome}</p>
                     <div className="mt-0.5 text-[13px] leading-5 text-slate-500">
                       <span>{fmtDateBR(c.data_operacao)} &middot; {c.horas_trabalhadas}h &middot;</span>
-                      <Badge variant="outline" className={cn('ml-1.5 rounded-full text-[11px] font-bold px-3 py-1', c.data_operacao < new Date().toISOString().slice(0, 10) ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : c.status === 'confirmado' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-sky-50 text-sky-700 border-sky-200')}>
-                        {c.data_operacao < new Date().toISOString().slice(0, 10) ? 'FINALIZADA' : c.status}
+                      <Badge variant="outline" className={cn('ml-1.5 rounded-full text-[11px] font-bold px-3 py-1', c.data_operacao < new Date().toISOString().slice(0, 10) && c.status !== 'justificado' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : c.status === 'confirmado' ? 'bg-blue-50 text-blue-700 border-blue-200' : c.status === 'justificado' ? 'bg-violet-50 text-violet-700 border-violet-200' : 'bg-sky-50 text-sky-700 border-sky-200')}>
+                        {c.status === 'justificado' ? 'Justificado' : c.data_operacao < new Date().toISOString().slice(0, 10) ? 'FINALIZADA' : c.status}
                       </Badge>
                     </div>
+                    {c.status === 'justificado' && (
+                      <p className="mt-1.5 rounded-lg bg-violet-50 px-2.5 py-1.5 text-xs font-medium leading-5 text-violet-700">
+                        Falta justificada — você NÃO será punido, porém as horas e os valores desta operação não serão recebidos.
+                      </p>
+                    )}
                   </div>
                   <div className="flex items-center gap-2">
                     <Button size="sm" variant="outline" className="min-h-10 rounded-xl text-[13px] font-semibold" onClick={() => { setSelectedCandidatura(c); setCandidaturaDetalhesAberto(true); }}>
@@ -678,10 +683,21 @@ const MinhasIrosGestor = () => {
                 </div>
                 <div className="rounded-xl bg-slate-50 p-3.5">
                   <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-slate-400">Status</p>
-                  <p className="mt-1 text-sm font-bold text-slate-800">{selectedCandidatura.status}</p>
+                  <p className="mt-1 text-sm font-bold text-slate-800">{selectedCandidatura.status === 'justificado' ? 'Justificado' : selectedCandidatura.status}</p>
                 </div>
               </div>
             </div>
+            {selectedCandidatura.status === 'justificado' && (
+              <div className="rounded-2xl border border-violet-200 bg-violet-50 p-5">
+                <p className="flex items-center gap-2 text-sm font-bold text-violet-800">
+                  <ShieldCheck className="h-4 w-4" />
+                  Falta justificada — você NÃO será punido.
+                </p>
+                <p className="mt-1 text-xs text-violet-700">
+                  Porém, as horas e os valores em reais desta operação não serão recebidos.
+                </p>
+              </div>
+            )}
             {valorHoraState > 0 && (
               <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                 <h4 className="mb-4 text-xs font-bold uppercase tracking-[0.1em] text-slate-500">Valor estimado</h4>

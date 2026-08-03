@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { ResponsiveDialog } from '@/components/ui/responsive-dialog';
-import { ArrowLeft, Calendar, CheckCircle2, Clock, Hourglass, Search, History, AlertTriangle, Gavel, DollarSign, X } from 'lucide-react';
+import { ArrowLeft, Calendar, CheckCircle2, Clock, Hourglass, Search, History, AlertTriangle, Gavel, DollarSign, X, ShieldCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
 import type { IROOperacao, IROCandidatura } from '@/types/admin';
@@ -99,7 +99,7 @@ const GuardaIros = () => {
 
       const promises: PromiseLike<any>[] = [
         opQuery,
-        supabase.from('iro_candidaturas').select('*, iro_operacoes(*)').eq('usuario_id', user.user_id).order('created_at', { ascending: false }),
+        supabase.from('iro_candidaturas').select('*, iro_operacoes(*), justificativas_iro(*)').eq('usuario_id', user.user_id).order('created_at', { ascending: false }),
       ];
 
       if (isGuardaFlow) {
@@ -520,10 +520,15 @@ const GuardaIros = () => {
 
                     <div className="mt-0.5 text-[13px] leading-5 text-slate-500">
                       <span>{fmtDateBR(c.data_operacao)} &middot; {c.horas_trabalhadas}h &middot;</span>
-                    <Badge variant="outline" className={cn('ml-1.5 rounded-full text-[11px] font-bold px-3 py-1', c.status === 'confirmado' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200')}>
-                        {c.adicionado_manual && c.status !== 'cancelado' ? 'finalizada' : c.status}
+                    <Badge variant="outline" className={cn('ml-1.5 rounded-full text-[11px] font-bold px-3 py-1', c.status === 'confirmado' ? 'bg-blue-50 text-blue-700 border-blue-200' : c.status === 'justificado' ? 'bg-violet-50 text-violet-700 border-violet-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200')}>
+                        {c.adicionado_manual && c.status !== 'cancelado' ? 'finalizada' : c.status === 'justificado' ? 'Justificado' : c.status}
                       </Badge>
                     </div>
+                    {c.status === 'justificado' && (
+                      <p className="mt-1.5 rounded-lg bg-violet-50 px-2.5 py-1.5 text-xs font-medium leading-5 text-violet-700">
+                        Falta justificada — você NÃO será punido, porém as horas e os valores desta operação não serão recebidos.
+                      </p>
+                    )}
                   </div>
                   <div className="flex items-center gap-2">
                     <Button size="sm" variant="outline" className="min-h-10 rounded-xl text-[13px] font-semibold" onClick={() => { setSelectedCandidatura(c); setCandidaturaDetalhesAberto(true); }}>
@@ -746,8 +751,8 @@ const GuardaIros = () => {
                   </div>
                   <div className="rounded-xl bg-slate-50 p-3.5">
                     <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-slate-400">Status</p>
-                    <Badge variant="outline" className={cn('mt-1 text-[11px] font-bold px-3 py-1', selectedCandidatura.status === 'confirmado' ? 'bg-blue-50 text-blue-700 border-blue-200' : selectedCandidatura.status === 'realizado' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : selectedCandidatura.status === 'cancelado' ? 'bg-red-50 text-red-700 border-red-200' : 'bg-amber-50 text-amber-700 border-amber-200')}>
-                      {selectedCandidatura.adicionado_manual && selectedCandidatura.status !== 'cancelado' ? 'finalizada' : selectedCandidatura.status}
+                    <Badge variant="outline" className={cn('mt-1 text-[11px] font-bold px-3 py-1', selectedCandidatura.status === 'confirmado' ? 'bg-blue-50 text-blue-700 border-blue-200' : selectedCandidatura.status === 'realizado' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : selectedCandidatura.status === 'cancelado' ? 'bg-red-50 text-red-700 border-red-200' : selectedCandidatura.status === 'justificado' ? 'bg-violet-50 text-violet-700 border-violet-200' : 'bg-amber-50 text-amber-700 border-amber-200')}>
+                      {selectedCandidatura.adicionado_manual && selectedCandidatura.status !== 'cancelado' ? 'finalizada' : selectedCandidatura.status === 'justificado' ? 'Justificado' : selectedCandidatura.status}
                     </Badge>
                   </div>
                   <div className="rounded-xl bg-slate-50 p-3.5">
@@ -798,6 +803,18 @@ const GuardaIros = () => {
                 <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
                   <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-slate-500 mb-1">Observação</p>
                   <p className="text-sm text-slate-700">{selectedCandidatura.observacao}</p>
+                </div>
+              )}
+
+              {selectedCandidatura.status === 'justificado' && (
+                <div className="rounded-2xl border border-violet-200 bg-violet-50 p-5">
+                  <p className="flex items-center gap-2 text-sm font-bold text-violet-800">
+                    <ShieldCheck className="h-4 w-4" />
+                    Falta justificada — você NÃO será punido.
+                  </p>
+                  <p className="mt-1 text-xs text-violet-700">
+                    Porém, as horas e os valores em reais desta operação não serão recebidos.
+                  </p>
                 </div>
               )}
 

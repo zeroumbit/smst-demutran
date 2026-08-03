@@ -967,9 +967,13 @@ const PublicConcessionarioDemutran = () => {
                           <Info label="Categoria CNH" value={perfil.categoria_cnh || '-'} />
                           <Info label="Atividade remunerada" value={perfil.atividade_remunerada || '-'} />
                           <Info label="Curso" value={perfil.curso || '-'} />
-                          <Info label="Motorista auxiliar" value={perfil.motorista_auxiliar || '-'} />
-                          <Info label="CNH auxiliar" value={perfil.cnh_auxiliar || '-'} />
-                          <Info label="Validade CNH auxiliar" value={perfil.validade_cnh_auxiliar || '-'} />
+                          {perfil.categoria !== 'mototaxi' && (
+                            <>
+                              <Info label="Motorista auxiliar" value={perfil.motorista_auxiliar || '-'} />
+                              <Info label="CNH auxiliar" value={perfil.cnh_auxiliar || '-'} />
+                              <Info label="Validade CNH auxiliar" value={perfil.validade_cnh_auxiliar || '-'} />
+                            </>
+                          )}
                         </div>
                       </div>
                     </CardContent>
@@ -1003,7 +1007,7 @@ const PublicConcessionarioDemutran = () => {
 
                         <div className="space-y-3">
                           <h4 className="text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">CNH / Habilitação</h4>
-                          <div className="grid gap-4 sm:grid-cols-2">
+                          <div className="grid gap-4 sm:grid-cols-3">
                             <Field label="Número da CNH">
                               <Input value={editForm.cnh_numero || ''} onChange={(event) => setEditForm((current) => ({ ...current, cnh_numero: event.target.value }))} placeholder="Número do documento" />
                             </Field>
@@ -1013,6 +1017,8 @@ const PublicConcessionarioDemutran = () => {
                             <Field label="Categoria CNH">
                               <Input value={editForm.categoria_cnh || ''} onChange={(event) => setEditForm((current) => ({ ...current, categoria_cnh: event.target.value }))} placeholder="Ex: A, B, AB" />
                             </Field>
+                          </div>
+                          <div className="grid gap-4 sm:grid-cols-3">
                             <Field label="Atividade remunerada">
                               <Input value={editForm.atividade_remunerada || ''} onChange={(event) => setEditForm((current) => ({ ...current, atividade_remunerada: event.target.value }))} placeholder="Ex: Motorista de taxi" />
                             </Field>
@@ -1025,20 +1031,22 @@ const PublicConcessionarioDemutran = () => {
                           </div>
                         </div>
 
-                        <div className="space-y-3">
-                          <h4 className="text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">Motorista auxiliar</h4>
-                          <div className="grid gap-4 sm:grid-cols-2">
-                            <Field label="Nome do auxiliar">
-                              <Input value={editForm.motorista_auxiliar || ''} onChange={(event) => setEditForm((current) => ({ ...current, motorista_auxiliar: event.target.value }))} placeholder="Nome completo" />
-                            </Field>
-                            <Field label="CNH / registro">
-                              <Input value={editForm.cnh_auxiliar || ''} onChange={(event) => setEditForm((current) => ({ ...current, cnh_auxiliar: event.target.value }))} placeholder="Número do documento" />
-                            </Field>
-                            <Field label="Validade CNH auxiliar">
-                              <Input type="date" value={editForm.validade_cnh_auxiliar || ''} onChange={(event) => setEditForm((current) => ({ ...current, validade_cnh_auxiliar: event.target.value }))} />
-                            </Field>
+                        {perfil.categoria !== 'mototaxi' && (
+                          <div className="space-y-3">
+                            <h4 className="text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">Motorista auxiliar</h4>
+                            <div className="grid gap-4 sm:grid-cols-2">
+                              <Field label="Nome do auxiliar">
+                                <Input value={editForm.motorista_auxiliar || ''} onChange={(event) => setEditForm((current) => ({ ...current, motorista_auxiliar: event.target.value }))} placeholder="Nome completo" />
+                              </Field>
+                              <Field label="CNH / registro">
+                                <Input value={editForm.cnh_auxiliar || ''} onChange={(event) => setEditForm((current) => ({ ...current, cnh_auxiliar: event.target.value }))} placeholder="Número do documento" />
+                              </Field>
+                              <Field label="Validade CNH auxiliar">
+                                <Input type="date" value={editForm.validade_cnh_auxiliar || ''} onChange={(event) => setEditForm((current) => ({ ...current, validade_cnh_auxiliar: event.target.value }))} />
+                              </Field>
+                            </div>
                           </div>
-                        </div>
+                        )}
 
                         <div className="space-y-3">
                           <h4 className="text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">Contato e notificações</h4>

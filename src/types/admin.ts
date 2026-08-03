@@ -244,7 +244,7 @@ export interface IROCandidatura {
   usuario_nome?: string;
   data_operacao: string;
   horas_trabalhadas: number;
-  status: 'pendente' | 'confirmado' | 'cancelado' | 'realizado';
+  status: 'pendente' | 'confirmado' | 'cancelado' | 'realizado' | 'justificado';
   adicionado_manual: boolean;
   observacao: string | null;
   motivo_manual?: string | null;
@@ -253,6 +253,22 @@ export interface IROCandidatura {
   created_at: string;
   updated_at: string;
   operacao_nome?: string;
+  justificativas_iro?: IROJustificativa[] | null;
+}
+
+export interface IROJustificativa {
+  id: string;
+  candidatura_id: string;
+  usuario_id: string;
+  operacao_id: string | null;
+  justificativa: string;
+  tipo_documento: 'atestado_medico' | 'declaracao' | 'outro';
+  numero_documento: string | null;
+  emissor_documento: string | null;
+  data_documento: string | null;
+  arquivo_url: string | null;
+  gestor_id: string | null;
+  created_at: string;
 }
 
 export interface IROHoraManual {

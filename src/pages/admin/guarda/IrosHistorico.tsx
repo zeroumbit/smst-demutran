@@ -19,6 +19,15 @@ const STATUS_VARIANT: Record<string, string> = {
   confirmado: 'bg-blue-50 text-blue-700 border-blue-200',
   cancelado: 'bg-red-50 text-red-700 border-red-200',
   realizado: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  justificado: 'bg-violet-50 text-violet-700 border-violet-200',
+};
+
+const STATUS_LABEL: Record<string, string> = {
+  pendente: 'Pendente',
+  confirmado: 'Confirmado',
+  cancelado: 'Cancelado',
+  realizado: 'Realizado',
+  justificado: 'Justificado',
 };
 
 const fmtDateBR = (d: string | null | undefined): string => {
@@ -43,7 +52,7 @@ const GuardaIrosHistorico = () => {
     setLoading(true);
     const { data } = await supabase
       .from('iro_candidaturas')
-      .select('*, iro_operacoes(nome, codigo)')
+      .select('*, iro_operacoes(nome, codigo), justificativas_iro(*)')
       .eq('usuario_id', user.user_id)
       .order('data_operacao', { ascending: false });
     setCandidaturas(((data || []) as Array<IROCandidatura & { iro_operacoes?: { nome?: string | null; codigo?: string | null } | null }>).map((c) => ({ ...c, op_codigo: c.iro_operacoes?.codigo || null, operacao_nome: c.operacao_nome || (c.iro_operacoes?.codigo ? c.iro_operacoes.codigo + ' ' : '') + (c.iro_operacoes?.nome || 'IRO extra') })));
@@ -180,9 +189,14 @@ const GuardaIrosHistorico = () => {
                   {c.adicionado_manual && c.motivo_manual && (
                     <p className="mt-1 text-xs leading-5 text-slate-500">Motivo: {c.motivo_manual}</p>
                   )}
+                  {c.status === 'justificado' && (
+                    <p className="mt-1 rounded-lg bg-violet-50 px-2.5 py-1.5 text-xs font-medium leading-5 text-violet-700">
+                      Falta justificada — você NÃO será punido, porém as horas e os valores desta operação não serão recebidos.
+                    </p>
+                  )}
                 </div>
                 <Badge variant="outline" className={cn('w-fit rounded-full px-3 py-1 text-[11px] font-bold', STATUS_VARIANT[c.adicionado_manual && c.status !== 'cancelado' ? 'realizado' : c.status])}>
-                  {c.adicionado_manual && c.status !== 'cancelado' ? 'finalizada' : c.status}
+                  {c.adicionado_manual && c.status !== 'cancelado' ? 'finalizada' : STATUS_LABEL[c.status] || c.status}
                 </Badge>
               </div>
             ))}

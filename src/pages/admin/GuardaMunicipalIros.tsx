@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { AlertTriangle, ArrowLeft, Calendar, Check, CheckCircle2, ChevronsUpDown, Clock, Eye, EyeOff, Hourglass, ListFilter, MoreHorizontal, Pencil, Plus, Printer, RefreshCcw, Trash2, Users, X } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, Calendar, Check, CheckCircle2, ChevronsUpDown, Clock, Eye, EyeOff, FileText, Hourglass, ListFilter, MoreHorizontal, Pencil, Plus, Printer, RefreshCcw, ShieldCheck, Trash2, Upload, Users, X } from 'lucide-react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -183,6 +183,21 @@ const STATUS_CANDIDATURA_VARIANT: Record<string, string> = {
   confirmado: 'bg-blue-50 text-blue-700 border-blue-200',
   cancelado: 'bg-red-50 text-red-700 border-red-200',
   realizado: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  justificado: 'bg-violet-50 text-violet-700 border-violet-200',
+};
+
+const STATUS_CANDIDATURA_LABEL: Record<string, string> = {
+  pendente: 'Pendente',
+  confirmado: 'Confirmado',
+  cancelado: 'Cancelado',
+  realizado: 'Realizado',
+  justificado: 'Justificado',
+};
+
+const TIPO_DOCUMENTO_LABEL: Record<string, string> = {
+  atestado_medico: 'Atestado médico',
+  declaracao: 'Declaração',
+  outro: 'Outro documento',
 };
 
 const NOTIFICACAO_TIPO_LABEL: Record<string, string> = {
@@ -205,8 +220,8 @@ const sectionLabels: Record<Section, string> = {
   operacoes: 'Operações',
   candidaturas: 'Candidaturas',
   'banco-horas': 'Banco de Horas',
-  notificacoes: 'Notificações',
   relatorios: 'Relatórios',
+  notificacoes: 'Notificações',
 };
 
 const gerarIntervaloDatas = (inicio: string, fim: string): string[] => {
@@ -376,6 +391,18 @@ const GuardaMunicipalIros = () => {
   const [relatorioPronto, setRelatorioPronto] = useState<{ titulo: string; gerar: (saida: 'download' | 'imprimir') => void } | null>(null);
   const [relatorioStatusFilter, setRelatorioStatusFilter] = useState<'todos' | 'confirmados' | 'cancelados'>('todos');
 
+  const [justificativaCandidatura, setJustificativaCandidatura] = useState<IROCandidatura | null>(null);
+  const [justificativaDialogOpen, setJustificativaDialogOpen] = useState(false);
+  const [justificativaSaving, setJustificativaSaving] = useState(false);
+  const [justificativaForm, setJustificativaForm] = useState({
+    justificativa: '',
+    tipo_documento: 'outro' as 'atestado_medico' | 'declaracao' | 'outro',
+    numero_documento: '',
+    emissor_documento: '',
+    data_documento: '',
+    arquivo: null as File | null,
+  });
+
   const podeVerTudo =
     profile?.papel === 'gestor' ||
     profile?.papel === 'super_admin' ||
@@ -402,8 +429,8 @@ const GuardaMunicipalIros = () => {
       const [opRes, candRes, bhRes, notifRes, userRes, valoresRes, guardasRes] = await Promise.all([
         applySetorFilter(supabase.from('iro_operacoes').select('*').order('data_inicio', { ascending: false })),
         podeVerTudo
-          ? supabase.from('iro_candidaturas').select('*, iro_operacoes(nome), gestor_responsavel:perfis_usuarios(nome, sobrenome)').order('created_at', { ascending: false })
-          : supabase.from('iro_candidaturas').select('*, iro_operacoes(nome), gestor_responsavel:perfis_usuarios(nome, sobrenome)').eq('usuario_id', user!.user_id).order('created_at', { ascending: false }),
+          ? supabase.from('iro_candidaturas').select('*, iro_operacoes(nome), gestor_responsavel:perfis_usuarios(nome, sobrenome), justificativas_iro(*)').order('created_at', { ascending: false })
+          : supabase.from('iro_candidaturas').select('*, iro_operacoes(nome), gestor_responsavel:perfis_usuarios(nome, sobrenome), justificativas_iro(*)').eq('usuario_id', user!.user_id).order('created_at', { ascending: false }),
         podeVerTudo
           ? supabase.from('iro_banco_horas').select('*').order('created_at', { ascending: false })
           : supabase.from('iro_banco_horas').select('*').eq('usuario_id', user!.user_id).order('created_at', { ascending: false }),
@@ -1257,6 +1284,86 @@ const GuardaMunicipalIros = () => {
     void loadData();
   };
 
+  const openJustificativaDialog = (item: IROCandidatura) => {
+    setJustificativaCandidatura(item);
+    setJustificativaForm({
+      justificativa: '',
+      tipo_documento: 'outro',
+      numero_documento: '',
+      emissor_documento: '',
+      data_documento: '',
+      arquivo: null,
+    });
+    setJustificativaDialogOpen(true);
+  };
+
+  const handleSalvarJustificativa = async () => {
+    if (!justificativaCandidatura) return;
+
+    const justificativa = justificativaForm.justificativa.trim();
+    if (justificativa.length < 10) {
+      toast({ title: 'Justificativa incompleta', description: 'Descreva o motivo com no mínimo 10 caracteres.', variant: 'destructive' });
+      return;
+    }
+
+    const guardaNome = usuarioMap.get(justificativaCandidatura.usuario_id) || 'o guarda';
+    const operacaoNome = justificativaCandidatura.operacao_nome || 'a operação';
+
+    const confirmed = await confirm({
+      title: 'Adicionar justificativa?',
+      description: `Tem certeza que deseja justificar a falta de ${guardaNome} na ${operacaoNome}? As horas e os valores serão retirados e o guarda NÃO poderá ser punido.`,
+      confirmText: 'Sim, justificar',
+      cancelText: 'Cancelar',
+    });
+    if (!confirmed) return;
+
+    setJustificativaSaving(true);
+    try {
+      let arquivoUrl: string | null = null;
+      if (justificativaForm.arquivo) {
+        const fileName = `iro-justificativa/${justificativaCandidatura.id}-${Date.now()}-${justificativaForm.arquivo.name.replace(/\s+/g, '_')}`;
+        const { error: uploadError } = await supabase.storage.from('documentos').upload(fileName, justificativaForm.arquivo, { upsert: true });
+        if (uploadError) {
+          toast({ title: 'Erro ao enviar arquivo', description: uploadError.message, variant: 'destructive' });
+          return;
+        }
+        arquivoUrl = supabase.storage.from('documentos').getPublicUrl(fileName).data.publicUrl;
+      }
+
+      const { data, error } = await supabase.rpc('justificar_falta_iro', {
+        p_candidatura_id: justificativaCandidatura.id,
+        p_justificativa: justificativa,
+        p_tipo_documento: justificativaForm.tipo_documento,
+        p_numero_documento: justificativaForm.numero_documento || null,
+        p_emissor_documento: justificativaForm.emissor_documento || null,
+        p_data_documento: justificativaForm.data_documento || null,
+        p_arquivo_url: arquivoUrl,
+      });
+
+      if (error) {
+        toast({ title: 'Erro ao registrar justificativa', description: error.message, variant: 'destructive' });
+        return;
+      }
+
+      const result = data as { sucesso?: boolean; mensagem?: string; horas_removidas?: number; valor_removido?: number };
+      if (result.sucesso === false) {
+        toast({ title: 'Justificativa não registrada', description: result.mensagem || 'Não foi possível registrar a justificativa.', variant: 'destructive' });
+        return;
+      }
+
+      setJustificativaDialogOpen(false);
+      setJustificativaCandidatura(null);
+      toast({
+        title: 'Justificativa registrada!',
+        description: result.mensagem || 'O guarda não será punido, mas não receberá as horas e os valores desta operação.',
+      });
+      if (selectedOperacao) await openOperacaoDetails(selectedOperacao);
+      void loadData();
+    } finally {
+      setJustificativaSaving(false);
+    }
+  };
+
   const handleMarcarLida = async (item: IRONotificacao) => {
     const { error } = await supabase.from('iro_notificacoes').update({ lida: !item.lida }).eq('id', item.id);
     if (error) {
@@ -1442,6 +1549,7 @@ const GuardaMunicipalIros = () => {
         { value: 'confirmado', label: 'Confirmado' },
         { value: 'realizado', label: 'Realizado' },
         { value: 'cancelado', label: 'Cancelado' },
+        { value: 'justificado', label: 'Justificado' },
       ];
 
       return isExtrasIrosView
@@ -1696,7 +1804,8 @@ const GuardaMunicipalIros = () => {
                         <th className="py-2.5 pr-3">Graduação</th>
                         <th className="py-2.5 pr-3">Horas</th>
                         <th className="py-2.5 pr-3">Valor</th>
-                        <th className="py-2.5">Status</th>
+                        <th className="py-2.5 pr-3">Status</th>
+                        <th className="py-2.5">Ações</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1707,10 +1816,30 @@ const GuardaMunicipalIros = () => {
                           <td className="py-2.5 pr-3 text-slate-500">{guardaGraduacaoMap.get(c.usuario_id) || '—'}</td>
                           <td className="py-2.5 pr-3 font-medium">{c.horas_trabalhadas}h</td>
                           <td className="py-2.5 pr-3 font-medium text-emerald-600">{formatCurrency(c.horas_trabalhadas * (valorHoraPorUsuario.get(c.usuario_id) || 0))}</td>
-                          <td className="py-2.5">
+                          <td className="py-2.5 pr-3">
                             <Badge variant="outline" className={cn('rounded-full px-2.5 py-0.5 text-[10px] font-bold', STATUS_CANDIDATURA_VARIANT[c.status])}>
-                              {c.status}
+                              {STATUS_CANDIDATURA_LABEL[c.status] || c.status}
                             </Badge>
+                            {c.status === 'justificado' && (
+                              <span className="ml-1.5 inline-flex items-center gap-0.5 text-[10px] font-semibold text-violet-600">
+                                <ShieldCheck className="h-3 w-3" /> Sem punição
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-2.5">
+                            {c.status !== 'cancelado' && c.status !== 'justificado' && podeVerTudo ? (
+                              <Button size="sm" variant="outline" className="h-8 border-violet-200 text-[11px] font-bold text-violet-700 hover:bg-violet-50" onClick={() => openJustificativaDialog(c)}>
+                                <ShieldCheck className="mr-1 h-3.5 w-3.5" />
+                                Justificativa
+                              </Button>
+                            ) : c.status === 'justificado' ? (
+                              <Button size="sm" variant="outline" className="h-8 border-slate-200 text-[11px] font-semibold text-slate-500" onClick={() => openJustificativaDialog(c)}>
+                                <FileText className="mr-1 h-3.5 w-3.5" />
+                                Ver
+                              </Button>
+                            ) : (
+                              <span className="text-xs text-slate-400">—</span>
+                            )}
                           </td>
                         </tr>
                       ))}
@@ -3157,6 +3286,155 @@ const GuardaMunicipalIros = () => {
               <Button className="w-full" variant="outline" onClick={() => { setDetalhesCandidaturaOpen(false); setDetalhesCandidatura(null); }}>
                 Fechar
               </Button>
+            </div>
+          )}
+        </ResponsiveDialog>
+
+        <ResponsiveDialog
+          open={justificativaDialogOpen}
+          onOpenChange={(open) => { if (!open) { setJustificativaDialogOpen(false); setJustificativaCandidatura(null); } }}
+          title={justificativaCandidatura?.status === 'justificado' ? 'Justificativa registrada' : 'Justificativa de falta'}
+          description={justificativaCandidatura ? `Operação: ${justificativaCandidatura.operacao_nome || 'IRO'} · ${fmtDateBR(justificativaCandidatura.data_operacao)}` : ''}
+        >
+          {justificativaCandidatura && (
+            <div className="space-y-5 py-2">
+              {justificativaCandidatura.status === 'justificado' ? (
+                <>
+                  {(() => {
+                    const just = justificativaCandidatura.justificativas_iro?.[0];
+                    if (!just) return null;
+                    return (
+                      <div className="space-y-4">
+                        <div className="rounded-2xl border border-violet-200 bg-violet-50 p-4">
+                          <p className="flex items-center gap-2 text-sm font-bold text-violet-800">
+                            <ShieldCheck className="h-4 w-4" />
+                            Este guarda NÃO será punido por esta falta.
+                          </p>
+                          <p className="mt-1 text-xs text-violet-700">
+                            Porém, as horas e os valores em reais desta operação não serão recebidos.
+                          </p>
+                        </div>
+                        <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                          <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-slate-500 mb-1">Justificativa</p>
+                          <p className="text-sm text-slate-700">{just.justificativa}</p>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="rounded-xl bg-slate-50 p-3.5">
+                            <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-slate-400">Tipo de documento</p>
+                            <p className="mt-1 text-sm font-semibold text-slate-800">{TIPO_DOCUMENTO_LABEL[just.tipo_documento] || just.tipo_documento}</p>
+                          </div>
+                          <div className="rounded-xl bg-slate-50 p-3.5">
+                            <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-slate-400">Número do documento</p>
+                            <p className="mt-1 text-sm font-semibold text-slate-800">{just.numero_documento || '—'}</p>
+                          </div>
+                          <div className="rounded-xl bg-slate-50 p-3.5">
+                            <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-slate-400">Emissor</p>
+                            <p className="mt-1 text-sm font-semibold text-slate-800">{just.emissor_documento || '—'}</p>
+                          </div>
+                          <div className="rounded-xl bg-slate-50 p-3.5">
+                            <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-slate-400">Data do documento</p>
+                            <p className="mt-1 text-sm font-semibold text-slate-800">{just.data_documento ? fmtDateBR(just.data_documento) : '—'}</p>
+                          </div>
+                        </div>
+                        {just.arquivo_url && (
+                          <a
+                            href={just.arquivo_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50"
+                          >
+                            <FileText className="h-4 w-4" />
+                            Ver documento anexado
+                          </a>
+                        )}
+                      </div>
+                    );
+                  })()}
+                </>
+              ) : (
+                <>
+                  <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+                    <p className="text-sm font-semibold text-amber-800">
+                      {usuarioMap.get(justificativaCandidatura.usuario_id) || 'O guarda'} não compareceu à operação "{justificativaCandidatura.operacao_nome || 'IRO'}" e não comunicou nem cancelou.
+                    </p>
+                    <p className="mt-1 text-xs text-amber-700">
+                      Caso exista motivo de força maior (ex.: doença), registre a justificativa abaixo. O guarda NÃO poderá ser punido, porém as horas ({justificativaCandidatura.horas_trabalhadas}h) e os valores não serão recebidos.
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Por que o guarda não pode ser punido?</Label>
+                    <Textarea
+                      value={justificativaForm.justificativa}
+                      onChange={(event) => setJustificativaForm((current) => ({ ...current, justificativa: event.target.value }))}
+                      placeholder="Descreva o motivo de força maior (ex.: doença, atestado médico, emergência familiar)..."
+                      rows={4}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label>Tipo de documento</Label>
+                      <Select
+                        value={justificativaForm.tipo_documento}
+                        onValueChange={(value) => setJustificativaForm((current) => ({ ...current, tipo_documento: value as 'atestado_medico' | 'declaracao' | 'outro' }))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="atestado_medico">Atestado médico</SelectItem>
+                          <SelectItem value="declaracao">Declaração</SelectItem>
+                          <SelectItem value="outro">Outro documento</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Número do documento</Label>
+                      <Input
+                        value={justificativaForm.numero_documento}
+                        onChange={(event) => setJustificativaForm((current) => ({ ...current, numero_documento: event.target.value }))}
+                        placeholder="Número/registro"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Emissor (CRM/órgão)</Label>
+                      <Input
+                        value={justificativaForm.emissor_documento}
+                        onChange={(event) => setJustificativaForm((current) => ({ ...current, emissor_documento: event.target.value }))}
+                        placeholder="Ex.: Dr. Fulano · CRM 00000"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Data do documento</Label>
+                      <Input
+                        type="date"
+                        value={justificativaForm.data_documento}
+                        onChange={(event) => setJustificativaForm((current) => ({ ...current, data_documento: event.target.value }))}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Anexar documento (opcional)</Label>
+                    <label className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-5 text-sm font-semibold text-slate-600 transition-colors hover:border-violet-300 hover:bg-violet-50 hover:text-violet-700">
+                      <Upload className="h-5 w-5" />
+                      {justificativaForm.arquivo ? justificativaForm.arquivo.name : 'Clique para anexar atestado/documento (PDF ou imagem)'}
+                      <input
+                        type="file"
+                        className="hidden"
+                        accept=".pdf,.png,.jpg,.jpeg,.webp"
+                        onChange={(event) => setJustificativaForm((current) => ({ ...current, arquivo: event.target.files?.[0] || null }))}
+                      />
+                    </label>
+                  </div>
+
+                  <Button className="w-full" disabled={justificativaSaving} onClick={() => void handleSalvarJustificativa()}>
+                    <ShieldCheck className="mr-2 h-4 w-4" />
+                    {justificativaSaving ? 'Salvando...' : 'Salvar justificativa'}
+                  </Button>
+                </>
+              )}
             </div>
           )}
         </ResponsiveDialog>
