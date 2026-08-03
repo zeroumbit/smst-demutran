@@ -253,7 +253,7 @@ export interface IROCandidatura {
   created_at: string;
   updated_at: string;
   operacao_nome?: string;
-  justificativas_iro?: IROJustificativa[] | null;
+  iro_justificativas?: IROJustificativa[] | null;
 }
 
 export interface IROJustificativa {

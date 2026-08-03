@@ -99,7 +99,7 @@ const GuardaIros = () => {
 
       const promises: PromiseLike<any>[] = [
         opQuery,
-        supabase.from('iro_candidaturas').select('*, iro_operacoes(*), justificativas_iro(*)').eq('usuario_id', user.user_id).order('created_at', { ascending: false }),
+        supabase.from('iro_candidaturas').select('*, iro_operacoes(*), iro_justificativas(*)').eq('usuario_id', user.user_id).order('created_at', { ascending: false }),
       ];
 
       if (isGuardaFlow) {

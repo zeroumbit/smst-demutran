@@ -94,7 +94,7 @@ const MinhasIrosGestor = () => {
           supabase.from('iro_operacoes').select('*').order('data_inicio', { ascending: false })
         ),
         supabase.from('iro_candidaturas')
-          .select('*, iro_operacoes!inner(nome, setor_id), justificativas_iro(*)')
+          .select('*, iro_operacoes!inner(nome, setor_id), iro_justificativas(*)')
           .eq('usuario_id', user!.user_id)
           .order('data_operacao', { ascending: false }),
       ]);

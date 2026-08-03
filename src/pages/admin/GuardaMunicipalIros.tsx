@@ -429,8 +429,8 @@ const GuardaMunicipalIros = () => {
       const [opRes, candRes, bhRes, notifRes, userRes, valoresRes, guardasRes] = await Promise.all([
         applySetorFilter(supabase.from('iro_operacoes').select('*').order('data_inicio', { ascending: false })),
         podeVerTudo
-          ? supabase.from('iro_candidaturas').select('*, iro_operacoes(nome), gestor_responsavel:perfis_usuarios(nome, sobrenome), justificativas_iro(*)').order('created_at', { ascending: false })
-          : supabase.from('iro_candidaturas').select('*, iro_operacoes(nome), gestor_responsavel:perfis_usuarios(nome, sobrenome), justificativas_iro(*)').eq('usuario_id', user!.user_id).order('created_at', { ascending: false }),
+          ? supabase.from('iro_candidaturas').select('*, iro_operacoes(nome), gestor_responsavel:perfis_usuarios(nome, sobrenome), iro_justificativas(*)').order('created_at', { ascending: false })
+          : supabase.from('iro_candidaturas').select('*, iro_operacoes(nome), gestor_responsavel:perfis_usuarios(nome, sobrenome), iro_justificativas(*)').eq('usuario_id', user!.user_id).order('created_at', { ascending: false }),
         podeVerTudo
           ? supabase.from('iro_banco_horas').select('*').order('created_at', { ascending: false })
           : supabase.from('iro_banco_horas').select('*').eq('usuario_id', user!.user_id).order('created_at', { ascending: false }),
@@ -3301,7 +3301,7 @@ const GuardaMunicipalIros = () => {
               {justificativaCandidatura.status === 'justificado' ? (
                 <>
                   {(() => {
-                    const just = justificativaCandidatura.justificativas_iro?.[0];
+                    const just = justificativaCandidatura.iro_justificativas?.[0];
                     if (!just) return null;
                     return (
                       <div className="space-y-4">
