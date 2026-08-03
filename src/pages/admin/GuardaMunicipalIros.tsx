@@ -17,7 +17,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { useConfirmDialog } from '@/components/ui/use-confirm-dialog';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
-import { gerarRelatorioDetalhadoOperacao, gerarRelatorioMensal, gerarRelatorioOperacao, gerarRelatorioPorDia } from '@/lib/relatorio-iro';
+import { gerarRelatorioDetalhadoOperacao, gerarRelatorioMensal, gerarRelatorioOperacao, gerarRelatorioPorDia, gerarRelatorioPorGuarda } from '@/lib/relatorio-iro';
 import { supabase } from '@/lib/supabase';
 import { capitalizeNome, cn } from '@/lib/utils';
 import { maskCpf } from '@/lib/masks';
@@ -125,6 +125,12 @@ type CandidaturasDiaGroup = {
     candidaturas: IROCandidatura[];
     disponibilidade?: IRODisponibilidadeDia;
   }>;
+};
+
+type CandidaturasOperacaoGroup = {
+  operacaoId: string;
+  operacaoNome: string;
+  items: IROCandidatura[];
 };
 
 type GuardaJoinRow = {
@@ -359,11 +365,15 @@ const GuardaMunicipalIros = () => {
   const [guardaComboboxOpen, setGuardaComboboxOpen] = useState(false);
   const [operacaoComboboxOpen, setOperacaoComboboxOpen] = useState(false);
 
-  const [relatorioTipo, setRelatorioTipo] = useState<'operacao' | 'mensal' | 'dia'>('operacao');
+  const [relatorioTipo, setRelatorioTipo] = useState<'operacao' | 'mensal' | 'dia' | 'guarda'>('operacao');
   const [relatorioOperacaoId, setRelatorioOperacaoId] = useState('');
   const [relatorioMes, setRelatorioMes] = useState(new Date().toISOString().slice(0, 7));
   const [relatorioDia, setRelatorioDia] = useState(new Date().toISOString().slice(0, 10));
+  const [relatorioGuardaId, setRelatorioGuardaId] = useState('');
+  const [relatorioGuardaMes, setRelatorioGuardaMes] = useState('');
+  const [relatorioGuardaOperacaoId, setRelatorioGuardaOperacaoId] = useState('');
   const [relatorioFormato, setRelatorioFormato] = useState<'pdf' | 'xlsx'>('pdf');
+  const [relatorioPronto, setRelatorioPronto] = useState<{ titulo: string; gerar: (saida: 'download' | 'imprimir') => void } | null>(null);
   const [relatorioStatusFilter, setRelatorioStatusFilter] = useState<'todos' | 'confirmados' | 'cancelados'>('todos');
 
   const podeVerTudo =
@@ -715,6 +725,19 @@ const GuardaMunicipalIros = () => {
     });
   }, [activeSection, candidaturas, dataFilter, isExtrasIrosView, isMinhaIrosView, minhasCandidaturas, podeVerTudo, search, statusFilter, usuarioMap]);
 
+  const candidaturasExtrasAgrupadasPorOperacao = useMemo<CandidaturasOperacaoGroup[]>(() => {
+    const groups = new Map<string, CandidaturasOperacaoGroup>();
+    const sortedItems = [...filteredCandidaturas].sort((a, b) => (a.operacao_nome || '').localeCompare(b.operacao_nome || '', 'pt-BR'));
+    for (const item of sortedItems) {
+      const operacaoId = item.operacao_id || `nome:${item.operacao_nome || 'IRO extra'}`;
+      const operacaoNome = item.operacao_nome || 'IRO extra';
+      const current = groups.get(operacaoId) || { operacaoId, operacaoNome, items: [] };
+      current.items.push(item);
+      groups.set(operacaoId, current);
+    }
+    return Array.from(groups.values());
+  }, [filteredCandidaturas]);
+
   const disponibilidadePorOperacaoDia = useMemo(() => {
     const map = new Map<string, IRODisponibilidadeDia>();
     for (const item of disponibilidadeDias) {
@@ -886,15 +909,6 @@ const GuardaMunicipalIros = () => {
     const exceedsLimit = totalHours > LIMITE_IRO_MES;
     const nearLimit = totalHours >= LIMITE_IRO_MES * 0.8;
     const availableHours = Math.max(LIMITE_IRO_MES - existingHours, 0);
-
-    if (dataRef && candidaturas.some(
-      (item) =>
-        item.usuario_id === manualForm.usuario_id &&
-        item.data_operacao === dataRef &&
-        ['confirmado', 'realizado'].includes(item.status),
-    )) {
-      errors.push(`Já existe IRO confirmada/realizada na data ${fmtDateBR(dataRef)}.`);
-    }
 
     if (exceedsLimit) {
       errors.push(`A quantidade ultrapassa o limite de ${LIMITE_IRO_MES}h no mês. Disponível: ${(LIMITE_IRO_MES - existingHours).toFixed(2).replace('.', ',')}h.`);
@@ -1715,6 +1729,70 @@ const GuardaMunicipalIros = () => {
     );
   };
 
+  const renderCandidaturasOperacaoGroup = ({ operacaoNome, items }: CandidaturasOperacaoGroup) => {
+    const totalHoras = items.reduce((acc, item) => acc + item.horas_trabalhadas, 0);
+    const totalValor = items.reduce((acc, item) => acc + item.horas_trabalhadas * (valorHoraPorUsuario.get(item.usuario_id) || 0), 0);
+
+    return (
+      <section key={operacaoNome} className="space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-2 px-1 pt-1">
+          <h3 className="text-lg font-black tracking-[-0.03em] text-slate-950">{operacaoNome}</h3>
+          <div className="flex flex-wrap gap-2 text-xs">
+            <span className="rounded-full bg-slate-100 px-3 py-1 font-semibold text-slate-700">{items.length} IRO(s)</span>
+            <span className="rounded-full bg-blue-50 px-3 py-1 font-semibold text-blue-700">{totalHoras.toFixed(1).replace('.', ',')}h</span>
+            <span className="rounded-full bg-emerald-50 px-3 py-1 font-semibold text-emerald-700">{formatCurrency(totalValor)}</span>
+          </div>
+        </div>
+        <div className="overflow-hidden rounded-[24px] border border-slate-200 bg-white shadow-sm">
+          {items.map((item, index) => (
+            <div
+              key={item.id}
+              className={cn('flex flex-col gap-3 px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between', index > 0 && 'border-t border-slate-100')}
+            >
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="font-semibold text-slate-900">{usuarioMap.get(item.usuario_id) || '—'}</p>
+                  <Badge variant="outline" className={cn('rounded-full px-2.5 py-0.5 text-[10px] font-bold', STATUS_CANDIDATURA_VARIANT[item.status])}>
+                    {item.status}
+                  </Badge>
+                </div>
+                <p className="mt-0.5 text-sm text-slate-500">
+                  (Mat. {guardaMatriculaMap.get(item.usuario_id) || '—'}) &middot; {guardaGraduacaoMap.get(item.usuario_id) || '—'} &middot; {fmtDateBR(item.data_operacao)} &middot; {item.horas_trabalhadas}h
+                  {valorHoraPorUsuario.has(item.usuario_id) && (
+                    <span className="ml-1.5 font-semibold text-emerald-600">
+                      {formatCurrency(item.horas_trabalhadas * (valorHoraPorUsuario.get(item.usuario_id) || 0))}
+                    </span>
+                  )}
+                </p>
+                {item.motivo_manual && (
+                  <p className="mt-1 text-xs leading-5 text-slate-500">Motivo: {item.motivo_manual}</p>
+                )}
+              </div>
+
+              {canLaunchManual && (
+                <div className="flex flex-nowrap justify-end gap-2">
+                  {item.status !== 'cancelado' && (
+                    <>
+                      <Button size="sm" variant="outline" onClick={() => openEditExtra(item)}>
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button size="sm" variant="outline" className="border-red-200 text-red-600 hover:bg-red-50" onClick={() => void handleCancelarExtra(item)}>
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </>
+                  )}
+                  <Button size="sm" variant="outline" className="border-red-200 text-red-700 hover:bg-red-50" onClick={() => void handleExcluirExtra(item)}>
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </section>
+    );
+  };
+
   const renderBancoHorasCard = (item: IROBancoHoras) => (
     <article key={item.id} className="rounded-[34px] border border-slate-200 bg-white p-5 shadow-sm">
       <div className="flex items-center justify-between">
@@ -1763,6 +1841,11 @@ const GuardaMunicipalIros = () => {
         return candidaturasAgrupadasPorDia.length
           ? candidaturasAgrupadasPorDia.map(renderCandidaturasDiaGroup)
           : <EmptyBox text="Nenhuma candidatura ou dia com vaga encontrado." />;
+      }
+      if (isExtrasIrosView) {
+        return candidaturasExtrasAgrupadasPorOperacao.length
+          ? candidaturasExtrasAgrupadasPorOperacao.map(renderCandidaturasOperacaoGroup)
+          : <EmptyBox text="Nenhuma IRO extra encontrada." />;
       }
       return filteredCandidaturas.length ? filteredCandidaturas.map(renderCandidaturaCard) : <EmptyBox text="Nenhuma candidatura encontrada." />;
     }
@@ -1818,6 +1901,120 @@ const GuardaMunicipalIros = () => {
       }));
     };
 
+    const linhasPorGuarda = (guardaId: string, opcaoMes?: string, opcaoOperacaoId?: string) => {
+      let itens = candidaturas.filter((item) => item.usuario_id === guardaId);
+      if (opcaoMes) itens = itens.filter((item) => item.data_operacao.slice(0, 7) === opcaoMes);
+      if (opcaoOperacaoId) itens = itens.filter((item) => item.operacao_id === opcaoOperacaoId);
+      if (relatorioStatusFilter === 'confirmados') itens = itens.filter((item) => ['confirmado', 'realizado'].includes(item.status));
+      if (relatorioStatusFilter === 'cancelados') itens = itens.filter((item) => item.status === 'cancelado');
+      return itens.map((item) => {
+        const operacaoId = item.operacao_id;
+        return {
+          operacao: operacoes.find((o) => o.id === operacaoId)?.nome || (item.operacao_nome && item.operacao_nome !== '' ? item.operacao_nome : 'IRO extra'),
+          nome: usuarioMap.get(item.usuario_id) || '—',
+          matricula: guardaMatriculaMap.get(item.usuario_id) || '—',
+          graduacao: guardaGraduacaoMap.get(item.usuario_id) || '—',
+          data: item.data_operacao,
+          horario: (operacaoId && operacoes.find((o) => o.id === operacaoId)?.horario_previsto.slice(0, 5)) || '',
+          horas: item.horas_trabalhadas,
+          valor: item.horas_trabalhadas * (valorHoraPorUsuario.get(item.usuario_id) || 0),
+          status: item.status,
+        };
+      });
+    };
+
+    const gerarRelatorio = () => {
+      const preparar = (titulo: string, gerar: (saida: 'download' | 'imprimir') => void) => {
+        setRelatorioPronto({ titulo, gerar });
+        toast({ title: 'Relatório criado com sucesso!' });
+      };
+
+      if (relatorioTipo === 'operacao') {
+        const operacao = operacoes.find((item) => item.id === relatorioOperacaoId);
+        if (!operacao) return;
+        const linhas = linhasPorOperacao(operacao.id);
+        if (linhas.length === 0) {
+          toast({ title: 'Nenhum registro', description: 'Nenhuma candidatura encontrada para esta operação.', variant: 'destructive' });
+          return;
+        }
+        preparar(`Relatório de Horas IRO — ${operacao.nome}`, (saida) => gerarRelatorioOperacao(operacao.nome, linhas, relatorioFormato, relatorioFiltroLabel, saida));
+        return;
+      }
+
+      if (relatorioTipo === 'dia') {
+        const op = operacoes.find((item) => item.id === relatorioOperacaoId);
+        if (!op) return;
+        const linhas = linhasPorDia(op.id, relatorioDia);
+        if (linhas.length === 0) {
+          toast({ title: 'Nenhum registro', description: 'Nenhuma candidatura encontrada para esta data.', variant: 'destructive' });
+          return;
+        }
+        preparar(
+          `Relatório de Horas IRO — Por Dia (${op.nome})`,
+          (saida) =>
+            gerarRelatorioPorDia(
+              {
+                nome: op.nome,
+                descricao: op.descricao,
+                data_inicio: op.data_inicio,
+                data_fim: op.data_fim,
+                horario_previsto: op.horario_previsto,
+                vagas_por_dia: op.vagas_por_dia,
+                horas_por_dia: op.horas_por_dia,
+              },
+              relatorioDia,
+              linhas,
+              relatorioFormato,
+              relatorioFiltroLabel,
+              saida,
+            ),
+        );
+        return;
+      }
+
+      if (relatorioTipo === 'guarda') {
+        const guarda = guardasAtivos.find((item) => item.usuario_id === relatorioGuardaId);
+        if (!guarda) return;
+        const linhas = linhasPorGuarda(guarda.usuario_id, relatorioGuardaMes || undefined, relatorioGuardaOperacaoId === '__todas__' ? undefined : relatorioGuardaOperacaoId);
+        if (linhas.length === 0) {
+          toast({ title: 'Nenhum registro', description: 'Nenhuma candidatura encontrada para este guarda.', variant: 'destructive' });
+          return;
+        }
+        const guardaTitulos = [guarda.nome];
+        if (relatorioGuardaMes) guardaTitulos.push(new Date(`${relatorioGuardaMes}-01`).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }));
+        if (relatorioGuardaOperacaoId && relatorioGuardaOperacaoId !== '__todas__') {
+          const op = operacoes.find((o) => o.id === relatorioGuardaOperacaoId);
+          if (op) guardaTitulos.push(op.nome);
+        }
+        preparar(
+          `Relatório de Horas IRO — Guarda ${guardaTitulos.join(' · ')}`,
+          (saida) =>
+            gerarRelatorioPorGuarda(
+              {
+                nome: guarda.nome,
+                matricula: guarda.matricula,
+                graduacao: guarda.graduacao_nome || '',
+              },
+              linhas,
+              relatorioFormato,
+              relatorioFiltroLabel,
+              saida,
+            ),
+        );
+        return;
+      }
+
+      const [ano, mes] = relatorioMes.split('-');
+      const meses = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+      const titulo = `${meses[Number(mes) - 1]} ${ano}`;
+      const linhas = linhasPorMes(relatorioMes);
+      if (linhas.length === 0) {
+        toast({ title: 'Nenhum registro', description: 'Nenhuma candidatura encontrada para este mês.', variant: 'destructive' });
+        return;
+      }
+      preparar(`Relatório de Horas IRO — Mensal (${titulo})`, (saida) => gerarRelatorioMensal(titulo, linhas, relatorioFormato, relatorioFiltroLabel, saida));
+    };
+
     return (
       <Card className="rounded-[24px] border-slate-200">
         <CardContent className="space-y-5 px-5 py-6">
@@ -1830,6 +2027,9 @@ const GuardaMunicipalIros = () => {
             </Button>
             <Button variant={relatorioTipo === 'mensal' ? 'default' : 'outline'} size="sm" onClick={() => setRelatorioTipo('mensal')}>
               Por Mês
+            </Button>
+            <Button variant={relatorioTipo === 'guarda' ? 'default' : 'outline'} size="sm" onClick={() => setRelatorioTipo('guarda')}>
+              Por Guarda
             </Button>
           </div>
 
@@ -1897,6 +2097,22 @@ const GuardaMunicipalIros = () => {
                 );
               })()}
             </>
+          ) : relatorioTipo === 'guarda' ? (
+            <div className="space-y-2">
+              <Label>Selecione o guarda</Label>
+              <Select value={relatorioGuardaId} onValueChange={setRelatorioGuardaId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Escolher guarda..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {guardasAtivos.map((item) => (
+                    <SelectItem key={item.usuario_id} value={item.usuario_id}>
+                      {item.nome} {item.matricula ? `(Mat. ${item.matricula})` : ''}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           ) : (
             <div className="space-y-2">
               <Label>Mês / Ano</Label>
@@ -1904,77 +2120,66 @@ const GuardaMunicipalIros = () => {
             </div>
           )}
 
-          <div className="space-y-2">
-            <Label>Formato</Label>
-            <Select value={relatorioFormato} onValueChange={(value) => setRelatorioFormato(value as 'pdf' | 'xlsx')}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="pdf">PDF</SelectItem>
-                <SelectItem value="xlsx">Planilha (XLSX)</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          {relatorioTipo === 'guarda' && (
+            <div className="grid grid-cols-1 items-end gap-4 md:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto]">
+              <div className="space-y-2">
+                <Label>Mês (opcional)</Label>
+                <Input
+                  type="month"
+                  value={relatorioGuardaMes}
+                  onChange={(event) => setRelatorioGuardaMes(event.target.value)}
+                  placeholder="Todos os meses"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Operação (opcional)</Label>
+                <Select value={relatorioGuardaOperacaoId} onValueChange={setRelatorioGuardaOperacaoId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Todas as operações" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__todas__">Todas as operações</SelectItem>
+                    {operacoes.map((item) => (
+                      <SelectItem key={item.id} value={item.id}>
+                        {item.nome}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Formato</Label>
+                <Select value={relatorioFormato} onValueChange={(value) => setRelatorioFormato(value as 'pdf' | 'xlsx')}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pdf">PDF</SelectItem>
+                    <SelectItem value="xlsx">Planilha (XLSX)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button className="h-12 md:col-span-2 lg:col-span-1" disabled={!relatorioGuardaId} onClick={gerarRelatorio}>Gerar Relatório</Button>
+            </div>
+          )}
 
-          <Button
-            className="w-full"
-            disabled={(relatorioTipo === 'operacao' && !relatorioOperacaoId) || (relatorioTipo === 'mensal' && !relatorioMes) || (relatorioTipo === 'dia' && (!relatorioOperacaoId || !relatorioDia))}
-            onClick={() => {
-              if (relatorioTipo === 'operacao') {
-                const operacao = operacoes.find((item) => item.id === relatorioOperacaoId);
-                if (!operacao) return;
-                const linhas = linhasPorOperacao(operacao.id);
-                if (linhas.length === 0) {
-                  toast({ title: 'Nenhum registro', description: 'Nenhuma candidatura encontrada para esta operação.', variant: 'destructive' });
-                  return;
-                }
-                gerarRelatorioOperacao(operacao.nome, linhas, relatorioFormato, relatorioFiltroLabel);
-                toast({ title: 'Relatório gerado!' });
-                return;
-              }
-
-              if (relatorioTipo === 'dia') {
-                const op = operacoes.find((item) => item.id === relatorioOperacaoId);
-                if (!op) return;
-                const linhas = linhasPorDia(op.id, relatorioDia);
-                if (linhas.length === 0) {
-                  toast({ title: 'Nenhum registro', description: 'Nenhuma candidatura encontrada para esta data.', variant: 'destructive' });
-                  return;
-                }
-                gerarRelatorioPorDia(
-                  {
-                    nome: op.nome,
-                    descricao: op.descricao,
-                    data_inicio: op.data_inicio,
-                    data_fim: op.data_fim,
-                    horario_previsto: op.horario_previsto,
-                    vagas_por_dia: op.vagas_por_dia,
-                    horas_por_dia: op.horas_por_dia,
-                  },
-                  relatorioDia,
-                  linhas,
-                  relatorioFormato,
-                  relatorioFiltroLabel,
-                );
-                toast({ title: 'Relatório gerado!' });
-                return;
-              }
-
-              const [ano, mes] = relatorioMes.split('-');
-              const meses = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
-              const titulo = `${meses[Number(mes) - 1]} ${ano}`;
-              const linhas = linhasPorMes(relatorioMes);
-              if (linhas.length === 0) {
-                toast({ title: 'Nenhum registro', description: 'Nenhuma candidatura encontrada para este mês.', variant: 'destructive' });
-                return;
-              }
-              gerarRelatorioMensal(titulo, linhas, relatorioFormato, relatorioFiltroLabel);
-              toast({ title: 'Relatório gerado!' });
-            }}
-          >
-            Gerar Relatório
-          </Button>
+          {relatorioTipo !== 'guarda' && (
+            <>
+              <div className="space-y-2">
+                <Label>Formato</Label>
+                <Select value={relatorioFormato} onValueChange={(value) => setRelatorioFormato(value as 'pdf' | 'xlsx')}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pdf">PDF</SelectItem>
+                    <SelectItem value="xlsx">Planilha (XLSX)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button className="w-full" onClick={gerarRelatorio}>Gerar Relatório</Button>
+            </>
+          )}
         </CardContent>
       </Card>
     );
@@ -2077,7 +2282,34 @@ const GuardaMunicipalIros = () => {
         {activeSection !== 'relatorios' && (
           <Card className="rounded-[24px] border-slate-200">
             <CardContent className="space-y-4 px-5 py-5">
-              <div className={cn('flex flex-col gap-4', activeSection === 'candidaturas' ? 'lg:grid lg:grid-cols-[minmax(0,1fr)_170px_220px_220px]' : 'lg:grid lg:grid-cols-[1fr_220px]')}>
+              {isExtrasIrosView ? (
+                <div className="grid w-full grid-cols-1 gap-4 md:grid-cols-[minmax(0,1fr)_190px_190px] lg:grid-cols-[minmax(0,1fr)_210px_210px]">
+                  <div className="space-y-2">
+                    <Label>Buscar</Label>
+                    <Input
+                      value={search}
+                      onChange={(event) => setSearch(event.target.value)}
+                      placeholder="Buscar IROs extras..."
+                      className="w-full"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Dia</Label>
+                    <Input type="date" value={dataFilter} onChange={(event) => setDataFilter(event.target.value)} className="w-full" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Filtrar</Label>
+                    <button
+                      type="button"
+                      onClick={() => setFilterDialogOpen(true)}
+                      className="flex h-12 w-full items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 transition-colors hover:bg-slate-50 active:bg-slate-100"
+                    >
+                      <ListFilter className="h-5 w-5" />
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className={cn('flex flex-col gap-4', activeSection === 'candidaturas' ? 'lg:grid lg:grid-cols-[minmax(0,1fr)_170px_220px_220px]' : 'lg:grid lg:grid-cols-[1fr_220px]')}>
                 <div className="flex flex-1 items-end gap-2">
                   <div className="flex-1 space-y-2">
                     <Label className="max-sm:sr-only">Buscar</Label>
@@ -2130,7 +2362,8 @@ const GuardaMunicipalIros = () => {
                     )}
                   </>
                 )}
-              </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         )}
@@ -2439,7 +2672,7 @@ const GuardaMunicipalIros = () => {
             </div>
 
             <section className="space-y-4 rounded-[24px] border border-slate-200 bg-slate-50 p-4">
-              <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center justify-between gap-3">
                 <div>
                   <h3 className="text-sm font-bold uppercase tracking-[0.16em] text-slate-700">Resumo Dinâmico</h3>
                   <p className="mt-1 text-xs text-slate-500">Pré-visualização técnica do lançamento antes da gravação definitiva.</p>
@@ -2929,6 +3162,40 @@ const GuardaMunicipalIros = () => {
         </ResponsiveDialog>
 
       {confirmDialog}
+
+      <ResponsiveDialog
+        open={relatorioPronto !== null}
+        onOpenChange={(open) => { if (!open) setRelatorioPronto(null); }}
+        title="Relatório criado com sucesso"
+        description="O relatório foi gerado. Escolha como deseja obter o arquivo."
+      >
+        <div className="space-y-4 py-2">
+          {relatorioPronto && (
+            <p className="text-sm font-medium text-slate-700">{relatorioPronto.titulo}</p>
+          )}
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <Button
+              className="flex-1"
+              onClick={() => {
+                relatorioPronto?.gerar('download');
+                setRelatorioPronto(null);
+              }}
+            >
+              Baixar relatório
+            </Button>
+            <Button
+              variant="outline"
+              className="flex-1"
+              onClick={() => {
+                relatorioPronto?.gerar('imprimir');
+                setRelatorioPronto(null);
+              }}
+            >
+              Imprimir relatório
+            </Button>
+          </div>
+        </div>
+      </ResponsiveDialog>
     </AdminLayout>
   );
 };

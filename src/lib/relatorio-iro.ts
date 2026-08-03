@@ -19,6 +19,16 @@ interface LinhaCandidaturaDetalhada {
   status: string;
 }
 
+interface LinhaRelatorioGuarda extends LinhaCandidaturaDetalhada {
+  operacao: string;
+}
+
+interface InfoGuarda {
+  nome: string;
+  matricula: string;
+  graduacao: string;
+}
+
 interface OperacaoInfo {
   nome: string;
   descricao: string | null;
@@ -87,11 +97,101 @@ function addCabecalhoXlsx(titulo: string, subtitulo: string, detalhes: string[])
   return headerRows;
 }
 
+export type SaidaRelatorio = 'download' | 'imprimir';
+
+function salvarOuImprimirPdf(doc: jsPDF, nomeArquivo: string, saida: SaidaRelatorio) {
+  if (saida === 'imprimir') {
+    doc.autoPrint();
+    const url = doc.output('datauristring');
+    const win = window.open('', '_blank');
+    if (win) {
+      win.document.write(
+        `<html><head><title>${nomeArquivo}</title></head><body style="margin:0">` +
+          `<embed src="${url}" type="application/pdf" width="100%" height="100%" style="border:none" />` +
+          `</body></html>`,
+      );
+      win.document.close();
+    }
+    return;
+  }
+  doc.save(nomeArquivo);
+}
+
+function salvarOuImprimirXlsx(
+  wb: XLSX.WorkBook,
+  nomeArquivo: string,
+  saida: SaidaRelatorio,
+  tituloImpressao: string,
+  wsData: (string | number)[][],
+) {
+  if (saida === 'imprimir') {
+    const esc = (v: unknown) =>
+      String(v ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+    const rows = wsData
+      .map((r) => `<tr>${r.map((c) => `<td>${esc(c)}</td>`).join('')}</tr>`)
+      .join('');
+    const html = `
+      <!DOCTYPE html>
+      <html lang="pt-BR">
+        <head>
+          <meta charset="UTF-8" />
+          <title>${esc(tituloImpressao)}</title>
+          <style>
+            body { font-family: Arial, sans-serif; color: #0f172a; margin: 0; padding: 20px; }
+            .cabecalho { border-bottom: 2px solid #0f172a; padding-bottom: 10px; margin-bottom: 16px; }
+            .cabecalho h1 { font-size: 15px; margin: 0; letter-spacing: 0.08em; }
+            .cabecalho h2 { font-size: 12px; margin: 0; color: #475569; }
+            h3 { margin: 0 0 12px; font-size: 16px; }
+            table { width: 100%; border-collapse: collapse; font-size: 11px; }
+            th, td { border: 1px solid #cbd5e1; padding: 6px; text-align: left; }
+            th { background: #e2e8f0; }
+            tr:nth-child(even) td { background: #f8fafc; }
+          </style>
+        </head>
+        <body>
+          <div class="cabecalho">
+            <h1>SECRETARIA MUNICIPAL DE SEGURANÇA E TRANSPORTE — SMST</h1>
+            <h2>GUARDA MUNICIPAL</h2>
+          </div>
+          <h3>${esc(tituloImpressao)}</h3>
+          <table><tbody>${rows}</tbody></table>
+        </body>
+      </html>`;
+
+    const iframe = document.createElement('iframe');
+    iframe.style.position = 'fixed';
+    iframe.style.top = '-9999px';
+    iframe.style.left = '-9999px';
+    iframe.style.width = '800px';
+    iframe.style.height = '600px';
+    iframe.style.border = 'none';
+    document.body.appendChild(iframe);
+    iframe.contentDocument!.open();
+    iframe.contentDocument!.write(html);
+    iframe.contentDocument!.close();
+    iframe.onload = () => {
+      window.setTimeout(() => {
+        iframe.contentWindow!.print();
+        window.setTimeout(() => document.body.removeChild(iframe), 1000);
+      }, 2000);
+    };
+    if (iframe.contentDocument!.readyState === 'complete') {
+      iframe.onload!(new Event('load'));
+    }
+    return;
+  }
+  XLSX.writeFile(wb, nomeArquivo);
+}
+
 export function gerarRelatorioOperacao(
   operacaoNome: string,
   linhas: LinhaRelatorio[],
   formato: 'pdf' | 'xlsx',
   filtroLabel?: string,
+  saida?: SaidaRelatorio,
 ) {
   const totalHoras = linhas.reduce((s, l) => s + l.horas, 0);
   const agora = new Date();
@@ -143,7 +243,7 @@ export function gerarRelatorioOperacao(
       },
     });
 
-    doc.save(`relatorio-iro-${operacaoNome.replace(/\s+/g, '-').toLowerCase()}.pdf`);
+    salvarOuImprimirPdf(doc, `relatorio-iro-${operacaoNome.replace(/\s+/g, '-').toLowerCase()}.pdf`, saida ?? 'download');
     return;
   }
 
@@ -163,7 +263,13 @@ export function gerarRelatorioOperacao(
   const ws = XLSX.utils.aoa_to_sheet(wsData);
   ws['!cols'] = [{ wch: 40 }, { wch: 14 }, { wch: 14 }];
   XLSX.utils.book_append_sheet(wb, ws, operacaoNome.slice(0, 31));
-  XLSX.writeFile(wb, `relatorio-iro-${operacaoNome.replace(/\s+/g, '-').toLowerCase()}.xlsx`);
+  salvarOuImprimirXlsx(
+    wb,
+    `relatorio-iro-${operacaoNome.replace(/\s+/g, '-').toLowerCase()}.xlsx`,
+    saida ?? 'download',
+    `Relatório de Horas IRO — Operação: ${operacaoNome}`,
+    wsData,
+  );
 }
 
 export function gerarRelatorioMensal(
@@ -171,6 +277,7 @@ export function gerarRelatorioMensal(
   linhas: LinhaRelatorio[],
   formato: 'pdf' | 'xlsx',
   filtroLabel?: string,
+  saida?: SaidaRelatorio,
 ) {
   const totalHoras = linhas.reduce((s, l) => s + l.horas, 0);
   const agora = new Date();
@@ -222,7 +329,7 @@ export function gerarRelatorioMensal(
       },
     });
 
-    doc.save(`relatorio-iro-mensal-${mesAnoTitulo.replace(/\s+/g, '-').toLowerCase()}.pdf`);
+    salvarOuImprimirPdf(doc, `relatorio-iro-mensal-${mesAnoTitulo.replace(/\s+/g, '-').toLowerCase()}.pdf`, saida ?? 'download');
     return;
   }
 
@@ -242,7 +349,13 @@ export function gerarRelatorioMensal(
   const ws = XLSX.utils.aoa_to_sheet(wsData);
   ws['!cols'] = [{ wch: 40 }, { wch: 14 }, { wch: 14 }];
   XLSX.utils.book_append_sheet(wb, ws, mesAnoTitulo.slice(0, 31));
-  XLSX.writeFile(wb, `relatorio-iro-mensal-${mesAnoTitulo.replace(/\s+/g, '-').toLowerCase()}.xlsx`);
+  salvarOuImprimirXlsx(
+    wb,
+    `relatorio-iro-mensal-${mesAnoTitulo.replace(/\s+/g, '-').toLowerCase()}.xlsx`,
+    saida ?? 'download',
+    `Relatório de Horas IRO — Mensal (${mesAnoTitulo})`,
+    wsData,
+  );
 }
 
 export function gerarRelatorioPorDia(
@@ -251,6 +364,7 @@ export function gerarRelatorioPorDia(
   candidatos: LinhaCandidaturaDetalhada[],
   formato: 'pdf' | 'xlsx',
   filtroLabel?: string,
+  saida?: SaidaRelatorio,
 ) {
   const totalCandidatos = candidatos.length;
   const totalHoras = candidatos.reduce((s, l) => s + l.horas, 0);
@@ -325,7 +439,7 @@ export function gerarRelatorioPorDia(
       },
     });
 
-    doc.save(`relatorio-iro-dia-${data}.pdf`);
+    salvarOuImprimirPdf(doc, `relatorio-iro-dia-${data}.pdf`, saida ?? 'download');
     return;
   }
 
@@ -352,7 +466,13 @@ export function gerarRelatorioPorDia(
     { wch: 10 }, { wch: 14 }, { wch: 16 },
   ];
   XLSX.utils.book_append_sheet(wb, ws, data.slice(0, 31));
-  XLSX.writeFile(wb, `relatorio-iro-dia-${data}.xlsx`);
+  salvarOuImprimirXlsx(
+    wb,
+    `relatorio-iro-dia-${data}.xlsx`,
+    saida ?? 'download',
+    `Relatório de Horas IRO — Por Dia (${operacao.nome} — ${dataBR})`,
+    wsData,
+  );
 }
 
 export function gerarRelatorioDetalhadoOperacao(
@@ -360,6 +480,7 @@ export function gerarRelatorioDetalhadoOperacao(
   candidatos: LinhaCandidaturaDetalhada[],
   formato: 'pdf' | 'xlsx',
   filtroLabel?: string,
+  saida?: SaidaRelatorio,
 ) {
   const totalCandidatos = candidatos.length;
   const totalHoras = candidatos.reduce((s, l) => s + l.horas, 0);
@@ -440,7 +561,7 @@ export function gerarRelatorioDetalhadoOperacao(
       },
     });
 
-    doc.save(`candidaturas-${operacao.nome.replace(/\s+/g, '-').toLowerCase()}.pdf`);
+    salvarOuImprimirPdf(doc, `candidaturas-${operacao.nome.replace(/\s+/g, '-').toLowerCase()}.pdf`, saida ?? 'download');
     return;
   }
 
@@ -473,5 +594,127 @@ export function gerarRelatorioDetalhadoOperacao(
     { wch: 12 }, { wch: 10 }, { wch: 14 }, { wch: 16 },
   ];
   XLSX.utils.book_append_sheet(wb, ws, operacao.nome.slice(0, 31));
-  XLSX.writeFile(wb, `candidaturas-${operacao.nome.replace(/\s+/g, '-').toLowerCase()}.xlsx`);
+  salvarOuImprimirXlsx(
+    wb,
+    `candidaturas-${operacao.nome.replace(/\s+/g, '-').toLowerCase()}.xlsx`,
+    saida ?? 'download',
+    `Relatório Detalhado de Candidaturas — ${operacao.nome}`,
+    wsData,
+  );
+}
+
+export function gerarRelatorioPorGuarda(
+  guarda: InfoGuarda,
+  candidatos: LinhaRelatorioGuarda[],
+  formato: 'pdf' | 'xlsx',
+  filtroLabel?: string,
+  saida?: SaidaRelatorio,
+) {
+  const totalCandidatos = candidatos.length;
+  const totalHoras = candidatos.reduce((s, l) => s + l.horas, 0);
+  const totalValor = candidatos.reduce((s, l) => s + l.valor, 0);
+  const confirmados = candidatos.filter((c) => c.status !== 'cancelado').length;
+  const agora = new Date();
+  const dataHoraGeracao = agora.toLocaleString('pt-BR');
+
+  if (formato === 'pdf') {
+    const doc = new jsPDF('landscape');
+    const pageWidth = doc.internal.pageSize.getWidth();
+
+    const detalhes = [`Gerado em: ${dataHoraGeracao}`];
+    if (filtroLabel) detalhes.push(`Filtro: ${filtroLabel}`);
+
+    addCabecalhoRodape(
+      doc,
+      'RELATÓRIO DE HORAS IRO — POR GUARDA',
+      `Guarda: ${guarda.nome}`,
+      detalhes,
+      55,
+    );
+
+    const infoLines = [
+      `Matrícula: ${guarda.matricula || '—'}  |  Graduação: ${guarda.graduacao || '—'}`,
+      `Candidaturas: ${totalCandidatos}  |  Confirmadas/Realizadas: ${confirmados}  |  Total de horas: ${totalHoras.toFixed(1).replace('.', ',')}h`,
+    ];
+    let y = 58;
+    doc.setFontSize(9);
+    doc.setTextColor(80, 80, 80);
+    for (const line of infoLines) {
+      doc.text(line, 14, y);
+      y += 5;
+    }
+
+    const cabecalho = [['Operação', 'Data', 'Horário', 'Horas', 'Valor (R$)', 'Status']];
+    const dados = candidatos.map((l) => [
+      l.operacao,
+      new Date(l.data).toLocaleDateString('pt-BR'),
+      l.horario || '—',
+      l.horas.toFixed(1).replace('.', ','),
+      l.valor.toFixed(2).replace('.', ','),
+      l.status,
+    ]);
+    if (dados.length > 0) {
+      dados.push(['TOTAL', '', '', totalHoras.toFixed(1).replace('.', ','), totalValor.toFixed(2).replace('.', ','), `${confirmados} confirmada(s)`]);
+    }
+
+    autoTable(doc, {
+      head: cabecalho,
+      body: dados,
+      startY: y + 2,
+      theme: 'striped',
+      headStyles: { fillColor: [15, 23, 42], fontSize: 8 },
+      footStyles: { fillColor: [241, 245, 249], fontSize: 8 },
+      styles: { fontSize: 8 },
+      columnStyles: {
+        0: { cellWidth: 70 },
+        1: { cellWidth: 28 },
+        2: { cellWidth: 22 },
+        3: { cellWidth: 18 },
+        4: { cellWidth: 28 },
+        5: { cellWidth: 30 },
+      },
+      didDrawPage: (data) => {
+        const pageCount = doc.getNumberOfPages();
+        doc.setFontSize(7);
+        doc.setTextColor(160, 160, 160);
+        doc.text(`Página ${pageCount}`, pageWidth / 2, 200, { align: 'center' });
+      },
+    });
+
+    salvarOuImprimirPdf(doc, `relatorio-iro-guarda-${guarda.nome.replace(/\s+/g, '-').toLowerCase()}.pdf`, saida ?? 'download');
+    return;
+  }
+
+  const wb = XLSX.utils.book_new();
+  const detalhesStr = [`Gerado em: ${dataHoraGeracao}`];
+  if (filtroLabel) detalhesStr.push(`Filtro: ${filtroLabel}`);
+  const headerRows = addCabecalhoXlsx('RELATÓRIO DE HORAS IRO — POR GUARDA', `Guarda: ${guarda.nome}`, detalhesStr);
+  const wsData = [
+    ...headerRows.map((r) => [...r, '', '', '', '', '']),
+    ['Matrícula', guarda.matricula || '—', 'Graduação', guarda.graduacao || '—', '', ''],
+    ['Operação', 'Data', 'Horário', 'Horas', 'Valor (R$)', 'Status'],
+    ...candidatos.map((l) => [
+      l.operacao,
+      new Date(l.data).toLocaleDateString('pt-BR'),
+      l.horario,
+      l.horas,
+      l.valor,
+      l.status,
+    ]),
+    ['', '', '', '', '', ''],
+    ['TOTAL', '', '', totalHoras, totalValor, `${confirmados} confirmada(s)`],
+  ];
+  const ws = XLSX.utils.aoa_to_sheet(wsData);
+  ws['!cols'] = [
+    { wch: 40 }, { wch: 14 }, { wch: 12 },
+    { wch: 10 }, { wch: 14 }, { wch: 18 },
+  ];
+  XLSX.utils.book_append_sheet(wb, ws, `Guarda ${guarda.nome.slice(0, 27)}`);
+  salvarOuImprimirXlsx(
+    wb,
+    `relatorio-iro-guarda-${guarda.nome.replace(/\s+/g, '-').toLowerCase()}.xlsx`,
+    saida ?? 'download',
+    `Relatório de Horas IRO — Guarda ${guarda.nome}`,
+    wsData,
+  );
 }

@@ -685,10 +685,7 @@ $$;
 
 -- 11. Grants
 GRANT EXECUTE ON FUNCTION public.can_manage_ordens_servico(uuid) TO authenticated;
-GRANT EXECUTE ON FUNCTION public.salvar_rascunho_ordem_servico(
-  uuid, uuid, text, text, text, text, date, date, text, text, boolean,
-  text, text, text, text, text, text, text, text, text, text, text, uuid[]
-) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.salvar_rascunho_ordem_servico TO authenticated;
 GRANT EXECUTE ON FUNCTION public.publicar_ordem_servico(uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.substituir_ordem_servico TO authenticated;
 GRANT EXECUTE ON FUNCTION public.cancelar_ordem_servico TO authenticated;
