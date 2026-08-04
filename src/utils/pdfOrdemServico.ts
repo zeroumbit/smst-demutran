@@ -161,9 +161,9 @@ export async function montarPdfOrdemServico(ordem: OrdemServico): Promise<{ doc:
     startY: currentY,
     margin: { left: marginLeft, right: marginRight },
     theme: 'grid',
-    headStyles: { fillColor: [30, 58, 138], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 9 },
+    headStyles: { fillColor: false, textColor: [30, 58, 138], fontStyle: 'bold', fontSize: 9 },
     body: dadosIdentificacao,
-    styles: { fontSize: 9, cellPadding: 3, textColor: [15, 23, 42] },
+    styles: { fontSize: 9, cellPadding: 3, textColor: [15, 23, 42], fillColor: false },
   });
 
   // Tabela 2: Dados da Execução Operacional
@@ -207,7 +207,7 @@ export async function montarPdfOrdemServico(ordem: OrdemServico): Promise<{ doc:
     margin: { left: marginLeft, right: marginRight },
     theme: 'grid',
     body: dadosExecucao,
-    styles: { fontSize: 9, cellPadding: 3, textColor: [15, 23, 42] },
+    styles: { fontSize: 9, cellPadding: 3, textColor: [15, 23, 42], fillColor: false },
   });
 
   // Tabela 3: Solicitante (quando houver)
@@ -239,7 +239,7 @@ export async function montarPdfOrdemServico(ordem: OrdemServico): Promise<{ doc:
       margin: { left: marginLeft, right: marginRight },
       theme: 'grid',
       body: dadosSolicitante,
-      styles: { fontSize: 9, cellPadding: 3, textColor: [15, 23, 42] },
+      styles: { fontSize: 9, cellPadding: 3, textColor: [15, 23, 42], fillColor: false },
     });
   }
 
@@ -270,8 +270,8 @@ export async function montarPdfOrdemServico(ordem: OrdemServico): Promise<{ doc:
       theme: 'grid',
       head: [['Equipe Responsável', 'Responsável no Momento', 'Status de Acesso']],
       body: equipesBody,
-      headStyles: { fillColor: [30, 58, 138], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 9 },
-      styles: { fontSize: 8.5, cellPadding: 3, textColor: [15, 23, 42] },
+      headStyles: { fillColor: false, textColor: [30, 58, 138], fontStyle: 'bold', fontSize: 9 },
+      styles: { fontSize: 8.5, cellPadding: 3, textColor: [15, 23, 42], fillColor: false },
     });
   }
 
@@ -289,7 +289,7 @@ export async function montarPdfOrdemServico(ordem: OrdemServico): Promise<{ doc:
       margin: { left: marginLeft, right: marginRight },
       theme: 'grid',
       body: [[{ content: ordem.observacoes }]],
-      styles: { fontSize: 8.5, cellPadding: 4, textColor: [15, 23, 42] },
+      styles: { fontSize: 8.5, cellPadding: 4, textColor: [15, 23, 42], fillColor: false },
     });
   }
 
