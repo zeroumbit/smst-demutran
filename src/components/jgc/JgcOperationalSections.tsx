@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { BookOpenText, CalendarCheck, Check, ChevronDown, ClipboardCheck, FileText, MapPin, Pencil, Plus, Printer, Search, UsersRound } from 'lucide-react';
+import { BookOpenText, CalendarCheck, Check, ChevronDown, ClipboardCheck, FileBarChart, FileText, MapPin, Pencil, Plus, Printer, Search, UsersRound } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -1075,7 +1075,12 @@ function Atividades({turmas,can}:{turmas:JgcTurma[];can:Can}) {
   return <section><Head title="Atividades" subtitle="Aulas, oficinas, eventos, visitas e ações coletivas" sectionKey="atividades" action={can('atividades','criar')?<Button onClick={()=>setOpen(true)} className="hidden bg-teal-700 sm:inline-flex"><Plus className="mr-2 h-4 w-4"/>Nova atividade</Button>:undefined}/>{items.length?<div className="grid gap-4 md:grid-cols-2">{items.map(item=><Card key={item.id} className="rounded-2xl border-0 shadow-sm"><CardHeader><div className="flex justify-between"><Badge variant="outline">{item.tipo}</Badge><Badge className={item.status==='cancelada'?'bg-rose-100 text-rose-800':'bg-emerald-100 text-emerald-800'}>{item.status}</Badge></div><CardTitle>{item.titulo}</CardTitle></CardHeader><CardContent className="space-y-2 text-sm text-slate-600"><p>{item.descricao}</p><p><CalendarCheck className="mr-2 inline h-4 w-4"/>{dateLabel(item.data)} {item.hora_inicio?.slice(0,5)}</p>{item.local&&<p><MapPin className="mr-2 inline h-4 w-4"/>{item.local}</p>}<p>{item.turma?.nome||'Atividade geral'}</p>{can('atividades','excluir')&&item.status==='ativa'&&<Button variant="outline" size="sm" onClick={()=>void cancel(item)}>Cancelar atividade</Button>}</CardContent></Card>)}</div>:<Blank icon={CalendarCheck} title="Nenhuma atividade" text="Cadastre a programação socioeducativa do projeto."/>}<ResponsiveDialog open={open} onOpenChange={setOpen} title="Nova atividade" description="A atividade será associada à turma e ao histórico dos participantes." onCancel={()=>setOpen(false)} onConfirm={save} confirmLabel="Criar atividade"><div className="grid gap-4 py-2 sm:grid-cols-2"><div className="sm:col-span-2"><Field label="Título *"><Input placeholder="Título da atividade" value={form.titulo} onChange={e=>setForm({...form,titulo:e.target.value})}/></Field></div><Field label="Tipo"><Choice value={form.tipo} onChange={v=>setForm({...form,tipo:v})} options={['pedagogica','esportiva','cultural','educativa','palestra','oficina','evento','acao_coletiva','outra'].map(v=>({value:v,label:v.replaceAll('_',' ')}))}/></Field><Field label="Data *"><Input type="date" placeholder="Data da atividade" value={form.data} onChange={e=>setForm({...form,data:e.target.value})}/></Field><Field label="Turma"><Choice value={form.turma_id} onChange={v=>setForm({...form,turma_id:v})} options={turmas.map(t=>({value:t.id,label:t.nome}))}/></Field><Field label="Início"><Input type="time" placeholder="08:00" value={form.hora_inicio} onChange={e=>setForm({...form,hora_inicio:e.target.value})}/></Field><Field label="Fim"><Input type="time" placeholder="12:00" value={form.hora_fim} onChange={e=>setForm({...form,hora_fim:e.target.value})}/></Field><Field label="Local"><Input placeholder="Local da atividade" value={form.local} onChange={e=>setForm({...form,local:e.target.value})}/></Field><div className="sm:col-span-2"><Field label="Descrição"><Textarea placeholder="Descrição detalhada da atividade" value={form.descricao} onChange={e=>setForm({...form,descricao:e.target.value})}/></Field></div></div></ResponsiveDialog>{can('atividades','criar')&&<button type="button" onClick={()=>setOpen(true)} aria-label="Nova atividade" title="Nova atividade" className="fixed bottom-[calc(6rem+var(--safe-area-bottom))] right-[calc(1.25rem+var(--safe-area-right))] z-40 flex size-14 items-center justify-center rounded-full bg-teal-700 text-white shadow-[0_8px_28px_-6px_rgba(15,118,110,0.55)] transition-all active:scale-90 sm:hidden"><Plus className="h-6 w-6"/></button>}</section>;
 }
 
-function Relatorios({alunos,turmas,can}:{alunos:JgcAluno[];turmas:JgcTurma[];can:Can}) {
+function Relatorios({alunos = [], turmas = [], can}:{alunos?:JgcAluno[];turmas?:JgcTurma[];can?:Can}) {
+  const safeAlunos = alunos || [];
+  const safeTurmas = turmas || [];
+  const activeAlunosCount = safeAlunos.filter(a => a && a.situacao === 'ativo').length;
+  const activeTurmasCount = safeTurmas.filter(t => t && t.status === 'ativa').length;
+
   return (
     <section>
       <Head title="Relatórios" subtitle="Consultas consolidadas e relatórios operacionais do Jovem Guarda Cidadã" sectionKey="relatorios" />
@@ -1088,8 +1093,8 @@ function Relatorios({alunos,turmas,can}:{alunos:JgcAluno[];turmas:JgcTurma[];can
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold text-slate-900">{alunos.length}</p>
-            <p className="mt-1 text-xs text-slate-500">{alunos.filter(a => a.situacao === 'ativo').length} ativos no projeto</p>
+            <p className="text-3xl font-bold text-slate-900">{safeAlunos.length}</p>
+            <p className="mt-1 text-xs text-slate-500">{activeAlunosCount} ativos no projeto</p>
           </CardContent>
         </Card>
 
@@ -1101,8 +1106,8 @@ function Relatorios({alunos,turmas,can}:{alunos:JgcAluno[];turmas:JgcTurma[];can
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold text-slate-900">{turmas.filter(t => t.status === 'ativa').length}</p>
-            <p className="mt-1 text-xs text-slate-500">De um total de {turmas.length} turmas</p>
+            <p className="text-3xl font-bold text-slate-900">{activeTurmasCount}</p>
+            <p className="mt-1 text-xs text-slate-500">De um total de {safeTurmas.length} turmas</p>
           </CardContent>
         </Card>
 
