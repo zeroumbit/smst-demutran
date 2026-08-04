@@ -6,19 +6,23 @@ import {
   ArrowLeft,
   Calendar,
   CalendarCheck,
+  Camera,
   Check,
   CheckSquare,
   ChevronDown,
   ChevronRight,
   ClipboardCheck,
   Clock3,
+  Download,
   Eye,
   FileBarChart,
+  FileText,
   GraduationCap,
   HeartPulse,
   ListChecks,
   Pencil,
   Plus,
+  Printer,
   Search,
   ShieldCheck,
   Sparkles,
@@ -44,6 +48,15 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { ResponsiveDialog } from "@/components/ui/responsive-dialog";
 import { supabase } from "@/lib/supabase";
 import { toast } from "@/hooks/use-toast";
@@ -63,6 +76,7 @@ import {
 } from "@/components/jgc/JgcAlertBanner";
 import { JgcStudentJourney } from "@/components/jgc/JgcStudentJourney";
 import { JgcSaibaMaisButton, type JgcSectionKey } from "@/components/jgc/JgcPageHelpModal";
+import { baixarPdfAlunos, imprimirListaAlunos } from "@/utils/pdfJovemGuarda";
 
 type Section =
   | "dashboard"
@@ -148,7 +162,9 @@ export default function JovemGuardaCidada() {
   const [actions, setActions] = useState<{aluno_id:string}[]>([]);
   const [referrals, setReferrals] = useState<{aluno_id:string}[]>([]);
   const [search, setSearch] = useState("");
+  const [selectedTurmaFilter, setSelectedTurmaFilter] = useState<string>("todos");
   const [studentOpen, setStudentOpen] = useState(false);
+  const [editingStudentId, setEditingStudentId] = useState<string | null>(null);
   const [classOpen, setClassOpen] = useState(false);
   const [serviceOpen, setServiceOpen] = useState(false);
   const [isTurmaModalOpen, setIsTurmaModalOpen] = useState(false);
@@ -157,6 +173,45 @@ export default function JovemGuardaCidada() {
   const [selectedProfessorIds, setSelectedProfessorIds] = useState<string[]>([]);
   const [meuPerfilUsuarioId, setMeuPerfilUsuarioId] = useState<string | null>(null);
   const [student, setStudent] = useState({ ...initialStudent });
+
+  function handleOpenCreateStudent() {
+    setEditingStudentId(null);
+    setStudent({ ...initialStudent });
+    setStudentOpen(true);
+  }
+
+  function handleOpenEditStudent(item: JgcAluno) {
+    setEditingStudentId(item.id);
+    const existingTurmas = (item.turmas && item.turmas.length > 0)
+      ? item.turmas.map((t: any) => t.id)
+      : (item.turma_id ? [item.turma_id] : []);
+    setStudent({
+      nome_completo: item.nome_completo || "",
+      data_nascimento: item.data_nascimento?.slice(0, 10) || "",
+      cpf: item.cpf || "",
+      nis: item.nis || "",
+      foto_url: item.foto_url || "",
+      naturalidade_cidade: item.naturalidade_cidade || "",
+      naturalidade_uf: item.naturalidade_uf || "",
+      data_entrada: item.data_entrada?.slice(0, 10) || today,
+      serie_ano: item.serie_ano || "",
+      escola_nome: item.escola_nome || "",
+      turno_escola: item.turno_escola || "",
+      horario_escola: item.horario_escola || "",
+      turmas_ids: existingTurmas,
+      projeto_hora_inicio: item.projeto_hora_inicio?.slice(0, 5) || "",
+      projeto_hora_fim: item.projeto_hora_fim?.slice(0, 5) || "",
+      dias_projeto: item.dias_projeto || [],
+      situacao: item.situacao || "ativo",
+      tipo_sanguineo: item.saude?.tipo_sanguineo || "nao_informado",
+      possui_condicao: item.saude?.possui_condicao || "nao_informado",
+      condicao_saude: item.saude?.condicao_saude || "",
+      usa_medicamento: item.saude?.usa_medicamento || "nao_informado",
+      medicamentos: item.saude?.medicamentos || "",
+      orientacao_medicamento: item.saude?.orientacao_medicamento || "",
+    });
+    setStudentOpen(true);
+  }
   const [service, setService] = useState({
     aluno_id: alunoId || "",
     data: today,
@@ -253,11 +308,19 @@ export default function JovemGuardaCidada() {
   const filteredReferrals = isProfessorOrMulti
     ? referrals.filter((r) => globalFilteredAlunosIds.has(r.aluno_id)).length
     : referrals.length;
-  const filtered = globalFilteredAlunos.filter((item) =>
-    `${item.nome_completo} ${item.matricula} ${item.escola_nome || ""}`
+  const filtered = globalFilteredAlunos.filter((item) => {
+    const matchesSearch = `${item.nome_completo} ${item.matricula} ${item.escola_nome || ""}`
       .toLowerCase()
-      .includes(search.toLowerCase()),
-  );
+      .includes(search.toLowerCase());
+
+    const matchesTurma =
+      selectedTurmaFilter === "todos"
+        ? true
+        : item.turma_id === selectedTurmaFilter ||
+          item.turmas?.some((t: any) => t.id === selectedTurmaFilter);
+
+    return matchesSearch && matchesTurma;
+  });
   const moduleForSection: Record<Section, string> = {
     dashboard: "jgc_dashboard",
     alunos: "jgc_alunos",
@@ -356,7 +419,8 @@ export default function JovemGuardaCidada() {
   const [isSavingStudent, setIsSavingStudent] = useState(false);
 
   async function saveStudent() {
-    if (!can("alunos", "criar") || isSavingStudent) return;
+    if (editingStudentId ? !can("alunos", "editar") : !can("alunos", "criar")) return;
+    if (isSavingStudent) return;
     if (!student.nome_completo.trim() || !student.data_nascimento) {
       toast({
         title: "Informe nome e data de nascimento",
@@ -366,25 +430,97 @@ export default function JovemGuardaCidada() {
     }
     setIsSavingStudent(true);
     try {
-      const { error } = await supabase.rpc("jgc_criar_aluno", {
-        _dados: {
-          ...student,
-          turma_id: (student as any).turmas_ids.length > 0 ? (student as any).turmas_ids[0] : "",
-        },
-      });
-      if (error) {
-        toast({
-          title: "Não foi possível cadastrar",
-          description: error.message,
-          variant: "destructive",
+      const payload = {
+        ...student,
+        turma_id: (student as any).turmas_ids.length > 0 ? (student as any).turmas_ids[0] : "",
+      };
+
+      if (editingStudentId) {
+        const rpcRes = await supabase.rpc("jgc_atualizar_aluno", {
+          _aluno_id: editingStudentId,
+          _dados: payload,
         });
-        return;
+
+        if (rpcRes.error) {
+          const { error: alunoError } = await supabase
+            .from("jgc_alunos")
+            .update({
+              nome_completo: student.nome_completo.trim(),
+              data_nascimento: student.data_nascimento,
+              cpf: student.cpf ? student.cpf.replace(/\D/g, "") : null,
+              nis: student.nis || null,
+              foto_url: student.foto_url || null,
+              naturalidade_cidade: student.naturalidade_cidade || null,
+              naturalidade_uf: student.naturalidade_uf ? student.naturalidade_uf.toUpperCase() : null,
+              data_entrada: student.data_entrada,
+              serie_ano: student.serie_ano || null,
+              escola_nome: student.escola_nome ? student.escola_nome.trim() : null,
+              turno_escola: student.turno_escola || null,
+              horario_escola: student.horario_escola || null,
+              turma_id: (student as any).turmas_ids.length > 0 ? (student as any).turmas_ids[0] : null,
+              projeto_hora_inicio: student.projeto_hora_inicio || null,
+              projeto_hora_fim: student.projeto_hora_fim || null,
+              dias_projeto: student.dias_projeto || [],
+              situacao: student.situacao || "ativo",
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", editingStudentId);
+
+          if (alunoError) {
+            toast({
+              title: "Não foi possível atualizar o aluno",
+              description: alunoError.message,
+              variant: "destructive",
+            });
+            return;
+          }
+
+          await supabase.from("jgc_aluno_turmas").delete().eq("aluno_id", editingStudentId);
+          if ((student as any).turmas_ids.length > 0) {
+            await supabase.from("jgc_aluno_turmas").insert(
+              (student as any).turmas_ids.map((tid: string) => ({
+                aluno_id: editingStudentId,
+                turma_id: tid,
+              }))
+            );
+          }
+
+          await supabase.from("jgc_aluno_saude").upsert({
+            aluno_id: editingStudentId,
+            tipo_sanguineo: student.tipo_sanguineo || "nao_informado",
+            possui_condicao: student.possui_condicao || "nao_informado",
+            condicao_saude: student.condicao_saude || null,
+            usa_medicamento: student.usa_medicamento || "nao_informado",
+            medicamentos: student.medicamentos || null,
+            orientacao_medicamento: student.orientacao_medicamento || null,
+            updated_at: new Date().toISOString(),
+          });
+        }
+
+        toast({
+          title: "Aluno atualizado",
+          description: "As alterações no cadastro foram salvas com sucesso.",
+        });
+      } else {
+        const { error } = await supabase.rpc("jgc_criar_aluno", {
+          _dados: payload,
+        });
+        if (error) {
+          toast({
+            title: "Não foi possível cadastrar",
+            description: error.message,
+            variant: "destructive",
+          });
+          return;
+        }
+        toast({
+          title: "Aluno cadastrado",
+          description: "Matrícula gerada automaticamente pelo sistema.",
+        });
       }
-      toast({
-        title: "Aluno cadastrado",
-        description: "Matrícula gerada automaticamente pelo sistema.",
-      });
+
       setStudentOpen(false);
+      setEditingStudentId(null);
       setStudent({ ...initialStudent });
       void load();
     } finally {
@@ -612,6 +748,7 @@ export default function JovemGuardaCidada() {
               setService((value) => ({ ...value, aluno_id: selected.id }));
               setServiceOpen(true);
             }}
+            onEdit={(item) => handleOpenEditStudent(item)}
           />
         ) : active === "dashboard" ? (
           <Dashboard
@@ -636,7 +773,7 @@ export default function JovemGuardaCidada() {
               action={
                 can("alunos", "criar") && (
                   <Button
-                    onClick={() => setStudentOpen(true)}
+                    onClick={handleOpenCreateStudent}
                     className="hidden gap-2 bg-teal-700 hover:bg-teal-800 sm:inline-flex"
                   >
                     <Plus className="h-4 w-4" />
@@ -645,50 +782,318 @@ export default function JovemGuardaCidada() {
                 )
               }
             />
-            <div className="relative mb-4 max-w-xl">
-              <Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
-              <Input
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder="Nome, matrícula ou escola..."
-                className="bg-white pl-10"
-              />
+            <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+              <div className="flex flex-1 flex-col gap-3 sm:flex-row sm:items-center">
+                {/* Busca de Alunos */}
+                <div className="relative flex-1 max-w-md">
+                  <Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+                  <Input
+                    value={search}
+                    onChange={(event) => setSearch(event.target.value)}
+                    placeholder="Nome, matrícula ou escola..."
+                    className="bg-white pl-10"
+                  />
+                </div>
+
+                {/* Filtro rápido de Turma */}
+                <div className="w-full sm:w-56">
+                  <Select
+                    value={selectedTurmaFilter}
+                    onValueChange={setSelectedTurmaFilter}
+                  >
+                    <SelectTrigger className="bg-white">
+                      <SelectValue placeholder="Todas as turmas" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="todos">Todas as turmas ({globalFilteredAlunos.length})</SelectItem>
+                      {globalFilteredTurmas.map((t) => {
+                        const count = globalFilteredAlunos.filter(
+                          (a) => a.turma_id === t.id || a.turmas?.some((item: any) => item.id === t.id),
+                        ).length;
+                        return (
+                          <SelectItem key={t.id} value={t.id}>
+                            {t.nome} ({count})
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Botões de Ação de Impressão e PDF */}
+              <div className="flex flex-wrap items-center gap-2 shrink-0">
+                {/* Imprimir Lista */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" className="gap-2 bg-white border-slate-200 text-slate-700 hover:bg-slate-50 shadow-xs">
+                      <Printer className="h-4 w-4 text-teal-700" />
+                      <span>Imprimir lista</span>
+                      <ChevronDown className="h-3.5 w-3.5 opacity-60" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-64">
+                    <DropdownMenuItem
+                      onClick={() =>
+                        imprimirListaAlunos({
+                          alunos: globalFilteredAlunos,
+                        })
+                      }
+                      className="gap-2 cursor-pointer font-medium"
+                    >
+                      <Printer className="h-4 w-4 text-teal-700" />
+                      <div>
+                        <div>Lista completa de alunos</div>
+                        <div className="text-xs text-slate-400">Todos os {globalFilteredAlunos.length} cadastrados</div>
+                      </div>
+                    </DropdownMenuItem>
+
+                    {selectedTurmaFilter !== "todos" && (() => {
+                      const currentTurma = globalFilteredTurmas.find((t) => t.id === selectedTurmaFilter);
+                      const alunosTurma = globalFilteredAlunos.filter(
+                        (a) => a.turma_id === selectedTurmaFilter || a.turmas?.some((item: any) => item.id === selectedTurmaFilter),
+                      );
+                      return (
+                        <DropdownMenuItem
+                          onClick={() =>
+                            imprimirListaAlunos({
+                              alunos: alunosTurma,
+                              turmaNome: currentTurma?.nome,
+                            })
+                          }
+                          className="gap-2 cursor-pointer font-medium bg-teal-50/60 text-teal-900"
+                        >
+                          <Printer className="h-4 w-4 text-teal-700" />
+                          <div>
+                            <div>Turma selecionada ({currentTurma?.nome})</div>
+                            <div className="text-xs text-teal-700">{alunosTurma.length} alunos nesta turma</div>
+                          </div>
+                        </DropdownMenuItem>
+                      );
+                    })()}
+
+                    <DropdownMenuSub>
+                      <DropdownMenuSubTrigger className="gap-2 cursor-pointer">
+                        <GraduationCap className="h-4 w-4 text-slate-500" />
+                        <span>Por turma específica...</span>
+                      </DropdownMenuSubTrigger>
+                      <DropdownMenuSubContent className="max-h-60 overflow-y-auto">
+                        {globalFilteredTurmas.map((t) => {
+                          const alunosTurma = globalFilteredAlunos.filter(
+                            (a) => a.turma_id === t.id || a.turmas?.some((item: any) => item.id === t.id),
+                          );
+                          return (
+                            <DropdownMenuItem
+                              key={t.id}
+                              onClick={() =>
+                                imprimirListaAlunos({
+                                  alunos: alunosTurma,
+                                  turmaNome: t.nome,
+                                })
+                              }
+                              className="cursor-pointer"
+                            >
+                              <span>{t.nome}</span>
+                              <span className="ml-auto text-xs text-slate-400">({alunosTurma.length})</span>
+                            </DropdownMenuItem>
+                          );
+                        })}
+                      </DropdownMenuSubContent>
+                    </DropdownMenuSub>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
+                {/* Baixar PDF */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" className="gap-2 bg-white border-slate-200 text-slate-700 hover:bg-slate-50 shadow-xs">
+                      <Download className="h-4 w-4 text-rose-700" />
+                      <span>Baixar PDF</span>
+                      <ChevronDown className="h-3.5 w-3.5 opacity-60" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-64">
+                    <DropdownMenuItem
+                      onClick={() =>
+                        baixarPdfAlunos({
+                          alunos: globalFilteredAlunos,
+                        })
+                      }
+                      className="gap-2 cursor-pointer font-medium"
+                    >
+                      <FileText className="h-4 w-4 text-rose-700" />
+                      <div>
+                        <div>PDF - Lista completa</div>
+                        <div className="text-xs text-slate-400">Todos os {globalFilteredAlunos.length} cadastrados</div>
+                      </div>
+                    </DropdownMenuItem>
+
+                    {selectedTurmaFilter !== "todos" && (() => {
+                      const currentTurma = globalFilteredTurmas.find((t) => t.id === selectedTurmaFilter);
+                      const alunosTurma = globalFilteredAlunos.filter(
+                        (a) => a.turma_id === selectedTurmaFilter || a.turmas?.some((item: any) => item.id === selectedTurmaFilter),
+                      );
+                      return (
+                        <DropdownMenuItem
+                          onClick={() =>
+                            baixarPdfAlunos({
+                              alunos: alunosTurma,
+                              turmaNome: currentTurma?.nome,
+                            })
+                          }
+                          className="gap-2 cursor-pointer font-medium bg-rose-50/60 text-rose-900"
+                        >
+                          <FileText className="h-4 w-4 text-rose-700" />
+                          <div>
+                            <div>PDF - Turma selecionada</div>
+                            <div className="text-xs text-rose-700">{currentTurma?.nome} ({alunosTurma.length} alunos)</div>
+                          </div>
+                        </DropdownMenuItem>
+                      );
+                    })()}
+
+                    <DropdownMenuSub>
+                      <DropdownMenuSubTrigger className="gap-2 cursor-pointer">
+                        <GraduationCap className="h-4 w-4 text-slate-500" />
+                        <span>Por turma específica...</span>
+                      </DropdownMenuSubTrigger>
+                      <DropdownMenuSubContent className="max-h-60 overflow-y-auto">
+                        {globalFilteredTurmas.map((t) => {
+                          const alunosTurma = globalFilteredAlunos.filter(
+                            (a) => a.turma_id === t.id || a.turmas?.some((item: any) => item.id === t.id),
+                          );
+                          return (
+                            <DropdownMenuItem
+                              key={t.id}
+                              onClick={() =>
+                                baixarPdfAlunos({
+                                  alunos: alunosTurma,
+                                  turmaNome: t.nome,
+                                })
+                              }
+                              className="cursor-pointer"
+                            >
+                              <span>{t.nome}</span>
+                              <span className="ml-auto text-xs text-slate-400">({alunosTurma.length})</span>
+                            </DropdownMenuItem>
+                          );
+                        })}
+                      </DropdownMenuSubContent>
+                    </DropdownMenuSub>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
             </div>
             {filtered.length ? (
-              <div className="grid gap-3">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
                 {filtered.map((item) => (
-                  <button
+                  <Card
                     key={item.id}
-                    onClick={() =>
-                      navigate(
-                        `/admin/dashboard/jovem-guarda/alunos/${item.id}`,
-                      )
-                    }
-                    className="group flex w-full items-center gap-4 rounded-2xl border bg-white p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-teal-300 hover:shadow-md"
+                    className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-xs transition-all hover:-translate-y-1 hover:border-teal-300 hover:shadow-md"
                   >
-                    {item.foto_url ? (
-                      <img src={item.foto_url} alt={item.nome_completo} className="h-11 w-11 shrink-0 rounded-2xl object-cover" />
-                    ) : (
-                      <Initials name={item.nome_completo} />
-                    )}
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <strong className="truncate text-slate-900">
-                          {item.nome_completo}
-                        </strong>
+                    <CardContent className="flex flex-col items-center p-4 text-center">
+                      <div className="absolute right-2 top-2 flex items-center gap-1 opacity-90 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                        {can("alunos", "editar") && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 rounded-lg text-slate-400 hover:bg-amber-50 hover:text-amber-700"
+                            title="Editar aluno"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOpenEditStudent(item);
+                            }}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+
+                      <div
+                        className="relative mb-3 flex aspect-[3/4] w-20 h-26 shrink-0 items-center justify-center cursor-pointer overflow-hidden rounded-xl border border-slate-200 bg-slate-50 shadow-xs group-hover:border-teal-400 group-hover:shadow-xs transition-all"
+                        onClick={() =>
+                          navigate(`/admin/dashboard/jovem-guarda/alunos/${item.id}`)
+                        }
+                      >
+                        {item.foto_url ? (
+                          <img
+                            src={item.foto_url}
+                            alt={item.nome_completo}
+                            className="h-full w-full object-cover object-top transition-transform group-hover:scale-105"
+                          />
+                        ) : (
+                          <div className="grid h-full w-full place-items-center bg-gradient-to-br from-teal-50 to-emerald-100 font-bold text-teal-800 text-xl">
+                            {item.nome_completo
+                              .split(" ")
+                              .slice(0, 2)
+                              .map((v) => v[0])
+                              .join("")}
+                          </div>
+                        )}
+                      </div>
+
+                      <strong
+                        className="line-clamp-1 w-full text-base font-bold text-slate-900 cursor-pointer hover:text-teal-700 transition-colors"
+                        title={item.nome_completo}
+                        onClick={() =>
+                          navigate(`/admin/dashboard/jovem-guarda/alunos/${item.id}`)
+                        }
+                      >
+                        {item.nome_completo}
+                      </strong>
+
+                      <div className="mt-1.5 flex items-center gap-1.5 flex-wrap justify-center">
+                        <span className="text-xs font-medium text-slate-400">
+                          {item.matricula}
+                        </span>
                         <Badge
-                          className={`${statusClass(item.situacao)} border-0`}
+                          className={`${statusClass(item.situacao)} border-0 text-[10px] px-2 py-0.5`}
                         >
                           {item.situacao}
                         </Badge>
                       </div>
-                      <p className="mt-1 truncate text-sm text-slate-500">
-                        {item.matricula} · {(item.turmas && item.turmas.length > 0) ? item.turmas.map((t: any) => t.nome).join(", ") : "Sem turma"} ·{" "}
-                        {item.escola_nome || "Escola não informada"}
-                      </p>
+
+                      <div className="mt-3 w-full space-y-1 rounded-xl bg-slate-50 p-2.5 text-xs text-slate-600">
+                        <p className="line-clamp-1 font-semibold text-teal-950" title={(item.turmas && item.turmas.length > 0) ? item.turmas.map((t: any) => t.nome).join(", ") : "Sem turma"}>
+                          {(item.turmas && item.turmas.length > 0)
+                            ? item.turmas.map((t: any) => t.nome).join(", ")
+                            : "Sem turma"}
+                        </p>
+                        <p className="line-clamp-1 text-slate-500" title={item.escola_nome || "Escola não informada"}>
+                          {item.escola_nome || "Escola não informada"}
+                        </p>
+                      </div>
+                    </CardContent>
+
+                    <div className="flex border-t border-slate-100 p-2 gap-1.5 bg-slate-50/50">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="h-8 flex-1 gap-1 text-xs text-slate-700 hover:text-teal-700 hover:bg-teal-50 border-slate-200"
+                        onClick={() =>
+                          navigate(`/admin/dashboard/jovem-guarda/alunos/${item.id}`)
+                        }
+                      >
+                        <Eye className="h-3.5 w-3.5" />
+                        Ver perfil
+                      </Button>
+                      {can("alunos", "editar") && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-8 gap-1 text-xs text-slate-700 hover:text-amber-700 hover:bg-amber-50 border-slate-200"
+                          title="Editar cadastro"
+                          onClick={() => handleOpenEditStudent(item)}
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                          Editar
+                        </Button>
+                      )}
                     </div>
-                    <ChevronRight className="h-5 w-5 text-slate-300 group-hover:text-teal-600" />
-                  </button>
+                  </Card>
                 ))}
               </div>
             ) : (
@@ -701,7 +1106,7 @@ export default function JovemGuardaCidada() {
             {can("alunos", "criar") && (
               <button
                 type="button"
-                onClick={() => setStudentOpen(true)}
+                onClick={handleOpenCreateStudent}
                 aria-label="Novo aluno"
                 title="Novo aluno"
                 className="fixed bottom-[calc(6rem+var(--safe-area-bottom))] right-[calc(1.25rem+var(--safe-area-right))] z-40 flex size-14 items-center justify-center rounded-full bg-teal-700 text-white shadow-[0_8px_28px_-6px_rgba(15,118,110,0.55)] transition-all active:scale-90 sm:hidden"
@@ -985,12 +1390,32 @@ export default function JovemGuardaCidada() {
 
       <ResponsiveDialog
         open={studentOpen}
-        onOpenChange={setStudentOpen}
-        title="Novo aluno"
-        description="A matrícula será gerada automaticamente pelo backend."
-        onCancel={() => setStudentOpen(false)}
+        onOpenChange={(open) => {
+          setStudentOpen(open);
+          if (!open) {
+            setEditingStudentId(null);
+            setStudent({ ...initialStudent });
+          }
+        }}
+        title={editingStudentId ? "Editar aluno" : "Novo aluno"}
+        description={
+          editingStudentId
+            ? "Atualize as informações cadastrais e de saúde do aluno."
+            : "A matrícula será gerada automaticamente pelo backend."
+        }
+        onCancel={() => {
+          setStudentOpen(false);
+          setEditingStudentId(null);
+          setStudent({ ...initialStudent });
+        }}
         onConfirm={saveStudent}
-        confirmLabel={isSavingStudent ? "Cadastrando..." : "Cadastrar aluno"}
+        confirmLabel={
+          isSavingStudent
+            ? "Salvando..."
+            : editingStudentId
+              ? "Salvar alterações"
+              : "Cadastrar aluno"
+        }
       >
         <Tabs defaultValue="pessoal" className="py-2">
           <TabsList className="grid w-full grid-cols-4">
@@ -1078,36 +1503,105 @@ export default function JovemGuardaCidada() {
                   }
                 />
               </Field>
+              {editingStudentId && (
+                <div className="sm:col-span-2">
+                  <Field label="Situação do Aluno">
+                    <Choice
+                      value={student.situacao}
+                      onChange={(value) => setStudent({ ...student, situacao: value })}
+                      options={["ativo", "afastado", "desligado", "concluido"]}
+                    />
+                  </Field>
+                </div>
+              )}
               <div className="sm:col-span-2">
-                <Field label="Foto do aluno">
-                  <div className="flex items-center gap-4">
-                    {student.foto_url && (
-                      <img src={student.foto_url} alt="Preview" className="h-20 w-20 rounded-2xl object-cover" />
-                    )}
-                    <div className="flex-1 space-y-2">
-                      <Input
-                        type="file"
-                        accept="image/*"
-                        onChange={async (event) => {
-                          const file = event.target.files?.[0];
-                          if (!file) return;
-                          const ext = file.name.split('.').pop();
-                          const path = `temp/${Date.now()}.${ext}`;
-                          const { data: uploadData, error: uploadError } = await supabase.storage
-                            .from('jgc-fotos')
-                            .upload(path, file, { upsert: true });
-                          if (uploadError) {
-                            toast({ title: 'Erro ao enviar foto', description: uploadError.message, variant: 'destructive' });
-                            return;
-                          }
-                          const { data: { publicUrl } } = supabase.storage
-                            .from('jgc-fotos')
-                            .getPublicUrl(path);
-                          setStudent({ ...student, foto_url: publicUrl });
-                        }}
-                      />
+                <Field label="Foto do aluno (Estilo 3×4)">
+                  <div className="flex flex-col sm:flex-row items-start gap-4 rounded-2xl border border-slate-200 bg-slate-50/50 p-4">
+                    {/* Moldura da Foto 3x4 */}
+                    <div className="relative aspect-[3/4] w-28 shrink-0 overflow-hidden rounded-xl border-2 border-dashed border-slate-300 bg-white shadow-xs flex flex-col items-center justify-center text-center transition-all hover:border-teal-400">
+                      {student.foto_url ? (
+                        <>
+                          <img
+                            src={student.foto_url}
+                            alt="Foto 3x4 do aluno"
+                            className="h-full w-full object-cover object-top"
+                          />
+                          <span className="absolute bottom-1 right-1 rounded-md bg-slate-900/80 px-1.5 py-0.5 text-[9px] font-bold text-white uppercase tracking-wider">
+                            3×4
+                          </span>
+                        </>
+                      ) : (
+                        <div className="flex flex-col items-center justify-center p-2 text-slate-400">
+                          <Camera className="mb-1 h-6 w-6 text-slate-400" />
+                          <span className="text-[11px] font-semibold text-slate-600">Foto 3×4</span>
+                          <span className="text-[9px] text-slate-400">Nenhuma foto</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Controles de upload e link */}
+                    <div className="flex-1 space-y-3 w-full">
+                      <div>
+                        <Label className="text-xs text-slate-700 font-medium mb-1.5 block">
+                          Selecionar imagem do dispositivo
+                        </Label>
+                        <Input
+                          type="file"
+                          accept="image/*"
+                          className="cursor-pointer bg-white text-xs"
+                          onChange={async (event) => {
+                            const file = event.target.files?.[0];
+                            if (!file) return;
+
+                            const ext = file.name.split('.').pop() || 'jpg';
+                            const path = `alunos/${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${ext}`;
+                            const { data: uploadData, error: uploadError } = await supabase.storage
+                              .from('jgc-fotos')
+                              .upload(path, file, { upsert: true });
+
+                            if (!uploadError) {
+                              const { data: { publicUrl } } = supabase.storage
+                                .from('jgc-fotos')
+                                .getPublicUrl(path);
+                              setStudent({ ...student, foto_url: publicUrl });
+                            } else {
+                              const reader = new FileReader();
+                              reader.onload = (e) => {
+                                if (e.target?.result) {
+                                  setStudent({ ...student, foto_url: e.target.result as string });
+                                }
+                              };
+                              reader.readAsDataURL(file);
+                            }
+                          }}
+                        />
+                        <p className="mt-1 text-[11px] text-slate-500">
+                          Formatos aceitos: JPG, PNG ou WEBP. Ideal em proporção vertical 3×4.
+                        </p>
+                      </div>
+
+                      <div>
+                        <Label className="text-xs text-slate-700 font-medium mb-1 block">
+                          Ou digite o link (URL) da foto:
+                        </Label>
+                        <Input
+                          type="url"
+                          placeholder="https://exemplo.com/foto.jpg"
+                          value={student.foto_url.startsWith('data:') ? '' : student.foto_url}
+                          onChange={(e) => setStudent({ ...student, foto_url: e.target.value })}
+                          className="bg-white text-xs"
+                        />
+                      </div>
+
                       {student.foto_url && (
-                        <Button type="button" variant="ghost" size="sm" onClick={() => setStudent({ ...student, foto_url: '' })}>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-8 gap-1.5 text-xs text-rose-700 hover:text-rose-800 hover:bg-rose-50 border-rose-200"
+                          onClick={() => setStudent({ ...student, foto_url: '' })}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
                           Remover foto
                         </Button>
                       )}
