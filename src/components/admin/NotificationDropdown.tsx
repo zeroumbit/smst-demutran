@@ -75,7 +75,7 @@ export function NotificationDropdown({ userId, triggerClassName }: NotificationD
           onClick={() => setOpen(true)}
           className={
             triggerClassName ??
-            'relative flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-600 shadow-sm active:scale-95 transition-all'
+            'relative flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-600 shadow-sm active:scale-95 transition-all dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300'
           }
           aria-label="Notificações"
         >
@@ -89,8 +89,8 @@ export function NotificationDropdown({ userId, triggerClassName }: NotificationD
 
         <Drawer open={open} onOpenChange={setOpen}>
           <DrawerContent className="max-h-[85dvh] rounded-t-[28px] pb-[calc(1.2rem+var(--safe-area-bottom))]">
-            <DrawerHeader className="border-b border-slate-100 px-5 py-4 flex items-center justify-between">
-              <DrawerTitle className="text-base font-bold text-slate-900">Notificações</DrawerTitle>
+            <DrawerHeader className="border-b border-slate-100 px-5 py-4 flex items-center justify-between dark:border-slate-800">
+              <DrawerTitle className="text-base font-bold text-slate-900 dark:text-slate-100">Notificações</DrawerTitle>
               {unreadCount > 0 && (
                 <button
                   type="button"
@@ -106,12 +106,12 @@ export function NotificationDropdown({ userId, triggerClassName }: NotificationD
             <div className="overflow-y-auto px-3 py-3 max-h-[60dvh] space-y-1">
               {loading ? (
                 <div className="flex items-center justify-center py-10">
-                  <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+                  <Loader2 className="h-6 w-6 animate-spin text-slate-400 dark:text-slate-500" />
                 </div>
               ) : notifications.length === 0 ? (
                 <div className="flex flex-col items-center py-12 text-center">
-                  <Bell className="h-10 w-10 text-slate-200 mb-3" />
-                  <p className="text-sm font-medium text-slate-400">Nenhuma notificação</p>
+                  <Bell className="h-10 w-10 text-slate-200 mb-3 dark:text-slate-700" />
+                  <p className="text-sm font-medium text-slate-400 dark:text-slate-500">Nenhuma notificação</p>
                 </div>
               ) : (
                 notifications.map((notification) => {
@@ -123,7 +123,7 @@ export function NotificationDropdown({ userId, triggerClassName }: NotificationD
                       type="button"
                       onClick={() => handleNotificationClick(notification)}
                       className={`w-full flex items-start gap-3 px-3.5 py-3 rounded-2xl text-left transition-colors active:bg-slate-100 ${
-                        !notification.lida_em ? 'bg-brand-50/70' : 'hover:bg-slate-50'
+                        !notification.lida_em ? 'bg-brand-50/70 dark:bg-brand-500/10' : 'hover:bg-slate-50 dark:hover:bg-slate-800'
                       }`}
                     >
                       <div className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${colorClass}`}>
@@ -131,14 +131,14 @@ export function NotificationDropdown({ userId, triggerClassName }: NotificationD
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between gap-2">
-                          <p className={`text-sm ${!notification.lida_em ? 'font-bold text-slate-900' : 'text-slate-700'}`}>
+                          <p className={`text-sm ${!notification.lida_em ? 'font-bold text-slate-900 dark:text-slate-100' : 'text-slate-700 dark:text-slate-300'}`}>
                             {notification.titulo}
                           </p>
-                          <span className="shrink-0 text-[11px] text-slate-400 mt-0.5">
+                          <span className="shrink-0 text-[11px] text-slate-400 mt-0.5 dark:text-slate-500">
                             {timeAgo(notification.created_at)}
                           </span>
                         </div>
-                        <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">
+                        <p className="text-xs text-slate-500 mt-0.5 leading-relaxed dark:text-slate-400">
                           {notification.mensagem}
                         </p>
                       </div>
@@ -164,7 +164,7 @@ export function NotificationDropdown({ userId, triggerClassName }: NotificationD
         onClick={() => setOpen(true)}
         className={
           triggerClassName ??
-          'relative hidden h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-600 shadow-[0_8px_22px_-18px_rgba(15,23,42,0.28)] lg:flex hover:bg-slate-50 transition-colors'
+          'relative hidden h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-600 shadow-[0_8px_22px_-18px_rgba(15,23,42,0.28)] lg:flex hover:bg-slate-50 transition-colors dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
         }
         aria-label="Notificações"
       >
@@ -177,9 +177,9 @@ export function NotificationDropdown({ userId, triggerClassName }: NotificationD
       </button>
 
       <Sheet open={open} onOpenChange={setOpen}>
-        <SheetContent side="right" className="w-full sm:max-w-md p-0 flex flex-col h-full bg-white">
-          <SheetHeader className="border-b border-slate-100 px-5 py-4 flex flex-row items-center justify-between space-y-0">
-            <SheetTitle className="text-base font-bold text-slate-900">Notificações</SheetTitle>
+        <SheetContent side="right" className="w-full sm:max-w-md p-0 flex flex-col h-full bg-white dark:bg-[hsl(var(--card))]">
+          <SheetHeader className="border-b border-slate-100 px-5 py-4 flex flex-row items-center justify-between space-y-0 dark:border-slate-800">
+            <SheetTitle className="text-base font-bold text-slate-900 dark:text-slate-100">Notificações</SheetTitle>
             {unreadCount > 0 && (
               <button
                 type="button"
@@ -195,12 +195,12 @@ export function NotificationDropdown({ userId, triggerClassName }: NotificationD
           <div className="flex-1 overflow-y-auto px-3 py-3 space-y-1">
             {loading ? (
               <div className="flex items-center justify-center py-12">
-                <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+                <Loader2 className="h-6 w-6 animate-spin text-slate-400 dark:text-slate-500" />
               </div>
             ) : notifications.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16 text-center">
-                <Bell className="h-10 w-10 text-slate-200 mb-3" />
-                <p className="text-sm font-medium text-slate-400">Nenhuma notificação</p>
+                <Bell className="h-10 w-10 text-slate-200 mb-3 dark:text-slate-700" />
+                <p className="text-sm font-medium text-slate-400 dark:text-slate-500">Nenhuma notificação</p>
               </div>
             ) : (
               notifications.map((notification) => {
@@ -212,7 +212,7 @@ export function NotificationDropdown({ userId, triggerClassName }: NotificationD
                     type="button"
                     onClick={() => handleNotificationClick(notification)}
                     className={`w-full flex items-start gap-3 p-3.5 rounded-2xl text-left transition-colors ${
-                      !notification.lida_em ? 'bg-brand-50/70' : 'hover:bg-slate-50'
+                      !notification.lida_em ? 'bg-brand-50/70 dark:bg-brand-500/10' : 'hover:bg-slate-50 dark:hover:bg-slate-800'
                     }`}
                   >
                     <div className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${colorClass}`}>
@@ -220,14 +220,14 @@ export function NotificationDropdown({ userId, triggerClassName }: NotificationD
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-2">
-                        <p className={`text-sm ${!notification.lida_em ? 'font-bold text-slate-900' : 'text-slate-700'}`}>
+                        <p className={`text-sm ${!notification.lida_em ? 'font-bold text-slate-900 dark:text-slate-100' : 'text-slate-700 dark:text-slate-300'}`}>
                           {notification.titulo}
                         </p>
-                        <span className="shrink-0 text-[11px] text-slate-400 mt-0.5">
+                        <span className="shrink-0 text-[11px] text-slate-400 mt-0.5 dark:text-slate-500">
                           {timeAgo(notification.created_at)}
                         </span>
                       </div>
-                      <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">
+                      <p className="text-xs text-slate-500 mt-0.5 leading-relaxed dark:text-slate-400">
                         {notification.mensagem}
                       </p>
                     </div>

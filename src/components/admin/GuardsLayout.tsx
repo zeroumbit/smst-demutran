@@ -151,8 +151,8 @@ export const GuardsLayout = ({ children }: GuardsLayoutProps) => {
         onClick={() => setMenuModalOpen(false)}
         className={`flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium transition-all ${
           active
-            ? 'bg-brand-50 text-brand-700'
-            : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
+            ? 'bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-400'
+            : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100'
         }`}
       >
         <Icon className="h-5 w-5 shrink-0" />
@@ -162,25 +162,25 @@ export const GuardsLayout = ({ children }: GuardsLayoutProps) => {
   };
 
   return (
-    <div className="min-h-screen min-h-dvh bg-[#f3f6fb] text-slate-900">
+    <div className="min-h-screen min-h-dvh bg-[#f3f6fb] text-slate-900 dark:bg-[hsl(var(--background))] dark:text-slate-100">
       {/* ─── Desktop sidebar ─── */}
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-slate-200 bg-white/95 backdrop-blur-xl lg:flex">
-        <div className="flex items-center justify-between gap-2 border-b border-slate-200/80 px-4 py-4">
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-slate-200 bg-white/95 backdrop-blur-xl lg:flex dark:border-slate-800 dark:bg-[hsl(var(--card))]/95">
+        <div className="flex items-center justify-between gap-2 border-b border-slate-200/80 px-4 py-4 dark:border-slate-800">
           <div className="flex min-w-0 items-center gap-3">
             <GuardaLogo />
             <div className="min-w-0">
-              <span className="block truncate text-lg font-bold text-slate-900">
+              <span className="block truncate text-lg font-bold text-slate-900 dark:text-slate-100">
                 Guarda Municipal
               </span>
               {profile?.name && (
-                <span className="block truncate text-xs font-medium text-slate-400">{profile.name.split(' ')[0]}</span>
+                <span className="block truncate text-xs font-medium text-slate-400 dark:text-slate-500">{profile.name.split(' ')[0]}</span>
               )}
             </div>
           </div>
         </div>
 
         <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-5">
-          <span className="block px-4 pb-1 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+          <span className="block px-4 pb-1 text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
             Administrativos
           </span>
           {adminNavItems.map((item) => {
@@ -192,8 +192,8 @@ export const GuardsLayout = ({ children }: GuardsLayoutProps) => {
                 to={item.path}
                 className={`flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium transition-all ${
                   active
-                    ? 'bg-brand-50 text-brand-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.65)]'
-                    : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
+                    ? 'bg-brand-50 text-brand-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.65)] dark:bg-brand-500/10 dark:text-brand-400'
+                    : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100'
                 }`}
               >
                 <Icon className="h-5 w-5 shrink-0" />
@@ -201,7 +201,7 @@ export const GuardsLayout = ({ children }: GuardsLayoutProps) => {
               </Link>
             );
           })}
-          <span className="mt-4 block px-4 pb-1 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+          <span className="mt-4 block px-4 pb-1 text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
             Pessoal
           </span>
           {pessoalNavItems.map((item) => {
@@ -213,8 +213,8 @@ export const GuardsLayout = ({ children }: GuardsLayoutProps) => {
                 to={item.path}
                 className={`flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium transition-all ${
                   active
-                    ? 'bg-brand-50 text-brand-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.65)]'
-                    : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
+                    ? 'bg-brand-50 text-brand-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.65)] dark:bg-brand-500/10 dark:text-brand-400'
+                    : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100'
                 }`}
               >
                 <Icon className="h-5 w-5 shrink-0" />
@@ -222,15 +222,15 @@ export const GuardsLayout = ({ children }: GuardsLayoutProps) => {
               </Link>
             );
           })}
-          <span className="mt-4 block px-4 pb-1 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+          <span className="mt-4 block px-4 pb-1 text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
             Suporte
           </span>
           <Link
             to="/admin/perfil-guardas/guarda-municipal/suporte"
             className={`flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium transition-all ${
               isActive('/admin/perfil-guardas/guarda-municipal/suporte')
-                ? 'bg-brand-50 text-brand-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.65)]'
-                : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
+                ? 'bg-brand-50 text-brand-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.65)] dark:bg-brand-500/10 dark:text-brand-400'
+                : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100'
             }`}
           >
             <LifeBuoy className="h-5 w-5 shrink-0" />
@@ -238,10 +238,10 @@ export const GuardsLayout = ({ children }: GuardsLayoutProps) => {
           </Link>
         </nav>
 
-        <div className="border-t border-slate-200/80 p-3">
+        <div className="border-t border-slate-200/80 p-3 dark:border-slate-800">
           <Button
             variant="ghost"
-            className="w-full justify-start gap-3 rounded-2xl text-slate-500 hover:bg-red-50 hover:text-red-600"
+            className="w-full justify-start gap-3 rounded-2xl text-slate-500 hover:bg-red-50 hover:text-red-600 dark:text-slate-400 dark:hover:bg-red-500/10 dark:hover:text-red-400"
             onClick={handleLogout}
           >
             <LogOut className="h-5 w-5" />
@@ -263,7 +263,7 @@ export const GuardsLayout = ({ children }: GuardsLayoutProps) => {
       {/* ─── Mobile bottom tab bar (Trava fixa de 5 itens) ─── */}
       {isHomePage && (
       <nav className="fixed bottom-0 left-0 right-0 z-50 pl-[calc(0.75rem+var(--safe-area-left))] pr-[calc(0.75rem+var(--safe-area-right))] pb-[calc(0.7rem+var(--safe-area-bottom))] pt-2 lg:hidden pointer-events-none">
-        <div className="mx-auto grid max-w-5xl grid-cols-5 gap-2 rounded-[24px] bg-white/90 p-1.5 shadow-[0_14px_34px_-24px_rgba(15,23,42,0.3)] ring-1 ring-slate-200/70 backdrop-blur-xl pointer-events-auto">
+        <div className="mx-auto grid max-w-5xl grid-cols-5 gap-2 rounded-[24px] bg-white/90 p-1.5 shadow-[0_14px_34px_-24px_rgba(15,23,42,0.3)] ring-1 ring-slate-200/70 backdrop-blur-xl pointer-events-auto dark:bg-[hsl(var(--card))]/90 dark:ring-slate-700/70">
           {mobileBottomNavItems.map((item) => {
             const Icon = item.icon;
             const active = isActive(item.path);
@@ -273,19 +273,19 @@ export const GuardsLayout = ({ children }: GuardsLayoutProps) => {
                 key={item.path}
                 to={item.path}
                 className={`flex min-w-0 flex-col items-center justify-center gap-1 rounded-[18px] px-1 py-2.5 transition-all active:scale-[0.98] ${
-                  active ? 'bg-brand-50/90 shadow-[inset_0_1px_0_rgba(255,255,255,0.75)]' : ''
+                  active ? 'bg-brand-50/90 shadow-[inset_0_1px_0_rgba(255,255,255,0.75)] dark:bg-brand-500/10' : ''
                 }`}
                 aria-current={active ? 'page' : undefined}
               >
                 <div className={`flex items-center justify-center rounded-xl p-1.5 transition-colors ${
-                  active ? 'bg-white shadow-[0_8px_18px_-14px_rgba(37,99,235,0.55)]' : ''
+                  active ? 'bg-white shadow-[0_8px_18px_-14px_rgba(37,99,235,0.55)] dark:bg-white/10' : ''
                 }`}>
                   <Icon className={`h-5 w-5 ${
-                    active ? 'text-brand-600' : 'text-slate-400'
+                    active ? 'text-brand-600' : 'text-slate-400 dark:text-slate-500'
                   }`} />
                 </div>
                 <span className={`max-w-full truncate text-[10px] font-bold ${
-                  active ? 'text-brand-600' : 'text-slate-400'
+                  active ? 'text-brand-600' : 'text-slate-400 dark:text-slate-500'
                 }`}>
                   {item.label}
                 </span>
@@ -300,13 +300,13 @@ export const GuardsLayout = ({ children }: GuardsLayoutProps) => {
             className="flex min-w-0 flex-col items-center justify-center gap-1 rounded-[18px] px-1 py-2.5 transition-all active:scale-[0.98]"
           >
             <div className="flex items-center justify-center rounded-xl p-1.5 transition-colors">
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5 text-slate-400">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5 text-slate-400 dark:text-slate-500">
                 <path d="M4 5h16"/>
                 <path d="M4 12h16"/>
                 <path d="M4 19h16"/>
               </svg>
             </div>
-            <span className="max-w-full truncate text-[10px] font-bold text-slate-400">
+            <span className="max-w-full truncate text-[10px] font-bold text-slate-400 dark:text-slate-500">
               Menu
             </span>
           </button>
@@ -316,30 +316,30 @@ export const GuardsLayout = ({ children }: GuardsLayoutProps) => {
 
       {/* ─── Mobile menu modal ─── */}
       {menuModalOpen && (
-        <div className="fixed inset-0 z-[60] flex min-h-0 flex-col bg-white lg:hidden animate-in slide-in-from-bottom">
+        <div className="fixed inset-0 z-[60] flex min-h-0 flex-col bg-white lg:hidden animate-in slide-in-from-bottom dark:bg-[hsl(var(--card))]">
           <div className="flex items-center justify-between px-5 pb-4 pt-[calc(max(var(--safe-area-top),1rem)+0.5rem)]">
             <div className="flex items-center gap-3">
               <GuardaLogo />
-              <span className="text-lg font-bold text-slate-900">Guarda Municipal</span>
+              <span className="text-lg font-bold text-slate-900 dark:text-slate-100">Guarda Municipal</span>
             </div>
             <button
               onClick={() => setMenuModalOpen(false)}
-              className="rounded-full p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+              className="rounded-full p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:text-slate-500 dark:hover:bg-slate-800 dark:hover:text-slate-300"
             >
               <X className="h-5 w-5" />
             </button>
           </div>
 
           <nav className="flex-1 overflow-y-auto px-4 py-4 space-y-1">
-            <span className="block px-4 pb-1 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+            <span className="block px-4 pb-1 text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
               Administrativos
             </span>
             {adminNavItems.map((item) => renderMobileModalLink(item))}
-            <span className="mt-4 block px-4 pb-1 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+            <span className="mt-4 block px-4 pb-1 text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
               Pessoal
             </span>
             {pessoalNavItems.map((item) => renderMobileModalLink(item))}
-            <span className="mt-4 block px-4 pb-1 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+            <span className="mt-4 block px-4 pb-1 text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
               Suporte
             </span>
             <Link
@@ -347,8 +347,8 @@ export const GuardsLayout = ({ children }: GuardsLayoutProps) => {
               onClick={() => setMenuModalOpen(false)}
               className={`flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium transition-all ${
                 isActive('/admin/perfil-guardas/guarda-municipal/suporte')
-                  ? 'bg-brand-50 text-brand-700'
-                  : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
+                  ? 'bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-400'
+                  : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100'
               }`}
             >
               <LifeBuoy className="h-5 w-5 shrink-0" />
@@ -356,10 +356,10 @@ export const GuardsLayout = ({ children }: GuardsLayoutProps) => {
             </Link>
           </nav>
 
-          <div className="border-t border-slate-200 p-4 pb-[calc(1rem+var(--safe-area-bottom))] bg-slate-50">
+          <div className="border-t border-slate-200 p-4 pb-[calc(1rem+var(--safe-area-bottom))] bg-slate-50 dark:border-slate-800 dark:bg-slate-800">
             <button
               onClick={handleLogout}
-              className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium text-slate-500 hover:bg-red-50 hover:text-red-600 transition-colors"
+              className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium text-slate-500 hover:bg-red-50 hover:text-red-600 transition-colors dark:text-slate-400 dark:hover:bg-red-500/10 dark:hover:text-red-400"
             >
               <LogOut className="h-5 w-5" />
               <span>Sair</span>

@@ -1,7 +1,13 @@
-import { ArrowLeft, Mail, ShieldCheck, UserCircle2 } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { ArrowLeft, Mail, Pencil, ShieldCheck, UserCircle2 } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { AdminLayout } from '@/components/admin/AdminLayout';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/lib/supabase';
+import { toast } from '@/hooks/use-toast';
 
 const papelLabels: Record<string, string> = {
   super_admin: 'Super Admin',
@@ -18,7 +24,7 @@ const jgcPerfilLabels: Record<string, string> = {
 };
 
 const Profile = () => {
-  const { profile } = useAuth();
+  const { profile, refreshProfile } = useAuth();
   const navigate = useNavigate();
   const { setorSlug } = useParams<{ setorSlug?: string }>();
   const isJovemGuarda = setorSlug === 'jovem-guarda';
@@ -27,6 +33,46 @@ const Profile = () => {
     : profile?.papel
       ? (papelLabels[profile.papel] || profile.papel)
       : 'Sem perfil';
+
+  const [nome, setNome] = useState('');
+  const [sobrenome, setSobrenome] = useState('');
+  const [salvando, setSalvando] = useState(false);
+
+  useEffect(() => {
+    if (!profile) return;
+    setNome(profile.first_name || profile.name.split(' ')[0] || '');
+    setSobrenome(profile.last_name || profile.name.split(' ').slice(1).join(' ') || '');
+  }, [profile?.user_id, profile?.name, profile?.first_name, profile?.last_name]);
+
+  const handleSalvarNome = async () => {
+    if (!nome.trim()) {
+      toast({ title: 'Nome obrigatório', description: 'Informe seu nome para atualizar o perfil.', variant: 'destructive' });
+      return;
+    }
+    setSalvando(true);
+    try {
+      const { data, error } = await supabase.rpc('atualizar_nome_perfil', {
+        p_nome: nome.trim(),
+        p_sobrenome: sobrenome.trim(),
+      });
+      if (error) throw error;
+      const res = data as any;
+      if (res && !res.sucesso) {
+        throw new Error(res.mensagem || 'Ocorreu um erro desconhecido.');
+      }
+      await refreshProfile();
+      toast({ title: 'Perfil atualizado!', description: 'Seu nome foi alterado com sucesso.' });
+    } catch (err: any) {
+      console.error(err);
+      toast({
+        title: 'Erro ao atualizar perfil',
+        description: err.message || 'Houve uma falha de conexão.',
+        variant: 'destructive',
+      });
+    } finally {
+      setSalvando(false);
+    }
+  };
 
   return (
     <AdminLayout>
@@ -117,6 +163,49 @@ const Profile = () => {
           <div className="mt-4 text-[14px] leading-6 text-slate-600">
             O acesso administrativo deste perfil esta vinculado ao e-mail{' '}
             <strong className="text-slate-900">{profile?.email || 'smstcaninde@gmail.com'}</strong>.
+          </div>
+        </div>
+
+        <div className="rounded-[34px] border border-slate-200/80 bg-white px-6 py-5 shadow-[0_4px_20px_-8px_rgba(15,23,42,0.08)]">
+          <div className="flex items-center gap-3">
+            <div className="rounded-[14px] bg-slate-900 p-2.5 text-white">
+              <Pencil className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-[13px] font-bold text-slate-900">Dados pessoais</p>
+              <p className="text-[12px] text-slate-500">Altere o nome exibido no seu perfil</p>
+            </div>
+          </div>
+          <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div>
+              <Label htmlFor="perfil-nome" className="text-[12px] font-semibold text-slate-700">Nome *</Label>
+              <Input
+                id="perfil-nome"
+                value={nome}
+                onChange={(e) => setNome(e.target.value)}
+                placeholder="Seu nome"
+                className="mt-1.5 rounded-xl"
+              />
+            </div>
+            <div>
+              <Label htmlFor="perfil-sobrenome" className="text-[12px] font-semibold text-slate-700">Sobrenome</Label>
+              <Input
+                id="perfil-sobrenome"
+                value={sobrenome}
+                onChange={(e) => setSobrenome(e.target.value)}
+                placeholder="Seu sobrenome"
+                className="mt-1.5 rounded-xl"
+              />
+            </div>
+          </div>
+          <div className="mt-4 flex justify-end">
+            <Button
+              onClick={handleSalvarNome}
+              disabled={salvando || !nome.trim()}
+              className="gap-2 rounded-xl bg-slate-900 font-bold text-white hover:bg-slate-800"
+            >
+              {salvando ? 'Salvando...' : 'Salvar nome'}
+            </Button>
           </div>
         </div>
       </div>

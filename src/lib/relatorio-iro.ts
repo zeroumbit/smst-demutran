@@ -1,6 +1,14 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
+import {
+  carregarLogosSetor,
+  desenharCabecalhoInstitucional,
+  desenharMarcaDAgua,
+  estiloTabelaInstitucional,
+  SETOR_LINHA,
+  type LogoPdf,
+} from '@/utils/pdfInstitucional';
 
 interface LinhaRelatorio {
   guarda: string;
@@ -41,53 +49,45 @@ interface OperacaoInfo {
 
 function addCabecalhoRodape(
   doc: jsPDF,
+  logos: { municipio: LogoPdf; setor: LogoPdf },
   titulo: string,
   subtitulo: string,
   detalhes: string[],
-  startY: number,
 ): number {
   const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
   const marginLeft = 14;
   const marginRight = pageWidth - 14;
 
-  doc.setFontSize(9);
-  doc.setTextColor(15, 23, 42);
-  doc.text('SECRETARIA MUNICIPAL DE SEGURANÇA E TRANSPORTE — SMST', pageWidth / 2, 14, { align: 'center' });
-  doc.setFontSize(11);
-  doc.text('GUARDA MUNICIPAL', pageWidth / 2, 21, { align: 'center' });
+  desenharMarcaDAgua(doc, logos.municipio);
 
-  doc.setDrawColor(15, 23, 42);
-  doc.setLineWidth(0.6);
-  doc.line(marginLeft, 25, marginRight, 25);
-
-  doc.setFontSize(13);
-  doc.text(titulo, pageWidth / 2, 33, { align: 'center' });
-  doc.setFontSize(10);
-  doc.text(subtitulo, pageWidth / 2, 40, { align: 'center' });
-
-  doc.setFontSize(8);
-  doc.setTextColor(100, 100, 100);
-  doc.text(detalhes.join('  |  '), pageWidth / 2, 47, { align: 'center' });
-
-  doc.setDrawColor(200, 200, 200);
-  doc.setLineWidth(0.3);
-  doc.line(marginLeft, 51, marginRight, 51);
+  const startY = desenharCabecalhoInstitucional(doc, logos, titulo, {
+    setorLinha: SETOR_LINHA['guarda-municipal'],
+    tituloSubtitulo: subtitulo,
+    detalhes,
+  });
 
   const dataHoraGeracao = new Date().toLocaleString('pt-BR');
-  const finalY = (doc as any).lastAutoTable?.finalY || startY;
-  const bottomY = Math.max(finalY + 10, 270);
+  const footerY = pageHeight - 16;
+  doc.setDrawColor(203, 213, 225);
+  doc.setLineWidth(0.5);
+  doc.line(marginLeft, footerY - 5, marginRight, footerY - 5);
 
-  doc.setFontSize(7);
-  doc.setTextColor(160, 160, 160);
-  doc.text(`SMST — Guarda Municipal  |  Gerado em: ${dataHoraGeracao}`, pageWidth / 2, bottomY, { align: 'center' });
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(100, 116, 139);
+  doc.text('Secretaria Municipal de Segurança Pública e Trânsito — SMST | Guarda Municipal de Canindé', pageWidth / 2, footerY, { align: 'center' });
+  doc.text(`Documento emitido eletronicamente em ${dataHoraGeracao}`, pageWidth / 2, footerY + 4, { align: 'center' });
 
-  return 55;
+  return startY;
 }
 
 function addCabecalhoXlsx(titulo: string, subtitulo: string, detalhes: string[]): string[][] {
   const headerRows: string[][] = [
-    ['SECRETARIA MUNICIPAL DE SEGURANÇA E TRANSPORTE — SMST'],
-    ['GUARDA MUNICIPAL'],
+    ['ESTADO DO CEARÁ'],
+    ['GOVERNO MUNICIPAL DE CANINDÉ'],
+    ['SECRETARIA MUNICIPAL DE SEGURANÇA PÚBLICA E TRÂNSITO — SMST'],
+    ['GUARDA CIVIL MUNICIPAL'],
     [],
     [titulo],
     [subtitulo],
@@ -141,21 +141,27 @@ function salvarOuImprimirXlsx(
           <title>${esc(tituloImpressao)}</title>
           <style>
             body { font-family: Arial, sans-serif; color: #0f172a; margin: 0; padding: 20px; }
-            .cabecalho { border-bottom: 2px solid #0f172a; padding-bottom: 10px; margin-bottom: 16px; }
-            .cabecalho h1 { font-size: 15px; margin: 0; letter-spacing: 0.08em; }
-            .cabecalho h2 { font-size: 12px; margin: 0; color: #475569; }
-            h3 { margin: 0 0 12px; font-size: 16px; }
+            .doc-header { text-align: center; padding: 8px 0 0; }
+            .l1, .l2, .l3 { margin: 2px 0; color: #0f172a; }
+            .l1 { font-weight: 800; font-size: 13px; letter-spacing: 0.08em; }
+            .l2 { font-weight: 800; font-size: 13px; }
+            .l3 { font-size: 11px; font-weight: 600; }
+            .l-setor { color: #1e3a8a; font-weight: 700; font-size: 12px; margin-top: 4px; }
+            .sep { border: 0; border-top: 2px solid #1e3a8a; margin: 8px 0 14px; }
+            h3 { margin: 0 0 12px; font-size: 16px; text-align: center; }
             table { width: 100%; border-collapse: collapse; font-size: 11px; }
-            th, td { border: 1px solid #cbd5e1; padding: 6px; text-align: left; }
-            th { background: #e2e8f0; }
-            tr:nth-child(even) td { background: #f8fafc; }
+            th, td { border: 1px solid #cbd5e1; padding: 6px; text-align: left; background: transparent; }
+            tr:nth-child(even) td { background: transparent; }
           </style>
         </head>
         <body>
-          <div class="cabecalho">
-            <h1>SECRETARIA MUNICIPAL DE SEGURANÇA E TRANSPORTE — SMST</h1>
-            <h2>GUARDA MUNICIPAL</h2>
+          <div class="doc-header">
+            <p class="l1">ESTADO DO CEARÁ</p>
+            <p class="l2">GOVERNO MUNICIPAL DE CANINDÉ</p>
+            <p class="l3">SECRETARIA MUNICIPAL DE SEGURANÇA PÚBLICA E TRÂNSITO — SMST</p>
+            <p class="l-setor">Guarda Civil Municipal</p>
           </div>
+          <hr class="sep" />
           <h3>${esc(tituloImpressao)}</h3>
           <table><tbody>${rows}</tbody></table>
         </body>
@@ -186,7 +192,7 @@ function salvarOuImprimirXlsx(
   XLSX.writeFile(wb, nomeArquivo);
 }
 
-export function gerarRelatorioOperacao(
+export async function gerarRelatorioOperacao(
   operacaoNome: string,
   linhas: LinhaRelatorio[],
   formato: 'pdf' | 'xlsx',
@@ -200,16 +206,17 @@ export function gerarRelatorioOperacao(
   if (formato === 'pdf') {
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
+    const logos = await carregarLogosSetor('guarda-municipal');
 
     const detalhes = [`Gerado em: ${dataHoraGeracao}`];
     if (filtroLabel) detalhes.push(`Filtro: ${filtroLabel}`);
 
-    addCabecalhoRodape(
+    const startY = addCabecalhoRodape(
       doc,
+      logos,
       'RELATÓRIO DE HORAS IRO',
       `Operação: ${operacaoNome}`,
       detalhes,
-      55,
     );
 
     const cabecalho = [['Guarda', 'Horas IRO', 'Data']];
@@ -225,11 +232,8 @@ export function gerarRelatorioOperacao(
     autoTable(doc, {
       head: cabecalho,
       body: dados,
-      startY: 55,
-      theme: 'striped',
-      headStyles: { fillColor: [15, 23, 42] },
-      footStyles: { fillColor: [241, 245, 249] },
-      styles: { fontSize: 9 },
+      startY,
+      ...estiloTabelaInstitucional({ fontSize: 9 }),
       didDrawPage: (data) => {
         const pageCount = doc.getNumberOfPages();
         doc.setFontSize(7);
@@ -272,7 +276,7 @@ export function gerarRelatorioOperacao(
   );
 }
 
-export function gerarRelatorioMensal(
+export async function gerarRelatorioMensal(
   mesAnoTitulo: string,
   linhas: LinhaRelatorio[],
   formato: 'pdf' | 'xlsx',
@@ -286,16 +290,17 @@ export function gerarRelatorioMensal(
   if (formato === 'pdf') {
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
+    const logos = await carregarLogosSetor('guarda-municipal');
 
     const detalhes = [`Gerado em: ${dataHoraGeracao}`];
     if (filtroLabel) detalhes.push(`Filtro: ${filtroLabel}`);
 
-    addCabecalhoRodape(
+    const startY = addCabecalhoRodape(
       doc,
+      logos,
       'RELATÓRIO DE HORAS IRO — MENSAL',
       `Referência: ${mesAnoTitulo}`,
       detalhes,
-      55,
     );
 
     const cabecalho = [['Guarda', 'Horas IRO', 'Data']];
@@ -311,11 +316,8 @@ export function gerarRelatorioMensal(
     autoTable(doc, {
       head: cabecalho,
       body: dados,
-      startY: 55,
-      theme: 'striped',
-      headStyles: { fillColor: [15, 23, 42] },
-      footStyles: { fillColor: [241, 245, 249] },
-      styles: { fontSize: 9 },
+      startY,
+      ...estiloTabelaInstitucional({ fontSize: 9 }),
       didDrawPage: (data) => {
         const pageCount = doc.getNumberOfPages();
         doc.setFontSize(7);
@@ -358,7 +360,7 @@ export function gerarRelatorioMensal(
   );
 }
 
-export function gerarRelatorioPorDia(
+export async function gerarRelatorioPorDia(
   operacao: OperacaoInfo,
   data: string,
   candidatos: LinhaCandidaturaDetalhada[],
@@ -376,28 +378,29 @@ export function gerarRelatorioPorDia(
   if (formato === 'pdf') {
     const doc = new jsPDF('landscape');
     const pageWidth = doc.internal.pageSize.getWidth();
+    const logos = await carregarLogosSetor('guarda-municipal');
 
     const detalhes = [`Gerado em: ${dataHoraGeracao}`];
     if (filtroLabel) detalhes.push(`Filtro: ${filtroLabel}`);
 
-    addCabecalhoRodape(
+    let startY = addCabecalhoRodape(
       doc,
+      logos,
       'RELATÓRIO DE HORAS IRO — POR DIA',
       `${operacao.nome} — ${dataBR}`,
       detalhes,
-      55,
     );
 
     const infoLines = [
       `Horário: ${operacao.horario_previsto.slice(0, 5)}  |  Horas/dia: ${operacao.horas_por_dia}h  |  Vagas/dia: ${operacao.vagas_por_dia}`,
       `Candidatos no dia: ${totalCandidatos}`,
     ];
-    let y = 58;
+    startY += 2;
     doc.setFontSize(9);
     doc.setTextColor(80, 80, 80);
     for (const line of infoLines) {
-      doc.text(line, 14, y);
-      y += 5;
+      doc.text(line, 14, startY);
+      startY += 5;
     }
 
     const cabecalho = [['Nome', 'Matrícula', 'Graduação', 'Horário', 'Horas', 'Valor (R$)', 'Status']];
@@ -417,11 +420,8 @@ export function gerarRelatorioPorDia(
     autoTable(doc, {
       head: cabecalho,
       body: dados,
-      startY: y + 2,
-      theme: 'striped',
-      headStyles: { fillColor: [15, 23, 42], fontSize: 8 },
-      footStyles: { fillColor: [241, 245, 249], fontSize: 8 },
-      styles: { fontSize: 8 },
+      startY: startY + 2,
+      ...estiloTabelaInstitucional({ fontSize: 8 }),
       columnStyles: {
         0: { cellWidth: 50 },
         1: { cellWidth: 22 },
@@ -475,7 +475,7 @@ export function gerarRelatorioPorDia(
   );
 }
 
-export function gerarRelatorioDetalhadoOperacao(
+export async function gerarRelatorioDetalhadoOperacao(
   operacao: OperacaoInfo,
   candidatos: LinhaCandidaturaDetalhada[],
   formato: 'pdf' | 'xlsx',
@@ -494,16 +494,17 @@ export function gerarRelatorioDetalhadoOperacao(
   if (formato === 'pdf') {
     const doc = new jsPDF('landscape');
     const pageWidth = doc.internal.pageSize.getWidth();
+    const logos = await carregarLogosSetor('guarda-municipal');
 
     const detalhes = [`Gerado em: ${dataHoraGeracao}`];
     if (filtroLabel) detalhes.push(`Filtro: ${filtroLabel}`);
 
-    addCabecalhoRodape(
+    let startY = addCabecalhoRodape(
       doc,
+      logos,
       'RELATÓRIO DETALHADO DE CANDIDATURAS',
       `Operação: ${operacao.nome}`,
       detalhes,
-      55,
     );
 
     const infoLines = [
@@ -512,12 +513,12 @@ export function gerarRelatorioDetalhadoOperacao(
       `Capacidade total: ${capacidadeTotal} vagas  |  Candidatos: ${totalCandidatos}  |  Confirmados/Realizados: ${confirmados}`,
     ];
     if (operacao.descricao) infoLines.push(`Descrição: ${operacao.descricao}`);
-    let y = 58;
+    startY += 2;
     doc.setFontSize(9);
     doc.setTextColor(80, 80, 80);
     for (const line of infoLines) {
-      doc.text(line, 14, y);
-      y += 5;
+      doc.text(line, 14, startY);
+      startY += 5;
     }
 
     const cabecalho = [['Nome', 'Matrícula', 'Graduação', 'Data', 'Horário', 'Horas', 'Valor (R$)', 'Status']];
@@ -538,11 +539,8 @@ export function gerarRelatorioDetalhadoOperacao(
     autoTable(doc, {
       head: cabecalho,
       body: dados,
-      startY: y + 2,
-      theme: 'striped',
-      headStyles: { fillColor: [15, 23, 42], fontSize: 8 },
-      footStyles: { fillColor: [241, 245, 249], fontSize: 8 },
-      styles: { fontSize: 8 },
+      startY: startY + 2,
+      ...estiloTabelaInstitucional({ fontSize: 8 }),
       columnStyles: {
         0: { cellWidth: 50 },
         1: { cellWidth: 22 },
@@ -603,7 +601,7 @@ export function gerarRelatorioDetalhadoOperacao(
   );
 }
 
-export function gerarRelatorioPorGuarda(
+export async function gerarRelatorioPorGuarda(
   guarda: InfoGuarda,
   candidatos: LinhaRelatorioGuarda[],
   formato: 'pdf' | 'xlsx',
@@ -620,28 +618,29 @@ export function gerarRelatorioPorGuarda(
   if (formato === 'pdf') {
     const doc = new jsPDF('landscape');
     const pageWidth = doc.internal.pageSize.getWidth();
+    const logos = await carregarLogosSetor('guarda-municipal');
 
     const detalhes = [`Gerado em: ${dataHoraGeracao}`];
     if (filtroLabel) detalhes.push(`Filtro: ${filtroLabel}`);
 
-    addCabecalhoRodape(
+    let startY = addCabecalhoRodape(
       doc,
+      logos,
       'RELATÓRIO DE HORAS IRO — POR GUARDA',
       `Guarda: ${guarda.nome}`,
       detalhes,
-      55,
     );
 
     const infoLines = [
       `Matrícula: ${guarda.matricula || '—'}  |  Graduação: ${guarda.graduacao || '—'}`,
       `Candidaturas: ${totalCandidatos}  |  Confirmadas/Realizadas: ${confirmados}  |  Total de horas: ${totalHoras.toFixed(1).replace('.', ',')}h`,
     ];
-    let y = 58;
+    startY += 2;
     doc.setFontSize(9);
     doc.setTextColor(80, 80, 80);
     for (const line of infoLines) {
-      doc.text(line, 14, y);
-      y += 5;
+      doc.text(line, 14, startY);
+      startY += 5;
     }
 
     const cabecalho = [['Operação', 'Data', 'Horário', 'Horas', 'Valor (R$)', 'Status']];
@@ -660,11 +659,8 @@ export function gerarRelatorioPorGuarda(
     autoTable(doc, {
       head: cabecalho,
       body: dados,
-      startY: y + 2,
-      theme: 'striped',
-      headStyles: { fillColor: [15, 23, 42], fontSize: 8 },
-      footStyles: { fillColor: [241, 245, 249], fontSize: 8 },
-      styles: { fontSize: 8 },
+      startY: startY + 2,
+      ...estiloTabelaInstitucional({ fontSize: 8 }),
       columnStyles: {
         0: { cellWidth: 70 },
         1: { cellWidth: 28 },

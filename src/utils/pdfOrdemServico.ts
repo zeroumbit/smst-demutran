@@ -1,118 +1,34 @@
 import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
+import autoTable, { type RowInput } from 'jspdf-autotable';
 import type { OrdemServico } from '@/types/ordem-servico.types';
-import municipioLogo from '@/logo/municipio.png';
-import guardaLogo from '@/logo/guarda.png';
-import demutranLogo from '@/logo/demutran.png';
-
-function loadImage(src: string): Promise<HTMLImageElement> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.onload = () => resolve(img);
-    img.onerror = reject;
-    img.src = src;
-  });
-}
-
-interface LogoImage {
-  img: HTMLImageElement | null;
-  aspect: number;
-}
-
-async function loadLogo(src: string): Promise<LogoImage> {
-  try {
-    const img = await loadImage(src);
-    const aspect = img.naturalWidth / img.naturalHeight;
-    return { img, aspect: aspect || 1 };
-  } catch {
-    return { img: null, aspect: 1 };
-  }
-}
+import {
+  carregarLogosSetor,
+  desenharCabecalhoInstitucional,
+  desenharMarcaDAgua,
+  estiloTabelaInstitucional,
+  SETOR_LINHA,
+  type SetorDocumento,
+} from '@/utils/pdfInstitucional';
 
 export async function montarPdfOrdemServico(ordem: OrdemServico): Promise<{ doc: jsPDF; nomeArquivo: string }> {
-  const [logoMunicipio, logoGuarda, logoDemutran] = await Promise.all([
-    loadLogo(municipioLogo),
-    loadLogo(guardaLogo),
-    loadLogo(demutranLogo),
-  ]);
+  const isDemutran = ordem.setor_slug === 'demutran';
+  const setor: SetorDocumento = isDemutran ? 'demutran' : 'guarda-municipal';
+  const logos = await carregarLogosSetor(setor);
 
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
   const marginLeft = 14;
   const marginRight = 14;
-  const isDemutran = ordem.setor_slug === 'demutran';
 
-  // --- Marca d'água: logo do Município/Secretaria em alta resolução, ao fundo ---
-  if (logoMunicipio.img) {
-    const wmHeight = 130;
-    const wmWidth = wmHeight * logoMunicipio.aspect;
-    doc.saveGraphicsState();
-    const gState = doc.GState({ opacity: 0.08 });
-    doc.setGState(gState);
-    doc.addImage(
-      logoMunicipio.img,
-      'PNG',
-      (pageWidth - wmWidth) / 2,
-      (pageHeight - wmHeight) / 2,
-      wmWidth,
-      wmHeight,
-    );
-    doc.restoreGraphicsState();
-  }
+  // --- Marca d'água: logo do Município em alta resolução, ao fundo ---
+  desenharMarcaDAgua(doc, logos.municipio);
 
-  // --- TOPO: Logos (Secretaria, Guarda e Demutran) lado a lado, proporção preservada ---
-  const logoHeight = 22;
-  const gap = 6;
-
-  const logos = [logoMunicipio, logoGuarda, logoDemutran].filter((l) => l.img);
-  const logoWidths = logos.map((l) => logoHeight * l.aspect);
-  const totalLogosWidth = logoWidths.reduce((acc, w) => acc + w, 0) + gap * (logos.length - 1);
-  let logosStartX = (pageWidth - totalLogosWidth) / 2;
-
-  logos.forEach((l, idx) => {
-    doc.addImage(l.img!, 'PNG', logosStartX, 8, logoWidths[idx], logoHeight);
-    logosStartX += logoWidths[idx] + gap;
+  // --- Cabeçalho institucional padrão ---
+  const numFmt = ordem.numero_formatado || `Rascunho ${ordem.id.slice(0, 8)}`;
+  let currentY = desenharCabecalhoInstitucional(doc, logos, `ORDEM DE SERVIÇO — ${numFmt}`, {
+    setorLinha: SETOR_LINHA[setor],
   });
-
-  let currentY = 8 + logoHeight + 6;
-
-  // --- Texto institucional centralizado ---
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(9);
-  doc.setTextColor(15, 23, 42);
-  doc.text('ESTADO DO CEARÁ', pageWidth / 2, currentY, { align: 'center' });
-  currentY += 4.5;
-
-  doc.setFontSize(9);
-  doc.text('GOVERNO MUNICIPAL DE CANINDÉ', pageWidth / 2, currentY, { align: 'center' });
-  currentY += 4.5;
-
-  doc.setFontSize(8.5);
-  doc.text('SECRETARIA MUNICIPAL DE SEGURANÇA E TRÂNSITO — SMST', pageWidth / 2, currentY, { align: 'center' });
-  currentY += 6;
-
-  doc.setFontSize(9);
-  doc.setTextColor(30, 58, 138);
-  if (isDemutran) {
-    doc.text('Departamento Municipal de Trânsito — Demutran', pageWidth / 2, currentY, { align: 'center' });
-    currentY += 5;
-  } else {
-    doc.text('Guarda Civil Municipal', pageWidth / 2, currentY, { align: 'center' });
-    currentY += 4;
-
-    doc.setFontSize(8);
-    doc.setTextColor(71, 85, 105);
-    doc.text('Departamento Municipal de Trânsito', pageWidth / 2, currentY, { align: 'center' });
-    currentY += 5;
-  }
-
-  // Linha separadora
-  doc.setDrawColor(30, 58, 138);
-  doc.setLineWidth(0.6);
-  doc.line(marginLeft, currentY, pageWidth - marginRight, currentY);
-  currentY += 5;
 
   // Marca D'água textual se CANCELADA ou SUBSTITUÍDA
   if (ordem.status === 'CANCELADA') {
@@ -129,16 +45,8 @@ export async function montarPdfOrdemServico(ordem: OrdemServico): Promise<{ doc:
     doc.restoreGraphicsState();
   }
 
-  // Title Box
-  const numFmt = ordem.numero_formatado || `Rascunho ${ordem.id.slice(0, 8)}`;
-  doc.setFontSize(13);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(15, 23, 42);
-  doc.text(`ORDEM DE SERVIÇO — ${numFmt}`, pageWidth / 2, currentY, { align: 'center' });
-  currentY += 4;
-
   // Tabela 1: Identificação da Demanda
-  const dadosIdentificacao = [
+  const dadosIdentificacao: RowInput[] = [
     [
       { content: 'NÚMERO:', styles: { fontStyle: 'bold' } },
       numFmt,
@@ -160,10 +68,8 @@ export async function montarPdfOrdemServico(ordem: OrdemServico): Promise<{ doc:
   autoTable(doc, {
     startY: currentY,
     margin: { left: marginLeft, right: marginRight },
-    theme: 'grid',
-    headStyles: { fillColor: false, textColor: [30, 58, 138], fontStyle: 'bold', fontSize: 9 },
+    ...estiloTabelaInstitucional({ fontSize: 9, cellPadding: 3, textColor: [15, 23, 42] }),
     body: dadosIdentificacao,
-    styles: { fontSize: 9, cellPadding: 3, textColor: [15, 23, 42], fillColor: false },
   });
 
   // Tabela 2: Dados da Execução Operacional
@@ -181,7 +87,7 @@ export async function montarPdfOrdemServico(ordem: OrdemServico): Promise<{ doc:
 
   const horaFimStr = ordem.ate_termino ? 'Até o término do serviço' : (ordem.hora_fim || 'Não informado');
 
-  const dadosExecucao = [
+  const dadosExecucao: RowInput[] = [
     [
       { content: 'PERÍODO:', styles: { fontStyle: 'bold' } },
       `${new Date(ordem.data_execucao_inicio + 'T00:00:00').toLocaleDateString('pt-BR')} até ${dataFimStr}`,
@@ -205,9 +111,8 @@ export async function montarPdfOrdemServico(ordem: OrdemServico): Promise<{ doc:
   autoTable(doc, {
     startY: currentY,
     margin: { left: marginLeft, right: marginRight },
-    theme: 'grid',
+    ...estiloTabelaInstitucional({ fontSize: 9, cellPadding: 3, textColor: [15, 23, 42] }),
     body: dadosExecucao,
-    styles: { fontSize: 9, cellPadding: 3, textColor: [15, 23, 42], fillColor: false },
   });
 
   // Tabela 3: Solicitante (quando houver)
@@ -219,7 +124,7 @@ export async function montarPdfOrdemServico(ordem: OrdemServico): Promise<{ doc:
     doc.text('DADOS DO SOLICITANTE', marginLeft, currentY);
     currentY += 3;
 
-    const dadosSolicitante = [
+    const dadosSolicitante: RowInput[] = [
       [
         { content: 'SOLICITANTE:', styles: { fontStyle: 'bold' } },
         ordem.solicitante_nome || 'Não informado',
@@ -237,9 +142,8 @@ export async function montarPdfOrdemServico(ordem: OrdemServico): Promise<{ doc:
     autoTable(doc, {
       startY: currentY,
       margin: { left: marginLeft, right: marginRight },
-      theme: 'grid',
+      ...estiloTabelaInstitucional({ fontSize: 9, cellPadding: 3, textColor: [15, 23, 42] }),
       body: dadosSolicitante,
-      styles: { fontSize: 9, cellPadding: 3, textColor: [15, 23, 42], fillColor: false },
     });
   }
 
@@ -267,11 +171,9 @@ export async function montarPdfOrdemServico(ordem: OrdemServico): Promise<{ doc:
     autoTable(doc, {
       startY: currentY,
       margin: { left: marginLeft, right: marginRight },
-      theme: 'grid',
+      ...estiloTabelaInstitucional({ fontSize: 8.5, cellPadding: 3, textColor: [15, 23, 42] }),
       head: [['Equipe Responsável', 'Responsável no Momento', 'Status de Acesso']],
       body: equipesBody,
-      headStyles: { fillColor: false, textColor: [30, 58, 138], fontStyle: 'bold', fontSize: 9 },
-      styles: { fontSize: 8.5, cellPadding: 3, textColor: [15, 23, 42], fillColor: false },
     });
   }
 
@@ -287,9 +189,8 @@ export async function montarPdfOrdemServico(ordem: OrdemServico): Promise<{ doc:
     autoTable(doc, {
       startY: currentY,
       margin: { left: marginLeft, right: marginRight },
-      theme: 'grid',
+      ...estiloTabelaInstitucional({ fontSize: 8.5, cellPadding: 4, textColor: [15, 23, 42] }),
       body: [[{ content: ordem.observacoes }]],
-      styles: { fontSize: 8.5, cellPadding: 4, textColor: [15, 23, 42], fillColor: false },
     });
   }
 
@@ -304,8 +205,8 @@ export async function montarPdfOrdemServico(ordem: OrdemServico): Promise<{ doc:
   doc.setTextColor(100, 116, 139);
   doc.text(
     isDemutran
-      ? 'Secretaria Municipal de Segurança e Trânsito — SMST | Departamento Municipal de Trânsito'
-      : 'Secretaria Municipal de Segurança e Trânsito — SMST | Guarda Municipal de Canindé',
+      ? 'Secretaria Municipal de Segurança Pública e Trânsito — SMST | Departamento Municipal de Trânsito'
+      : 'Secretaria Municipal de Segurança Pública e Trânsito — SMST | Guarda Municipal de Canindé',
     pageWidth / 2,
     footerY,
     { align: 'center' },

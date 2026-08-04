@@ -2,6 +2,13 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import {
+  carregarLogosSetor,
+  desenharCabecalhoInstitucional,
+  desenharMarcaDAgua,
+  estiloTabelaInstitucional,
+  SETOR_LINHA,
+} from '@/utils/pdfInstitucional';
 
 export interface OperacaoEscalaPdfData {
   codigo: string;
@@ -23,44 +30,33 @@ export interface ParticipanteEscalaPdfData {
   observacao?: string | null;
 }
 
-export function gerarPdfEscalaOperacao(
+export async function gerarPdfEscalaOperacao(
   operacao: OperacaoEscalaPdfData,
   participantes: ParticipanteEscalaPdfData[],
   dataFiltro?: string | null
 ) {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
   const marginLeft = 14;
   const marginRight = pageWidth - 14;
+  const logos = await carregarLogosSetor('guarda-municipal');
 
-  // Header - Governamental / Institucional
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8);
-  doc.setTextColor(15, 23, 42);
-  doc.text('ESTADO DO CEARÁ — MUNICÍPIO DE CANINDÉ', pageWidth / 2, 12, { align: 'center' });
-  
-  doc.setFontSize(9);
-  doc.text('SECRETARIA MUNICIPAL DE SEGURANÇA E TRANSPORTE — SMST', pageWidth / 2, 17, { align: 'center' });
-  
-  doc.setFontSize(11);
-  doc.setTextColor(30, 58, 138); // Azul escuro
-  doc.text('GUARDA MUNICIPAL DE CANINDÉ', pageWidth / 2, 23, { align: 'center' });
+  // Marca d'água: logo do Município ao fundo
+  desenharMarcaDAgua(doc, logos.municipio);
 
-  // Linha separadora principal
-  doc.setDrawColor(15, 23, 42);
-  doc.setLineWidth(0.6);
-  doc.line(marginLeft, 26, marginRight, 26);
-
-  // Título da Escala
-  doc.setFontSize(13);
-  doc.setTextColor(15, 23, 42);
-  doc.text('ESCALA DE SERVIÇO OPERACIONAL — IRO', pageWidth / 2, 33, { align: 'center' });
+  // Cabeçalho institucional padrão
+  let currentY = desenharCabecalhoInstitucional(doc, logos, 'ESCALA DE SERVIÇO OPERACIONAL — IRO', {
+    setorLinha: SETOR_LINHA['guarda-municipal'],
+  });
 
   // Subtítulo com Operação
   const codStr = operacao.codigo ? `[${operacao.codigo}] ` : '';
   doc.setFontSize(10);
   doc.setFont('helvetica', 'bold');
-  doc.text(`${codStr}${operacao.nome}`, pageWidth / 2, 39, { align: 'center' });
+  doc.setTextColor(15, 23, 42);
+  doc.text(`${codStr}${operacao.nome}`, pageWidth / 2, currentY, { align: 'center' });
+  currentY += 6;
 
   // Bloco de informações da Operação
   doc.setFont('helvetica', 'normal');
@@ -88,22 +84,24 @@ export function gerarPdfEscalaOperacao(
   const horarioText = `Horário Previsto: ${operacao.horario_previsto || 'Não especificado'}`;
   const cargaVagasText = `Carga Horária: ${operacao.horas_por_dia ?? '-'}h/dia  |  Vagas por Dia: ${operacao.vagas_por_dia ?? '-'}`;
 
-  doc.text(periodoText, marginLeft, 46);
-  doc.text(horarioText, pageWidth / 2, 46, { align: 'center' });
-  doc.text(cargaVagasText, marginRight, 46, { align: 'right' });
+  doc.text(periodoText, marginLeft, currentY);
+  doc.text(horarioText, pageWidth / 2, currentY, { align: 'center' });
+  doc.text(cargaVagasText, marginRight, currentY, { align: 'right' });
+  currentY += 5;
 
   if (operacao.descricao) {
     const descText = `Descrição: ${operacao.descricao.length > 110 ? operacao.descricao.slice(0, 110) + '...' : operacao.descricao}`;
     doc.setFontSize(7.5);
     doc.setTextColor(100, 116, 139);
-    doc.text(descText, marginLeft, 51);
+    doc.text(descText, marginLeft, currentY);
+    currentY += 3;
   }
 
   // Linha separadora secundária
-  const lineY = operacao.descricao ? 54 : 49;
   doc.setDrawColor(226, 232, 240);
   doc.setLineWidth(0.4);
-  doc.line(marginLeft, lineY, marginRight, lineY);
+  doc.line(marginLeft, currentY, marginRight, currentY);
+  currentY += 3;
 
   // Tabela de Guardas Escalados
   const tableData = participantes.map((p, index) => {
@@ -131,24 +129,10 @@ export function gerarPdfEscalaOperacao(
   });
 
   autoTable(doc, {
-    startY: lineY + 3,
+    startY: currentY,
     head: [['Nº', 'Matrícula', 'Guarda Municipal', 'Graduação / Posto', 'Data', 'Observação / Status']],
     body: tableData,
-    theme: 'grid',
-    headStyles: {
-      fillColor: [30, 58, 138],
-      textColor: [255, 255, 255],
-      fontSize: 8,
-      fontStyle: 'bold',
-      halign: 'left',
-    },
-    bodyStyles: {
-      fontSize: 8,
-      textColor: [30, 41, 59],
-    },
-    alternateRowStyles: {
-      fillColor: [248, 250, 252],
-    },
+    ...estiloTabelaInstitucional({ fontSize: 8, textColor: [30, 41, 59] }),
     columnStyles: {
       0: { cellWidth: 10, halign: 'center' },
       1: { cellWidth: 25 },
@@ -161,8 +145,7 @@ export function gerarPdfEscalaOperacao(
   });
 
   // Campo de Assinaturas e Rodapé
-  const finalY = (doc as any).lastAutoTable?.finalY || lineY + 40;
-  const pageHeight = doc.internal.pageSize.getHeight();
+  const finalY = (doc as any).lastAutoTable?.finalY || currentY + 40;
   const signatureY = Math.min(finalY + 25, pageHeight - 30);
 
   doc.setFontSize(8);
@@ -178,7 +161,7 @@ export function gerarPdfEscalaOperacao(
 
   doc.text('Comando da Guarda Municipal', pageWidth / 2, signatureY + 4, { align: 'center' });
   doc.setFontSize(7);
-  doc.text('Secretaria Municipal de Segurança e Transporte — Canindé/CE', pageWidth / 2, signatureY + 8, { align: 'center' });
+  doc.text('Secretaria Municipal de Segurança Pública e Trânsito — Canindé/CE', pageWidth / 2, signatureY + 8, { align: 'center' });
 
   // Data e hora da emissão
   const dataEmissao = format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR });

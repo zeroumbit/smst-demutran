@@ -1,10 +1,87 @@
 import * as XLSX from 'xlsx';
+import municipioLogo from '@/logo/municipio.png';
+import guardaLogo from '@/logo/guarda.png';
+import demutranLogo from '@/logo/demutran.png';
 
 type ReportRow = Record<string, string | number | boolean | null | undefined>;
 
 type ReportSheet = {
   name: string;
   rows: ReportRow[];
+};
+
+type SetorImpressao = 'demutran' | 'guarda-municipal';
+
+const SETOR_HTML: Record<SetorImpressao, { logoUrl: string; linhaSetor: string }> = {
+  demutran: { logoUrl: demutranLogo, linhaSetor: 'Departamento Municipal de Trânsito — Demutran' },
+  'guarda-municipal': { logoUrl: guardaLogo, linhaSetor: 'Guarda Civil Municipal' },
+};
+
+const REPORT_CSS = `
+  @page { margin: 0; size: A4 portrait; }
+  html, body { background: #ffffff; margin: 0; padding: 0; }
+  body { font-family: Arial, sans-serif; color: #0f172a; padding: 20px; position: relative; z-index: 1; }
+  .watermark { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); opacity: 0.08; max-width: 70%; z-index: 0; pointer-events: none; }
+  .doc-header { text-align: center; padding: 6px 0 0; }
+  .doc-logos { display: flex; justify-content: center; align-items: center; gap: 12px; margin-bottom: 6px; }
+  .doc-logos img { height: 55px; width: auto; object-fit: contain; }
+  .l1, .l2, .l3 { margin: 2px 0; color: #0f172a; }
+  .l1 { font-weight: 800; font-size: 13px; letter-spacing: 0.08em; }
+  .l2 { font-weight: 800; font-size: 13px; }
+  .l3 { font-size: 11px; font-weight: 600; }
+  .l-setor { color: #1e3a8a; font-weight: 700; font-size: 12px; margin-top: 4px; }
+  .sep { border: 0; border-top: 2px solid #1e3a8a; margin: 8px 0 14px; }
+  h1 { margin: 0 0 6px; font-size: 22px; text-align: center; }
+  h2 { margin: 20px 0 8px; font-size: 16px; }
+  p.meta { color: #475569; margin: 0 0 14px; font-size: 13px; text-align: center; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 10px; font-size: 11px; }
+  th, td { border: 1px solid #cbd5e1; padding: 6px; text-align: left; vertical-align: top; background: transparent !important; }
+  tr:nth-child(even) td { background: transparent !important; }
+  section { break-inside: avoid; }
+`;
+
+const headerHtml = (setor: SetorImpressao) => `
+  <div class="doc-header">
+    <div class="doc-logos">
+      <img src="${municipioLogo}" alt="Município" onerror="this.style.display='none'" />
+      <img src="${SETOR_HTML[setor].logoUrl}" alt="Setor" onerror="this.style.display='none'" />
+    </div>
+    <p class="l1">ESTADO DO CEARÁ</p>
+    <p class="l2">GOVERNO MUNICIPAL DE CANINDÉ</p>
+    <p class="l3">SECRETARIA MUNICIPAL DE SEGURANÇA PÚBLICA E TRÂNSITO — SMST</p>
+    <p class="l-setor">${SETOR_HTML[setor].linhaSetor}</p>
+  </div>
+  <hr class="sep" />
+`;
+
+const watermarkHtml = `<img class="watermark" src="${municipioLogo}" alt="" onerror="this.style.display='none'" />`;
+
+const abrirImpressaoHtml = (html: string) => {
+  const iframe = document.createElement('iframe');
+  iframe.style.position = 'fixed';
+  iframe.style.top = '-9999px';
+  iframe.style.left = '-9999px';
+  iframe.style.width = '800px';
+  iframe.style.height = '600px';
+  iframe.style.border = 'none';
+  document.body.appendChild(iframe);
+
+  iframe.contentDocument!.open();
+  iframe.contentDocument!.write(html);
+  iframe.contentDocument!.close();
+
+  iframe.onload = () => {
+    window.setTimeout(() => {
+      iframe.contentWindow!.print();
+      window.setTimeout(() => {
+        document.body.removeChild(iframe);
+      }, 1000);
+    }, 2000);
+  };
+
+  if (iframe.contentDocument!.readyState === 'complete') {
+    iframe.onload!(new Event('load'));
+  }
 };
 
 const normalizeSheetName = (value: string) =>
@@ -94,8 +171,7 @@ const escapeHtml = (value: string) =>
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
 
-export const openPdfPrintReport = (title: string, sections: ReportSheet[]) => {
-  const logoUrl = `${window.location.origin}/images/demutran.png`;
+export const openPdfPrintReport = (title: string, sections: ReportSheet[], setor: SetorImpressao = 'demutran') => {
   const sectionsHtml = sections
     .map((section) => {
       const headers = section.rows.length ? Object.keys(section.rows[0]) : [];
@@ -122,37 +198,11 @@ export const openPdfPrintReport = (title: string, sections: ReportSheet[]) => {
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>${escapeHtml(title)}</title>
-        <style>
-          @page { margin: 0; size: A4 portrait; }
-          html, body { background: #ffffff; margin: 0; padding: 0; }
-          body { font-family: Arial, sans-serif; color: #0f172a; padding: 95px 20px 20px; }
-          .report-header { display: flex; align-items: center; gap: 16px; border-bottom: 2px solid #cbd5e1; padding: 12px 20px; background: #ffffff; }
-          .report-header img { width: 60px; height: 60px; object-fit: contain; }
-          .report-header-text { display: flex; flex-direction: column; gap: 4px; }
-          .report-title { font-size: 24px; font-weight: 800; letter-spacing: -0.04em; color: #0f172a; }
-          .report-subtitle { font-size: 13px; font-weight: 600; color: #475569; }
-          h1 { margin: 0 0 6px; font-size: 22px; }
-          h2 { margin: 20px 0 8px; font-size: 16px; }
-          p.meta { color: #475569; margin: 0 0 14px; font-size: 13px; }
-          table { width: 100%; border-collapse: collapse; margin-bottom: 10px; font-size: 11px; }
-          th, td { border: 1px solid #cbd5e1; padding: 6px; text-align: left; vertical-align: top; }
-          th { background: #e2e8f0; }
-          tr:nth-child(even) td { background: #f8fafc; }
-          section { break-inside: avoid; }
-          @media print {
-            body { padding: 95px 12px 12px; }
-            .report-header { position: fixed; top: 0; left: 0; right: 0; z-index: 1000; }
-          }
-        </style>
+        <style>${REPORT_CSS}</style>
       </head>
       <body>
-        <div class="report-header">
-          <img src="${escapeHtml(logoUrl)}" alt="Logo do Demutran" onerror="this.style.display='none'" />
-          <div class="report-header-text">
-            <span class="report-title">DEMUTRAN</span>
-            <span class="report-subtitle">Departamento Municipal de Trânsito</span>
-          </div>
-        </div>
+        ${watermarkHtml}
+        ${headerHtml(setor)}
         <h1>${escapeHtml(title)}</h1>
         <p class="meta">Gerado em ${escapeHtml(new Date().toLocaleString('pt-BR'))}</p>
         ${sectionsHtml}
@@ -160,34 +210,10 @@ export const openPdfPrintReport = (title: string, sections: ReportSheet[]) => {
     </html>
   `;
 
-  const iframe = document.createElement('iframe');
-  iframe.style.position = 'fixed';
-  iframe.style.top = '-9999px';
-  iframe.style.left = '-9999px';
-  iframe.style.width = '800px';
-  iframe.style.height = '600px';
-  iframe.style.border = 'none';
-  document.body.appendChild(iframe);
-
-  iframe.contentDocument!.open();
-  iframe.contentDocument!.write(html);
-  iframe.contentDocument!.close();
-
-  iframe.onload = () => {
-    window.setTimeout(() => {
-      iframe.contentWindow!.print();
-      window.setTimeout(() => {
-        document.body.removeChild(iframe);
-      }, 1000);
-    }, 2000);
-  };
-
-  if (iframe.contentDocument!.readyState === 'complete') {
-    iframe.onload!(new Event('load'));
-  }
+  abrirImpressaoHtml(html);
 };
 
-export const printHtml = (title: string, contentHtml: string) => {
+export const printHtml = (title: string, contentHtml: string, setor: SetorImpressao = 'demutran') => {
   const html = `
     <!DOCTYPE html>
     <html lang="pt-BR">
@@ -195,58 +221,17 @@ export const printHtml = (title: string, contentHtml: string) => {
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>${escapeHtml(title)}</title>
-        <style>
-          @page { margin: 0; size: A4 portrait; }
-          html, body { background: #ffffff; margin: 0; padding: 0; font-family: Arial, sans-serif; color: #0f172a; }
-          body { padding: 20px; }
-          .print-header { display: flex; align-items: center; gap: 16px; border-bottom: 2px solid #cbd5e1; padding-bottom: 12px; margin-bottom: 20px; }
-          .print-header img { width: 60px; height: 60px; object-fit: contain; }
-          .print-header-text { display: flex; flex-direction: column; gap: 4px; }
-          .print-title { font-size: 24px; font-weight: 800; letter-spacing: -0.04em; color: #0f172a; }
-          .print-subtitle { font-size: 13px; font-weight: 600; color: #475569; }
-          p.meta { color: #475569; margin: 0 0 14px; font-size: 13px; }
-          @media print {
-            body { padding: 12px; }
-          }
-        </style>
+        <style>${REPORT_CSS}</style>
       </head>
       <body>
-        <div class="print-header">
-          <img src="${escapeHtml(`${window.location.origin}/images/demutran.png`)}" alt="Logo do Demutran" onerror="this.style.display='none'" />
-          <div class="print-header-text">
-            <span class="print-title">DEMUTRAN</span>
-            <span class="print-subtitle">Departamento Municipal de Trânsito</span>
-          </div>
-        </div>
-        <p class="meta">${escapeHtml(title)}</p>
+        ${watermarkHtml}
+        ${headerHtml(setor)}
+        <h1>${escapeHtml(title)}</h1>
+        <p class="meta">${escapeHtml(new Date().toLocaleString('pt-BR'))}</p>
         ${contentHtml}
       </body>
     </html>
   `;
 
-  const iframe = document.createElement('iframe');
-  iframe.style.position = 'fixed';
-  iframe.style.top = '-9999px';
-  iframe.style.left = '-9999px';
-  iframe.style.width = '800px';
-  iframe.style.height = '600px';
-  iframe.style.border = 'none';
-  document.body.appendChild(iframe);
-
-  iframe.contentDocument!.open();
-  iframe.contentDocument!.write(html);
-  iframe.contentDocument!.close();
-
-  iframe.onload = () => {
-    window.setTimeout(() => {
-      iframe.contentWindow!.print();
-      window.setTimeout(() => {
-        document.body.removeChild(iframe);
-      }, 1000);
-    }, 2000);
-  };
-
-  if (iframe.contentDocument!.readyState === 'complete') {
-    iframe.onload!(new Event('load'));
-  }
+  abrirImpressaoHtml(html);
 };

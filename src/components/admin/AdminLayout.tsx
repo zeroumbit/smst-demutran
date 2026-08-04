@@ -644,17 +644,17 @@ export const AdminLayout = ({ children, backPath, backLabel }: AdminLayoutProps)
 
     const baseClasses = `group flex items-center px-4 py-3 text-sm font-medium rounded-2xl transition-all ${
       isActive && !hasChildren
-        ? 'bg-brand-50 text-brand-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.65)]'
-        : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
+        ? 'bg-brand-50 text-brand-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.65)] dark:bg-brand-500/10 dark:text-brand-400'
+        : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100'
     } ${isSubItem ? 'ml-6 px-3 py-2.5 text-[13px]' : ''} ${!isSubItem && sidebarCollapsed ? 'lg:justify-center lg:px-0 lg:mx-2' : ''}`;
 
     if (item.disabled) {
       return (
-        <div key={item.label} className={`flex items-center px-4 py-3 text-sm font-medium rounded-2xl text-slate-300 cursor-not-allowed ${isSubItem ? 'ml-6' : ''} ${sidebarCollapsed && !isSubItem ? 'lg:justify-center lg:px-0 lg:mx-2' : ''}`}>
+        <div key={item.label} className={`flex items-center px-4 py-3 text-sm font-medium rounded-2xl text-slate-300 cursor-not-allowed dark:text-slate-600 ${isSubItem ? 'ml-6' : ''} ${sidebarCollapsed && !isSubItem ? 'lg:justify-center lg:px-0 lg:mx-2' : ''}`}>
           <Icon className={`${sidebarCollapsed && !isSubItem ? 'lg:mx-auto' : 'mr-3'} h-5 w-5 shrink-0`} />
           <span className={`flex items-center ${sidebarCollapsed ? 'lg:hidden' : ''}`}>
             {item.label}
-            <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-brand-600">
+            <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-brand-600 dark:bg-slate-800 dark:text-brand-400">
               em breve
             </span>
           </span>
@@ -666,7 +666,7 @@ export const AdminLayout = ({ children, backPath, backLabel }: AdminLayoutProps)
       if (sidebarCollapsed) {
         return (
           <div key={item.label} className={`${baseClasses} cursor-default`}>
-            <Icon className="lg:mx-auto h-5 w-5 shrink-0 text-slate-400" />
+            <Icon className="lg:mx-auto h-5 w-5 shrink-0 text-slate-400 dark:text-slate-500" />
           </div>
         );
       }
@@ -676,9 +676,9 @@ export const AdminLayout = ({ children, backPath, backLabel }: AdminLayoutProps)
             onClick={() => toggleExpand(item.label)}
             className={`w-full ${baseClasses}`}
           >
-            <Icon className={`mr-3 h-5 w-5 shrink-0 ${isActive && !hasChildren ? 'text-brand-600' : 'text-slate-400 group-hover:text-brand-500'}`} />
+            <Icon className={`mr-3 h-5 w-5 shrink-0 ${isActive && !hasChildren ? 'text-brand-600' : 'text-slate-400 group-hover:text-brand-500 dark:text-slate-500'}`} />
             <span className="flex-1 text-left">{item.label}</span>
-            {isExpanded ? <ChevronDown className="h-4 w-4 text-slate-400" /> : <ChevronRight className="h-4 w-4 text-slate-400" />}
+            {isExpanded ? <ChevronDown className="h-4 w-4 text-slate-400 dark:text-slate-500" /> : <ChevronRight className="h-4 w-4 text-slate-400 dark:text-slate-500" />}
           </button>
           {isExpanded && item.children && (
             <div className="mt-1 space-y-1">
@@ -696,7 +696,7 @@ export const AdminLayout = ({ children, backPath, backLabel }: AdminLayoutProps)
         onClick={() => { setSidebarOpen(false); setMenuModalOpen(false); }}
         className={baseClasses}
       >
-        <Icon className={`${sidebarCollapsed ? 'lg:mx-auto' : 'mr-3'} h-5 w-5 shrink-0 ${isActive ? 'text-brand-600' : 'text-slate-400 group-hover:text-brand-500'}`} />
+        <Icon className={`${sidebarCollapsed ? 'lg:mx-auto' : 'mr-3'} h-5 w-5 shrink-0 ${isActive ? 'text-brand-600' : 'text-slate-400 group-hover:text-brand-500 dark:text-slate-500'}`} />
         <span className={`${sidebarCollapsed ? 'lg:hidden' : ''}`}>{item.label}</span>
       </Link>
     );
@@ -704,8 +704,8 @@ export const AdminLayout = ({ children, backPath, backLabel }: AdminLayoutProps)
 
   const sidebarContent = (
     <div className="flex flex-grow flex-col overflow-y-auto pt-4">
-      <div className={`mb-6 flex items-center border-b border-slate-200 pb-6 ${sidebarCollapsed ? 'justify-center px-0' : 'px-6'}`}>
-        <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_10px_25px_-18px_rgba(15,23,42,0.22)]">
+      <div className={`mb-6 flex items-center border-b border-slate-200 pb-6 dark:border-slate-800 ${sidebarCollapsed ? 'justify-center px-0' : 'px-6'}`}>
+        <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_10px_25px_-18px_rgba(15,23,42,0.22)] dark:border-slate-700 dark:bg-[hsl(var(--card))]">
           <img
             src={sectorLogo as string}
             alt={sectorLabel}
@@ -713,7 +713,7 @@ export const AdminLayout = ({ children, backPath, backLabel }: AdminLayoutProps)
           />
         </div>
         <div className={`ml-4 ${sidebarCollapsed ? 'lg:hidden' : ''}`}>
-          <span className="block whitespace-nowrap text-[1.65rem] font-bold tracking-[-0.04em] text-slate-900">
+          <span className="block whitespace-nowrap text-[1.65rem] font-bold tracking-[-0.04em] text-slate-900 dark:text-slate-100">
             {sectorLabel}
           </span>
           {sectorBadge && (
@@ -726,19 +726,19 @@ export const AdminLayout = ({ children, backPath, backLabel }: AdminLayoutProps)
 
       <nav className="flex-1 space-y-1 px-3">
         {showSectionSplit && !sidebarCollapsed && (
-          <span className="block px-4 pb-1 pt-1 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+          <span className="block px-4 pb-1 pt-1 text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
             Administrativos
           </span>
         )}
         {adminMenuItems.map((item) => renderNavItem(item))}
         {showSectionSplit && !sidebarCollapsed && pessoalMenuItems.length > 0 && (
-          <span className="mt-4 block px-4 pb-1 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+          <span className="mt-4 block px-4 pb-1 text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
             Pessoal
           </span>
         )}
         {pessoalMenuItems.map((item) => renderNavItem(item))}
         {!sidebarCollapsed && (
-          <span className="mt-4 block px-4 pb-1 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+          <span className="mt-4 block px-4 pb-1 text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
             Suporte
           </span>
         )}
@@ -749,10 +749,10 @@ export const AdminLayout = ({ children, backPath, backLabel }: AdminLayoutProps)
         })}
       </nav>
 
-      <div className="border-t border-slate-200 p-3">
+      <div className="border-t border-slate-200 p-3 dark:border-slate-800">
         <button
           onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-          className="flex w-full items-center justify-center rounded-xl p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors"
+          className="flex w-full items-center justify-center rounded-xl p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors dark:text-slate-500 dark:hover:bg-slate-800 dark:hover:text-slate-300"
           title={sidebarCollapsed ? 'Expandir menu' : 'Recolher menu'}
         >
           {sidebarCollapsed ? <ChevronRight className="h-5 w-5" /> : <ChevronLeft className="h-5 w-5" />}
@@ -762,8 +762,8 @@ export const AdminLayout = ({ children, backPath, backLabel }: AdminLayoutProps)
   );
 
   return (
-    <div className="min-h-screen min-h-dvh bg-[#f6f8fc]">
-      <aside className={`hidden border-r border-slate-200 bg-white lg:fixed lg:inset-y-0 lg:flex lg:flex-col ${sidebarCollapsed ? 'lg:w-[72px]' : 'lg:w-[285px]'}`}>
+    <div className="min-h-screen min-h-dvh bg-[#f6f8fc] dark:bg-[hsl(var(--background))]">
+      <aside className={`hidden border-r border-slate-200 bg-white dark:border-slate-800 dark:bg-[hsl(var(--card))] lg:fixed lg:inset-y-0 lg:flex lg:flex-col ${sidebarCollapsed ? 'lg:w-[72px]' : 'lg:w-[285px]'}`}>
         {sidebarContent}
       </aside>
 
@@ -773,14 +773,14 @@ export const AdminLayout = ({ children, backPath, backLabel }: AdminLayoutProps)
             className="fixed inset-0 bg-black/50"
             onClick={() => setSidebarOpen(false)}
           />
-          <aside className="relative flex min-h-0 w-full max-w-xs flex-1 flex-col bg-white pt-[var(--safe-area-top)] pb-[var(--safe-area-bottom)] pl-[var(--safe-area-left)]">
+          <aside className="relative flex min-h-0 w-full max-w-xs flex-1 flex-col bg-white pt-[var(--safe-area-top)] pb-[var(--safe-area-bottom)] pl-[var(--safe-area-left)] dark:bg-[hsl(var(--card))]">
             <div className="absolute right-0 -mr-12 top-[var(--safe-area-top)] pt-4">
               <button
                 type="button"
                 className="ml-1 flex items-center justify-center h-10 w-10 rounded-full"
                 onClick={() => setSidebarOpen(false)}
               >
-                <X className="h-6 w-6 text-slate-700" />
+<X className="h-6 w-6 text-slate-700 dark:text-slate-300" />
               </button>
             </div>
             {sidebarContent}
@@ -789,34 +789,34 @@ export const AdminLayout = ({ children, backPath, backLabel }: AdminLayoutProps)
       )}
 
       <div className={`flex flex-1 flex-col ${sidebarCollapsed ? 'lg:pl-[72px]' : 'lg:pl-[285px]'}`}>
-        <header className="sticky top-0 z-10 hidden h-20 items-center justify-between border-b border-slate-200 bg-white/95 px-4 backdrop-blur-md lg:flex lg:px-6">
+        <header className="sticky top-0 z-10 hidden h-20 items-center justify-between border-b border-slate-200 bg-white/95 px-4 backdrop-blur-md lg:flex lg:px-6 dark:border-slate-800 dark:bg-[hsl(var(--card))]/95">
         <div className="flex items-center gap-2">
           {backPath ? (
             <button
               onClick={() => navigate(backPath)}
-              className="rounded-xl p-2 hover:bg-slate-100 transition-colors"
+              className="rounded-xl p-2 hover:bg-slate-100 transition-colors dark:hover:bg-slate-800"
               title={backLabel || 'Voltar'}
             >
-              <ChevronLeft className="h-6 w-6 text-slate-700" />
+              <ChevronLeft className="h-6 w-6 text-slate-700 dark:text-slate-300" />
             </button>
           ) : (
             <button
               type="button"
-              className="rounded-xl p-2 hover:bg-slate-100 lg:hidden transition-colors"
+              className="rounded-xl p-2 hover:bg-slate-100 lg:hidden transition-colors dark:hover:bg-slate-800"
               onClick={() => setSidebarOpen(true)}
             >
-              <Menu className="h-6 w-6 text-slate-700" />
+              <Menu className="h-6 w-6 text-slate-700 dark:text-slate-300" />
             </button>
           )}
         </div>
 
           <div className="hidden flex-1 lg:block relative">
-            <div className="flex max-w-md items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.75)]">
-              <Search className="h-4 w-4 shrink-0 text-slate-400" />
+            <div className="flex max-w-md items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.75)] dark:border-slate-700 dark:bg-slate-800">
+              <Search className="h-4 w-4 shrink-0 text-slate-400 dark:text-slate-500" />
               <input
                 type="text"
                 placeholder="Pesquisar paginas ou registros..."
-                className="w-full bg-transparent text-sm text-slate-700 placeholder:text-slate-400 outline-none border-none"
+                className="w-full bg-transparent text-sm text-slate-700 placeholder:text-slate-400 outline-none border-none dark:text-slate-200 dark:placeholder:text-slate-500"
                 value={searchQuery}
                 onChange={(e) => {
                   setSearchQuery(e.target.value);
@@ -827,10 +827,10 @@ export const AdminLayout = ({ children, backPath, backLabel }: AdminLayoutProps)
               />
             </div>
             {showSearchResults && searchQuery.trim() && (
-              <div className="absolute top-full left-0 right-0 mt-2 max-w-md rounded-2xl border border-slate-200 bg-white shadow-lg overflow-hidden z-50">
+              <div className="absolute top-full left-0 right-0 mt-2 max-w-md rounded-2xl border border-slate-200 bg-white shadow-lg overflow-hidden z-50 dark:border-slate-700 dark:bg-[hsl(var(--card))]">
                 {filteredSearchItems.length > 0 && (
                   <>
-                    <div className="px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-slate-400 bg-slate-50/80 border-b border-slate-100">
+                    <div className="px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-slate-400 bg-slate-50/80 border-b border-slate-100 dark:text-slate-500 dark:bg-slate-800/80 dark:border-slate-800">
                       Paginas
                     </div>
                     {filteredSearchItems.map((item) => (
@@ -841,9 +841,9 @@ export const AdminLayout = ({ children, backPath, backLabel }: AdminLayoutProps)
                           setSearchQuery('');
                           setShowSearchResults(false);
                         }}
-                        className="flex items-center gap-3 px-4 py-3 text-sm text-slate-700 hover:bg-slate-50 transition-colors border-b border-slate-50 last:border-b-0"
+                        className="flex items-center gap-3 px-4 py-3 text-sm text-slate-700 hover:bg-slate-50 transition-colors border-b border-slate-50 last:border-b-0 dark:text-slate-200 dark:hover:bg-slate-800 dark:border-slate-800"
                       >
-                        <Search className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+                        <Search className="h-3.5 w-3.5 shrink-0 text-slate-400 dark:text-slate-500" />
                         <span>{item.label}</span>
                       </Link>
                     ))}
@@ -852,14 +852,14 @@ export const AdminLayout = ({ children, backPath, backLabel }: AdminLayoutProps)
 
                 {groupedResults.size > 0 && (
                   <>
-                    <div className="px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-slate-400 bg-slate-50/80 border-b border-slate-100">
+                    <div className="px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-slate-400 bg-slate-50/80 border-b border-slate-100 dark:text-slate-500 dark:bg-slate-800/80 dark:border-slate-800">
                       Registros encontrados
                     </div>
                     {Array.from(groupedResults.entries()).map(([modulo, rows]) => {
                       const Icon = moduloIconMap[modulo] || Search;
                       return (
                         <div key={modulo}>
-                          <div className="flex items-center gap-1.5 px-4 py-1.5 text-[11px] font-semibold text-slate-500 bg-slate-50/50 border-b border-slate-50">
+                          <div className="flex items-center gap-1.5 px-4 py-1.5 text-[11px] font-semibold text-slate-500 bg-slate-50/50 border-b border-slate-50 dark:text-slate-400 dark:bg-slate-800/50 dark:border-slate-800">
                             <Icon className="h-3 w-3" />
                             {moduloLabelMap[modulo] || modulo}
                           </div>
@@ -871,11 +871,11 @@ export const AdminLayout = ({ children, backPath, backLabel }: AdminLayoutProps)
                                 setSearchQuery('');
                                 setShowSearchResults(false);
                               }}
-                              className="flex flex-col gap-0.5 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 transition-colors border-b border-slate-50 last:border-b-0"
+                              className="flex flex-col gap-0.5 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 transition-colors border-b border-slate-50 last:border-b-0 dark:text-slate-200 dark:hover:bg-slate-800 dark:border-slate-800"
                             >
-                              <span className="font-medium text-slate-800">{row.titulo}</span>
+                              <span className="font-medium text-slate-800 dark:text-slate-100">{row.titulo}</span>
                               {row.subtitulo && (
-                                <span className="text-xs text-slate-400 truncate">{row.subtitulo}</span>
+                                <span className="text-xs text-slate-400 truncate dark:text-slate-500">{row.subtitulo}</span>
                               )}
                             </Link>
                           ))}
@@ -887,14 +887,14 @@ export const AdminLayout = ({ children, backPath, backLabel }: AdminLayoutProps)
 
                 {filteredSearchItems.length === 0 && groupedResults.size === 0 && !isSearchingGlobal && (
                   <div className="px-4 py-5 text-center">
-                    <p className="text-sm text-slate-400">Nenhum resultado encontrado</p>
-                    <p className="text-xs text-slate-300 mt-1">Tente termos como "documentos", "veiculos" ou "noticias"</p>
+                    <p className="text-sm text-slate-400 dark:text-slate-500">Nenhum resultado encontrado</p>
+                    <p className="text-xs text-slate-300 mt-1 dark:text-slate-600">Tente termos como "documentos", "veiculos" ou "noticias"</p>
                   </div>
                 )}
 
                 {isSearchingGlobal && groupedResults.size === 0 && (
                   <div className="px-4 py-5 text-center">
-                    <p className="text-sm text-slate-400">Buscando...</p>
+                    <p className="text-sm text-slate-400 dark:text-slate-500">Buscando...</p>
                   </div>
                 )}
               </div>
@@ -902,9 +902,9 @@ export const AdminLayout = ({ children, backPath, backLabel }: AdminLayoutProps)
           </div>
 
           <div className="flex items-center gap-4">
-            <div className="hidden items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-4 py-2 md:flex">
+            <div className="hidden items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-4 py-2 md:flex dark:border-slate-700 dark:bg-slate-800">
               <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
-              <span className="text-[11px] font-extrabold uppercase tracking-[0.16em] text-slate-500">Monitoramento ativo</span>
+              <span className="text-[11px] font-extrabold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">Monitoramento ativo</span>
             </div>
 
             <button
@@ -916,21 +916,21 @@ export const AdminLayout = ({ children, backPath, backLabel }: AdminLayoutProps)
 
             {profile?.setor_nome && !sectorContext && (
               <div className="hidden md:flex items-center gap-2">
-                <Badge className="rounded-full border-slate-200 bg-white text-slate-600" variant="outline">{profile.setor_nome}</Badge>
+                <Badge className="rounded-full border-slate-200 bg-white text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300" variant="outline">{profile.setor_nome}</Badge>
               </div>
             )}
+
+            <NotificationDropdown userId={profile?.user_id} />
 
             <Button
               variant="outline"
               size="sm"
               onClick={handleLogout}
-              className="gap-2 rounded-xl border-slate-200 bg-white"
+              className="gap-2 rounded-xl border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800"
             >
               <LogOut className="w-4 h-4" />
               <span className="hidden sm:inline">Sair</span>
             </Button>
-
-            <NotificationDropdown userId={profile?.user_id} />
           </div>
         </header>
 
@@ -941,7 +941,7 @@ export const AdminLayout = ({ children, backPath, backLabel }: AdminLayoutProps)
 
       {sectorContext === 'guarda-municipal' && isGuardaHome && visibleBottomNavItems.length > 0 && (
         <nav className="fixed bottom-0 left-0 right-0 z-50 pl-[calc(0.75rem+var(--safe-area-left))] pr-[calc(0.75rem+var(--safe-area-right))] pb-[calc(0.7rem+var(--safe-area-bottom))] pt-2 lg:hidden pointer-events-none">
-          <div className="mx-auto grid max-w-5xl grid-cols-5 gap-2 rounded-[24px] bg-white/90 p-1.5 shadow-[0_14px_34px_-24px_rgba(15,23,42,0.3)] ring-1 ring-slate-200/70 backdrop-blur-xl pointer-events-auto">
+          <div className="mx-auto grid max-w-5xl grid-cols-5 gap-2 rounded-[24px] bg-white/90 p-1.5 shadow-[0_14px_34px_-24px_rgba(15,23,42,0.3)] ring-1 ring-slate-200/70 backdrop-blur-xl pointer-events-auto dark:bg-[hsl(var(--card))]/90 dark:ring-slate-700/70">
             {visibleBottomNavItems.map((item) => {
               const Icon = item.icon!;
               const active = item.path ? (location.pathname === item.path || location.pathname.startsWith(item.path + '/')) : false;
@@ -952,10 +952,10 @@ export const AdminLayout = ({ children, backPath, backLabel }: AdminLayoutProps)
                   className="flex min-w-0 flex-col items-center justify-center gap-1 rounded-[18px] px-1 py-2.5 transition-all active:scale-[0.98]"
                   aria-current={active ? 'page' : undefined}
                 >
-                  <div className={`flex items-center justify-center rounded-xl p-1.5 transition-colors ${active ? 'bg-white shadow-[0_8px_18px_-14px_rgba(37,99,235,0.55)]' : ''}`}>
-                    <Icon className={`h-5 w-5 ${active ? 'text-brand-600' : 'text-slate-400'}`} />
+                  <div className={`flex items-center justify-center rounded-xl p-1.5 transition-colors ${active ? 'bg-white shadow-[0_8px_18px_-14px_rgba(37,99,235,0.55)] dark:bg-white/10' : ''}`}>
+                    <Icon className={`h-5 w-5 ${active ? 'text-brand-600' : 'text-slate-400 dark:text-slate-500'}`} />
                   </div>
-                  <span className={`max-w-full truncate text-[10px] font-bold ${active ? 'text-brand-600' : 'text-slate-400'}`}>
+                  <span className={`max-w-full truncate text-[10px] font-bold ${active ? 'text-brand-600' : 'text-slate-400 dark:text-slate-500'}`}>
                     {item.label}
                   </span>
                 </Link>
@@ -966,9 +966,9 @@ export const AdminLayout = ({ children, backPath, backLabel }: AdminLayoutProps)
               className="flex min-w-0 flex-col items-center justify-center gap-1 rounded-[18px] px-1 py-2.5 transition-all active:scale-[0.98]"
             >
               <div className="flex items-center justify-center rounded-xl p-1.5">
-                <Menu className="h-5 w-5 text-slate-400" />
+                <Menu className="h-5 w-5 text-slate-400 dark:text-slate-500" />
               </div>
-              <span className="text-[10px] font-bold text-slate-400">Menu</span>
+              <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500">Menu</span>
             </button>
           </div>
         </nav>
@@ -976,7 +976,7 @@ export const AdminLayout = ({ children, backPath, backLabel }: AdminLayoutProps)
 
       {sectorContext === 'jovem-guarda' && isJovemGuardaHome && adminMenuItems.filter(item => item.path).length > 0 && (
         <nav className="fixed bottom-0 left-0 right-0 z-50 pl-[calc(0.75rem+var(--safe-area-left))] pr-[calc(0.75rem+var(--safe-area-right))] pb-[calc(0.7rem+var(--safe-area-bottom))] pt-2 lg:hidden pointer-events-none">
-          <div className="mx-auto grid max-w-5xl grid-cols-5 gap-2 rounded-[24px] bg-white/90 p-1.5 shadow-[0_14px_34px_-24px_rgba(15,23,42,0.3)] ring-1 ring-slate-200/70 backdrop-blur-xl pointer-events-auto">
+          <div className="mx-auto grid max-w-5xl grid-cols-5 gap-2 rounded-[24px] bg-white/90 p-1.5 shadow-[0_14px_34px_-24px_rgba(15,23,42,0.3)] ring-1 ring-slate-200/70 backdrop-blur-xl pointer-events-auto dark:bg-[hsl(var(--card))]/90 dark:ring-slate-700/70">
             {adminMenuItems.filter(item => item.path).slice(0, 4).map((item) => {
               const Icon = item.icon!;
               const active = item.path ? (location.pathname === item.path || location.pathname.startsWith(item.path + '/')) : false;
@@ -987,10 +987,10 @@ export const AdminLayout = ({ children, backPath, backLabel }: AdminLayoutProps)
                   className="flex min-w-0 flex-col items-center justify-center gap-1 rounded-[18px] px-1 py-2.5 transition-all active:scale-[0.98]"
                   aria-current={active ? 'page' : undefined}
                 >
-                  <div className={`flex items-center justify-center rounded-xl p-1.5 transition-colors ${active ? 'bg-white shadow-[0_8px_18px_-14px_rgba(37,99,235,0.55)]' : ''}`}>
-                    <Icon className={`h-5 w-5 ${active ? 'text-brand-600' : 'text-slate-400'}`} />
+                  <div className={`flex items-center justify-center rounded-xl p-1.5 transition-colors ${active ? 'bg-white shadow-[0_8px_18px_-14px_rgba(37,99,235,0.55)] dark:bg-white/10' : ''}`}>
+                    <Icon className={`h-5 w-5 ${active ? 'text-brand-600' : 'text-slate-400 dark:text-slate-500'}`} />
                   </div>
-                  <span className={`max-w-full truncate text-[10px] font-bold ${active ? 'text-brand-600' : 'text-slate-400'}`}>
+                  <span className={`max-w-full truncate text-[10px] font-bold ${active ? 'text-brand-600' : 'text-slate-400 dark:text-slate-500'}`}>
                     {item.label}
                   </span>
                 </Link>
@@ -1010,36 +1010,36 @@ export const AdminLayout = ({ children, backPath, backLabel }: AdminLayoutProps)
       )}
 
       {menuModalOpen && (
-        <div className="fixed inset-0 z-[60] flex min-h-0 flex-col bg-white lg:hidden animate-in slide-in-from-bottom">
+        <div className="fixed inset-0 z-[60] flex min-h-0 flex-col bg-white lg:hidden animate-in slide-in-from-bottom dark:bg-[hsl(var(--card))]">
           <div className="flex items-center justify-between px-5 pb-4 pt-[calc(max(var(--safe-area-top),1rem)+0.5rem)]">
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+              <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-[hsl(var(--card))]">
                 <img src={sectorLogo as string} alt={sectorLabel} className="h-full w-full object-contain p-1" />
               </div>
-              <span className="text-lg font-bold text-slate-900">{profile?.setor_nome || sectorLabel}</span>
+              <span className="text-lg font-bold text-slate-900 dark:text-slate-100">{profile?.setor_nome || sectorLabel}</span>
             </div>
             <button
               onClick={() => setMenuModalOpen(false)}
-              className="rounded-xl p-2 hover:bg-slate-100 transition-colors"
+              className="rounded-xl p-2 hover:bg-slate-100 transition-colors dark:hover:bg-slate-800"
             >
-              <X className="h-6 w-6 text-slate-700" />
+              <X className="h-6 w-6 text-slate-700 dark:text-slate-300" />
             </button>
           </div>
 
           <nav className="flex-1 overflow-y-auto px-4 py-4 space-y-1">
             {showSectionSplit && (
-              <span className="block px-4 pb-1 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+              <span className="block px-4 pb-1 text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
                 Administrativos
               </span>
             )}
             {adminMenuItems.map((item) => renderNavItem(item))}
             {showSectionSplit && pessoalMenuItems.length > 0 && (
-              <span className="mt-4 block px-4 pb-1 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+              <span className="mt-4 block px-4 pb-1 text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
                 Pessoal
               </span>
             )}
             {pessoalMenuItems.map((item) => renderNavItem(item))}
-            <span className="mt-4 block px-4 pb-1 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+            <span className="mt-4 block px-4 pb-1 text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
               Suporte
             </span>
             {renderNavItem({
@@ -1049,10 +1049,10 @@ export const AdminLayout = ({ children, backPath, backLabel }: AdminLayoutProps)
             })}
           </nav>
 
-          <div className="border-t border-slate-200 p-4 pb-[calc(1rem+var(--safe-area-bottom))] bg-slate-50">
+          <div className="border-t border-slate-200 p-4 pb-[calc(1rem+var(--safe-area-bottom))] bg-slate-50 dark:border-slate-800 dark:bg-slate-800">
             <button
               onClick={handleLogout}
-              className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium text-slate-500 hover:bg-red-50 hover:text-red-600 transition-colors"
+              className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium text-slate-500 hover:bg-red-50 hover:text-red-600 transition-colors dark:text-slate-400 dark:hover:bg-red-500/10 dark:hover:text-red-400"
             >
               <LogOut className="h-5 w-5" />
               <span>Sair</span>

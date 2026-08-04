@@ -18,6 +18,7 @@ export interface JgcAluno {
   turma_id: string | null;
   projeto_hora_inicio: string | null;
   projeto_hora_fim: string | null;
+  dias_projeto?: string[] | null;
   situacao: 'ativo' | 'afastado' | 'desligado' | 'concluido';
   saude?: {
     tipo_sanguineo: string;
@@ -78,4 +79,22 @@ export interface JgcResponsavel {
   autorizado_buscar: boolean;
   aluno?: { nome_completo: string } | null;
 }
+
+export interface JgcChamadaGeralAluno {
+  id?: string;
+  chamada_geral_id?: string;
+  aluno_id: string;
+  status: 'presente' | 'ausente' | 'justificada' | 'atraso';
+  observacao?: string | null;
+}
+
+export interface JgcChamadaGeral {
+  id: string;
+  data: string;
+  observacoes: string | null;
+  criado_por: string | null;
+  created_at: string;
+  alunos?: JgcChamadaGeralAluno[] | null;
+}
+
 

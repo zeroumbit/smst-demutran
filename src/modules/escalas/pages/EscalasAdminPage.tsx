@@ -25,6 +25,13 @@ import { useEscalas, useEscalasApoio, useEscalasHistorico, useEscalasMutations, 
 import type { GuardaEscala, GuardaEscalaAgente, GuardaEscalaAgenteDraft, GuardaEscalaPayload, GuardaEscalaPosto, GuardaEscalaTipoServico, GuardaEscalaTroca, RecorrenciaTipo } from '../types/escalas.types';
 import { formatDate, formatDateTime, formatTime, fromDatetimeLocal, getEscalaStatusCalculado, statusClassName, statusLabels, toDatetimeLocal, trocaStatusLabels } from '../utils/escalas.formatters';
 import { gerarPdfEscalaOperacao } from '../utils/pdfOperacaoEscala';
+import {
+  carregarLogosSetor,
+  desenharCabecalhoInstitucional,
+  desenharMarcaDAgua,
+  estiloTabelaInstitucional,
+  SETOR_LINHA,
+} from '@/utils/pdfInstitucional';
 
 type DialogMode = 'escala' | 'agente' | 'viatura' | 'cancelar' | 'tipo' | 'posto' | 'troca-decisao' | 'operacao-pdf' | null;
 
@@ -599,22 +606,33 @@ export default function EscalasAdminPage() {
     setCancelReason('');
   };
 
-  const exportPdf = () => {
+  const exportPdf = async () => {
     if (!selectedEscala) return;
     const doc = new jsPDF();
-    doc.setFontSize(14);
-    doc.text('GUARDA MUNICIPAL DE CANINDE', 14, 18);
-    doc.setFontSize(12);
-    doc.text('ESCALA DE SERVICO', 14, 26);
+    const logos = await carregarLogosSetor('guarda-municipal');
+    desenharMarcaDAgua(doc, logos.municipio);
+    let y = desenharCabecalhoInstitucional(doc, logos, 'ESCALA DE SERVIÇO', {
+      setorLinha: SETOR_LINHA['guarda-municipal'],
+    });
+
+    y += 2;
     doc.setFontSize(10);
-    doc.text(selectedEscala.titulo, 14, 36);
-    doc.text(`Periodo: ${formatDateTime(selectedEscala.data_inicio)} ate ${formatDateTime(selectedEscala.data_fim)}`, 14, 44);
-    doc.text(`Tipo: ${selectedEscala.tipo_servico?.nome ?? '-'}`, 14, 52);
-    doc.text(`Local: ${selectedEscala.posto?.nome ?? selectedEscala.local_texto ?? '-'}`, 14, 60);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(71, 85, 105);
+    doc.text(selectedEscala.titulo, 14, y);
+    y += 5;
+    doc.setFontSize(9);
+    doc.text(`Periodo: ${formatDateTime(selectedEscala.data_inicio)} ate ${formatDateTime(selectedEscala.data_fim)}`, 14, y);
+    y += 5;
+    doc.text(`Tipo: ${selectedEscala.tipo_servico?.nome ?? '-'}`, 14, y);
+    y += 5;
+    doc.text(`Local: ${selectedEscala.posto?.nome ?? selectedEscala.local_texto ?? '-'}`, 14, y);
+    y += 5;
     autoTable(doc, {
-      startY: 70,
+      startY: y,
       head: [['Matricula', 'Guarda', 'Funcao', 'Observacao']],
       body: (selectedEscala.agentes ?? []).map((agente) => [agente.guarda?.matricula ?? '-', agente.guarda?.nome ?? '-', agente.funcao, agente.observacao ?? '-']),
+      ...estiloTabelaInstitucional({ fontSize: 9 }),
     });
     doc.save(`escala-${selectedEscala.titulo}.pdf`);
   };

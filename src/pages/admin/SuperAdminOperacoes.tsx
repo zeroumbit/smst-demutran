@@ -11,6 +11,7 @@ import {
   X,
 } from 'lucide-react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
+import { useNavigate } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ResponsiveDialog } from '@/components/ui/responsive-dialog';

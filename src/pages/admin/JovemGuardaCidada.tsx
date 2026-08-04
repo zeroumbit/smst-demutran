@@ -4,20 +4,25 @@ import {
   Activity,
   AlertTriangle,
   ArrowLeft,
+  Calendar,
   CalendarCheck,
   Check,
+  CheckSquare,
   ChevronDown,
   ChevronRight,
   ClipboardCheck,
   Clock3,
+  Eye,
   FileBarChart,
   GraduationCap,
   HeartPulse,
   ListChecks,
+  Pencil,
   Plus,
   Search,
   ShieldCheck,
   Sparkles,
+  Trash2,
   Users,
   UsersRound,
 } from "lucide-react";
@@ -106,6 +111,7 @@ const initialStudent = {
   turmas_ids: [] as string[],
   projeto_hora_inicio: "",
   projeto_hora_fim: "",
+  dias_projeto: [] as string[],
   situacao: "ativo",
   tipo_sanguineo: "nao_informado",
   possui_condicao: "nao_informado",
@@ -151,13 +157,6 @@ export default function JovemGuardaCidada() {
   const [selectedProfessorIds, setSelectedProfessorIds] = useState<string[]>([]);
   const [meuPerfilUsuarioId, setMeuPerfilUsuarioId] = useState<string | null>(null);
   const [student, setStudent] = useState({ ...initialStudent });
-  const [classForm, setClassForm] = useState({
-    nome: "",
-    descricao: "",
-    turno: "",
-    hora_inicio: "",
-    hora_fim: "",
-  });
   const [service, setService] = useState({
     aluno_id: alunoId || "",
     data: today,
@@ -180,7 +179,7 @@ export default function JovemGuardaCidada() {
       supabase.rpc("jgc_perfil_atual"),
       supabase
         .from("jgc_alunos")
-        .select("*, turma:jgc_turmas(nome), turmas:jgc_aluno_turmas(turma:jgc_turmas(id, nome)), saude:jgc_aluno_saude(*)")
+        .select("*, turma:jgc_turmas!turma_id(nome), turmas:jgc_aluno_turmas(turma:jgc_turmas!turma_id(id, nome)), saude:jgc_aluno_saude(*)")
         .is("deleted_at", null)
         .order("nome_completo"),
       supabase.from("jgc_turmas").select("*, professores:jgc_turma_professores(perfil_usuario_id, perfil:perfis_usuarios(nome, sobrenome))").order("nome"),
@@ -202,6 +201,9 @@ export default function JovemGuardaCidada() {
       supabase.rpc("jgc_meu_perfil_usuario_id"),
     ]);
     setProfile((p.data as JgcPerfil | null) || null);
+    if (s.error) {
+      console.error("Erro ao carregar alunos em JGC:", s.error);
+    }
     const rawAlunos = (s.data as any[]) || [];
     setAlunos(rawAlunos.map((item: any) => ({
       ...item,
@@ -215,6 +217,7 @@ export default function JovemGuardaCidada() {
     setMeuPerfilUsuarioId((meuId.data as string | null) || null);
     setLoading(false);
   }, []);
+
   useEffect(() => {
     void load();
   }, [load]);
@@ -235,7 +238,10 @@ export default function JovemGuardaCidada() {
     : turmas;
   const globalFilteredTurmasIds = new Set(globalFilteredTurmas.map((t) => t.id));
   const globalFilteredAlunos = isProfessorOrMulti
-    ? alunos.filter((a) => a.turmas?.some((t) => globalFilteredTurmasIds.has(t.id)))
+    ? alunos.filter((a) =>
+        (a.turma_id && globalFilteredTurmasIds.has(a.turma_id)) ||
+        a.turmas?.some((t) => globalFilteredTurmasIds.has(t.id)),
+      )
     : alunos;
   const globalFilteredAlunosIds = new Set(globalFilteredAlunos.map((a) => a.id));
   const filteredAtendimentosDashboard = isProfessorOrMulti
@@ -290,7 +296,16 @@ export default function JovemGuardaCidada() {
   const can = (moduleId: string, action: string) => {
     if (profile === "professor" && (isAcompanhamentoModule(moduleId) || isResponsaveisModule(moduleId))) return false;
     if (profile === "multiprofissional" && isResponsaveisModule(moduleId)) return false;
-    if ((profile === "professor" || profile === "multiprofissional") && moduleId === "turmas" && action !== "visualizar") return false;
+    if (moduleId === "turmas") {
+      if (profile === "professor" || profile === "multiprofissional") return action === "visualizar";
+      return true;
+    }
+    if (
+      (moduleId === "frequencia" || moduleId === "jgc_frequencia" || moduleId === "diario") &&
+      ["registrar", "editar", "criar"].includes(action)
+    ) {
+      return profile === "professor";
+    }
     if (unrestricted) return true;
     if (
       profile === "multiprofissional" &&
@@ -338,8 +353,10 @@ export default function JovemGuardaCidada() {
     );
   }
 
+  const [isSavingStudent, setIsSavingStudent] = useState(false);
+
   async function saveStudent() {
-    if (!can("alunos", "criar")) return;
+    if (!can("alunos", "criar") || isSavingStudent) return;
     if (!student.nome_completo.trim() || !student.data_nascimento) {
       toast({
         title: "Informe nome e data de nascimento",
@@ -347,30 +364,68 @@ export default function JovemGuardaCidada() {
       });
       return;
     }
-    const { error } = await supabase.rpc("jgc_criar_aluno", {
-      _dados: {
-        ...student,
-        turma_id: (student as any).turmas_ids.length > 0 ? (student as any).turmas_ids[0] : "",
-      },
-    });
-    if (error) {
-      toast({
-        title: "Não foi possível cadastrar",
-        description: error.message,
-        variant: "destructive",
+    setIsSavingStudent(true);
+    try {
+      const { error } = await supabase.rpc("jgc_criar_aluno", {
+        _dados: {
+          ...student,
+          turma_id: (student as any).turmas_ids.length > 0 ? (student as any).turmas_ids[0] : "",
+        },
       });
-      return;
+      if (error) {
+        toast({
+          title: "Não foi possível cadastrar",
+          description: error.message,
+          variant: "destructive",
+        });
+        return;
+      }
+      toast({
+        title: "Aluno cadastrado",
+        description: "Matrícula gerada automaticamente pelo sistema.",
+      });
+      setStudentOpen(false);
+      setStudent({ ...initialStudent });
+      void load();
+    } finally {
+      setIsSavingStudent(false);
     }
-    toast({
-      title: "Aluno cadastrado",
-      description: "Matrícula gerada automaticamente pelo sistema.",
-    });
-    setStudentOpen(false);
-    setStudent({ ...initialStudent });
-    void load();
   }
+  const initialClassForm = {
+    nome: "",
+    descricao: "",
+    turno: "",
+    hora_inicio: "",
+    hora_fim: "",
+    status: "ativa",
+  };
+  const [editingClassId, setEditingClassId] = useState<string | null>(null);
+  const [viewingClass, setViewingClass] = useState<JgcTurma | null>(null);
+  const [deletingClassId, setDeletingClassId] = useState<string | null>(null);
+
+  const [classForm, setClassForm] = useState({ ...initialClassForm });
+
+  function handleOpenCreateClass() {
+    setEditingClassId(null);
+    setClassForm({ ...initialClassForm });
+    setClassOpen(true);
+  }
+
+  function handleOpenEditClass(item: JgcTurma) {
+    setEditingClassId(item.id);
+    setClassForm({
+      nome: item.nome || "",
+      descricao: item.descricao || "",
+      turno: item.turno || "",
+      hora_inicio: item.hora_inicio || "",
+      hora_fim: item.hora_fim || "",
+      status: item.status || "ativa",
+    });
+    setClassOpen(true);
+  }
+
   async function saveClass() {
-    if (!can("turmas", "criar")) return;
+    if (editingClassId ? !can("turmas", "editar") : !can("turmas", "criar")) return;
     if (!classForm.nome.trim()) {
       toast({ title: "Informe o nome da turma", variant: "destructive" });
       return;
@@ -378,17 +433,58 @@ export default function JovemGuardaCidada() {
     const payload = Object.fromEntries(
       Object.entries(classForm).map(([key, value]) => [key, value || null]),
     );
-    const { error } = await supabase.from("jgc_turmas").insert(payload);
+
+    if (editingClassId) {
+      const { error } = await supabase
+        .from("jgc_turmas")
+        .update(payload)
+        .eq("id", editingClassId);
+      if (error) {
+        toast({
+          title: "Não foi possível atualizar a turma",
+          description: error.message,
+          variant: "destructive",
+        });
+        return;
+      }
+      toast({ title: "Turma atualizada com sucesso" });
+    } else {
+      const { error } = await supabase.from("jgc_turmas").insert(payload);
+      if (error) {
+        toast({
+          title: "Não foi possível criar a turma",
+          description: error.message,
+          variant: "destructive",
+        });
+        return;
+      }
+      toast({ title: "Turma criada com sucesso" });
+    }
+    setClassOpen(false);
+    setEditingClassId(null);
+    setClassForm({ ...initialClassForm });
+    void load();
+  }
+
+  async function deleteClass(id: string) {
+    if (!can("turmas", "excluir")) return;
+    const rpcRes = await supabase.rpc("jgc_excluir_turma", { _turma_id: id });
+    let error = rpcRes.error;
+    if (error) {
+      const directRes = await supabase.from("jgc_turmas").delete().eq("id", id);
+      error = directRes.error;
+    }
     if (error) {
       toast({
-        title: "Não foi possível criar a turma",
+        title: "Não foi possível excluir a turma",
         description: error.message,
         variant: "destructive",
       });
       return;
     }
-    toast({ title: "Turma criada" });
-    setClassOpen(false);
+    toast({ title: "Turma excluída com sucesso" });
+    setDeletingClassId(null);
+    if (viewingClass?.id === id) setViewingClass(null);
     void load();
   }
   async function saveProfessorLink() {
@@ -620,86 +716,159 @@ export default function JovemGuardaCidada() {
               subtitle="Organize horários, professores e participantes"
               sectionKey="turmas"
               action={
-                can("turmas", "criar") && <Button
-                  onClick={() => setClassOpen(true)}
-                  className="hidden gap-2 bg-teal-700 sm:inline-flex"
-                >
-                  <Plus className="h-4 w-4" />
-                  Nova turma
-                </Button>
+                can("turmas", "criar") && (
+                  <Button
+                    onClick={handleOpenCreateClass}
+                    className="hidden gap-2 bg-teal-700 sm:inline-flex"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Nova turma
+                  </Button>
+                )
               }
             />
             {filteredTurmas.length ? (
               <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                {filteredTurmas.map((item) => (
-                  <Card
-                    key={item.id}
-                    className="rounded-2xl border-0 shadow-sm"
-                  >
-                    <CardHeader>
-                      <div className="flex justify-between">
-                        <div className="grid h-10 w-10 place-items-center rounded-xl bg-cyan-50 text-cyan-700">
-                          <GraduationCap />
+                {filteredTurmas.map((item) => {
+                  const enrolledCount = globalFilteredAlunos.filter(
+                    (studentItem) =>
+                      studentItem.turma_id === item.id ||
+                      studentItem.turmas?.some((t: any) => t.id === item.id),
+                  ).length;
+                  return (
+                    <Card
+                      key={item.id}
+                      className="flex flex-col justify-between h-full rounded-2xl border-0 shadow-sm transition hover:shadow-md"
+                    >
+                      <CardHeader className="pb-2">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <div className="grid h-10 w-10 place-items-center rounded-xl bg-cyan-50 text-cyan-700">
+                              <GraduationCap />
+                            </div>
+                            <Badge
+                              className={`${statusClass(item.status)} border-0`}
+                            >
+                              {item.status}
+                            </Badge>
+                          </div>
+                          <div className="flex items-center gap-0.5">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-slate-500 hover:text-teal-700 hover:bg-teal-50"
+                              title="Ver detalhes da turma"
+                              onClick={() => setViewingClass(item)}
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            {can("turmas", "editar") && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-slate-500 hover:text-amber-700 hover:bg-amber-50"
+                                title="Editar turma"
+                                onClick={() => handleOpenEditClass(item)}
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                            )}
+                            {can("turmas", "excluir") && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-slate-500 hover:text-rose-700 hover:bg-rose-50"
+                                title="Excluir turma"
+                                onClick={() => setDeletingClassId(item.id)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            )}
+                          </div>
                         </div>
-                        <Badge
-                          className={`${statusClass(item.status)} border-0`}
+                        <CardTitle
+                          className="pt-2 cursor-pointer hover:text-teal-700 transition-colors text-lg"
+                          onClick={() => setViewingClass(item)}
                         >
-                          {item.status}
-                        </Badge>
-                      </div>
-                      <CardTitle className="pt-3">{item.nome}</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-2 text-sm text-slate-600">
-                      <p>{item.descricao || "Sem descrição"}</p>
-                      <p>
-                        <Clock3 className="mr-2 inline h-4 w-4" />
-                        {item.turno || "Turno livre"} ·{" "}
-                        {item.hora_inicio?.slice(0, 5) || "—"} às{" "}
-                        {item.hora_fim?.slice(0, 5) || "—"}
-                      </p>
-                      <p>
-                        <Users className="mr-2 inline h-4 w-4" />
-                        {
-                          globalFilteredAlunos.filter(
-                            (studentItem) => studentItem.turmas?.some((t: any) => t.id === item.id),
-                          ).length
-                        }{" "}
-                        aluno(s)
-                      </p>
-                      {item.professores && item.professores.length > 0 && (
-                        <p>
-                          <Users className="mr-2 inline h-4 w-4" />
-                          {item.professores
-                            .map((p) =>
-                              p.perfil
-                                ? `${p.perfil.nome} ${p.perfil.sobrenome}`
-                                : "",
-                            )
-                            .filter(Boolean)
-                            .join(", ")}
-                        </p>
-                      )}
-                      {can("turmas", "gerenciar_alunos") && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="w-full gap-2"
-                          onClick={() => {
-                            setProfessorTurmaId(item.id);
-                            setSelectedProfessorIds(
-                              (item.professores || []).map(
-                                (p) => p.perfil_usuario_id,
-                              ),
-                            );
-                          }}
-                        >
-                          <Users className="h-4 w-4" />
-                          Vincular professores
-                        </Button>
-                      )}
-                    </CardContent>
-                  </Card>
-                ))}
+                          {item.nome}
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="flex flex-col flex-1 justify-between p-5 pt-0 text-sm text-slate-600">
+                        <div className="space-y-2.5 flex-1">
+                          <p className="line-clamp-2">{item.descricao || "Sem descrição"}</p>
+                          <p className="text-xs">
+                            <Clock3 className="mr-2 inline h-4 w-4 text-slate-400" />
+                            {item.turno || "Turno livre"} ·{" "}
+                            {item.hora_inicio?.slice(0, 5) || "—"} às{" "}
+                            {item.hora_fim?.slice(0, 5) || "—"}
+                          </p>
+                          <p
+                            className="cursor-pointer hover:underline text-teal-800 font-medium text-xs"
+                            onClick={() => setViewingClass(item)}
+                          >
+                            <Users className="mr-2 inline h-4 w-4 text-teal-600" />
+                            {enrolledCount} aluno(s) matriculado(s)
+                          </p>
+                          {item.professores && item.professores.length > 0 && (
+                            <p className="text-xs text-slate-500 truncate">
+                              <strong className="text-slate-700">Professores:</strong>{" "}
+                              {item.professores
+                                .map((p) =>
+                                  p.perfil
+                                    ? `${p.perfil.nome} ${p.perfil.sobrenome}`
+                                    : "",
+                                )
+                                .filter(Boolean)
+                                .join(", ")}
+                            </p>
+                          )}
+                        </div>
+
+                        {/* Equalized action buttons container pinned at bottom */}
+                        <div className="mt-auto pt-3 border-t border-slate-100 flex items-center gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-9 flex-1 gap-1.5 text-xs justify-center"
+                            onClick={() => setViewingClass(item)}
+                          >
+                            <Eye className="h-3.5 w-3.5" />
+                            Ver detalhes
+                          </Button>
+                          {can("turmas", "gerenciar_alunos") && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-9 flex-1 gap-1.5 text-xs justify-center"
+                              onClick={() => {
+                                setProfessorTurmaId(item.id);
+                                setSelectedProfessorIds(
+                                  (item.professores || []).map(
+                                    (p) => p.perfil_usuario_id,
+                                  ),
+                                );
+                              }}
+                            >
+                              <Users className="h-3.5 w-3.5" />
+                              Professores
+                            </Button>
+                          )}
+                          {can("turmas", "excluir") && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-9 w-9 p-0 text-xs text-rose-700 hover:text-rose-800 hover:bg-rose-50 border-rose-200 shrink-0 justify-center"
+                              title="Excluir turma"
+                              onClick={() => setDeletingClassId(item.id)}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
               </div>
             ) : (
               <Empty
@@ -711,7 +880,7 @@ export default function JovemGuardaCidada() {
             {can("turmas", "criar") && (
               <button
                 type="button"
-                onClick={() => setClassOpen(true)}
+                onClick={handleOpenCreateClass}
                 aria-label="Nova turma"
                 title="Nova turma"
                 className="fixed bottom-[calc(6rem+var(--safe-area-bottom))] right-[calc(1.25rem+var(--safe-area-right))] z-40 flex size-14 items-center justify-center rounded-full bg-teal-700 text-white shadow-[0_8px_28px_-6px_rgba(15,118,110,0.55)] transition-all active:scale-90 sm:hidden"
@@ -808,6 +977,7 @@ export default function JovemGuardaCidada() {
             turmas={globalFilteredTurmas}
             can={can}
             reload={load}
+            profile={profile}
           />
         )}
       </div>
@@ -819,7 +989,7 @@ export default function JovemGuardaCidada() {
         description="A matrícula será gerada automaticamente pelo backend."
         onCancel={() => setStudentOpen(false)}
         onConfirm={saveStudent}
-        confirmLabel="Cadastrar aluno"
+        confirmLabel={isSavingStudent ? "Cadastrando..." : "Cadastrar aluno"}
       >
         <Tabs defaultValue="pessoal" className="py-2">
           <TabsList className="grid w-full grid-cols-4">
@@ -1061,6 +1231,72 @@ export default function JovemGuardaCidada() {
                 />
               </Field>
             </Grid>
+
+            {student.turno_escola === "integral" && (
+              <div className="mt-4 rounded-2xl border border-teal-200 bg-teal-50/60 p-4 space-y-3">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex items-center gap-2">
+                    <Calendar className="h-4 w-4 text-teal-700 shrink-0" />
+                    <strong className="text-sm font-semibold text-teal-900">
+                      Dias no Projeto (Tempo Integral)
+                    </strong>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-7 text-xs border-teal-300 bg-white text-teal-800 hover:bg-teal-100 shrink-0"
+                    onClick={() => {
+                      const allDays = ["segunda", "terca", "quarta", "quinta", "sexta"];
+                      const current = (student as any).dias_projeto || [];
+                      const isAll = allDays.every((d: string) => current.includes(d));
+                      setStudent({
+                        ...student,
+                        dias_projeto: isAll ? [] : allDays,
+                      });
+                    }}
+                  >
+                    Segunda a Sexta
+                  </Button>
+                </div>
+                <p className="text-xs text-teal-700">
+                  Marque os dias da semana em que este aluno de tempo integral estará presente no projeto:
+                </p>
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-6">
+                  {[
+                    { value: "segunda", label: "Segunda" },
+                    { value: "terca", label: "Terça" },
+                    { value: "quarta", label: "Quarta" },
+                    { value: "quinta", label: "Quinta" },
+                    { value: "sexta", label: "Sexta" },
+                    { value: "sabado", label: "Sábado" },
+                  ].map((day) => {
+                    const currentDays = ((student as any).dias_projeto || []) as string[];
+                    const isChecked = currentDays.includes(day.value);
+                    return (
+                      <button
+                        key={day.value}
+                        type="button"
+                        onClick={() => {
+                          const nextDays = isChecked
+                            ? currentDays.filter((d: string) => d !== day.value)
+                            : [...currentDays, day.value];
+                          setStudent({ ...student, dias_projeto: nextDays });
+                        }}
+                        className={`flex items-center justify-center gap-2 rounded-xl border p-2.5 text-xs font-bold transition-all ${
+                          isChecked
+                            ? "border-teal-700 bg-teal-700 text-white shadow-sm"
+                            : "border-slate-200 bg-white text-slate-700 hover:border-teal-300 hover:bg-teal-50/50"
+                        }`}
+                      >
+                        <CheckSquare className={`h-3.5 w-3.5 ${isChecked ? "text-white" : "text-slate-400"}`} />
+                        {day.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
             <ResponsiveDialog
               open={isTurmaModalOpen}
               onOpenChange={setIsTurmaModalOpen}
@@ -1203,12 +1439,22 @@ export default function JovemGuardaCidada() {
       </ResponsiveDialog>
       <ResponsiveDialog
         open={classOpen}
-        onOpenChange={setClassOpen}
-        title="Nova turma"
-        description="O horário padrão será sugerido nos cadastros dos alunos."
-        onCancel={() => setClassOpen(false)}
+        onOpenChange={(open) => {
+          setClassOpen(open);
+          if (!open) {
+            setEditingClassId(null);
+            setClassForm({ ...initialClassForm });
+          }
+        }}
+        title={editingClassId ? "Editar turma" : "Nova turma"}
+        description={editingClassId ? "Atualize as informações da turma." : "O horário padrão será sugerido nos cadastros dos alunos."}
+        onCancel={() => {
+          setClassOpen(false);
+          setEditingClassId(null);
+          setClassForm({ ...initialClassForm });
+        }}
         onConfirm={saveClass}
-        confirmLabel="Criar turma"
+        confirmLabel={editingClassId ? "Salvar alterações" : "Criar turma"}
       >
         <div className="grid gap-4 py-2 sm:grid-cols-2">
           <Field label="Nome *">
@@ -1247,6 +1493,17 @@ export default function JovemGuardaCidada() {
               }
             />
           </Field>
+          {editingClassId && (
+            <div className="sm:col-span-2">
+              <Field label="Status da turma">
+                <Choice
+                  value={classForm.status}
+                  onChange={(value) => setClassForm({ ...classForm, status: value })}
+                  options={["ativa", "inativa", "concluida"]}
+                />
+              </Field>
+            </div>
+          )}
           <div className="sm:col-span-2">
             <Field label="Descrição">
               <Textarea
@@ -1259,6 +1516,152 @@ export default function JovemGuardaCidada() {
             </Field>
           </div>
         </div>
+      </ResponsiveDialog>
+
+      {/* Modal para visualizar detalhes da turma */}
+      <ResponsiveDialog
+        open={!!viewingClass}
+        onOpenChange={(open) => !open && setViewingClass(null)}
+        title={viewingClass?.nome || "Detalhes da Turma"}
+        description="Informações da turma e alunos matriculados."
+        onCancel={() => setViewingClass(null)}
+        confirmLabel="Fechar"
+        onConfirm={() => setViewingClass(null)}
+      >
+        {viewingClass && (() => {
+          const enrolledAlunos = alunos.filter(
+            (a) =>
+              a.turma_id === viewingClass.id ||
+              a.turmas?.some((t: any) => t.id === viewingClass.id),
+          );
+          return (
+            <div className="space-y-4 py-2">
+              <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-slate-50 p-3 text-sm">
+                <div>
+                  <span className="font-semibold text-slate-700">Turno:</span>{" "}
+                  {viewingClass.turno || "Livre"} ·{" "}
+                  <span className="font-semibold text-slate-700">Horário:</span>{" "}
+                  {viewingClass.hora_inicio?.slice(0, 5) || "—"} às{" "}
+                  {viewingClass.hora_fim?.slice(0, 5) || "—"}
+                </div>
+                <Badge className={`${statusClass(viewingClass.status)} border-0`}>
+                  {viewingClass.status}
+                </Badge>
+              </div>
+
+              {viewingClass.descricao && (
+                <p className="text-sm text-slate-600 rounded-xl border p-3">
+                  {viewingClass.descricao}
+                </p>
+              )}
+
+              {viewingClass.professores && viewingClass.professores.length > 0 && (
+                <div className="space-y-1">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                    Professores Vinculados
+                  </h4>
+                  <p className="text-sm text-slate-700 font-medium">
+                    {viewingClass.professores
+                      .map((p) =>
+                        p.perfil ? `${p.perfil.nome} ${p.perfil.sobrenome}` : "",
+                      )
+                      .filter(Boolean)
+                      .join(", ")}
+                  </p>
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                  Alunos Matriculados ({enrolledAlunos.length})
+                </h4>
+                {enrolledAlunos.length > 0 ? (
+                  <div className="max-h-[35vh] space-y-1.5 overflow-y-auto pr-1">
+                    {enrolledAlunos.map((a) => (
+                      <div
+                        key={a.id}
+                        className="flex items-center justify-between rounded-xl border p-2.5 text-sm bg-white"
+                      >
+                        <div className="flex items-center gap-3">
+                          {a.foto_url ? (
+                            <img
+                              src={a.foto_url}
+                              alt={a.nome_completo}
+                              className="h-8 w-8 rounded-full object-cover"
+                            />
+                          ) : (
+                            <Initials name={a.nome_completo} />
+                          )}
+                          <div>
+                            <strong className="block font-medium text-slate-900">
+                              {a.nome_completo}
+                            </strong>
+                            <span className="text-xs text-slate-500">
+                              {a.matricula} · {a.escola_nome || "Sem escola"}
+                            </span>
+                          </div>
+                        </div>
+                        <Badge
+                          className={`${statusClass(a.situacao)} border-0 text-[10px]`}
+                        >
+                          {a.situacao}
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-slate-400 py-4 text-center">
+                    Nenhum aluno matriculado nesta turma.
+                  </p>
+                )}
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t">
+                {can("turmas", "editar") && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-2"
+                    onClick={() => {
+                      const target = viewingClass;
+                      setViewingClass(null);
+                      handleOpenEditClass(target);
+                    }}
+                  >
+                    <Pencil className="h-4 w-4" />
+                    Editar turma
+                  </Button>
+                )}
+                {can("turmas", "excluir") && (
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    className="gap-2"
+                    onClick={() => setDeletingClassId(viewingClass.id)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    Excluir turma
+                  </Button>
+                )}
+              </div>
+            </div>
+          );
+        })()}
+      </ResponsiveDialog>
+
+      {/* Modal de confirmação de exclusão da turma */}
+      <ResponsiveDialog
+        open={!!deletingClassId}
+        onOpenChange={(open) => !open && setDeletingClassId(null)}
+        title="Excluir turma?"
+        description="Tem certeza que deseja excluir esta turma? Todos os vínculos de alunos e professores nesta turma serão afetados."
+        onCancel={() => setDeletingClassId(null)}
+        onConfirm={() => deletingClassId && deleteClass(deletingClassId)}
+        confirmLabel="Sim, excluir turma"
+      >
+        <p className="py-2 text-sm text-slate-600">
+          Esta ação removerá a turma permanentemente do banco de dados.
+        </p>
       </ResponsiveDialog>
       <ResponsiveDialog
         open={professorTurmaId !== null}
@@ -1823,6 +2226,34 @@ function StudentDetail({
               rows={[
                 ["Escola", student.escola_nome],
                 ["Série/Ano", student.serie_ano],
+                [
+                  "Turno Escola",
+                  student.turno_escola === "integral"
+                    ? "Tempo Integral"
+                    : student.turno_escola
+                      ? student.turno_escola.toUpperCase()
+                      : "—",
+                ],
+                ...(student.turno_escola === "integral" && student.dias_projeto?.length
+                  ? [
+                      [
+                        "Dias no Projeto",
+                        student.dias_projeto
+                          .map(
+                            (d) =>
+                              ({
+                                segunda: "Segunda",
+                                terca: "Terça",
+                                quarta: "Quarta",
+                                quinta: "Quinta",
+                                sexta: "Sexta",
+                                sabado: "Sábado",
+                              })[d] || d,
+                          )
+                          .join(", "),
+                      ] as [string, string | null | undefined],
+                    ]
+                  : []),
                 ["Turma", student.turma?.nome],
                 [
                   "Horário",
