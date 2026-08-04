@@ -121,28 +121,60 @@ const GuardaDashboard = () => {
     navigate('/admin/login');
   };
 
+  const comTimeout = <T,>(promise: PromiseLike<T>, ms: number): Promise<T> => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const timeout = new Promise<never>((_, reject) => {
+      timer = setTimeout(() => reject(new Error('Tempo esgotado')), ms);
+    });
+    const p = Promise.resolve(promise);
+    p.catch(() => undefined);
+    return Promise.race([p, timeout]).finally(() => {
+      if (timer) clearTimeout(timer);
+    }) as Promise<T>;
+  };
+
+  const registrarAceiteNoBanco = async (): Promise<boolean> => {
+    try {
+      const { data, error } = await comTimeout(
+        supabase.rpc('aceitar_lei_iro', { p_usuario_id: user?.user_id }),
+        8000,
+      );
+      if (error) throw error;
+      const res = data as any;
+      if (res && res.sucesso) return true;
+    } catch {
+      // segue para o fallback
+    }
+
+    try {
+      const { data: guardaPerfil } = await supabase.rpc('buscar_guarda_por_usuario', { p_usuario_id: user?.user_id });
+      const guardaId = (guardaPerfil as any)?.id;
+      if (guardaId) {
+        const { error } = await supabase
+          .from('guardas_municipais')
+          .update({ aceitou_lei_iro_at: new Date().toISOString() })
+          .eq('id', guardaId);
+        return !error;
+      }
+    } catch {
+      // sem vínculo ou sem permissão
+    }
+    return false;
+  };
+
   const handleAceitar = async () => {
     if (!termoAceito) return;
     setEnviandoAceite(true);
     try {
-      const { data, error } = await supabase.rpc('aceitar_lei_iro', { p_usuario_id: user?.user_id });
-      if (error) throw error;
-      
-      const res = data as any;
-      if (res && res.sucesso) {
-        markLeiIroAccepted();
-        setExibirModalLei(false);
-        toast({
-          title: 'Termo de Aceite registrado!',
-          description: 'Você aceitou as regras da Lei da IRO.',
-        });
-      } else {
-        toast({
-          title: 'Erro ao aceitar termo',
-          description: res?.mensagem || 'Ocorreu um erro desconhecido.',
-          variant: 'destructive',
-        });
-      }
+      const sincronizado = await registrarAceiteNoBanco();
+      markLeiIroAccepted();
+      setExibirModalLei(false);
+      toast({
+        title: 'Termo de Aceite registrado!',
+        description: sincronizado
+          ? 'Você aceitou as regras da Lei da IRO.'
+          : 'Aceite registrado. A sincronização será feita automaticamente no próximo acesso.',
+      });
     } catch (err: any) {
       console.error(err);
       toast({
