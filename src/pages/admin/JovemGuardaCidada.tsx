@@ -402,6 +402,7 @@ export default function JovemGuardaCidada() {
   const [editingClassId, setEditingClassId] = useState<string | null>(null);
   const [viewingClass, setViewingClass] = useState<JgcTurma | null>(null);
   const [deletingClassId, setDeletingClassId] = useState<string | null>(null);
+  const [deleteConfirmStep, setDeleteConfirmStep] = useState<1 | 2>(1);
 
   const [classForm, setClassForm] = useState({ ...initialClassForm });
 
@@ -1649,19 +1650,45 @@ export default function JovemGuardaCidada() {
         })()}
       </ResponsiveDialog>
 
-      {/* Modal de confirmação de exclusão da turma */}
+      {/* Modal de confirmação de exclusão da turma com dupla confirmação */}
       <ResponsiveDialog
         open={!!deletingClassId}
-        onOpenChange={(open) => !open && setDeletingClassId(null)}
-        title="Excluir turma?"
-        description="Tem certeza que deseja excluir esta turma? Todos os vínculos de alunos e professores nesta turma serão afetados."
-        onCancel={() => setDeletingClassId(null)}
-        onConfirm={() => deletingClassId && deleteClass(deletingClassId)}
-        confirmLabel="Sim, excluir turma"
+        onOpenChange={(open) => {
+          if (!open) {
+            setDeletingClassId(null);
+            setDeleteConfirmStep(1);
+          }
+        }}
+        title={deleteConfirmStep === 1 ? "Excluir turma (Passo 1 de 2)?" : "⚠️ CONFIRMAÇÃO FINAL (Passo 2 de 2)"}
+        description={
+          deleteConfirmStep === 1
+            ? `Tem certeza que deseja excluir esta turma? Todos os vínculos de alunos e professores associados a ela no Jovem Guarda Cidadã serão desvinculados.`
+            : `Atenção: Esta ação é definitiva e irreversível! Ao prosseguir, todos os diários de classe e frequências desta turma serão excluídos permanentemente do banco de dados.`
+        }
+        onCancel={() => {
+          setDeletingClassId(null);
+          setDeleteConfirmStep(1);
+        }}
+        onConfirm={() => {
+          if (deleteConfirmStep === 1) {
+            setDeleteConfirmStep(2);
+          } else {
+            if (deletingClassId) deleteClass(deletingClassId);
+          }
+        }}
+        confirmLabel={deleteConfirmStep === 1 ? "Confirmar e prosseguir" : "Sim, excluir definitivamente"}
       >
-        <p className="py-2 text-sm text-slate-600">
-          Esta ação removerá a turma permanentemente do banco de dados.
-        </p>
+        <div className="py-2">
+          {deleteConfirmStep === 1 ? (
+            <p className="text-sm text-slate-600">
+              Clique em confirmar para ir ao passo final de verificação de segurança.
+            </p>
+          ) : (
+            <div className="rounded-xl bg-rose-50 p-3 text-sm text-rose-800 border border-rose-100 font-medium">
+              ⚠️ Confirme se realmente deseja apagar todos os registros associados a esta turma.
+            </div>
+          )}
+        </div>
       </ResponsiveDialog>
       <ResponsiveDialog
         open={professorTurmaId !== null}
