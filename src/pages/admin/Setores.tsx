@@ -20,6 +20,7 @@ const initialForm = {
   slug: '',
   descricao: '',
   ativo: true,
+  tem_pagina_publica: true,
 };
 
 const slugify = (value: string) =>
@@ -78,6 +79,7 @@ const SetoresPage = () => {
       slug: item.slug,
       descricao: item.descricao || '',
       ativo: item.ativo,
+      tem_pagina_publica: item.tem_pagina_publica ?? true,
     });
     setIsDialogOpen(true);
   };
@@ -99,6 +101,7 @@ const SetoresPage = () => {
       slug: slugify(formData.slug),
       descricao: formData.descricao.trim() || null,
       ativo: formData.ativo,
+      tem_pagina_publica: formData.tem_pagina_publica,
       updated_at: new Date().toISOString(),
     };
 
@@ -180,6 +183,22 @@ const SetoresPage = () => {
         </Badge>
       ),
     },
+    {
+      header: 'Pagina publica',
+      accessor: (item: Setor) => (
+        <Badge
+          variant="outline"
+          className={cn(
+            'rounded-full px-3 py-1 text-xs font-bold',
+            item.tem_pagina_publica
+              ? 'border-sky-200 bg-sky-50 text-sky-700'
+              : 'border-slate-200 bg-slate-100 text-slate-500',
+          )}
+        >
+          {item.tem_pagina_publica ? 'Sim' : 'Somente admin'}
+        </Badge>
+      ),
+    },
   ];
 
   function renderMobileSetorCard(item: Setor) {
@@ -229,6 +248,18 @@ const SetoresPage = () => {
           >
             {item.ativo ? 'Desativar' : 'Ativar'}
           </Button>
+        </div>
+        <div className="mt-3 flex flex-wrap gap-1.5">
+          <span
+            className={cn(
+              'rounded-full px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-[0.06em]',
+              item.tem_pagina_publica
+                ? 'bg-sky-50 text-sky-700'
+                : 'bg-slate-100 text-slate-500',
+            )}
+          >
+            {item.tem_pagina_publica ? 'Pagina publica' : 'Somente admin'}
+          </span>
         </div>
       </div>
     );
@@ -437,6 +468,22 @@ const SetoresPage = () => {
                 }
               />
               <Label htmlFor="ativo">Setor ativo</Label>
+            </div>
+            <div className="space-y-1.5">
+              <div className="flex items-center space-x-2">
+                <Switch
+                  id="tem_pagina_publica"
+                  checked={formData.tem_pagina_publica}
+                  onCheckedChange={(checked) =>
+                    setFormData((current) => ({ ...current, tem_pagina_publica: checked }))
+                  }
+                />
+                <Label htmlFor="tem_pagina_publica">Possui página pública</Label>
+              </div>
+              <p className="text-[13px] leading-5 text-muted-foreground">
+                Se ativado, o setor terá uma página pública no portal. Desative para setores usados somente
+                no painel administrativo.
+              </p>
             </div>
           </div>
         </ResponsiveDialog>

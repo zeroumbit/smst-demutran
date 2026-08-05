@@ -91,6 +91,7 @@ export interface Setor {
   slug: string;
   descricao: string | null;
   ativo: boolean;
+  tem_pagina_publica?: boolean;
   created_at?: string | null;
   updated_at?: string | null;
 }
