@@ -1,6 +1,12 @@
 import { supabase } from '@/lib/supabase';
 import type { PapelUsuario } from '@/types/admin';
 
+export interface IndividualPermissionInput {
+  codigo: string;
+  efeito: 'PERMITIR' | 'NEGAR';
+  motivo?: string;
+}
+
 export interface ProvisionAdminUserInput {
   email: string;
   password: string;
@@ -11,6 +17,8 @@ export interface ProvisionAdminUserInput {
   active: boolean;
   modulos?: string[];
   graduacaoId?: string | null;
+  perfilFuncionalId?: string | null;
+  permissoesIndividuais?: IndividualPermissionInput[];
 }
 
 export async function provisionAdminUser(input: ProvisionAdminUserInput) {
@@ -24,6 +32,10 @@ export async function provisionAdminUser(input: ProvisionAdminUserInput) {
     _active: input.active,
     _modulos: input.modulos?.length ? input.modulos : null,
     _graduacao_id: input.graduacaoId || null,
+    _perfil_funcional_id: input.perfilFuncionalId || null,
+    _permissoes_individuais: input.permissoesIndividuais?.length
+      ? input.permissoesIndividuais
+      : null,
   };
 
   const { data, error } = await supabase.rpc('provision_admin_user', payload);

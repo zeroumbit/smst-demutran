@@ -1163,6 +1163,80 @@ export type Database = {
         }
         Relationships: []
       }
+      perfil_funcional_permissoes: {
+        Row: {
+          created_at: string
+          perfil_funcional_id: string
+          permissao_id: string
+        }
+        Insert: {
+          created_at?: string
+          perfil_funcional_id: string
+          permissao_id: string
+        }
+        Update: {
+          created_at?: string
+          perfil_funcional_id?: string
+          permissao_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "perfil_funcional_permissoes_perfil_funcional_id_fkey"
+            columns: ["perfil_funcional_id"]
+            isOneToOne: false
+            referencedRelation: "perfis_funcionais"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "perfil_funcional_permissoes_permissao_id_fkey"
+            columns: ["permissao_id"]
+            isOneToOne: false
+            referencedRelation: "permissoes_sistema"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      perfis_funcionais: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          created_by: string | null
+          descricao: string | null
+          id: string
+          nome: string
+          setor_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          created_by?: string | null
+          descricao?: string | null
+          id?: string
+          nome: string
+          setor_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          created_by?: string | null
+          descricao?: string | null
+          id?: string
+          nome?: string
+          setor_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "perfis_funcionais_setor_id_fkey"
+            columns: ["setor_id"]
+            isOneToOne: false
+            referencedRelation: "setores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       perfis_usuarios: {
         Row: {
           ativo: boolean
@@ -1170,6 +1244,7 @@ export type Database = {
           id: string
           nome: string | null
           papel: Database["public"]["Enums"]["papel_usuario"]
+          perfil_funcional_id: string | null
           setor_id: string | null
           sobrenome: string | null
           updated_at: string
@@ -1181,6 +1256,7 @@ export type Database = {
           id?: string
           nome?: string | null
           papel: Database["public"]["Enums"]["papel_usuario"]
+          perfil_funcional_id?: string | null
           setor_id?: string | null
           sobrenome?: string | null
           updated_at?: string
@@ -1192,6 +1268,7 @@ export type Database = {
           id?: string
           nome?: string | null
           papel?: Database["public"]["Enums"]["papel_usuario"]
+          perfil_funcional_id?: string | null
           setor_id?: string | null
           sobrenome?: string | null
           updated_at?: string
@@ -1199,10 +1276,91 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "perfis_usuarios_perfil_funcional_id_fkey"
+            columns: ["perfil_funcional_id"]
+            isOneToOne: false
+            referencedRelation: "perfis_funcionais"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "perfis_usuarios_setor_id_fkey"
             columns: ["setor_id"]
             isOneToOne: false
             referencedRelation: "setores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      permissoes_divergencia_log: {
+        Row: {
+          codigo: string
+          criado_em: string
+          divergiu: boolean
+          id: string
+          resultado_legado: boolean
+          resultado_novo: boolean
+          user_id: string
+        }
+        Insert: {
+          codigo: string
+          criado_em?: string
+          divergiu: boolean
+          id?: string
+          resultado_legado: boolean
+          resultado_novo: boolean
+          user_id: string
+        }
+        Update: {
+          codigo?: string
+          criado_em?: string
+          divergiu?: boolean
+          id?: string
+          resultado_legado?: boolean
+          resultado_novo?: boolean
+          user_id?: string
+        }
+        Relationships: []
+      }
+      permissoes_sistema: {
+        Row: {
+          acao: string
+          ativo: boolean
+          codigo: string
+          created_at: string
+          descricao: string | null
+          id: string
+          modulo_id: string
+          nome: string
+          sensivel: boolean
+        }
+        Insert: {
+          acao: string
+          ativo?: boolean
+          codigo: string
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          modulo_id: string
+          nome: string
+          sensivel?: boolean
+        }
+        Update: {
+          acao?: string
+          ativo?: boolean
+          codigo?: string
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          modulo_id?: string
+          nome?: string
+          sensivel?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "permissoes_sistema_modulo_id_fkey"
+            columns: ["modulo_id"]
+            isOneToOne: false
+            referencedRelation: "setor_modulos"
             referencedColumns: ["id"]
           },
         ]
@@ -1239,6 +1397,47 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      setor_modulos: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          id: string
+          nome: string
+          prefixo: string
+          setor_id: string
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          id?: string
+          nome: string
+          prefixo: string
+          setor_id: string
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          id?: string
+          nome?: string
+          prefixo?: string
+          setor_id?: string
+          slug?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "setor_modulos_setor_id_fkey"
+            columns: ["setor_id"]
+            isOneToOne: false
+            referencedRelation: "setores"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       setores: {
         Row: {
@@ -1293,6 +1492,51 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      usuario_permissoes: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          efeito: string
+          id: string
+          motivo: string | null
+          perfil_usuario_id: string
+          permissao_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          efeito: string
+          id?: string
+          motivo?: string | null
+          perfil_usuario_id: string
+          permissao_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          efeito?: string
+          id?: string
+          motivo?: string | null
+          perfil_usuario_id?: string
+          permissao_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "usuario_permissoes_perfil_usuario_id_fkey"
+            columns: ["perfil_usuario_id"]
+            isOneToOne: false
+            referencedRelation: "perfis_usuarios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "usuario_permissoes_permissao_id_fkey"
+            columns: ["permissao_id"]
+            isOneToOne: false
+            referencedRelation: "permissoes_sistema"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       users: {
         Row: {
@@ -1913,6 +2157,65 @@ export type Database = {
             }
             Returns: Json
           }
+        | {
+            Args: {
+              _active?: boolean
+              _email: string
+              _first_name: string
+              _graduacao_id?: string
+              _last_name: string
+              _modulos?: Json
+              _papel: Database["public"]["Enums"]["papel_usuario"]
+              _password: string
+              _perfil_funcional_id?: string
+              _permissoes_individuais?: Json
+              _setor_id: string
+            }
+            Returns: Json
+          }
+      permissions_v2_enabled: {
+        Args: never
+        Returns: boolean
+      }
+      remove_usuario_permissao: {
+        Args: {
+          _codigo: string
+          _perfil_usuario_id: string
+        }
+        Returns: Json
+      }
+      set_usuario_perfil_funcional: {
+        Args: {
+          _perfil_funcional_id: string | null
+          _perfil_usuario_id: string
+        }
+        Returns: Json
+      }
+      tem_permissao: { Args: { _codigo: string }; Returns: boolean }
+      legacy_tem_permissao: { Args: { _codigo: string }; Returns: boolean }
+      upsert_usuario_permissao: {
+        Args: {
+          _codigo: string
+          _efeito: string
+          _motivo?: string
+          _perfil_usuario_id: string
+        }
+        Returns: Json
+      }
+      get_usuario_permissoes: {
+        Args: { _perfil_usuario_id: string }
+        Returns: {
+          codigo: string
+          descricao: string | null
+          efeito: string | null
+          modulo_slug: string
+          nome: string
+          origem: string
+          permissao_id: string
+          pode: boolean
+          sensivel: boolean
+        }[]
+      }
       recolher_veiculo: {
         Args: {
           _ano?: string

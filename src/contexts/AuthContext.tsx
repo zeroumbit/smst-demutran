@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase';
 import type { AdminProfile, PapelUsuario } from '@/types/admin';
 import { maskCpf } from '@/lib/masks';
 import { queryClient } from '@/lib/queryClient';
+import { clearPermissionCache } from '@/lib/permissions';
 
 const LEI_IRO_ACCEPTED_KEY_PREFIX = 'lei-iro-accepted:';
 
@@ -304,6 +305,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       if (sessionUserIdRef.current !== sessionUserId) {
         queryClient.clear();
+        clearPermissionCache();
         sessionUserIdRef.current = sessionUserId;
       }
 

@@ -108,6 +108,45 @@ const permissionsFromStoredModules = (stored: string[] | null | undefined) => {
   );
 };
 
+type IndividualException = {
+  codigo: string;
+  efeito: 'PERMITIR' | 'NEGAR';
+  motivo?: string;
+};
+
+type PerfilFuncional = {
+  id: string;
+  setor_id: string | null;
+  nome: string;
+  descricao: string | null;
+};
+
+type PermissaoCatalogo = {
+  id: string;
+  codigo: string;
+  nome: string;
+  descricao: string | null;
+  sensivel: boolean;
+  modulo_id: string;
+};
+
+type UsuarioPermissaoResumo = {
+  codigo: string;
+  nome: string;
+  descricao: string | null;
+  sensivel: boolean;
+  modulo_slug: string;
+  origem: string;
+  efeito: string | null;
+  pode: boolean;
+};
+
+const efeitoOptions: Array<{ value: '__none__' | 'PERMITIR' | 'NEGAR'; label: string }> = [
+  { value: '__none__', label: 'Sem exceção' },
+  { value: 'PERMITIR', label: 'Permitir' },
+  { value: 'NEGAR', label: 'Negar' },
+];
+
 const initialForm = {
   firstName: '',
   lastName: '',
@@ -152,6 +191,16 @@ const UsuariosPage = () => {
   const [editJgcPapel, setEditJgcPapel] = useState<Exclude<JgcPerfil, 'gestor'>>('administrativo');
   const [editJgcArea, setEditJgcArea] = useState('');
   const [editGraduacaoId, setEditGraduacaoId] = useState('');
+  const [perfisFuncionais, setPerfisFuncionais] = useState<PerfilFuncional[]>([]);
+  const [catalogoPermissoes, setCatalogoPermissoes] = useState<PermissaoCatalogo[]>([]);
+  const [modulosSetorMap, setModulosSetorMap] = useState<Record<string, string>>({});
+  const [createPerfilFuncionalId, setCreatePerfilFuncionalId] = useState('');
+  const [createPermissoesIndividuais, setCreatePermissoesIndividuais] = useState<IndividualException[]>([]);
+  const [editPerfilFuncionalId, setEditPerfilFuncionalId] = useState('');
+  const [editPermissoesIndividuais, setEditPermissoesIndividuais] = useState<IndividualException[]>([]);
+  const [editPermissoesIniciais, setEditPermissoesIniciais] = useState<IndividualException[]>([]);
+  const [editAcessosRevisao, setEditAcessosRevisao] = useState<UsuarioPermissaoResumo[]>([]);
+  const [acessosRevisaoAberto, setAcessosRevisaoAberto] = useState(false);
 
   const loadSetores = async () => {
     const { data, error } = await supabase.rpc('get_manageable_setores');
@@ -168,6 +217,34 @@ const UsuariosPage = () => {
       .eq('ativo', true)
       .order('ordem', { ascending: true });
     setGraduacoes((data || []) as GuardaMunicipalGraduacao[]);
+  };
+
+  const loadPerfisFuncionais = async () => {
+    const { data } = await supabase
+      .from('perfis_funcionais')
+      .select('id, setor_id, nome, descricao')
+      .eq('ativo', true)
+      .order('nome', { ascending: true });
+    setPerfisFuncionais((data || []) as PerfilFuncional[]);
+  };
+
+  const loadCatalogoPermissoes = async () => {
+    const { data: permissoes } = await supabase
+      .from('permissoes_sistema')
+      .select('id, codigo, nome, descricao, sensivel, modulo_id')
+      .eq('ativo', true)
+      .order('codigo', { ascending: true });
+    setCatalogoPermissoes((permissoes || []) as PermissaoCatalogo[]);
+
+    const { data: modulos } = await supabase
+      .from('setor_modulos')
+      .select('id, setor_id')
+      .eq('ativo', true);
+    const map: Record<string, string> = {};
+    (modulos || []).forEach((m) => {
+      map[m.id] = m.setor_id;
+    });
+    setModulosSetorMap(map);
   };
 
   const loadUsuarios = async (setorIdToLoad?: string) => {
@@ -196,6 +273,8 @@ const UsuariosPage = () => {
   useEffect(() => {
     loadSetores();
     loadGraduacoes();
+    loadPerfisFuncionais();
+    loadCatalogoPermissoes();
   }, []);
 
   useEffect(() => {
@@ -246,6 +325,8 @@ const UsuariosPage = () => {
     setSelectedJgcPapel('administrativo');
     setSelectedJgcArea('');
     setSelectedGraduacaoId('');
+    setCreatePerfilFuncionalId('');
+    setCreatePermissoesIndividuais([]);
     setIsDialogOpen(false);
   };
 
@@ -300,6 +381,12 @@ const UsuariosPage = () => {
           ? [...modulesFromPermissions(selectedJgcPermissions), ...selectedJgcPermissions]
           : isSuperAdmin ? undefined : selectedModulos,
         graduacaoId: creatingJovemGuarda ? undefined : selectedGraduacaoId || undefined,
+        perfilFuncionalId: creatingJovemGuarda ? undefined : createPerfilFuncionalId || undefined,
+        permissoesIndividuais: creatingJovemGuarda
+          ? undefined
+          : createPermissoesIndividuais.length
+            ? createPermissoesIndividuais
+            : undefined,
       });
       const createdUserId = created?.userId || created?.user_id;
       if (creatingJovemGuarda && createdUserId) {
@@ -409,7 +496,45 @@ const UsuariosPage = () => {
       }
     }
     setEditGraduacaoId(item.graduacao_id || '');
+    setEditPerfilFuncionalId('');
+    setEditPermissoesIndividuais([]);
+    setEditPermissoesIniciais([]);
+    setEditAcessosRevisao([]);
+    setAcessosRevisaoAberto(false);
+    if (item.setor_slug !== 'jovem-guarda') {
+      const { data: perfilData } = await supabase
+        .from('perfis_usuarios')
+        .select('perfil_funcional_id')
+        .eq('id', item.perfil_id)
+        .maybeSingle();
+      setEditPerfilFuncionalId(perfilData?.perfil_funcional_id || '');
+
+      const { data: exceptionsData } = await supabase
+        .from('usuario_permissoes')
+        .select('permissao_id, efeito, motivo')
+        .eq('perfil_usuario_id', item.perfil_id);
+      const initial = (exceptionsData || []).map((ex) => ({
+        codigo: catalogoPermissoes.find((c) => c.id === ex.permissao_id)?.codigo || ex.permissao_id,
+        efeito: ex.efeito === 'NEGAR' ? ('NEGAR' as const) : ('PERMITIR' as const),
+        motivo: ex.motivo || undefined,
+      }));
+      setEditPermissoesIndividuais(initial);
+      setEditPermissoesIniciais(initial);
+
+      const { data: reviewData } = await supabase.rpc('get_usuario_permissoes', {
+        _perfil_usuario_id: item.perfil_id,
+      });
+      setEditAcessosRevisao((reviewData || []) as UsuarioPermissaoResumo[]);
+    }
     setIsEditDialogOpen(true);
+  };
+
+  const resetEditAcessosState = () => {
+    setEditPerfilFuncionalId('');
+    setEditPermissoesIndividuais([]);
+    setEditPermissoesIniciais([]);
+    setEditAcessosRevisao([]);
+    setAcessosRevisaoAberto(false);
   };
 
   const handleEditSave = async () => {
@@ -461,6 +586,36 @@ const UsuariosPage = () => {
           _area_atuacao: editJgcPapel === 'multiprofissional' ? editJgcArea.trim() : null,
         });
         if (roleError) throw roleError;
+      }
+
+      if (!editingJovemGuarda) {
+        const { error: perfilFuncionalError } = await supabase.rpc('set_usuario_perfil_funcional', {
+          _perfil_usuario_id: editingItem.perfil_id,
+          _perfil_funcional_id: editPerfilFuncionalId || null,
+        });
+        if (perfilFuncionalError) throw perfilFuncionalError;
+
+        const currentCodes = new Set(editPermissoesIndividuais.map((ex) => ex.codigo));
+        const initialMap = new Map(editPermissoesIniciais.map((ex) => [ex.codigo, ex]));
+        for (const ex of editPermissoesIndividuais) {
+          const prev = initialMap.get(ex.codigo);
+          if (prev && prev.efeito === ex.efeito && prev.motivo === ex.motivo) continue;
+          const { error: upsertError } = await supabase.rpc('upsert_usuario_permissao', {
+            _perfil_usuario_id: editingItem.perfil_id,
+            _codigo: ex.codigo,
+            _efeito: ex.efeito,
+            _motivo: ex.motivo,
+          });
+          if (upsertError) throw upsertError;
+        }
+        for (const ex of editPermissoesIniciais) {
+          if (currentCodes.has(ex.codigo)) continue;
+          const { error: removeError } = await supabase.rpc('remove_usuario_permissao', {
+            _perfil_usuario_id: editingItem.perfil_id,
+            _codigo: ex.codigo,
+          });
+          if (removeError) throw removeError;
+        }
       }
 
       toast({ title: 'Perfil atualizado', description: 'Os dados do usuario foram alterados.' });
@@ -563,6 +718,17 @@ const UsuariosPage = () => {
     const setorId = isSuperAdmin ? createSetorId : currentSetorId;
     return setores.find((s) => s.id === setorId)?.slug || '';
   }, [isSuperAdmin, createSetorId, currentSetorId, setores]);
+
+  const targetSetorId = useMemo(
+    () => (isSuperAdmin ? createSetorId : currentSetorId) || undefined,
+    [isSuperAdmin, createSetorId, currentSetorId],
+  );
+
+  const perfisFuncionaisDoSetor = (setorId: string | null | undefined) =>
+    perfisFuncionais.filter((p) => p.setor_id === null || p.setor_id === setorId);
+
+  const permissoesCatalogoDoSetor = (setorId: string | null | undefined) =>
+    catalogoPermissoes.filter((p) => modulosSetorMap[p.modulo_id] === setorId);
 
   const availableModulos = useMemo(
     () => MODULOS_POR_SETOR[targetSetorSlug] || [],
@@ -1051,6 +1217,39 @@ const UsuariosPage = () => {
               </div>
             )}
 
+            {!isJovemGuardaContext && formData.papel !== 'super_admin' && (
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Perfil funcional (opcional)</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Define o conjunto base de acessos granulares (permissões v2). Enquanto a flag de permissões v2 estiver desligada, valem os módulos acima.
+                  </p>
+                  <Select value={createPerfilFuncionalId} onValueChange={(value) => setCreatePerfilFuncionalId(value === '__none__' ? '' : value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Sem perfil funcional" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">Sem perfil funcional</SelectItem>
+                      {perfisFuncionaisDoSetor(targetSetorId).map((perfil) => (
+                        <SelectItem key={perfil.id} value={perfil.id}>{perfil.nome}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {perfisFuncionaisDoSetor(targetSetorId).length === 0 && (
+                    <p className="text-xs text-muted-foreground">
+                      Nenhum perfil funcional cadastrado para este setor ainda. Sem perfil, este usuário continua usando o modelo atual (módulos).
+                    </p>
+                  )}
+                </div>
+
+                <PermissoesIndividuaisEditor
+                  permissoes={permissoesCatalogoDoSetor(targetSetorId)}
+                  value={createPermissoesIndividuais}
+                  onChange={setCreatePermissoesIndividuais}
+                />
+              </div>
+            )}
+
             <div className="space-y-2">
               <Label htmlFor="usuario-status">Status</Label>
               <div className="flex items-center gap-3 rounded-md border border-border px-3 py-2">
@@ -1070,11 +1269,11 @@ const UsuariosPage = () => {
         {/* Dialog de edicao */}
         <ResponsiveDialog
           open={isEditDialogOpen}
-          onOpenChange={(open) => { if (!open) { setIsEditDialogOpen(false); setEditingItem(null); setEditModulos([]); } }}
+          onOpenChange={(open) => { if (!open) { setIsEditDialogOpen(false); setEditingItem(null); setEditModulos([]); resetEditAcessosState(); } }}
           title="Editar usuario"
           description={editingItem ? `Alterar dados de ${editingItem.nome}` : ''}
           confirmLabel="Salvar"
-          onCancel={() => { setIsEditDialogOpen(false); setEditingItem(null); setEditModulos([]); }}
+          onCancel={() => { setIsEditDialogOpen(false); setEditingItem(null); setEditModulos([]); resetEditAcessosState(); }}
           onConfirm={handleEditSave}
         >
           <div className="space-y-4 py-2">
@@ -1208,6 +1407,80 @@ const UsuariosPage = () => {
                 )}
               </div>
             )}
+            {!isEditingJovemGuarda && editPapel !== 'super_admin' && (
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Perfil funcional (opcional)</Label>
+                  <Select value={editPerfilFuncionalId} onValueChange={(value) => setEditPerfilFuncionalId(value === '__none__' ? '' : value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Sem perfil funcional" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">Sem perfil funcional</SelectItem>
+                      {perfisFuncionaisDoSetor(editingItem?.setor_id).map((perfil) => (
+                        <SelectItem key={perfil.id} value={perfil.id}>{perfil.nome}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    O perfil define o conjunto base de permissões v2; as exceções abaixo aplicam-se por cima dele.
+                  </p>
+                </div>
+
+                <PermissoesIndividuaisEditor
+                  permissoes={permissoesCatalogoDoSetor(editingItem?.setor_id)}
+                  value={editPermissoesIndividuais}
+                  onChange={setEditPermissoesIndividuais}
+                />
+
+                <div className="space-y-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="flex w-full items-center justify-between rounded-xl border-slate-200"
+                    onClick={() => setAcessosRevisaoAberto((v) => !v)}
+                  >
+                    <span className="flex items-center gap-2 text-sm font-semibold">
+                      <ShieldCheck className="h-4 w-4" />
+                      Revisão de acessos
+                    </span>
+                    <ChevronDown className={cn('h-4 w-4 text-slate-400 transition-transform', acessosRevisaoAberto && 'rotate-180')} />
+                  </Button>
+                  {acessosRevisaoAberto && (
+                    <div className="max-h-[40vh] space-y-2 overflow-y-auto rounded-xl border border-slate-200 bg-slate-50/60 p-3">
+                      {editAcessosRevisao.length === 0 ? (
+                        <p className="text-xs leading-5 text-slate-500">
+                          Nenhuma permissão granular catalogada para este setor ainda. A revisão lista acessos quando o catálogo do setor for preenchido.
+                        </p>
+                      ) : (
+                        editAcessosRevisao.map((acesso) => (
+                          <div key={acesso.codigo} className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2">
+                            <div className={cn('grid h-5 w-5 shrink-0 place-items-center rounded-full', acesso.pode ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-400')}>
+                              {acesso.pode ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="text-xs font-semibold text-slate-800">{acesso.nome}</p>
+                              <p className="truncate font-mono text-[10px] text-slate-400">{acesso.codigo}</p>
+                            </div>
+                            {acesso.sensivel && (
+                              <Badge variant="outline" className="shrink-0 border-red-200 bg-red-50 text-red-700">Sensível</Badge>
+                            )}
+                            {acesso.efeito && (
+                              <Badge variant="outline" className={cn('shrink-0', acesso.efeito === 'NEGAR' ? 'border-red-200 bg-red-50 text-red-700' : 'border-emerald-200 bg-emerald-50 text-emerald-700')}>
+                                {acesso.efeito === 'NEGAR' ? 'Negado' : 'Permitido'}
+                              </Badge>
+                            )}
+                            <Badge variant="outline" className="shrink-0 border-slate-200 bg-slate-50 text-slate-500">
+                              {acesso.origem === 'excecao' ? 'Exceção' : acesso.origem === 'perfil_funcional' ? 'Perfil' : 'Catálogo'}
+                            </Badge>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </ResponsiveDialog>
       </div>
@@ -1335,6 +1608,94 @@ function PermissionCheck({ checked }: { checked: boolean }) {
 
 function AlertDot() {
   return <span className="h-2 w-2 rounded-full bg-amber-500" />;
+}
+
+function PermissoesIndividuaisEditor({
+  permissoes,
+  value,
+  onChange,
+}: {
+  permissoes: PermissaoCatalogo[];
+  value: IndividualException[];
+  onChange: (next: IndividualException[]) => void;
+}) {
+  const getEfeito = (codigo: string) => value.find((ex) => ex.codigo === codigo)?.efeito || '__none__';
+
+  const handleEfeitoChange = (codigo: string, efeito: '__none__' | 'PERMITIR' | 'NEGAR') => {
+    const next = value.filter((ex) => ex.codigo !== codigo);
+    if (efeito !== '__none__') next.push({ codigo, efeito });
+    onChange(next);
+  };
+
+  const handleMotivoChange = (codigo: string, motivo: string) => {
+    onChange(value.map((ex) => (ex.codigo === codigo ? { ...ex, motivo } : ex)));
+  };
+
+  return (
+    <div className="space-y-3 rounded-2xl border border-violet-200/80 bg-gradient-to-b from-violet-50/60 to-white p-3 sm:p-4">
+      <div className="flex items-start gap-3">
+        <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-violet-700 text-white shadow-sm">
+          <ShieldCheck className="h-5 w-5" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <Label className="text-base font-bold text-slate-900">Exceções individuais</Label>
+          <p className="mt-0.5 text-xs leading-5 text-slate-500">
+            Conceda ou bloqueie uma permissão específica para este usuário, aplicando-se por cima do perfil funcional.
+          </p>
+        </div>
+        <Badge className="shrink-0 border-0 bg-violet-100 text-violet-800 hover:bg-violet-100">
+          {value.length} exceção(ões)
+        </Badge>
+      </div>
+
+      {permissoes.length === 0 ? (
+        <p className="rounded-xl border border-dashed border-slate-200 bg-white/60 px-3 py-3 text-xs leading-5 text-slate-500">
+          Nenhuma permissão granular catalogada para este setor ainda. As exceções passam a valer quando o catálogo deste setor for preenchido.
+        </p>
+      ) : (
+        <div className="max-h-[40vh] space-y-2 overflow-y-auto pr-1">
+          {permissoes.map((permissao) => {
+            const efeito = getEfeito(permissao.codigo);
+            return (
+              <div key={permissao.id} className="rounded-xl border border-slate-200 bg-white p-3">
+                <div className="flex items-center gap-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold text-slate-900">{permissao.nome}</p>
+                    <p className="truncate font-mono text-[11px] text-slate-400">{permissao.codigo}</p>
+                  </div>
+                  {permissao.sensivel && (
+                    <Badge variant="outline" className="shrink-0 border-red-200 bg-red-50 text-red-700">
+                      Sensível
+                    </Badge>
+                  )}
+                  <Select value={efeito} onValueChange={(v) => handleEfeitoChange(permissao.codigo, v as '__none__' | 'PERMITIR' | 'NEGAR')}>
+                    <SelectTrigger className="w-36">
+                      <SelectValue placeholder="Sem exceção" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {efeitoOptions.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                {efeito !== '__none__' && (
+                  <div className="mt-2">
+                    <Input
+                      value={value.find((ex) => ex.codigo === permissao.codigo)?.motivo || ''}
+                      onChange={(event) => handleMotivoChange(permissao.codigo, event.target.value)}
+                      placeholder={`Motivo da ${efeito === 'NEGAR' ? 'negação' : 'concessão'} (opcional)`}
+                      className="h-9 text-xs"
+                    />
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
 }
 
 function SummaryCard({

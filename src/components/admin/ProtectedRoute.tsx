@@ -1,21 +1,31 @@
 import { Navigate, useParams, useLocation } from 'react-router-dom';
 import { useAuth, getDashboardUrl } from '@/contexts/AuthContext';
-import type { PapelUsuario } from '@/types/admin';
+import type { ModuloSistema, PapelUsuario } from '@/types/admin';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
   allowedPapeis?: PapelUsuario[];
   requiredSetorSlug?: string;
+  requiredModule?: ModuloSistema;
   allowSuperAdmin?: boolean;
   requireGuarda?: boolean;
   requireGraduacao?: boolean;
   allowGuardaIroManagement?: boolean;
 }
 
+const hasStoredModule = (modules: ModuloSistema[], module: ModuloSistema): boolean => {
+  if (modules.includes(module)) return true;
+  if (module === 'jgc_acompanhamento') {
+    return (modules as string[]).includes('jgc_acompanhamentos');
+  }
+  return false;
+};
+
 export const ProtectedRoute = ({
   children,
   allowedPapeis,
   requiredSetorSlug,
+  requiredModule,
   allowSuperAdmin = true,
   requireGuarda,
   requireGraduacao,
@@ -74,7 +84,11 @@ export const ProtectedRoute = ({
   if (allowedPapeis?.length) {
     const isAllowed = isSuperAdmin
       ? allowSuperAdmin && allowedPapeis.includes('super_admin')
-      : hasPapel(...allowedPapeis) || (profile?.papel === 'tecnico' && !!profile?.modulos?.length);
+      : hasPapel(...allowedPapeis) ||
+        (profile?.papel === 'tecnico' &&
+          (requiredModule
+            ? hasStoredModule((profile?.modulos as ModuloSistema[]) ?? [], requiredModule)
+            : !!profile?.modulos?.length));
 
     if (!isAllowed) {
       return <Navigate to={getDashboardUrl(profile)} replace />;
