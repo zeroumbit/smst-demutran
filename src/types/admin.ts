@@ -111,6 +111,7 @@ export interface GuardaMunicipal {
   cpf?: string | null;
   graduacao_id: string;
   graduacao_nome?: string | null;
+  data_graduacao?: string | null;
   email?: string | null;
   telefone?: string | null;
   ativo: boolean;
@@ -118,6 +119,16 @@ export interface GuardaMunicipal {
   data_autocadastro?: string | null;
   created_at?: string | null;
   updated_at?: string | null;
+}
+
+export interface GuardaGraduacaoHistorico {
+  id: string;
+  guarda_id: string;
+  graduacao_anterior_id: string | null;
+  graduacao_id: string;
+  data_a_partir: string;
+  alterado_por: string | null;
+  created_at: string;
 }
 
 export type GuardaAfastamentoTipo = 'ferias' | 'licenca_premio' | 'outro';

@@ -11,6 +11,7 @@ import { ResponsiveDialog } from '@/components/ui/responsive-dialog';
 import { toast } from '@/hooks/use-toast';
 import { Calendar, Hourglass, Banknote, ChevronRight, Clock, FileWarning, TrendingUp, X, Sparkles, Info, Shield, Gavel, CheckCircle2, AlertTriangle } from 'lucide-react';
 import type { IROOperacao } from '@/types/admin';
+import { montarLinhaDoTempoGraduacao, valorHoraNaData } from '@/lib/graduacao-iro';
 import { cn } from '@/lib/utils';
 
 const gerarIntervaloDatas = (inicio: string, fim: string): string[] => {
@@ -292,25 +293,42 @@ const GuardaDashboard = () => {
         .filter((c: any) => c.data_operacao >= firstDayAnterior && c.data_operacao <= lastDayAnterior)
         .reduce((acc: number, c: any) => acc + Number(c.horas_trabalhadas || 0), 0);
 
-      let valorHora = 0;
-      const gData = guardaData as { graduacao_id?: string } | null;
-      if (gData?.graduacao_id) {
-        const { data: vData } = await supabase
-          .from('iro_valores_graduacao')
-          .select('valor_hora')
-          .eq('graduacao_id', gData.graduacao_id)
-          .eq('ativo', true)
-          .maybeSingle();
-        if (vData) valorHora = Number((vData as any).valor_hora) || 0;
+      const gData = guardaData as { id?: string; graduacao_id?: string; data_graduacao?: string | null } | null;
+      const graduacaoId = gData?.graduacao_id;
+      const valorMapLocal = new Map<string, number>();
+      const { data: valoresData } = await supabase.from('iro_valores_graduacao').select('graduacao_id, valor_hora').eq('ativo', true);
+      (valoresData || []).forEach((row: any) => {
+        valorMapLocal.set(row.graduacao_id, Number(row.valor_hora) || 0);
+      });
+
+      let historico: any[] = [];
+      if (gData?.id) {
+        const { data: historicoData } = await supabase
+          .from('guarda_graduacao_historico')
+          .select('guarda_id, graduacao_anterior_id, graduacao_id, data_a_partir')
+          .eq('guarda_id', gData.id)
+          .order('data_a_partir', { ascending: true });
+        historico = historicoData || [];
       }
+
+      const timelineLocal = montarLinhaDoTempoGraduacao(historico, graduacaoId || '', gData?.data_graduacao ?? null);
+      const valorHoraNaDataGuard = (dataOperacao: string) => valorHoraNaData(valorMapLocal, timelineLocal, dataOperacao);
+
+      const totalReais = lista
+        .filter((c: any) => c.data_operacao >= firstDay && c.data_operacao <= lastDay)
+        .reduce((acc: number, c: any) => acc + Number(c.horas_trabalhadas || 0) * valorHoraNaDataGuard(c.data_operacao), 0);
+
+      const totalReaisMesAnterior = lista
+        .filter((c: any) => c.data_operacao >= firstDayAnterior && c.data_operacao <= lastDayAnterior)
+        .reduce((acc: number, c: any) => acc + Number(c.horas_trabalhadas || 0) * valorHoraNaDataGuard(c.data_operacao), 0);
 
       setResumo({
         total_horas_mes: totalHoras,
-        total_reais: totalHoras * valorHora,
+        total_reais: totalReais,
         horas_disponiveis: 0,
         banco_horas: bancoRes.data ? Number((bancoRes.data as any).horas_excedentes) : 0,
         mes_anterior_horas: horasMesAnterior,
-        mes_anterior_reais: horasMesAnterior * valorHora,
+        mes_anterior_reais: totalReaisMesAnterior,
       });
     } catch {
       // silent

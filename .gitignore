@@ -62,6 +62,9 @@ public/images/banner/
 # Vite
 vite.config.ts.timestamp-*.mjs
 
+# TypeScript build info
+*.tsbuildinfo
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

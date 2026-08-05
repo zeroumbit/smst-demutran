@@ -18,6 +18,7 @@ import { useConfirmDialog } from '@/components/ui/use-confirm-dialog';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 import { gerarRelatorioDetalhadoOperacao, gerarRelatorioMensal, gerarRelatorioOperacao, gerarRelatorioPorDia, gerarRelatorioPorGuarda } from '@/lib/relatorio-iro';
+import { montarLinhaDoTempoGraduacao, valorHoraNaData, type LinhaDoTempoGraduacao } from '@/lib/graduacao-iro';
 import { supabase } from '@/lib/supabase';
 import { capitalizeNome, cn } from '@/lib/utils';
 import { maskCpf } from '@/lib/masks';
@@ -34,6 +35,7 @@ type GuardaOption = {
   cpf: string | null;
   graduacao_id: string | null;
   graduacao_nome: string | null;
+  data_graduacao: string | null;
   valor_hora: number;
 };
 
@@ -143,6 +145,7 @@ type GuardaJoinRow = {
         matricula: string;
         cpf: string | null;
         graduacao_id: string | null;
+        data_graduacao: string | null;
         ativo: boolean;
         guarda_municipal_graduacoes?: { nome?: string | null } | { nome?: string | null }[] | null;
       }
@@ -152,6 +155,7 @@ type GuardaJoinRow = {
         matricula: string;
         cpf: string | null;
         graduacao_id: string | null;
+        data_graduacao: string | null;
         ativo: boolean;
         guarda_municipal_graduacoes?: { nome?: string | null } | { nome?: string | null }[] | null;
       }[]
@@ -164,6 +168,7 @@ type GuardaMunicipalRow = {
   matricula: string;
   cpf: string | null;
   graduacao_id: string | null;
+  data_graduacao: string | null;
   ativo: boolean;
   guarda_municipal_graduacoes?: { nome?: string | null } | { nome?: string | null }[] | null;
 };
@@ -350,6 +355,7 @@ const GuardaMunicipalIros = () => {
   const [usuarios, setUsuarios] = useState<{ user_id: string; nome: string; graduacao_id?: string | null; graduacao_nome?: string | null }[]>([]);
   const [guardasAtivos, setGuardasAtivos] = useState<GuardaOption[]>([]);
   const [valoresGraduacao, setValoresGraduacao] = useState<{ graduacao_id: string; valor_hora: number }[]>([]);
+  const [historicoGraduacoes, setHistoricoGraduacoes] = useState<{ guarda_id: string; graduacao_anterior_id: string | null; graduacao_id: string; data_a_partir: string }[]>([]);
 
   const [selectedOperacao, setSelectedOperacao] = useState<IROOperacao | null>(null);
   const [operacaoCandidaturas, setOperacaoCandidaturas] = useState<IROCandidatura[]>([]);
@@ -426,7 +432,7 @@ const GuardaMunicipalIros = () => {
       const applySetorFilter = <T extends { eq: (column: string, value: string) => T }>(query: T): T =>
         iroSetorId ? query.eq('setor_id', iroSetorId) : query;
 
-      const [opRes, candRes, bhRes, notifRes, userRes, valoresRes, guardasRes] = await Promise.all([
+      const [opRes, candRes, bhRes, notifRes, userRes, valoresRes, guardasRes, historicoRes] = await Promise.all([
         applySetorFilter(supabase.from('iro_operacoes').select('*').order('data_inicio', { ascending: false })),
         podeVerTudo
           ? supabase.from('iro_candidaturas').select('*, iro_operacoes(nome), gestor_responsavel:perfis_usuarios(nome, sobrenome), iro_justificativas(*)').order('created_at', { ascending: false })
@@ -441,7 +447,8 @@ const GuardaMunicipalIros = () => {
         supabase.from('iro_valores_graduacao').select('graduacao_id, valor_hora').eq('ativo', true),
         supabase
           .from('guardas_usuarios')
-          .select('usuario_id, guarda_id, guardas_municipais!inner(id, nome, matricula, cpf, graduacao_id, ativo, guarda_municipal_graduacoes(nome))'),
+          .select('usuario_id, guarda_id, guardas_municipais!inner(id, nome, matricula, cpf, graduacao_id, data_graduacao, ativo, guarda_municipal_graduacoes(nome))'),
+        supabase.from('guarda_graduacao_historico').select('guarda_id, graduacao_anterior_id, graduacao_id, data_a_partir'),
       ]);
 
       const loadError =
@@ -451,7 +458,8 @@ const GuardaMunicipalIros = () => {
         notifRes.error ||
         userRes.error ||
         valoresRes.error ||
-        guardasRes.error;
+        guardasRes.error ||
+        historicoRes.error;
       if (loadError) throw loadError;
 
       const valores = ((valoresRes.data || []) as ValorGraduacaoRow[]).map((item) => ({
@@ -529,6 +537,7 @@ const GuardaMunicipalIros = () => {
             cpf: guarda.cpf || null,
             graduacao_id: guarda.graduacao_id || null,
             graduacao_nome: getGraduacaoNome(guarda.guarda_municipal_graduacoes),
+            data_graduacao: guarda.data_graduacao || null,
             valor_hora: valorByGraduacao.get(guarda.graduacao_id) || 0,
           } satisfies GuardaOption;
         })
@@ -546,7 +555,7 @@ const GuardaMunicipalIros = () => {
         const guardasVinculados = new Set(guardas.map((item) => item.usuario_id));
         const { data: guardasMunicipaisData } = await supabase
           .from('guardas_municipais')
-          .select('id, nome, matricula, cpf, graduacao_id, ativo, guarda_municipal_graduacoes(nome)')
+          .select('id, nome, matricula, cpf, graduacao_id, data_graduacao, ativo, guarda_municipal_graduacoes(nome)')
           .eq('ativo', true);
 
         for (const guarda of (guardasMunicipaisData || []) as GuardaMunicipalRow[]) {
@@ -560,6 +569,7 @@ const GuardaMunicipalIros = () => {
             cpf: guarda.cpf || null,
             graduacao_id: guarda.graduacao_id || null,
             graduacao_nome: getGraduacaoNome(guarda.guarda_municipal_graduacoes),
+            data_graduacao: guarda.data_graduacao || null,
             valor_hora: valorByGraduacao.get(guarda.graduacao_id || '') || 0,
           });
           guardasVinculados.add(usuarioId);
@@ -581,6 +591,7 @@ const GuardaMunicipalIros = () => {
       );
       setGuardasAtivos(guardas.sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')));
       setValoresGraduacao(valores);
+      setHistoricoGraduacoes((historicoRes.data || []) as { guarda_id: string; graduacao_anterior_id: string | null; graduacao_id: string; data_a_partir: string }[]);
     } catch (error) {
       console.error('Erro ao carregar dados de IRO:', error);
       toast({
@@ -645,6 +656,35 @@ const GuardaMunicipalIros = () => {
     }
     return map;
   }, [guardasAtivos, usuarios, valoresGraduacao]);
+
+  const valorByGraduacaoMap = useMemo(
+    () => new Map(valoresGraduacao.map((entry) => [entry.graduacao_id, entry.valor_hora])),
+    [valoresGraduacao],
+  );
+
+  const timelinePorUsuario = useMemo(() => {
+    const map = new Map<string, LinhaDoTempoGraduacao[]>();
+    const hoje = todayStr();
+    for (const guarda of guardasAtivos) {
+      const historico = historicoGraduacoes.filter((item) => item.guarda_id === guarda.guarda_id);
+      map.set(guarda.usuario_id, montarLinhaDoTempoGraduacao(historico, guarda.graduacao_id || '', guarda.data_graduacao, hoje));
+    }
+    for (const item of usuarios) {
+      if (!map.has(item.user_id) && item.graduacao_id) {
+        map.set(item.user_id, [{ data: '', graduacao_id: item.graduacao_id }]);
+      }
+    }
+    return map;
+  }, [guardasAtivos, historicoGraduacoes, usuarios]);
+
+  const valorHoraDaCandidatura = useCallback(
+    (usuarioId: string, dataOperacao: string): number => {
+      const timeline = timelinePorUsuario.get(usuarioId);
+      if (timeline) return valorHoraNaData(valorByGraduacaoMap, timeline, dataOperacao);
+      return valorHoraPorUsuario.get(usuarioId) || 0;
+    },
+    [timelinePorUsuario, valorByGraduacaoMap, valorHoraPorUsuario],
+  );
 
   const usuarioMap = useMemo(() => {
     const map = new Map<string, string>();
@@ -838,7 +878,7 @@ const GuardaMunicipalIros = () => {
       data: c.data_operacao,
       horario: operacao.horario_previsto.slice(0, 5),
       horas: c.horas_trabalhadas,
-      valor: c.horas_trabalhadas * (valorHoraPorUsuario.get(c.usuario_id) || 0),
+      valor: c.horas_trabalhadas * valorHoraDaCandidatura(c.usuario_id, c.data_operacao),
       status: c.status,
     }));
     const filtroLabels: Record<string, string> = { todos: 'Todos os registros', confirmados: 'Apenas confirmados/realizados', cancelados: 'Apenas cancelados' };
@@ -857,7 +897,7 @@ const GuardaMunicipalIros = () => {
       filtroLabels[relatorioStatusFilter],
     );
     toast({ title: 'Lista de candidaturas gerada!' });
-  }, [usuarioMap, guardaMatriculaMap, guardaGraduacaoMap, valorHoraPorUsuario, relatorioStatusFilter]);
+  }, [usuarioMap, guardaMatriculaMap, guardaGraduacaoMap, valorHoraDaCandidatura, relatorioStatusFilter]);
 
   const filteredBancoHoras = useMemo(() => {
     const base = isMinhaIrosView ? (meuBancoHoras ? [meuBancoHoras] : []) : podeVerTudo ? bancoHoras : (meuBancoHoras ? [meuBancoHoras] : []);
@@ -1699,7 +1739,7 @@ const GuardaMunicipalIros = () => {
             {' '}(Mat. {guardaMatriculaMap.get(item.usuario_id) || '—'}) &middot; {guardaGraduacaoMap.get(item.usuario_id) || '—'} &middot; {fmtDateBR(item.data_operacao)} &middot; {item.horas_trabalhadas}h
             {valorHoraPorUsuario.has(item.usuario_id) && (
               <span className="ml-1.5 font-semibold text-emerald-600">
-                {formatCurrency(item.horas_trabalhadas * (valorHoraPorUsuario.get(item.usuario_id) || 0))}
+                {formatCurrency(item.horas_trabalhadas * valorHoraDaCandidatura(item.usuario_id, item.data_operacao))}
               </span>
             )}
           </p>
@@ -1815,7 +1855,7 @@ const GuardaMunicipalIros = () => {
                           <td className="py-2.5 pr-3 text-slate-500">{guardaMatriculaMap.get(c.usuario_id) || '—'}</td>
                           <td className="py-2.5 pr-3 text-slate-500">{guardaGraduacaoMap.get(c.usuario_id) || '—'}</td>
                           <td className="py-2.5 pr-3 font-medium">{c.horas_trabalhadas}h</td>
-                          <td className="py-2.5 pr-3 font-medium text-emerald-600">{formatCurrency(c.horas_trabalhadas * (valorHoraPorUsuario.get(c.usuario_id) || 0))}</td>
+                          <td className="py-2.5 pr-3 font-medium text-emerald-600">{formatCurrency(c.horas_trabalhadas * valorHoraDaCandidatura(c.usuario_id, c.data_operacao))}</td>
                           <td className="py-2.5 pr-3">
                             <Badge variant="outline" className={cn('rounded-full px-2.5 py-0.5 text-[10px] font-bold', STATUS_CANDIDATURA_VARIANT[c.status])}>
                               {STATUS_CANDIDATURA_LABEL[c.status] || c.status}
@@ -1860,7 +1900,7 @@ const GuardaMunicipalIros = () => {
 
   const renderCandidaturasOperacaoGroup = ({ operacaoNome, items }: CandidaturasOperacaoGroup) => {
     const totalHoras = items.reduce((acc, item) => acc + item.horas_trabalhadas, 0);
-    const totalValor = items.reduce((acc, item) => acc + item.horas_trabalhadas * (valorHoraPorUsuario.get(item.usuario_id) || 0), 0);
+    const totalValor = items.reduce((acc, item) => acc + item.horas_trabalhadas * valorHoraDaCandidatura(item.usuario_id, item.data_operacao), 0);
 
     return (
       <section key={operacaoNome} className="space-y-3">
@@ -1889,7 +1929,7 @@ const GuardaMunicipalIros = () => {
                   (Mat. {guardaMatriculaMap.get(item.usuario_id) || '—'}) &middot; {guardaGraduacaoMap.get(item.usuario_id) || '—'} &middot; {fmtDateBR(item.data_operacao)} &middot; {item.horas_trabalhadas}h
                   {valorHoraPorUsuario.has(item.usuario_id) && (
                     <span className="ml-1.5 font-semibold text-emerald-600">
-                      {formatCurrency(item.horas_trabalhadas * (valorHoraPorUsuario.get(item.usuario_id) || 0))}
+                      {formatCurrency(item.horas_trabalhadas * valorHoraDaCandidatura(item.usuario_id, item.data_operacao))}
                     </span>
                   )}
                 </p>
@@ -2025,7 +2065,7 @@ const GuardaMunicipalIros = () => {
         data: item.data_operacao,
         horario: operacoes.find((o) => o.id === operacaoId)?.horario_previsto.slice(0, 5) || '',
         horas: item.horas_trabalhadas,
-        valor: item.horas_trabalhadas * (valorHoraPorUsuario.get(item.usuario_id) || 0),
+        valor: item.horas_trabalhadas * valorHoraDaCandidatura(item.usuario_id, item.data_operacao),
         status: item.status,
       }));
     };
@@ -2046,7 +2086,7 @@ const GuardaMunicipalIros = () => {
           data: item.data_operacao,
           horario: (operacaoId && operacoes.find((o) => o.id === operacaoId)?.horario_previsto.slice(0, 5)) || '',
           horas: item.horas_trabalhadas,
-          valor: item.horas_trabalhadas * (valorHoraPorUsuario.get(item.usuario_id) || 0),
+          valor: item.horas_trabalhadas * valorHoraDaCandidatura(item.usuario_id, item.data_operacao),
           status: item.status,
         };
       });
@@ -2664,7 +2704,7 @@ const GuardaMunicipalIros = () => {
                           )}
                           <span className="text-slate-500">
                             {fmtDateBR(item.data_operacao)} • {item.horas_trabalhadas}h
-                            {valorHoraPorUsuario.has(item.usuario_id) && <span className="ml-1 font-semibold text-emerald-600">{formatCurrency(item.horas_trabalhadas * (valorHoraPorUsuario.get(item.usuario_id) || 0))}</span>}
+                            {valorHoraPorUsuario.has(item.usuario_id) && <span className="ml-1 font-semibold text-emerald-600">{formatCurrency(item.horas_trabalhadas * valorHoraDaCandidatura(item.usuario_id, item.data_operacao))}</span>}
                           </span>
                         </div>
                         {item.usuario_id === user?.user_id && item.status !== 'cancelado' && !item.adicionado_manual && item.data_operacao >= todayStr() && (
@@ -3269,7 +3309,7 @@ const GuardaMunicipalIros = () => {
                     <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-slate-400">Valor estimado</p>
                     <p className="mt-1 text-base font-bold text-slate-800">
                       {valorHoraPorUsuario.has(detalhesCandidatura.usuario_id)
-                        ? formatCurrency(detalhesCandidatura.horas_trabalhadas * (valorHoraPorUsuario.get(detalhesCandidatura.usuario_id) || 0))
+                        ? formatCurrency(detalhesCandidatura.horas_trabalhadas * valorHoraDaCandidatura(detalhesCandidatura.usuario_id, detalhesCandidatura.data_operacao))
                         : '—'}
                     </p>
                   </div>

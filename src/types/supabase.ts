@@ -216,6 +216,7 @@ export type Database = {
         Row: {
           ativo: boolean
           created_at: string
+          data_graduacao: string | null
           graduacao_id: string
           id: string
           matricula: string
@@ -226,6 +227,7 @@ export type Database = {
         Insert: {
           ativo?: boolean
           created_at?: string
+          data_graduacao?: string | null
           graduacao_id: string
           id?: string
           matricula: string
@@ -236,6 +238,7 @@ export type Database = {
         Update: {
           ativo?: boolean
           created_at?: string
+          data_graduacao?: string | null
           graduacao_id?: string
           id?: string
           matricula?: string
@@ -249,6 +252,44 @@ export type Database = {
             columns: ["graduacao_id"]
             isOneToOne: false
             referencedRelation: "guarda_municipal_graduacoes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      guarda_graduacao_historico: {
+        Row: {
+          alterado_por: string | null
+          created_at: string
+          data_a_partir: string
+          graduacao_anterior_id: string | null
+          graduacao_id: string
+          guarda_id: string
+          id: string
+        }
+        Insert: {
+          alterado_por?: string | null
+          created_at?: string
+          data_a_partir: string
+          graduacao_anterior_id?: string | null
+          graduacao_id: string
+          guarda_id: string
+          id?: string
+        }
+        Update: {
+          alterado_por?: string | null
+          created_at?: string
+          data_a_partir?: string
+          graduacao_anterior_id?: string | null
+          graduacao_id?: string
+          guarda_id?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "guarda_graduacao_historico_guarda_id_fkey"
+            columns: ["guarda_id"]
+            isOneToOne: false
+            referencedRelation: "guardas_municipais"
             referencedColumns: ["id"]
           },
         ]
@@ -1418,6 +1459,23 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      alterar_graduacao_em_massa: {
+        Args: {
+          p_data_a_partir: string
+          p_graduacao_anterior_id: string
+          p_graduacao_id: string
+        }
+        Returns: number
+      }
+      alterar_graduacao_guarda: {
+        Args: {
+          p_data_a_partir: string
+          p_graduacao_anterior_id: string
+          p_graduacao_id: string
+          p_guarda_id: string
+        }
+        Returns: undefined
+      }
       assign_user_to_setor: {
         Args: {
           _email: string
@@ -1821,6 +1879,7 @@ export type Database = {
         Returns: Json
       }
       marcar_todas_notificacoes_admin_lidas: { Args: never; Returns: number }
+      pode_gerenciar_guardas: { Args: never; Returns: boolean }
       obter_perfil_concessionario: {
         Args: { _session_token: string }
         Returns: Json

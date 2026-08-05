@@ -13,6 +13,7 @@ import { Calendar, CheckCircle2, Clock, Hourglass, Search, AlertTriangle, Gavel,
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
 import type { IROOperacao, IROCandidatura } from '@/types/admin';
+import { montarLinhaDoTempoGraduacao, valorHoraNaData, type LinhaDoTempoGraduacao } from '@/lib/graduacao-iro';
 
 const fmtDateBR = (d: string | null | undefined): string => {
   if (!d) return '';
@@ -75,7 +76,8 @@ const MinhasIrosGestor = () => {
   const [leiDialogAberta, setLeiDialogAberta] = useState(false);
   const [resumo, setResumo] = useState({ total_horas_mes: 0, total_reais: 0, banco_horas: 0, horas_disponiveis: 0, mes_anterior_horas: 0, mes_anterior_reais: 0 });
   const [search, setSearch] = useState('');
-  const [valorHoraState, setValorHoraState] = useState(0);
+  const [valorMap, setValorMap] = useState<Map<string, number>>(new Map());
+  const [timelineGraduacao, setTimelineGraduacao] = useState<LinhaDoTempoGraduacao[]>([]);
 
   const iroSetorId = profile?.can_manage_guarda_iros && profile.guarda_setor_id
     ? profile.guarda_setor_id
@@ -178,31 +180,51 @@ const MinhasIrosGestor = () => {
         .reduce((acc: number, c: any) => acc + Number(c.horas_trabalhadas || 0), 0);
 
       let bancoHoras = 0;
-      let valorHora = 0;
 
       const { data: banco } = await supabase.from('iro_banco_horas').select('horas_excedentes').eq('usuario_id', user!.user_id).maybeSingle();
       bancoHoras = banco ? Number((banco as any).horas_excedentes) : 0;
 
       const { data: guardaRes } = await supabase.rpc('buscar_guarda_por_usuario', { p_usuario_id: user!.user_id });
-      const graduacaoId = (guardaRes as any)?.graduacao_id || profile?.graduacao_id;
-      if (graduacaoId) {
-        const { data: valorData } = await supabase
-          .from('iro_valores_graduacao')
-          .select('valor_hora')
-          .eq('graduacao_id', graduacaoId)
-          .eq('ativo', true)
-          .maybeSingle();
-        if (valorData) valorHora = Number((valorData as any).valor_hora) || 0;
+      const guardaDados = (guardaRes as { id?: string; graduacao_id?: string; data_graduacao?: string | null } | null) || null;
+      const graduacaoId = guardaDados?.graduacao_id || profile?.graduacao_id;
+
+      const valorMapLocal = new Map<string, number>();
+      const { data: valoresData } = await supabase.from('iro_valores_graduacao').select('graduacao_id, valor_hora').eq('ativo', true);
+      (valoresData || []).forEach((row: any) => {
+        valorMapLocal.set(row.graduacao_id, Number(row.valor_hora) || 0);
+      });
+
+      let historico: any[] = [];
+      if (guardaDados?.id) {
+        const { data: historicoData } = await supabase
+          .from('guarda_graduacao_historico')
+          .select('guarda_id, graduacao_anterior_id, graduacao_id, data_a_partir')
+          .eq('guarda_id', guardaDados.id)
+          .order('data_a_partir', { ascending: true });
+        historico = historicoData || [];
       }
 
-      setValorHoraState(valorHora);
+      const timelineLocal = montarLinhaDoTempoGraduacao(historico, graduacaoId || '', guardaDados?.data_graduacao ?? null);
+      setValorMap(valorMapLocal);
+      setTimelineGraduacao(timelineLocal);
+
+      const valorHoraNaDataGuard = (dataOperacao: string) => valorHoraNaData(valorMapLocal, timelineLocal, dataOperacao);
+
+      const totalReais = lista
+        .filter((c: any) => ['confirmado', 'realizado'].includes(c.status) && c.data_operacao >= firstDay && c.data_operacao <= lastDay)
+        .reduce((acc: number, c: any) => acc + Number(c.horas_trabalhadas || 0) * valorHoraNaDataGuard(c.data_operacao), 0);
+
+      const totalReaisMesAnterior = lista
+        .filter((c: any) => ['confirmado', 'realizado'].includes(c.status) && c.data_operacao >= firstDayAnterior && c.data_operacao <= lastDayAnterior)
+        .reduce((acc: number, c: any) => acc + Number(c.horas_trabalhadas || 0) * valorHoraNaDataGuard(c.data_operacao), 0);
+
       setResumo({
         total_horas_mes: horasMes,
-        total_reais: horasMes * valorHora,
+        total_reais: totalReais,
         horas_disponiveis: 0,
         banco_horas: bancoHoras,
         mes_anterior_horas: horasMesAnterior,
-        mes_anterior_reais: horasMesAnterior * valorHora,
+        mes_anterior_reais: totalReaisMesAnterior,
       });
     } catch {
       // silent
@@ -698,11 +720,11 @@ const MinhasIrosGestor = () => {
                 </p>
               </div>
             )}
-            {valorHoraState > 0 && (
+            {valorHoraNaData(valorMap, timelineGraduacao, selectedCandidatura.data_operacao) > 0 && (
               <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                 <h4 className="mb-4 text-xs font-bold uppercase tracking-[0.1em] text-slate-500">Valor estimado</h4>
-                <p className="text-sm text-slate-500">{selectedCandidatura.horas_trabalhadas}h × R$ {valorHoraState.toFixed(2).replace('.', ',')}/h</p>
-                <p className="mt-1 text-lg font-bold text-slate-900">{formatCurrency(selectedCandidatura.horas_trabalhadas * valorHoraState)}</p>
+                <p className="text-sm text-slate-500">{selectedCandidatura.horas_trabalhadas}h × R$ {valorHoraNaData(valorMap, timelineGraduacao, selectedCandidatura.data_operacao).toFixed(2).replace('.', ',')}/h</p>
+                <p className="mt-1 text-lg font-bold text-slate-900">{formatCurrency(selectedCandidatura.horas_trabalhadas * valorHoraNaData(valorMap, timelineGraduacao, selectedCandidatura.data_operacao))}</p>
               </div>
             )}
             <Button className="w-full" onClick={() => setSelectedCandidatura(null)}>Fechar</Button>

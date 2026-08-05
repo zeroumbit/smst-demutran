@@ -32,7 +32,7 @@ function capitalizeNome(nome: string): string {
   ).join(' ');
 }
 
-const guardaInitialForm = { matricula: '', nome: '', graduacao_id: '', cpf: '' };
+const guardaInitialForm = { matricula: '', nome: '', graduacao_id: '', cpf: '', data_graduacao: '' };
 const graduacaoInitialForm = { nome: '', ordem: '0' };
 const afastamentoInitialForm: {
   tipo: GuardaAfastamentoTipo;
@@ -87,7 +87,7 @@ const GuardasMunicipaisPage = () => {
     const [{ data: graduacoesData, error: graduacoesError }, { data: guardasData, error: guardasError }, { data: vinculosData }] =
       await Promise.all([
         supabase.from('guarda_municipal_graduacoes').select('id, nome, ordem, ativo, created_at, updated_at').order('ordem', { ascending: true }).order('nome', { ascending: true }),
-        supabase.from('guardas_municipais').select('id, matricula, nome, cpf, email, telefone, graduacao_id, ativo, data_autocadastro, created_at, updated_at').order('nome', { ascending: true }),
+        supabase.from('guardas_municipais').select('id, matricula, nome, cpf, email, telefone, graduacao_id, data_graduacao, ativo, data_autocadastro, created_at, updated_at').order('nome', { ascending: true }),
         supabase.from('guardas_usuarios').select('guarda_id'),
       ]);
 
@@ -131,6 +131,7 @@ const GuardasMunicipaisPage = () => {
   const [batchGraduacaoDialogOpen, setBatchGraduacaoDialogOpen] = useState(false);
   const [graduacaoOrigemId, setGraduacaoOrigemId] = useState('');
   const [graduacaoDestinoId, setGraduacaoDestinoId] = useState('');
+  const [graduacaoDataPartir, setGraduacaoDataPartir] = useState('');
   const [savingBatchGraduacao, setSavingBatchGraduacao] = useState(false);
 
   const guardasCountByGraduacao = useMemo(() => {
@@ -146,6 +147,7 @@ const GuardasMunicipaisPage = () => {
   const openBatchGraduacao = () => {
     setGraduacaoOrigemId('');
     setGraduacaoDestinoId('');
+    setGraduacaoDataPartir('');
     setBatchGraduacaoDialogOpen(true);
   };
 
@@ -158,6 +160,10 @@ const GuardasMunicipaisPage = () => {
       toast({ title: 'Graduações iguais', description: 'A nova graduação deve ser diferente da graduação de origem.', variant: 'destructive' });
       return;
     }
+    if (!graduacaoDataPartir) {
+      toast({ title: 'Data obrigatória', description: 'Informe a data a partir da qual a nova graduação passa a valer (afeta o valor das horas IRO).', variant: 'destructive' });
+      return;
+    }
 
     const afinsCount = guardasCountByGraduacao[graduacaoOrigemId] || 0;
     if (afinsCount === 0) {
@@ -166,10 +172,11 @@ const GuardasMunicipaisPage = () => {
     }
 
     setSavingBatchGraduacao(true);
-    const { error } = await supabase
-      .from('guardas_municipais')
-      .update({ graduacao_id: graduacaoDestinoId })
-      .eq('graduacao_id', graduacaoOrigemId);
+    const { data: afetados, error } = await supabase.rpc('alterar_graduacao_em_massa', {
+      p_graduacao_anterior_id: graduacaoOrigemId,
+      p_graduacao_id: graduacaoDestinoId,
+      p_data_a_partir: graduacaoDataPartir,
+    });
 
     setSavingBatchGraduacao(false);
 
@@ -180,10 +187,11 @@ const GuardasMunicipaisPage = () => {
 
     const origemNome = graduacoes.find((g) => g.id === graduacaoOrigemId)?.nome || 'Origem';
     const destinoNome = graduacoes.find((g) => g.id === graduacaoDestinoId)?.nome || 'Destino';
+    const quantidade = typeof afetados === 'number' && afetados > 0 ? afetados : afinsCount;
 
     toast({
       title: 'Graduação em massa alterada!',
-      description: `${afinsCount} guarda(s) alterados de "${origemNome}" para "${destinoNome}".`,
+      description: `${quantidade} guarda(s) alterados de "${origemNome}" para "${destinoNome}" a partir de ${formatDateBR(graduacaoDataPartir)}.`,
     });
 
     setBatchGraduacaoDialogOpen(false);
@@ -203,8 +211,16 @@ const GuardasMunicipaisPage = () => {
   const resetGuardaDialog = () => { setEditingGuarda(null); setGuardaForm(guardaInitialForm); setGuardaDialogOpen(false); };
   const resetGraduacaoDialog = () => { setEditingGraduacao(null); setGraduacaoForm(graduacaoInitialForm); setGraduacaoDialogOpen(false); };
 
-  const openCreateGuarda = () => { setEditingGuarda(null); setGuardaForm(guardaInitialForm); setGuardaDialogOpen(true); };
-  const openEditGuarda = (item: GuardaMunicipal) => { setEditingGuarda(item); setGuardaForm({ matricula: item.matricula, nome: item.nome, graduacao_id: item.graduacao_id, cpf: item.cpf ? maskCpf(item.cpf) : '' }); setGuardaDialogOpen(true); };
+  const openCreateGuarda = () => {
+    setEditingGuarda(null);
+    setGuardaForm({ ...guardaInitialForm, data_graduacao: new Date().toISOString().slice(0, 10) });
+    setGuardaDialogOpen(true);
+  };
+  const openEditGuarda = (item: GuardaMunicipal) => {
+    setEditingGuarda(item);
+    setGuardaForm({ matricula: item.matricula, nome: item.nome, graduacao_id: item.graduacao_id, cpf: item.cpf ? maskCpf(item.cpf) : '', data_graduacao: item.data_graduacao || '' });
+    setGuardaDialogOpen(true);
+  };
   const openCreateGraduacao = () => { setEditingGraduacao(null); setGraduacaoForm(graduacaoInitialForm); setGraduacaoDialogOpen(true); };
   const openEditGraduacao = (item: GuardaMunicipalGraduacao) => { setEditingGraduacao(item); setGraduacaoForm({ nome: item.nome, ordem: String(item.ordem) }); setGraduacaoDialogOpen(true); };
 
@@ -290,15 +306,51 @@ const GuardasMunicipaisPage = () => {
       toast({ title: 'Campos obrigatórios', description: 'Preencha matrícula, nome e graduação.', variant: 'destructive' });
       return;
     }
+
+    const graduacaoMudou = editingGuarda ? editingGuarda.graduacao_id !== guardaForm.graduacao_id : true;
+    if (graduacaoMudou && !guardaForm.data_graduacao) {
+      toast({
+        title: 'Data obrigatória',
+        description: 'Informe a data a partir da qual a nova graduação passa a valer (afeta o valor das horas IRO).',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     const cpfLimpo = guardaForm.cpf.replace(/\D/g, '') || null;
     const matriculaLimpa = guardaForm.matricula.trim().replace(/^0+/, '');
-    const payload: Record<string, any> = { matricula: matriculaLimpa, nome: guardaForm.nome.trim(), graduacao_id: guardaForm.graduacao_id, cpf: cpfLimpo };
 
     if (editingGuarda) {
-      const { error } = await supabase.from('guardas_municipais').update(payload).eq('id', editingGuarda.id);
-      if (error) { toast({ title: 'Erro ao atualizar guarda', description: error.message, variant: 'destructive' }); return; }
+      if (graduacaoMudou) {
+        const { error: rpcError } = await supabase.rpc('alterar_graduacao_guarda', {
+          p_guarda_id: editingGuarda.id,
+          p_graduacao_anterior_id: editingGuarda.graduacao_id,
+          p_graduacao_id: guardaForm.graduacao_id,
+          p_data_a_partir: guardaForm.data_graduacao,
+        });
+        if (rpcError) { toast({ title: 'Erro ao alterar graduação', description: rpcError.message, variant: 'destructive' }); return; }
+
+        const { error: updateError } = await supabase
+          .from('guardas_municipais')
+          .update({ matricula: matriculaLimpa, nome: guardaForm.nome.trim(), cpf: cpfLimpo })
+          .eq('id', editingGuarda.id);
+        if (updateError) { toast({ title: 'Erro ao atualizar guarda', description: updateError.message, variant: 'destructive' }); return; }
+      } else {
+        const { error } = await supabase
+          .from('guardas_municipais')
+          .update({ matricula: matriculaLimpa, nome: guardaForm.nome.trim(), graduacao_id: guardaForm.graduacao_id, cpf: cpfLimpo })
+          .eq('id', editingGuarda.id);
+        if (error) { toast({ title: 'Erro ao atualizar guarda', description: error.message, variant: 'destructive' }); return; }
+      }
       toast({ title: 'Guarda atualizado' });
     } else {
+      const payload: Record<string, any> = {
+        matricula: matriculaLimpa,
+        nome: guardaForm.nome.trim(),
+        graduacao_id: guardaForm.graduacao_id,
+        cpf: cpfLimpo,
+        data_graduacao: guardaForm.data_graduacao,
+      };
       const { error } = await supabase.from('guardas_municipais').insert(payload);
       if (error) { toast({ title: 'Erro ao cadastrar guarda', description: error.message, variant: 'destructive' }); return; }
       toast({ title: 'Guarda cadastrado' });
@@ -600,6 +652,20 @@ const GuardasMunicipaisPage = () => {
               <Label>CPF (Opcional)</Label>
               <Input value={guardaForm.cpf} onChange={(e) => setGuardaForm((p) => ({ ...p, cpf: maskCpf(e.target.value) }))} placeholder="000.000.000-00" />
             </div>
+            <div className="space-y-2">
+              <Label htmlFor="guarda-data-graduacao">
+                A partir de quando vale a graduação {editingGuarda && guardaForm.graduacao_id !== editingGuarda.graduacao_id && <span className="text-red-500">*</span>}
+              </Label>
+              <Input
+                id="guarda-data-graduacao"
+                type="date"
+                value={guardaForm.data_graduacao}
+                onChange={(event) => setGuardaForm((p) => ({ ...p, data_graduacao: event.target.value }))}
+              />
+              <p className="text-xs text-slate-500">
+                Data a partir da qual a graduação passa a valer. Quando a graduação é alterada, as horas IRO a partir dessa data passam a ser calculadas com o novo valor da graduação.
+              </p>
+            </div>
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={resetGuardaDialog}>Cancelar</Button>
               <Button onClick={() => void handleSaveGuarda()}>
@@ -781,7 +847,7 @@ const GuardasMunicipaisPage = () => {
           open={batchGraduacaoDialogOpen}
           onOpenChange={setBatchGraduacaoDialogOpen}
           title="Alterar Graduação em Massa"
-          description="Altere a graduação de todos os guardas pertencentes a uma graduação específica para uma nova graduação."
+          description="Altere a graduação de todos os guardas de uma graduação específica, informando a data a partir da qual a nova graduação vale."
         >
           <div className="space-y-4 pt-2">
             <div className="space-y-1.5">
@@ -821,6 +887,21 @@ const GuardasMunicipaisPage = () => {
               </Select>
             </div>
 
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                A partir de quando vale a nova graduação <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                type="date"
+                value={graduacaoDataPartir}
+                onChange={(event) => setGraduacaoDataPartir(event.target.value)}
+                className="h-11 rounded-xl border-slate-200 text-sm font-medium"
+              />
+              <p className="text-[11px] leading-4 text-slate-500">
+                As horas IRO realizadas a partir dessa data serão calculadas com o valor da nova graduação.
+              </p>
+            </div>
+
             {graduacaoOrigemId && graduacaoDestinoId && (
               <div className="rounded-xl border border-amber-200 bg-amber-50/80 p-3.5 text-xs text-amber-900">
                 <div className="flex items-start gap-2">
@@ -830,7 +911,8 @@ const GuardasMunicipaisPage = () => {
                     <p className="mt-1 leading-normal">
                       Esta ação alterará a graduação de <strong>{guardasCountByGraduacao[graduacaoOrigemId] || 0} guarda(s)</strong> de{' '}
                       <strong>"{graduacoes.find((g) => g.id === graduacaoOrigemId)?.nome}"</strong> para{' '}
-                      <strong>"{graduacoes.find((g) => g.id === graduacaoDestinoId)?.nome}"</strong>.
+                      <strong>"{graduacoes.find((g) => g.id === graduacaoDestinoId)?.nome}"</strong>
+                      {graduacaoDataPartir ? <> a partir de <strong>{formatDateBR(graduacaoDataPartir)}</strong></> : null}.
                     </p>
                   </div>
                 </div>
@@ -843,7 +925,7 @@ const GuardasMunicipaisPage = () => {
               </Button>
               <Button
                 onClick={() => void handleSaveBatchGraduacao()}
-                disabled={savingBatchGraduacao || !graduacaoOrigemId || !graduacaoDestinoId || (guardasCountByGraduacao[graduacaoOrigemId] || 0) === 0}
+                disabled={savingBatchGraduacao || !graduacaoOrigemId || !graduacaoDestinoId || !graduacaoDataPartir || (guardasCountByGraduacao[graduacaoOrigemId] || 0) === 0}
                 className="rounded-xl font-semibold px-5"
               >
                 {savingBatchGraduacao ? 'Alterando...' : 'Confirmar alteração'}
