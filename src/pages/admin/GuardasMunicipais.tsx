@@ -493,7 +493,7 @@ const GuardasMunicipaisPage = () => {
                     variant="outline"
                     size="sm"
                     onClick={openBatchGraduacao}
-                    className="border-slate-200 text-slate-700 hover:bg-slate-50 font-semibold"
+                    className="border-slate-200 text-slate-700 hover:bg-amber-50 hover:text-amber-600 hover:border-amber-300 font-semibold"
                   >
                     <GraduationCap className="mr-1.5 h-4 w-4 text-amber-600" />
                     Troca em massa
