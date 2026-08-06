@@ -33,7 +33,7 @@
 ### 1.2 Estado entregue (Fase 1)
 
 - DB: `setor_modulos` (22), `permissoes_sistema` (26 so JGC), `perfis_funcionais`, `perfil_funcional_permissoes`, `usuario_permissoes`, `perfis_usuarios.perfil_funcional_id`, flag `permissions_v2.enabled=false`, RPCs `tem_permissao`/`legacy_tem_permissao`/`get_usuario_permissoes`/`provision_admin_user`/`set_usuario_perfil_funcional`/`upsert_usuario_permissao`/`remove_usuario_permissao`.
-- Frontend: UI `Usuarios.tsx` (perfil funcional + excecoes Demutran/Guarda), brecha `tecnico` corrigida (`requiredModule` no `ProtectedRoute`, 11 rotas mapeadas em `App.tsx`), hooks `usePermission`/`usePermissions`, `clearPermissionCache` no `AuthContext`.
+- Frontend: UI `Usuarios.tsx` (perfil funcional + excecoes Demutran/Guarda), brecha `tecnico` corrigida (`requiredModule` no `ProtectedRoute`, 12 rotas mapeadas em `App.tsx`), hooks `usePermission`/`usePermissions`, `clearPermissionCache` no `AuthContext`.
 
 ### 1.3 Descoberta critica (motiva a Fase 2)
 
@@ -217,7 +217,7 @@ Repetir em `searchableItems` (`filterByPapel`, linhas 609-614). **Nao mexer** no
         : !!profile?.modulos?.length));
 ```
 
-**App.tsx** — trocar `requiredModule` por `requisitoPermissao` (11 rotas):
+**App.tsx** — trocar `requiredModule` por `requisitoPermissao` (12 rotas):
 
 | Rota | novo `requisitoPermissao` |
 |---|---|
