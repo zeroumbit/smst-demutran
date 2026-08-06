@@ -58,9 +58,11 @@ export function ResponsiveDialog({
             {description && <DrawerDescription className="pr-8 break-words">{description}</DrawerDescription>}
           </DrawerHeader>
           <div className={`flex-1 overflow-y-auto px-4 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden ${className ?? ''}`}>{children}</div>
-          <DrawerFooter className="mt-0 pt-2 bg-background border-t pb-[calc(1rem+var(--safe-area-bottom))]">
-            {footer ?? defaultFooter}
-          </DrawerFooter>
+          {(footer || onCancel || onConfirm) && (
+            <DrawerFooter className="mt-0 pt-2 bg-background border-t pb-[calc(1rem+var(--safe-area-bottom))]">
+              {footer ?? defaultFooter}
+            </DrawerFooter>
+          )}
         </DrawerContent>
       </Drawer>
     );

@@ -1159,15 +1159,6 @@ export default function JovemGuardaCidada() {
                             </Badge>
                           </div>
                           <div className="flex items-center gap-0.5">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 text-slate-500 hover:text-teal-700 hover:bg-teal-50"
-                              title="Ver detalhes da turma"
-                              onClick={() => setViewingClass(item)}
-                            >
-                              <Eye className="h-4 w-4" />
-                            </Button>
                             {can("turmas", "editar") && (
                               <Button
                                 variant="ghost"
@@ -1177,17 +1168,6 @@ export default function JovemGuardaCidada() {
                                 onClick={() => handleOpenEditClass(item)}
                               >
                                 <Pencil className="h-4 w-4" />
-                              </Button>
-                            )}
-                            {can("turmas", "excluir") && (
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 text-slate-500 hover:text-rose-700 hover:bg-rose-50"
-                                title="Excluir turma"
-                                onClick={() => setDeletingClassId(item.id)}
-                              >
-                                <Trash2 className="h-4 w-4" />
                               </Button>
                             )}
                           </div>
@@ -2019,9 +1999,6 @@ export default function JovemGuardaCidada() {
         onOpenChange={(open) => !open && setViewingClass(null)}
         title={viewingClass?.nome || "Detalhes da Turma"}
         description="Informações da turma e alunos matriculados."
-        onCancel={() => setViewingClass(null)}
-        confirmLabel="Fechar"
-        onConfirm={() => setViewingClass(null)}
       >
         {viewingClass && (() => {
           const enrolledAlunos = alunos.filter(
