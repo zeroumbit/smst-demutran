@@ -566,7 +566,7 @@ const UsuariosPage = () => {
     }
 
     try {
-      if (editingItem.setor_slug === 'jovem-guarda' && editJgcPapel === 'multiprofissional' && !editJgcArea.trim()) {
+      if (isEditingJovemGuarda && editJgcPapel === 'multiprofissional' && !editJgcArea.trim()) {
         toast({ title: 'Informe a área de atuação', description: 'A área é obrigatória para o profissional multiprofissional.', variant: 'destructive' });
         return;
       }
@@ -574,14 +574,14 @@ const UsuariosPage = () => {
         _perfil_id: editingItem.perfil_id,
         _nome: editNome.trim(),
         _sobrenome: editSobrenome.trim(),
-        _papel: editingItem.setor_slug === 'jovem-guarda' ? 'tecnico' : editPapel,
+        _papel: isEditingJovemGuarda ? 'tecnico' : editPapel,
         _setor_id: editSetorId || null,
         _graduacao_id: editGraduacaoId || null,
       });
 
       if (error) throw error;
 
-      const editingJovemGuarda = editingItem.setor_slug === 'jovem-guarda';
+      const editingJovemGuarda = isEditingJovemGuarda;
       const modulesToSave = editingJovemGuarda
         ? [...modulesFromPermissions(editJgcPermissions), ...editJgcPermissions]
         : editModulos;
@@ -740,6 +740,17 @@ const UsuariosPage = () => {
     return setores.find((s) => s.id === setorId)?.slug || '';
   }, [isSuperAdmin, createSetorId, currentSetorId, setores]);
 
+  const editSetorSlug = useMemo(() => {
+    const setId = editSetorId || editingItem?.setor_id;
+    return setores.find((s) => s.id === setId)?.slug || editingItem?.setor_slug || '';
+  }, [editSetorId, editingItem, setores]);
+
+  const editAvailableModulos = useMemo(
+    () => MODULOS_POR_SETOR[editSetorSlug] || [],
+    [editSetorSlug],
+  );
+  const isEditingJovemGuarda = editSetorSlug === 'jovem-guarda';
+
   const targetSetorId = useMemo(
     () => (isSuperAdmin ? createSetorId : currentSetorId) || undefined,
     [isSuperAdmin, createSetorId, currentSetorId],
@@ -756,7 +767,6 @@ const UsuariosPage = () => {
     [targetSetorSlug],
   );
   const isJovemGuardaContext = targetSetorSlug === 'jovem-guarda';
-  const isEditingJovemGuarda = editingItem?.setor_slug === 'jovem-guarda';
 
   function renderMobileCard(item: AdminProfileRow) {
     return (
@@ -1503,11 +1513,11 @@ const UsuariosPage = () => {
                 value={editJgcPermissions}
                 onChange={setEditJgcPermissions}
               />
-            ) : editPapel !== 'super_admin' && availableModulos.length > 0 && (
+            ) : editPapel !== 'super_admin' && editAvailableModulos.length > 0 && (
               <div className="space-y-2">
                 <Label>Modulos de acesso</Label>
                 <div className="grid grid-cols-2 gap-2">
-                  {availableModulos.map((modulo) => {
+                  {editAvailableModulos.map((modulo) => {
                     const isSelected = editModulos.includes(modulo.value);
                     return (
                       <button
@@ -1550,7 +1560,7 @@ const UsuariosPage = () => {
                 <div className="space-y-2">
                   <Label>Perfis funcionais (multi funções)</Label>
                   <div className="grid grid-cols-2 gap-2">
-                    {perfisFuncionaisDoSetor(editingItem?.setor_id).map((perfil) => {
+                    {perfisFuncionaisDoSetor(editSetorId || editingItem?.setor_id).map((perfil) => {
                       const isSelected = editPerfilFuncionalIds.includes(perfil.id);
                       return (
                         <button
@@ -1592,7 +1602,7 @@ const UsuariosPage = () => {
                 </div>
 
                 <PermissoesIndividuaisEditor
-                  permissoes={permissoesCatalogoDoSetor(editingItem?.setor_id)}
+                  permissoes={permissoesCatalogoDoSetor(editSetorId || editingItem?.setor_id)}
                   value={editPermissoesIndividuais}
                   onChange={setEditPermissoesIndividuais}
                 />
