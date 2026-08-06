@@ -9,6 +9,7 @@ interface ProtectedRouteProps {
   requiredSetorSlug?: string;
   requiredModule?: ModuloSistema;
   requisitoPermissao?: string;
+  requisitoPermissaoPorSetor?: Record<string, string>;
   allowSuperAdmin?: boolean;
   requireGuarda?: boolean;
   requireGraduacao?: boolean;
@@ -29,15 +30,20 @@ export const ProtectedRoute = ({
   requiredSetorSlug,
   requiredModule,
   requisitoPermissao,
+  requisitoPermissaoPorSetor,
   allowSuperAdmin = true,
   requireGuarda,
   requireGraduacao,
   allowGuardaIroManagement = false,
 }: ProtectedRouteProps) => {
   const { isAuthenticated, isLoading, canAccessAdmin, hasPapel, isSuperAdmin, profile, isGuarda, temGuarda } = useAuth();
-  const { resolved: requisitoResolvido, allowed: permissaoPermitida } = usePermissionStatus(requisitoPermissao);
   const { setorSlug } = useParams<{ setorSlug?: string }>();
   const location = useLocation();
+
+  const requisitoResolvido = requisitoPermissaoPorSetor && setorSlug
+    ? requisitoPermissaoPorSetor[setorSlug] ?? requisitoPermissao
+    : requisitoPermissao;
+  const { resolved, allowed: permissaoPermitida } = usePermissionStatus(requisitoResolvido);
 
   if (isLoading) {
     return (
@@ -47,7 +53,7 @@ export const ProtectedRoute = ({
     );
   }
 
-  if (requisitoPermissao && !requisitoResolvido) {
+  if (requisitoResolvido && !resolved) {
     return (
       <div className="mobile-safe-screen flex items-center justify-center">
         <div className="h-12 w-12 animate-spin rounded-full border-b-2 border-primary" />
@@ -98,7 +104,7 @@ export const ProtectedRoute = ({
       ? allowSuperAdmin && allowedPapeis.includes('super_admin')
       : hasPapel(...allowedPapeis) ||
         (profile?.papel === 'tecnico' &&
-          (requisitoPermissao
+          (requisitoResolvido
             ? permissaoPermitida
             : requiredModule
               ? hasStoredModule((profile?.modulos as ModuloSistema[]) ?? [], requiredModule)

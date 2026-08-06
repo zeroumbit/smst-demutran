@@ -1,16 +1,22 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import {
+  Accessibility,
+  Activity,
   AlertTriangle,
   BellRing,
+  Bike,
   Building2,
 
   CarFront,
   CheckCircle2,
   FileText,
+  GraduationCap,
+  HandCoins,
   ImageIcon,
   MessageSquare,
   Newspaper,
+  Pause,
   ShieldCheck,
   UserPlus,
   Users,
@@ -104,6 +110,16 @@ type DashboardState = {
   documentosAtivos: number;
   frotaMunicipalAtiva: number;
   veiculosApreendidosTotal: number;
+  veiculosCarrosApreendidos: number;
+  veiculosMotosApreendidas: number;
+  veiculosLiberadosGlobal: number;
+  concessionariosEmDebitoValor: number;
+  concessionariosPagos: number;
+  concessionariosValorPago: number;
+  iroOperacoesInativas: number;
+  jgcAlunosMatriculados: number;
+  credenciaisIdosos: number;
+  credenciaisPcd: number;
 };
 
 const initialState: DashboardState = {
@@ -144,6 +160,16 @@ const initialState: DashboardState = {
   documentosAtivos: 0,
   frotaMunicipalAtiva: 0,
   veiculosApreendidosTotal: 0,
+  veiculosCarrosApreendidos: 0,
+  veiculosMotosApreendidas: 0,
+  veiculosLiberadosGlobal: 0,
+  concessionariosEmDebitoValor: 0,
+  concessionariosPagos: 0,
+  concessionariosValorPago: 0,
+  iroOperacoesInativas: 0,
+  jgcAlunosMatriculados: 0,
+  credenciaisIdosos: 0,
+  credenciaisPcd: 0,
 };
 
 const monthFormatter = new Intl.DateTimeFormat('pt-BR', { month: 'short' });
@@ -356,6 +382,15 @@ const Dashboard = () => {
       let frotaManutencaoSistema = 0;
       let iroOperacoesSistema = 0;
       let falaDemandasSistema = 0;
+      let veiculosCarrosApreendidos = 0;
+      let veiculosMotosApreendidas = 0;
+      let concessionariosEmDebitoValor = 0;
+      let concessionariosPagos = 0;
+      let concessionariosValorPago = 0;
+      let iroOperacoesInativas = 0;
+      let jgcAlunosMatriculados = 0;
+      let credenciaisIdosos = 0;
+      let credenciaisPcd = 0;
 
       if (isDemutranScope) {
         const [
@@ -552,6 +587,12 @@ const Dashboard = () => {
           concessionariosData,
           frotaMunicipalCount,
           veiculosSeriesSistema,
+          veiculosTipoResponse,
+          taxasResponse,
+          ordensServicoGlobalResponse,
+          iroStatusResponse,
+          jgcAlunosResponse,
+          credenciaisTipoResponse,
         ] = await Promise.all([
           supabase.from('guardas_municipais').select('*', { count: 'exact', head: true }).eq('ativo', true),
           supabase.from('guarda_frota_veiculos').select('*', { count: 'exact', head: true }).eq('ativo', true),
@@ -567,6 +608,12 @@ const Dashboard = () => {
           supabase.from('demutran_concessionarios').select('categoria, ativo, exercicio, ultimo_alvara'),
           supabase.from('demutran_veiculos_municipais').select('*', { count: 'exact', head: true }).eq('ativo', true),
           supabase.from('veiculos_recolhidos').select('created_at, data_liberacao, taxa_diaria, data_recolhimento, status'),
+          supabase.from('veiculos_recolhidos').select('local_custodia, status'),
+          supabase.from('demutran_taxas').select('tipo, valor'),
+          supabase.from('guarda_ordens_servico').select('status'),
+          supabase.from('iro_operacoes').select('ativo'),
+          supabase.from('jgc_alunos').select('*', { count: 'exact', head: true }).eq('situacao', 'ativo').is('deleted_at', null),
+          supabase.from('demutran_credenciais_solicitacoes').select('tipo'),
         ]);
         guardasAtivos = guardasSistemaCount.count || 0;
         frotaAtiva = frotaSistemaCount.count || 0;
@@ -591,6 +638,66 @@ const Dashboard = () => {
         demandasFalaCidadaoCount = falaDemandasSistema;
         operacoesAtivasIro = iroOperacoesSistema;
         totalBancoHoras = iroBancoHorasSistema;
+
+        // Veículos por tipo (carros vs motos) e liberados — visão global
+        const veiculosTipoRows = (veiculosTipoResponse.data || []) as Array<{ local_custodia: string; status: string }>;
+        veiculosCarrosApreendidos = veiculosTipoRows.filter(
+          (r) => (r.local_custodia === 'automoveis' || r.local_custodia === 'veiculos_forum') && r.status !== 'liberado',
+        ).length;
+        veiculosMotosApreendidas = veiculosTipoRows.filter(
+          (r) => (r.local_custodia === 'motos' || r.local_custodia === 'motos_delegacia') && r.status !== 'liberado',
+        ).length;
+
+        // Concessionários: quantidade em débito/pago + valor estimado por categoria
+        const taxasPorTipo = new Map<string, number>();
+        (taxasResponse.data || []).forEach((t: any) => {
+          taxasPorTipo.set(t.tipo, (taxasPorTipo.get(t.tipo) || 0) + (Number(t.valor) || 0));
+        });
+        const taxaTipoPorCategoria: Record<string, string> = {
+          mototaxi: 'mototaxi',
+          taxi: 'carro_horario',
+          carro_horario: 'carro_horario',
+          fretista: 'carro_horario',
+        };
+        const valorEstimadoConcessionario = (categoria: string) =>
+          taxasPorTipo.get(taxaTipoPorCategoria[categoria] || 'carro_horario') || 0;
+        const concessionariosDebitoSistema = concessionariosSistema.filter(
+          (c: any) => getConcessionarioFinancialStatus(c) === 'em_debito',
+        );
+        const concessionariosPagosSistema = concessionariosSistema.filter(
+          (c: any) => getConcessionarioFinancialStatus(c) === 'pago',
+        );
+        concessionariosEmDebito = concessionariosDebitoSistema.length;
+        concessionariosEmDebitoValor = concessionariosDebitoSistema.reduce(
+          (acc, c: any) => acc + valorEstimadoConcessionario(c.categoria),
+          0,
+        );
+        concessionariosPagos = concessionariosPagosSistema.length;
+        concessionariosValorPago = concessionariosPagosSistema.reduce(
+          (acc, c: any) => acc + valorEstimadoConcessionario(c.categoria),
+          0,
+        );
+
+        // Ordens de Serviço globais
+        const osGlobalRows = (ordensServicoGlobalResponse.data || []) as Array<{ status: string }>;
+        ordensServicoTotal = osGlobalRows.length;
+        ordensServicoPublicadas = osGlobalRows.filter((row) => row.status === 'PUBLICADA').length;
+        ordensServicoRascunhos = osGlobalRows.filter((row) => row.status === 'RASCUNHO').length;
+        ordensServicoCanceladas = osGlobalRows.filter((row) => row.status === 'CANCELADA').length;
+        ordensServicoSubstituidas = osGlobalRows.filter((row) => row.status === 'SUBSTITUIDA').length;
+
+        // IRO ativas vs inativas
+        const iroStatusRows = (iroStatusResponse.data || []) as Array<{ ativo: boolean }>;
+        iroOperacoesInativas = iroStatusRows.filter((r) => !r.ativo).length;
+
+        // JGC: alunos matriculados ativos
+        jgcAlunosMatriculados = jgcAlunosResponse.count || 0;
+
+        // Credenciais por tipo (idoso vs PCD)
+        (credenciaisTipoResponse.data || []).forEach((row: any) => {
+          if (row.tipo === 'idoso') credenciaisIdosos += 1;
+          else if (row.tipo === 'pcd') credenciaisPcd += 1;
+        });
 
         // Movimentação mensal com valores
         const msPerDay = 1000 * 60 * 60 * 24;
@@ -767,6 +874,16 @@ const Dashboard = () => {
         documentosAtivos,
         frotaMunicipalAtiva,
         veiculosApreendidosTotal: veiculosApreendidosSistema,
+        veiculosCarrosApreendidos,
+        veiculosMotosApreendidas,
+        veiculosLiberadosGlobal: veiculosLiberadosSistema,
+        concessionariosEmDebitoValor,
+        concessionariosPagos,
+        concessionariosValorPago,
+        iroOperacoesInativas,
+        jgcAlunosMatriculados,
+        credenciaisIdosos,
+        credenciaisPcd,
       });
     };
 
@@ -1005,6 +1122,193 @@ const Dashboard = () => {
             </CardContent>
           </Card>
         </section>
+
+        {isSuperAdmin && !urlSetorSlug && (
+          <>
+            {/* Veículos no pátio: carros vs motos vs liberados */}
+            <section className="grid gap-6 xl:grid-cols-2">
+              <Card className="overflow-hidden rounded-[28px] border border-slate-200/80 bg-white shadow-[0_12px_32px_-22px_rgba(15,23,42,0.2)]">
+                <CardHeader>
+                  <CardTitle className="font-heading text-base font-bold tracking-[-0.02em] text-slate-800">Pátio do DEMUTRAN</CardTitle>
+                  <CardDescription className="mt-1 hidden text-sm leading-6 text-[#89a0bf] lg:block">
+                    Visão global de veículos recolhidos por tipo e liberados.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="grid gap-3 md:grid-cols-3">
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-4">
+                    <div className="flex items-center gap-2">
+                      <CarFront className="h-4 w-4 text-blue-600" />
+                      <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">Carros apreendidos</p>
+                    </div>
+                    <p className="mt-2 text-3xl font-extrabold tracking-[-0.05em] text-blue-600">{state.veiculosCarrosApreendidos}</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-500">Automóveis retidos no depósito</p>
+                  </div>
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-4">
+                    <div className="flex items-center gap-2">
+                      <Bike className="h-4 w-4 text-amber-600" />
+                      <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">Motos apreendidas</p>
+                    </div>
+                    <p className="mt-2 text-3xl font-extrabold tracking-[-0.05em] text-amber-600">{state.veiculosMotosApreendidas}</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-500">Motocicletas retidas no depósito</p>
+                  </div>
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-4">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                      <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">Liberados</p>
+                    </div>
+                    <p className="mt-2 text-3xl font-extrabold tracking-[-0.05em] text-emerald-600">{state.veiculosLiberadosGlobal}</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-500">Veículos já regularizados no total</p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="overflow-hidden rounded-[28px] border border-slate-200/80 bg-white shadow-[0_12px_32px_-22px_rgba(15,23,42,0.2)]">
+                <CardHeader>
+                  <CardTitle className="font-heading text-base font-bold tracking-[-0.02em] text-slate-800">Concessionários</CardTitle>
+                  <CardDescription className="mt-1 hidden text-sm leading-6 text-[#89a0bf] lg:block">
+                    Situação financeira dos permissionários — valores estimados por categoria.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="grid gap-3 md:grid-cols-2">
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-4">
+                    <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">Em débito</p>
+                    <p className="mt-2 text-3xl font-extrabold tracking-[-0.05em] text-rose-600">{state.concessionariosEmDebito}</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-500">
+                      {state.concessionariosEmDebitoValor > 0
+                        ? `Estimativa de taxas: ${currencyFormatter.format(state.concessionariosEmDebitoValor)}`
+                        : 'Nenhum cadastro em débito'}
+                    </p>
+                  </div>
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-4">
+                    <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">Taxas pagas</p>
+                    <p className="mt-2 text-3xl font-extrabold tracking-[-0.05em] text-emerald-600">{state.concessionariosPagos}</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-500">
+                      {state.concessionariosValorPago > 0
+                        ? `Estimativa de taxas: ${currencyFormatter.format(state.concessionariosValorPago)}`
+                        : 'Nenhum cadastro regularizado'}
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </section>
+
+            {/* Operações IRO, JGC e credenciais */}
+            <section className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
+              <Card className="overflow-hidden rounded-[28px] border border-slate-200/80 bg-white shadow-[0_12px_32px_-22px_rgba(15,23,42,0.2)]">
+                <CardHeader>
+                  <CardTitle className="font-heading text-base font-bold tracking-[-0.02em] text-slate-800">Ordens de Serviço</CardTitle>
+                  <CardDescription className="mt-1 hidden text-sm leading-6 text-[#89a0bf] lg:block">
+                    Distribuição global das Ordens de Serviço por situação.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4 bg-[linear-gradient(180deg,_rgba(248,250,252,0.55)_0%,_rgba(255,255,255,1)_100%)]">
+                  <ChartContainer className="mx-auto h-[240px] max-w-[280px]" config={resolvedChartConfig}>
+                    <PieChart>
+                      <ChartTooltip content={<ChartTooltipContent hideLabel />} />
+                      <Pie data={ordensServicoPorStatus} dataKey="value" nameKey="name" innerRadius={70} outerRadius={96} paddingAngle={4}>
+                        {ordensServicoPorStatus.map((entry) => (
+                          <Cell key={entry.name} fill={entry.fill} />
+                        ))}
+                      </Pie>
+                      <ChartLegend content={<ChartLegendContent nameKey="name" />} />
+                    </PieChart>
+                  </ChartContainer>
+
+                  <div className="grid grid-cols-3 gap-3 border-t border-slate-200 pt-5">
+                    <div className="text-center">
+                      <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-[#8ea0bd]">Total de O.S.</p>
+                      <p className="mt-2 text-[22px] font-extrabold tracking-[-0.04em] text-[#2563eb] md:text-[2rem]">{state.ordensServicoTotal || 0}</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-[#8ea0bd]">Publicadas</p>
+                      <p className="mt-2 text-[22px] font-extrabold tracking-[-0.04em] text-[#10b981] md:text-[2rem]">{state.ordensServicoPublicadas || 0}</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-[#8ea0bd]">Rascunhos</p>
+                      <p className="mt-2 text-[22px] font-extrabold tracking-[-0.04em] text-[#f59e0b] md:text-[2rem]">{state.ordensServicoRascunhos || 0}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="overflow-hidden rounded-[28px] border border-slate-200/80 bg-white shadow-[0_12px_32px_-22px_rgba(15,23,42,0.2)]">
+                <CardHeader>
+                  <CardTitle className="font-heading text-base font-bold tracking-[-0.02em] text-slate-800">Operações IRO</CardTitle>
+                  <CardDescription className="mt-1 hidden text-sm leading-6 text-[#89a0bf] lg:block">
+                    Reforço operacional ativo e inativo da Guarda.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="grid gap-3 md:grid-cols-2">
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-4">
+                    <div className="flex items-center gap-2">
+                      <Activity className="h-4 w-4 text-blue-600" />
+                      <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">Ativas</p>
+                    </div>
+                    <p className="mt-2 text-3xl font-extrabold tracking-[-0.05em] text-blue-600">{state.operacoesAtivasIro}</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-500">Operações em andamento</p>
+                  </div>
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-4">
+                    <div className="flex items-center gap-2">
+                      <Pause className="h-4 w-4 text-slate-500" />
+                      <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">Inativas</p>
+                    </div>
+                    <p className="mt-2 text-3xl font-extrabold tracking-[-0.05em] text-slate-500">{state.iroOperacoesInativas}</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-500">Operações encerradas</p>
+                  </div>
+                </CardContent>
+              </Card>
+            </section>
+
+            {/* JGC e credenciais */}
+            <section className="grid gap-6 xl:grid-cols-2">
+              <Card className="overflow-hidden rounded-[28px] border border-slate-200/80 bg-white shadow-[0_12px_32px_-22px_rgba(15,23,42,0.2)]">
+                <CardHeader>
+                  <CardTitle className="font-heading text-base font-bold tracking-[-0.02em] text-slate-800">Jovem Guarda Cidadã</CardTitle>
+                  <CardDescription className="mt-1 hidden text-sm leading-6 text-[#89a0bf] lg:block">
+                    Alunos matriculados e ativos no programa.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="grid gap-3 md:grid-cols-1">
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-4">
+                    <div className="flex items-center gap-2">
+                      <GraduationCap className="h-4 w-4 text-purple-600" />
+                      <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">Alunos matriculados</p>
+                    </div>
+                    <p className="mt-2 text-3xl font-extrabold tracking-[-0.05em] text-purple-600">{state.jgcAlunosMatriculados}</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-500">Matrículas ativas no JGC</p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="overflow-hidden rounded-[28px] border border-slate-200/80 bg-white shadow-[0_12px_32px_-22px_rgba(15,23,42,0.2)]">
+                <CardHeader>
+                  <CardTitle className="font-heading text-base font-bold tracking-[-0.02em] text-slate-800">Credenciais de vagas especiais</CardTitle>
+                  <CardDescription className="mt-1 hidden text-sm leading-6 text-[#89a0bf] lg:block">
+                    Solicitações por perfil beneficiário.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="grid gap-3 md:grid-cols-2">
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-4">
+                    <div className="flex items-center gap-2">
+                      <Accessibility className="h-4 w-4 text-blue-600" />
+                      <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">Idosos</p>
+                    </div>
+                    <p className="mt-2 text-3xl font-extrabold tracking-[-0.05em] text-blue-600">{state.credenciaisIdosos}</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-500">Solicitações de idosos</p>
+                  </div>
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-4">
+                    <div className="flex items-center gap-2">
+                      <HandCoins className="h-4 w-4 text-violet-600" />
+                      <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">PCD</p>
+                    </div>
+                    <p className="mt-2 text-3xl font-extrabold tracking-[-0.05em] text-violet-600">{state.credenciaisPcd}</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-500">Solicitações de pessoas com deficiência</p>
+                  </div>
+                </CardContent>
+              </Card>
+            </section>
+          </>
+        )}
 
         {isDemutranScope && state.concessionarios.length > 0 && (
           <section className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">

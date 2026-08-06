@@ -470,7 +470,7 @@ const App = () => {
             } />
             <Route path="/admin/fala-cidadao/:setorSlug" element={
               <SuspenseWrapper>
-                <ProtectedRoute allowedPapeis={['super_admin', 'gestor', 'admin_setor', 'tecnico']}>
+                <ProtectedRoute allowedPapeis={['super_admin', 'gestor', 'admin_setor', 'tecnico']} requisitoPermissaoPorSetor={{ demutran: 'demutran.fala_cidadao.visualizar', 'guarda-municipal': 'guarda_municipal.fala_cidadao.visualizar' }}>
                   <AdminFalaCidadao />
                 </ProtectedRoute>
               </SuspenseWrapper>
@@ -791,14 +791,14 @@ const App = () => {
             } />
             <Route path="/admin/guardas/guarda-municipal/ordens-servico" element={
               <SuspenseWrapper>
-                <ProtectedRoute allowedPapeis={['super_admin', 'gestor', 'admin_setor', 'tecnico']} requiredSetorSlug="guarda-municipal">
+                <ProtectedRoute allowedPapeis={['super_admin', 'gestor', 'admin_setor', 'tecnico']} requiredSetorSlug="guarda-municipal" requisitoPermissao="guarda_municipal.ordens_servico.visualizar">
                   <GuardaOrdensServico />
                 </ProtectedRoute>
               </SuspenseWrapper>
             } />
             <Route path="/admin/demutran/ordens-servico" element={
               <SuspenseWrapper>
-                <ProtectedRoute allowedPapeis={['super_admin', 'gestor', 'admin_setor', 'tecnico']} requiredSetorSlug="demutran">
+                <ProtectedRoute allowedPapeis={['super_admin', 'gestor', 'admin_setor', 'tecnico']} requiredSetorSlug="demutran" requisitoPermissao="demutran.ordens_servico.visualizar">
                   <GuardaOrdensServico />
                 </ProtectedRoute>
               </SuspenseWrapper>

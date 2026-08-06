@@ -224,6 +224,8 @@ const moduloItemMap: Record<string, ModuloSistema> = {
   Atividades: 'jgc_atividades',
   Acompanhamentos: 'jgc_acompanhamento',
   Relatorios: 'jgc_relatorios',
+  'Fala Cidadao': 'fala_cidadao',
+  'Ordens de Servico': 'ordens_servico',
 };
 
 const hasStoredModule = (modules: ModuloSistema[], module: ModuloSistema) => {

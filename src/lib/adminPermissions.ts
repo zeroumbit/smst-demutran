@@ -22,6 +22,16 @@ export function codigoVisualizarModulo(setorSlug: string | null | undefined, mod
     if (setorSlug === 'guarda-municipal') return 'guarda_municipal.midias.visualizar';
     return null;
   }
+  if (modulo === 'fala_cidadao') {
+    if (setorSlug === 'demutran') return 'demutran.fala_cidadao.visualizar';
+    if (setorSlug === 'guarda-municipal') return 'guarda_municipal.fala_cidadao.visualizar';
+    return null;
+  }
+  if (modulo === 'ordens_servico') {
+    if (setorSlug === 'demutran') return 'demutran.ordens_servico.visualizar';
+    if (setorSlug === 'guarda-municipal') return 'guarda_municipal.ordens_servico.visualizar';
+    return null;
+  }
   return CODIGO_VISUALIZAR_POR_MODULO[modulo] ?? null;
 }
 

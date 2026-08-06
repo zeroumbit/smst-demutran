@@ -194,9 +194,9 @@ const UsuariosPage = () => {
   const [perfisFuncionais, setPerfisFuncionais] = useState<PerfilFuncional[]>([]);
   const [catalogoPermissoes, setCatalogoPermissoes] = useState<PermissaoCatalogo[]>([]);
   const [modulosSetorMap, setModulosSetorMap] = useState<Record<string, string>>({});
-  const [createPerfilFuncionalId, setCreatePerfilFuncionalId] = useState('');
+  const [createPerfilFuncionalIds, setCreatePerfilFuncionalIds] = useState<string[]>([]);
   const [createPermissoesIndividuais, setCreatePermissoesIndividuais] = useState<IndividualException[]>([]);
-  const [editPerfilFuncionalId, setEditPerfilFuncionalId] = useState('');
+  const [editPerfilFuncionalIds, setEditPerfilFuncionalIds] = useState<string[]>([]);
   const [editPermissoesIndividuais, setEditPermissoesIndividuais] = useState<IndividualException[]>([]);
   const [editPermissoesIniciais, setEditPermissoesIniciais] = useState<IndividualException[]>([]);
   const [editAcessosRevisao, setEditAcessosRevisao] = useState<UsuarioPermissaoResumo[]>([]);
@@ -325,7 +325,7 @@ const UsuariosPage = () => {
     setSelectedJgcPapel('administrativo');
     setSelectedJgcArea('');
     setSelectedGraduacaoId('');
-    setCreatePerfilFuncionalId('');
+    setCreatePerfilFuncionalIds([]);
     setCreatePermissoesIndividuais([]);
     setIsDialogOpen(false);
   };
@@ -381,7 +381,7 @@ const UsuariosPage = () => {
           ? [...modulesFromPermissions(selectedJgcPermissions), ...selectedJgcPermissions]
           : isSuperAdmin ? undefined : selectedModulos,
         graduacaoId: creatingJovemGuarda ? undefined : selectedGraduacaoId || undefined,
-        perfilFuncionalId: creatingJovemGuarda ? undefined : createPerfilFuncionalId || undefined,
+        perfilFuncionalId: creatingJovemGuarda || createPerfilFuncionalIds.length === 0 ? undefined : createPerfilFuncionalIds[0],
         permissoesIndividuais: creatingJovemGuarda
           ? undefined
           : createPermissoesIndividuais.length
@@ -405,6 +405,14 @@ const UsuariosPage = () => {
           _area_atuacao: selectedJgcPapel === 'multiprofissional' ? selectedJgcArea.trim() : null,
         });
         if (jgcRoleError) throw jgcRoleError;
+      }
+
+      if (!creatingJovemGuarda && createPerfilFuncionalIds.length > 0 && created?.perfilId) {
+        const { error: perfisError } = await supabase.rpc('set_usuario_perfis_funcionais', {
+          _perfil_usuario_id: created.perfilId,
+          _perfil_funcional_ids: createPerfilFuncionalIds,
+        });
+        if (perfisError) throw perfisError;
       }
 
       toast({
@@ -496,18 +504,17 @@ const UsuariosPage = () => {
       }
     }
     setEditGraduacaoId(item.graduacao_id || '');
-    setEditPerfilFuncionalId('');
+    setEditPerfilFuncionalIds([]);
     setEditPermissoesIndividuais([]);
     setEditPermissoesIniciais([]);
     setEditAcessosRevisao([]);
     setAcessosRevisaoAberto(false);
     if (item.setor_slug !== 'jovem-guarda') {
-      const { data: perfilData } = await supabase
-        .from('perfis_usuarios')
+      const { data: perfisData } = await supabase
+        .from('usuario_perfil_funcionais')
         .select('perfil_funcional_id')
-        .eq('id', item.perfil_id)
-        .maybeSingle();
-      setEditPerfilFuncionalId(perfilData?.perfil_funcional_id || '');
+        .eq('perfil_usuario_id', item.perfil_id);
+      setEditPerfilFuncionalIds(((perfisData || []) as { perfil_funcional_id: string }[]).map((p) => p.perfil_funcional_id));
 
       const { data: exceptionsData } = await supabase
         .from('usuario_permissoes')
@@ -530,7 +537,7 @@ const UsuariosPage = () => {
   };
 
   const resetEditAcessosState = () => {
-    setEditPerfilFuncionalId('');
+    setEditPerfilFuncionalIds([]);
     setEditPermissoesIndividuais([]);
     setEditPermissoesIniciais([]);
     setEditAcessosRevisao([]);
@@ -589,9 +596,9 @@ const UsuariosPage = () => {
       }
 
       if (!editingJovemGuarda) {
-        const { error: perfilFuncionalError } = await supabase.rpc('set_usuario_perfil_funcional', {
+        const { error: perfilFuncionalError } = await supabase.rpc('set_usuario_perfis_funcionais', {
           _perfil_usuario_id: editingItem.perfil_id,
-          _perfil_funcional_id: editPerfilFuncionalId || null,
+          _perfil_funcional_ids: editPerfilFuncionalIds,
         });
         if (perfilFuncionalError) throw perfilFuncionalError;
 
@@ -1220,21 +1227,47 @@ const UsuariosPage = () => {
             {!isJovemGuardaContext && formData.papel !== 'super_admin' && (
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label>Perfil funcional (opcional)</Label>
+                  <Label>Perfis funcionais (multi funções)</Label>
                   <p className="text-xs text-muted-foreground">
-                    Define o conjunto base de acessos granulares (permissões v2). Enquanto a flag de permissões v2 estiver desligada, valem os módulos acima.
+                    Define o conjunto base de acessos granulares (permissões v2). O usuário pode acumular vários perfis do setor. Enquanto a flag de permissões v2 estiver desligada, valem os módulos acima.
                   </p>
-                  <Select value={createPerfilFuncionalId} onValueChange={(value) => setCreatePerfilFuncionalId(value === '__none__' ? '' : value)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Sem perfil funcional" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__none__">Sem perfil funcional</SelectItem>
-                      {perfisFuncionaisDoSetor(targetSetorId).map((perfil) => (
-                        <SelectItem key={perfil.id} value={perfil.id}>{perfil.nome}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div className="grid grid-cols-2 gap-2">
+                    {perfisFuncionaisDoSetor(targetSetorId).map((perfil) => {
+                      const isSelected = createPerfilFuncionalIds.includes(perfil.id);
+                      return (
+                        <button
+                          key={perfil.id}
+                          type="button"
+                          onClick={() =>
+                            setCreatePerfilFuncionalIds((prev) =>
+                              isSelected ? prev.filter((id) => id !== perfil.id) : [...prev, perfil.id],
+                            )
+                          }
+                          className={cn(
+                            'flex items-center gap-2 rounded-lg border px-3 py-2.5 text-sm text-left transition-all',
+                            isSelected
+                              ? 'border-sky-300 bg-sky-50 text-sky-800 font-medium'
+                              : 'border-border text-muted-foreground hover:border-sky-300 hover:bg-sky-50/50',
+                          )}
+                        >
+                          <div
+                            className={cn(
+                              'flex h-5 w-5 shrink-0 items-center justify-center rounded border transition-all',
+                              isSelected ? 'border-sky-600 bg-sky-600 text-white' : 'border-border',
+                            )}
+                          >
+                            {isSelected && <Check className="h-3.5 w-3.5" />}
+                          </div>
+                          <span className="truncate">{perfil.nome}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {createPerfilFuncionalIds.length > 0 && (
+                    <p className="text-xs text-muted-foreground">
+                      {createPerfilFuncionalIds.length} perfil(is) selecionado(s)
+                    </p>
+                  )}
                   {perfisFuncionaisDoSetor(targetSetorId).length === 0 && (
                     <p className="text-xs text-muted-foreground">
                       Nenhum perfil funcional cadastrado para este setor ainda. Sem perfil, este usuário continua usando o modelo atual (módulos).
@@ -1410,20 +1443,46 @@ const UsuariosPage = () => {
             {!isEditingJovemGuarda && editPapel !== 'super_admin' && (
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label>Perfil funcional (opcional)</Label>
-                  <Select value={editPerfilFuncionalId} onValueChange={(value) => setEditPerfilFuncionalId(value === '__none__' ? '' : value)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Sem perfil funcional" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__none__">Sem perfil funcional</SelectItem>
-                      {perfisFuncionaisDoSetor(editingItem?.setor_id).map((perfil) => (
-                        <SelectItem key={perfil.id} value={perfil.id}>{perfil.nome}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Label>Perfis funcionais (multi funções)</Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {perfisFuncionaisDoSetor(editingItem?.setor_id).map((perfil) => {
+                      const isSelected = editPerfilFuncionalIds.includes(perfil.id);
+                      return (
+                        <button
+                          key={perfil.id}
+                          type="button"
+                          onClick={() =>
+                            setEditPerfilFuncionalIds((prev) =>
+                              isSelected ? prev.filter((id) => id !== perfil.id) : [...prev, perfil.id],
+                            )
+                          }
+                          className={cn(
+                            'flex items-center gap-2 rounded-lg border px-3 py-2.5 text-sm text-left transition-all',
+                            isSelected
+                              ? 'border-sky-300 bg-sky-50 text-sky-800 font-medium'
+                              : 'border-border text-muted-foreground hover:border-sky-300 hover:bg-sky-50/50',
+                          )}
+                        >
+                          <div
+                            className={cn(
+                              'flex h-5 w-5 shrink-0 items-center justify-center rounded border transition-all',
+                              isSelected ? 'border-sky-600 bg-sky-600 text-white' : 'border-border',
+                            )}
+                          >
+                            {isSelected && <Check className="h-3.5 w-3.5" />}
+                          </div>
+                          <span className="truncate">{perfil.nome}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {editPerfilFuncionalIds.length > 0 && (
+                    <p className="text-xs text-muted-foreground">
+                      {editPerfilFuncionalIds.length} perfil(is) selecionado(s)
+                    </p>
+                  )}
                   <p className="text-xs text-muted-foreground">
-                    O perfil define o conjunto base de permissões v2; as exceções abaixo aplicam-se por cima dele.
+                    Os perfis definem o conjunto base de permissões v2 (acumulados); as exceções abaixo aplicam-se por cima deles.
                   </p>
                 </div>
 

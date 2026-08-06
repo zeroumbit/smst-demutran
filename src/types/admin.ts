@@ -23,7 +23,9 @@ export type ModuloSistema =
   | 'jgc_frequencia'
   | 'jgc_atividades'
   | 'jgc_acompanhamento'
-  | 'jgc_relatorios';
+  | 'jgc_relatorios'
+  | 'fala_cidadao'
+  | 'ordens_servico';
 
 export const MODULOS_DEMUTRAN: { value: ModuloSistema; label: string }[] = [
   { value: 'veiculos', label: 'Veículos' },
@@ -33,6 +35,8 @@ export const MODULOS_DEMUTRAN: { value: ModuloSistema; label: string }[] = [
   { value: 'frota', label: 'Frota Municipal' },
   { value: 'documentos', label: 'Documentos' },
   { value: 'midias', label: 'Mídias' },
+  { value: 'fala_cidadao', label: 'Fala Cidadão' },
+  { value: 'ordens_servico', label: 'Ordens de Serviço' },
 ];
 
 export const MODULOS_GUARDA: { value: ModuloSistema; label: string }[] = [
@@ -43,6 +47,8 @@ export const MODULOS_GUARDA: { value: ModuloSistema; label: string }[] = [
   { value: 'guarda_equipes', label: 'Equipes da Guarda' },
   { value: 'fiscalizacao', label: 'Fiscalização' },
   { value: 'midias', label: 'Mídias' },
+  { value: 'fala_cidadao', label: 'Fala Cidadão' },
+  { value: 'ordens_servico', label: 'Ordens de Serviço' },
 ];
 
 export const MODULOS_JOVEM_GUARDA: { value: ModuloSistema; label: string }[] = [
