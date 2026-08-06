@@ -83,6 +83,7 @@ export interface AdminProfile {
   guarda_setor_id?: string | null;
   jgc_perfil?: string | null;
   jgc_area_atuacao?: string | null;
+  perfil_funcional_id?: string | null;
 }
 
 export interface Setor {

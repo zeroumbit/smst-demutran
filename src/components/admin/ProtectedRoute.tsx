@@ -1,12 +1,14 @@
 import { Navigate, useParams, useLocation } from 'react-router-dom';
 import { useAuth, getDashboardUrl } from '@/contexts/AuthContext';
 import type { ModuloSistema, PapelUsuario } from '@/types/admin';
+import { usePermissionStatus } from '@/hooks/usePermission';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
   allowedPapeis?: PapelUsuario[];
   requiredSetorSlug?: string;
   requiredModule?: ModuloSistema;
+  requisitoPermissao?: string;
   allowSuperAdmin?: boolean;
   requireGuarda?: boolean;
   requireGraduacao?: boolean;
@@ -26,16 +28,26 @@ export const ProtectedRoute = ({
   allowedPapeis,
   requiredSetorSlug,
   requiredModule,
+  requisitoPermissao,
   allowSuperAdmin = true,
   requireGuarda,
   requireGraduacao,
   allowGuardaIroManagement = false,
 }: ProtectedRouteProps) => {
   const { isAuthenticated, isLoading, canAccessAdmin, hasPapel, isSuperAdmin, profile, isGuarda, temGuarda } = useAuth();
+  const { resolved: requisitoResolvido, allowed: permissaoPermitida } = usePermissionStatus(requisitoPermissao);
   const { setorSlug } = useParams<{ setorSlug?: string }>();
   const location = useLocation();
 
   if (isLoading) {
+    return (
+      <div className="mobile-safe-screen flex items-center justify-center">
+        <div className="h-12 w-12 animate-spin rounded-full border-b-2 border-primary" />
+      </div>
+    );
+  }
+
+  if (requisitoPermissao && !requisitoResolvido) {
     return (
       <div className="mobile-safe-screen flex items-center justify-center">
         <div className="h-12 w-12 animate-spin rounded-full border-b-2 border-primary" />
@@ -86,9 +98,11 @@ export const ProtectedRoute = ({
       ? allowSuperAdmin && allowedPapeis.includes('super_admin')
       : hasPapel(...allowedPapeis) ||
         (profile?.papel === 'tecnico' &&
-          (requiredModule
-            ? hasStoredModule((profile?.modulos as ModuloSistema[]) ?? [], requiredModule)
-            : !!profile?.modulos?.length));
+          (requisitoPermissao
+            ? permissaoPermitida
+            : requiredModule
+              ? hasStoredModule((profile?.modulos as ModuloSistema[]) ?? [], requiredModule)
+              : !!profile?.modulos?.length));
 
     if (!isAllowed) {
       return <Navigate to={getDashboardUrl(profile)} replace />;

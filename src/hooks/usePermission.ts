@@ -64,3 +64,26 @@ export function usePermissions(codigos: ReadonlyArray<string | null | undefined>
 
   return useMemo(() => result, [result, key]); // eslint-disable-line react-hooks/exhaustive-deps
 }
+
+export interface PermissionStatus { resolved: boolean; allowed: boolean; }
+
+export function usePermissionStatus(codigo?: string | null): PermissionStatus {
+  const { isSuperAdmin } = useAuth();
+  const [state, setState] = useState<PermissionStatus>(() => ({
+    resolved: !codigo,
+    allowed: !!(isSuperAdmin && codigo),
+  }));
+
+  useEffect(() => {
+    if (!codigo) { setState({ resolved: true, allowed: false }); return; }
+    if (isSuperAdmin) { setState({ resolved: true, allowed: true }); return; }
+    let active = true;
+    setState({ resolved: false, allowed: false });
+    hasPermissionRpc(codigo).then((r) => {
+      if (active) setState({ resolved: true, allowed: r });
+    });
+    return () => { active = false; };
+  }, [codigo, isSuperAdmin]);
+
+  return state;
+}

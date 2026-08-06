@@ -6,6 +6,9 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { NotificationDropdown } from '@/components/admin/NotificationDropdown';
 import type { ModuloSistema } from '@/types/admin';
+import { MODULOS_POR_SETOR } from '@/types/admin';
+import { codigoVisualizarModulo } from '@/lib/adminPermissions';
+import { usePermissions } from '@/hooks/usePermission';
 import { supabase } from '@/lib/supabase';
 import type { ComponentType } from 'react';
 import guardaLogo from '@/guarda.png';
@@ -358,6 +361,12 @@ export const AdminLayout = ({ children, backPath, backLabel }: AdminLayoutProps)
     return null;
   }, [isSuperAdmin, profile?.setor_slug, location.pathname]);
 
+  const modulosDoSetor = MODULOS_POR_SETOR[sectorContext as keyof typeof MODULOS_POR_SETOR] ?? [];
+  const codigosMenu = modulosDoSetor
+    .map((m) => codigoVisualizarModulo(profile?.setor_slug, m.value))
+    .filter((c): c is string => !!c);
+  const permissoesMenu = usePermissions(codigosMenu);
+
   const isJovemGuardaHome = useMemo(() => {
     if (sectorContext !== 'jovem-guarda') return false;
     return location.pathname === '/admin/dashboard/jovem-guarda' || location.pathname === '/admin/dashboard/jovem-guarda/dashboard';
@@ -499,6 +508,10 @@ export const AdminLayout = ({ children, backPath, backLabel }: AdminLayoutProps)
       if (hasModulosRestricted) {
         const modulo = moduloItemMap[mappedItem.label];
         if (modulo) {
+          const codigo = codigoVisualizarModulo(profile?.setor_slug, modulo);
+          const granularOk = codigo ? permissoesMenu[codigo] : undefined;
+          if (granularOk === true) return mappedItem;
+          if (granularOk === false) return null;
           return hasStoredModule(userModulos, modulo) ? mappedItem : null;
         }
       }
@@ -522,7 +535,7 @@ export const AdminLayout = ({ children, backPath, backLabel }: AdminLayoutProps)
       return items;
     }
     return filteredMenuItems;
-  }, [hasPapel, sectorContext, isSuperAdmin, profile?.papel, profile?.setor_slug, profile?.modulos, profile?.jgc_perfil]);
+  }, [hasPapel, sectorContext, isSuperAdmin, profile?.papel, profile?.setor_slug, profile?.modulos, profile?.jgc_perfil, permissoesMenu]);
 
   const visibleBottomNavItems = useMemo(() => {
     return guardaBottomNavItems.filter((item) => {
@@ -609,6 +622,10 @@ export const AdminLayout = ({ children, backPath, backLabel }: AdminLayoutProps)
           if (hasModulosRestricted) {
             const modulo = moduloItemMap[item.label];
             if (modulo) {
+              const codigo = codigoVisualizarModulo(profile?.setor_slug, modulo);
+              const granularOk = codigo ? permissoesMenu[codigo] : undefined;
+              if (granularOk === true) return item;
+              if (granularOk === false) return null;
               return hasStoredModule(userModulos, modulo) ? item : null;
             }
           }
@@ -622,7 +639,7 @@ export const AdminLayout = ({ children, backPath, backLabel }: AdminLayoutProps)
     walk(filterByPapel(demutranMenuItems));
     walk(filterByPapel(guardaMenuItems));
     return flat;
-  }, [hasPapel, isSuperAdmin, sectorContext, profile?.papel, profile?.modulos, profile?.jgc_perfil]);
+  }, [hasPapel, isSuperAdmin, sectorContext, profile?.papel, profile?.setor_slug, profile?.modulos, profile?.jgc_perfil, permissoesMenu]);
 
   const filteredSearchItems = searchQuery.trim()
     ? searchableItems.filter((item) =>

@@ -575,21 +575,21 @@ const App = () => {
             <Route path="/admin/guarda-municipal/guardas" element={<Navigate to="/admin/guardas/guarda-municipal" replace />} />
             <Route path="/admin/fiscalizacao/infracoes" element={
               <SuspenseWrapper>
-                <ProtectedRoute allowedPapeis={['super_admin', 'gestor', 'admin_setor', 'tecnico']} requiredSetorSlug="guarda-municipal" requiredModule="fiscalizacao">
+                <ProtectedRoute allowedPapeis={['super_admin', 'gestor', 'admin_setor', 'tecnico']} requiredSetorSlug="guarda-municipal" requisitoPermissao="guarda_municipal.fiscalizacao.visualizar">
                   <AdminFiscalizacaoInfracoes />
                 </ProtectedRoute>
               </SuspenseWrapper>
             } />
             <Route path="/admin/fiscalizacao/infracoes/:codigo" element={
               <SuspenseWrapper>
-                <ProtectedRoute allowedPapeis={['super_admin', 'gestor', 'admin_setor', 'tecnico']} requiredSetorSlug="guarda-municipal" requiredModule="fiscalizacao">
+                <ProtectedRoute allowedPapeis={['super_admin', 'gestor', 'admin_setor', 'tecnico']} requiredSetorSlug="guarda-municipal" requisitoPermissao="guarda_municipal.fiscalizacao.visualizar">
                   <AdminFiscalizacaoInfracaoDetalhe />
                 </ProtectedRoute>
               </SuspenseWrapper>
             } />
             <Route path="/admin/fiscalizacao/categorias" element={
               <SuspenseWrapper>
-                <ProtectedRoute allowedPapeis={['super_admin', 'gestor', 'admin_setor', 'tecnico']} requiredSetorSlug="guarda-municipal" requiredModule="fiscalizacao">
+                <ProtectedRoute allowedPapeis={['super_admin', 'gestor', 'admin_setor', 'tecnico']} requiredSetorSlug="guarda-municipal" requisitoPermissao="guarda_municipal.fiscalizacao.visualizar">
                   <AdminFiscalizacaoCategorias />
                 </ProtectedRoute>
               </SuspenseWrapper>
@@ -599,7 +599,7 @@ const App = () => {
                 <ProtectedRoute
                   allowedPapeis={['gestor', 'admin_setor', 'tecnico']}
                   requiredSetorSlug="guarda-municipal"
-                  requiredModule="iros"
+                  requisitoPermissao="guarda_municipal.iros.visualizar"
                   allowGuardaIroManagement
                 >
                   <MinhasIrosGestor />
@@ -611,7 +611,7 @@ const App = () => {
                 <ProtectedRoute
                   allowedPapeis={['super_admin', 'gestor', 'admin_setor', 'tecnico']}
                   requiredSetorSlug="guarda-municipal"
-                  requiredModule="iros"
+                  requisitoPermissao="guarda_municipal.iros.visualizar"
                   allowGuardaIroManagement
                 >
                   <AdminGuardaMunicipalIros />
@@ -634,49 +634,49 @@ const App = () => {
             } />
             <Route path="/admin/guardas/guarda-municipal" element={
               <SuspenseWrapper>
-                <ProtectedRoute allowedPapeis={['super_admin', 'gestor', 'admin_setor', 'tecnico']} requiredSetorSlug="guarda-municipal" requiredModule="guardas">
+                <ProtectedRoute allowedPapeis={['super_admin', 'gestor', 'admin_setor', 'tecnico']} requiredSetorSlug="guarda-municipal" requisitoPermissao="guarda_municipal.guardas.visualizar">
                   <AdminGuardasMunicipais />
                 </ProtectedRoute>
               </SuspenseWrapper>
             } />
             <Route path="/admin/guardas/guarda-municipal/frota" element={
               <SuspenseWrapper>
-                <ProtectedRoute allowedPapeis={['super_admin', 'gestor', 'admin_setor', 'tecnico']} requiredSetorSlug="guarda-municipal" requiredModule="guarda_frota">
+                <ProtectedRoute allowedPapeis={['super_admin', 'gestor', 'admin_setor', 'tecnico']} requiredSetorSlug="guarda-municipal" requisitoPermissao="guarda_municipal.frota.visualizar">
                   <AdminFrotaGuarda />
                 </ProtectedRoute>
               </SuspenseWrapper>
             } />
             <Route path="/admin/guardas/guarda-municipal/frota/novo" element={
               <SuspenseWrapper>
-                <ProtectedRoute allowedPapeis={['super_admin', 'gestor', 'admin_setor', 'tecnico']} requiredSetorSlug="guarda-municipal" requiredModule="guarda_frota">
+                <ProtectedRoute allowedPapeis={['super_admin', 'gestor', 'admin_setor', 'tecnico']} requiredSetorSlug="guarda-municipal" requisitoPermissao="guarda_municipal.frota.visualizar">
                   <AdminFrotaGuarda />
                 </ProtectedRoute>
               </SuspenseWrapper>
             } />
             <Route path="/admin/guardas/guarda-municipal/frota/:id" element={
               <SuspenseWrapper>
-                <ProtectedRoute allowedPapeis={['super_admin', 'gestor', 'admin_setor', 'tecnico']} requiredSetorSlug="guarda-municipal" requiredModule="guarda_frota">
+                <ProtectedRoute allowedPapeis={['super_admin', 'gestor', 'admin_setor', 'tecnico']} requiredSetorSlug="guarda-municipal" requisitoPermissao="guarda_municipal.frota.visualizar">
                   <AdminFrotaGuarda />
                 </ProtectedRoute>
               </SuspenseWrapper>
             } />
             <Route path="/admin/guardas/guarda-municipal/frota/:id/editar" element={
               <SuspenseWrapper>
-                <ProtectedRoute allowedPapeis={['super_admin', 'gestor', 'admin_setor', 'tecnico']} requiredSetorSlug="guarda-municipal" requiredModule="guarda_frota">
+                <ProtectedRoute allowedPapeis={['super_admin', 'gestor', 'admin_setor', 'tecnico']} requiredSetorSlug="guarda-municipal" requisitoPermissao="guarda_municipal.frota.visualizar">
                   <AdminFrotaGuarda />
                 </ProtectedRoute>
               </SuspenseWrapper>
             } />
             <Route path="/admin/guardas/guarda-municipal/equipes" element={
               <SuspenseWrapper>
-                <ProtectedRoute allowedPapeis={['super_admin', 'gestor', 'admin_setor', 'tecnico']} requiredSetorSlug="guarda-municipal" requiredModule="guarda_equipes">
+                <ProtectedRoute allowedPapeis={['super_admin', 'gestor', 'admin_setor', 'tecnico']} requiredSetorSlug="guarda-municipal" requisitoPermissao="guarda_municipal.equipes.visualizar">
                   <AdminEquipesGuarda />
                 </ProtectedRoute>
               </SuspenseWrapper>
             } />
             <Route path="/admin/guardas/guarda-municipal/escalas/*" element={
               <SuspenseWrapper>
-                <ProtectedRoute allowedPapeis={['super_admin', 'gestor', 'admin_setor', 'tecnico']} requiredSetorSlug="guarda-municipal" requiredModule="guarda_escalas">
+                <ProtectedRoute allowedPapeis={['super_admin', 'gestor', 'admin_setor', 'tecnico']} requiredSetorSlug="guarda-municipal" requisitoPermissao="guarda_municipal.escalas.visualizar">
                   <AdminEscalasGuarda />
                 </ProtectedRoute>
               </SuspenseWrapper>
