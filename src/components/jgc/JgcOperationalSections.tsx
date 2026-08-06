@@ -420,11 +420,31 @@ function DiarioTurma({alunos, turmas, can, profile}:{alunos:JgcAluno[]; turmas:J
   const [savingGeral, setSavingGeral] = useState(false);
   const [filtroModalAluno, setFiltroModalAluno] = useState('');
   const [expandedGeralId, setExpandedGeralId] = useState<string | null>(null);
+  const [turnoGeralTab, setTurnoGeralTab] = useState<'manha' | 'tarde'>('manha');
 
   const activeTurmas = turmas.filter(t => t.status === 'ativa');
   const getStudents = (turmaId: string) => alunos.filter(a => a.situacao === 'ativo' && (a.turma_id === turmaId || a.turmas?.some(t => t.id === turmaId)));
   const students = openTurmaId ? getStudents(openTurmaId) : [];
   const activeAlunos = useMemo(() => alunos.filter(a => a.situacao === 'ativo'), [alunos]);
+
+  const turnoGeralAlunos = useMemo(() => {
+    const turnoByTurma = new Map(turmas.map(t => [t.id, (t.turno || '').toLowerCase().trim()]));
+    const alunoTurno = (a: JgcAluno): string => {
+      const ids: string[] = [];
+      if (a.turma_id) ids.push(a.turma_id);
+      (a.turmas || []).forEach(t => { if (t.id) ids.push(t.id); });
+      for (const id of ids) {
+        const turno = turnoByTurma.get(id);
+        if (turno) return turno;
+      }
+      return '';
+    };
+    return {
+      manha: activeAlunos.filter(a => alunoTurno(a) === 'manha'),
+      tarde: activeAlunos.filter(a => alunoTurno(a) === 'tarde'),
+    };
+  }, [activeAlunos, turmas]);
+  const turnoAlunos = turnoGeralTab === 'manha' ? turnoGeralAlunos.manha : turnoGeralAlunos.tarde;
 
   useEffect(() => {
     if (openTurmaId) setFrequency(Object.fromEntries(students.map(a => [a.id, 'presente'])));
@@ -542,6 +562,7 @@ function DiarioTurma({alunos, turmas, can, profile}:{alunos:JgcAluno[]; turmas:J
     setDataGeral(today);
     setObsGeral('');
     setFiltroModalAluno('');
+    setTurnoGeralTab('manha');
     const defaultFreq: Record<string, DiarioGeralStatus> = {};
     activeAlunos.forEach(a => { defaultFreq[a.id] = 'presente'; });
     setFreqGeralMap(defaultFreq);
@@ -615,17 +636,19 @@ function DiarioTurma({alunos, turmas, can, profile}:{alunos:JgcAluno[]; turmas:J
     void loadChamadasGerais();
   }
 
-  const handleSetAllStatus = (st: DiarioGeralStatus) => {
-    const next: Record<string, DiarioGeralStatus> = {};
-    activeAlunos.forEach(a => { next[a.id] = st; });
-    setFreqGeralMap(next);
+  const handleSetAllStatusTurno = (st: DiarioGeralStatus) => {
+    setFreqGeralMap(prev => {
+      const next = { ...prev };
+      turnoAlunos.forEach(a => { next[a.id] = st; });
+      return next;
+    });
   };
 
   const filteredModalAlunos = useMemo(() => {
-    if (!filtroModalAluno.trim()) return activeAlunos;
+    if (!filtroModalAluno.trim()) return turnoAlunos;
     const q = filtroModalAluno.toLowerCase();
-    return activeAlunos.filter(a => `${a.nome_completo} ${a.matricula} ${a.escola_nome || ''}`.toLowerCase().includes(q));
-  }, [activeAlunos, filtroModalAluno]);
+    return turnoAlunos.filter(a => `${a.nome_completo} ${a.matricula} ${a.escola_nome || ''}`.toLowerCase().includes(q));
+  }, [turnoAlunos, filtroModalAluno]);
 
   // Dynamic Tabs Header
   const tabOptions = [
@@ -928,19 +951,26 @@ function DiarioTurma({alunos, turmas, can, profile}:{alunos:JgcAluno[]; turmas:J
                 />
               </Field>
 
+              <Tabs value={turnoGeralTab} onValueChange={v => setTurnoGeralTab(v as 'manha' | 'tarde')} className="w-full">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="manha">Manhã ({turnoGeralAlunos.manha.length})</TabsTrigger>
+                  <TabsTrigger value="tarde">Tarde ({turnoGeralAlunos.tarde.length})</TabsTrigger>
+                </TabsList>
+              </Tabs>
+
               <div className="flex flex-col gap-2 rounded-xl bg-slate-50 p-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="grid grid-cols-2 gap-2 w-full sm:w-auto sm:flex">
-                  <Button type="button" variant="outline" size="sm" onClick={() => handleSetAllStatus('presente')} className="h-8 text-xs font-semibold justify-center">
+                  <Button type="button" variant="outline" size="sm" onClick={() => handleSetAllStatusTurno('presente')} className="h-8 text-xs font-semibold justify-center">
                     Todos Presentes
                   </Button>
-                  <Button type="button" variant="outline" size="sm" onClick={() => handleSetAllStatus('ausente')} className="h-8 text-xs font-semibold text-rose-700 justify-center">
+                  <Button type="button" variant="outline" size="sm" onClick={() => handleSetAllStatusTurno('ausente')} className="h-8 text-xs font-semibold text-rose-700 border-rose-700 justify-center">
                     Todos Ausentes
                   </Button>
                 </div>
                 <div className="relative w-full sm:max-w-xs flex-1">
                   <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-400" />
                   <Input
-                    placeholder="Filtrar alunos..."
+                    placeholder="Buscar alunos do turno..."
                     value={filtroModalAluno}
                     onChange={e => setFiltroModalAluno(e.target.value)}
                     className="pl-8 h-8 text-xs bg-white"
@@ -988,7 +1018,7 @@ function DiarioTurma({alunos, turmas, can, profile}:{alunos:JgcAluno[]; turmas:J
                   })}
                 </div>
               ) : (
-                <p className="text-sm text-slate-500">Nenhum aluno ativo encontrado.</p>
+                <p className="text-sm text-slate-500">Nenhum aluno ativo neste turno.</p>
               )}
             </div>
           </ResponsiveDialog>
