@@ -82,6 +82,10 @@ DO $$
 DECLARE
   tabela text := 'rh_servidores';
 BEGIN
+  EXECUTE format('DROP POLICY IF EXISTS "RH view" ON public.%I', tabela);
+  EXECUTE format('DROP POLICY IF EXISTS "RH insert" ON public.%I', tabela);
+  EXECUTE format('DROP POLICY IF EXISTS "RH update" ON public.%I', tabela);
+  EXECUTE format('DROP POLICY IF EXISTS "RH delete" ON public.%I', tabela);
   EXECUTE format('CREATE POLICY "RH view" ON public.%I FOR SELECT TO authenticated USING (public.can_admin_action(''recursos_humanos'', ''visualizar''))', tabela);
   EXECUTE format('CREATE POLICY "RH insert" ON public.%I FOR INSERT TO authenticated WITH CHECK (public.can_admin_action(''recursos_humanos'', ''criar'') AND setor_id = public.get_administracao_setor_id())', tabela);
   EXECUTE format('CREATE POLICY "RH update" ON public.%I FOR UPDATE TO authenticated USING (public.can_admin_action(''recursos_humanos'', ''editar'') AND setor_id = public.get_administracao_setor_id()) WITH CHECK (public.can_admin_action(''recursos_humanos'', ''editar'') AND setor_id = public.get_administracao_setor_id())', tabela);
@@ -94,6 +98,10 @@ DECLARE
 BEGIN
   FOREACH tabela IN ARRAY ARRAY['rh_afastamentos', 'rh_folhas_ponto']
   LOOP
+    EXECUTE format('DROP POLICY IF EXISTS "RH view" ON public.%I', tabela);
+    EXECUTE format('DROP POLICY IF EXISTS "RH insert" ON public.%I', tabela);
+    EXECUTE format('DROP POLICY IF EXISTS "RH update" ON public.%I', tabela);
+    EXECUTE format('DROP POLICY IF EXISTS "RH delete" ON public.%I', tabela);
     EXECUTE format('CREATE POLICY "RH view" ON public.%I FOR SELECT TO authenticated USING (public.can_admin_action(''recursos_humanos'', ''visualizar''))', tabela);
     EXECUTE format('CREATE POLICY "RH insert" ON public.%I FOR INSERT TO authenticated WITH CHECK (public.can_admin_action(''recursos_humanos'', ''criar'') AND setor_id = public.get_administracao_setor_id())', tabela);
     EXECUTE format('CREATE POLICY "RH update" ON public.%I FOR UPDATE TO authenticated USING (public.can_admin_action(''recursos_humanos'', ''editar'') AND setor_id = public.get_administracao_setor_id()) WITH CHECK (public.can_admin_action(''recursos_humanos'', ''editar'') AND setor_id = public.get_administracao_setor_id())', tabela);
@@ -108,6 +116,10 @@ DECLARE
 BEGIN
   FOREACH tabela IN ARRAY ARRAY['folha_folhas', 'folha_lancamentos']
   LOOP
+    EXECUTE format('DROP POLICY IF EXISTS "FP view" ON public.%I', tabela);
+    EXECUTE format('DROP POLICY IF EXISTS "FP insert" ON public.%I', tabela);
+    EXECUTE format('DROP POLICY IF EXISTS "FP update" ON public.%I', tabela);
+    EXECUTE format('DROP POLICY IF EXISTS "FP delete" ON public.%I', tabela);
     EXECUTE format('CREATE POLICY "FP view" ON public.%I FOR SELECT TO authenticated USING (public.can_admin_action(''folha_pagamento'', ''visualizar''))', tabela);
     EXECUTE format('CREATE POLICY "FP insert" ON public.%I FOR INSERT TO authenticated WITH CHECK (public.can_admin_action(''folha_pagamento'', ''criar'') AND setor_id = public.get_administracao_setor_id())', tabela);
     EXECUTE format('CREATE POLICY "FP update" ON public.%I FOR UPDATE TO authenticated USING (public.can_admin_action(''folha_pagamento'', ''editar'') AND setor_id = public.get_administracao_setor_id()) WITH CHECK (public.can_admin_action(''folha_pagamento'', ''editar'') AND setor_id = public.get_administracao_setor_id())', tabela);
@@ -122,6 +134,10 @@ DECLARE
 BEGIN
   FOREACH tabela IN ARRAY ARRAY['almox_insumos', 'almox_movimentacoes']
   LOOP
+    EXECUTE format('DROP POLICY IF EXISTS "AL view" ON public.%I', tabela);
+    EXECUTE format('DROP POLICY IF EXISTS "AL insert" ON public.%I', tabela);
+    EXECUTE format('DROP POLICY IF EXISTS "AL update" ON public.%I', tabela);
+    EXECUTE format('DROP POLICY IF EXISTS "AL delete" ON public.%I', tabela);
     EXECUTE format('CREATE POLICY "AL view" ON public.%I FOR SELECT TO authenticated USING (public.can_admin_action(''almoxarifado'', ''visualizar''))', tabela);
     EXECUTE format('CREATE POLICY "AL insert" ON public.%I FOR INSERT TO authenticated WITH CHECK (public.can_admin_action(''almoxarifado'', ''criar'') AND setor_id = public.get_administracao_setor_id())', tabela);
     EXECUTE format('CREATE POLICY "AL update" ON public.%I FOR UPDATE TO authenticated USING (public.can_admin_action(''almoxarifado'', ''editar'') AND setor_id = public.get_administracao_setor_id()) WITH CHECK (public.can_admin_action(''almoxarifado'', ''editar'') AND setor_id = public.get_administracao_setor_id())', tabela);
@@ -136,6 +152,10 @@ DECLARE
 BEGIN
   FOREACH tabela IN ARRAY ARRAY['rancho_refeicoes', 'rancho_compras']
   LOOP
+    EXECUTE format('DROP POLICY IF EXISTS "GR view" ON public.%I', tabela);
+    EXECUTE format('DROP POLICY IF EXISTS "GR insert" ON public.%I', tabela);
+    EXECUTE format('DROP POLICY IF EXISTS "GR update" ON public.%I', tabela);
+    EXECUTE format('DROP POLICY IF EXISTS "GR delete" ON public.%I', tabela);
     EXECUTE format('CREATE POLICY "GR view" ON public.%I FOR SELECT TO authenticated USING (public.can_admin_action(''gestao_rancho'', ''visualizar''))', tabela);
     EXECUTE format('CREATE POLICY "GR insert" ON public.%I FOR INSERT TO authenticated WITH CHECK (public.can_admin_action(''gestao_rancho'', ''criar'') AND setor_id = public.get_administracao_setor_id())', tabela);
     EXECUTE format('CREATE POLICY "GR update" ON public.%I FOR UPDATE TO authenticated USING (public.can_admin_action(''gestao_rancho'', ''editar'') AND setor_id = public.get_administracao_setor_id()) WITH CHECK (public.can_admin_action(''gestao_rancho'', ''editar'') AND setor_id = public.get_administracao_setor_id())', tabela);
