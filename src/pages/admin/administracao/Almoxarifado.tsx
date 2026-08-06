@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, ArrowDownToLine, ArrowUpFromLine, Boxes, Pencil, Plus, Search, Trash2 } from 'lucide-react';
+import { ArrowLeft, ArrowDownToLine, ArrowUpFromLine, Boxes, Download, Pencil, Plus, Search, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { Button } from '@/components/ui/button';
@@ -18,6 +18,7 @@ import { ResponsiveDialog } from '@/components/ui/responsive-dialog';
 import { useConfirmDialog } from '@/components/ui/use-confirm-dialog';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/lib/supabase';
+import { exportarCsv } from '@/lib/exportarCsv';
 import { cn } from '@/lib/utils';
 
 type AlmoxInsumo = {
@@ -226,6 +227,30 @@ const AlmoxarifadoPage = () => {
 
   const movimentacoesDoInsumo = (insumoId: string) => movimentacoes.filter((m) => m.insumo_id === insumoId);
 
+  const handleExportarInventario = () => {
+    exportarCsv('inventario-almoxarifado', ['Nome', 'Categoria', 'Unidade', 'Estoque atual', 'Estoque minimo', 'Situacao'], insumos.map((i) => [
+      i.nome,
+      i.categoria || '',
+      i.unidade,
+      formatQtd(i.estoque_atual),
+      formatQtd(i.estoque_minimo),
+      i.estoque_atual < i.estoque_minimo ? 'Abaixo do minimo' : 'OK',
+    ]));
+    toast({ title: 'Exportacao iniciada', description: 'O CSV do inventario foi gerado.' });
+  };
+
+  const handleExportarMovimentacoes = () => {
+    exportarCsv('movimentacoes-almoxarifado', ['Data', 'Insumo', 'Tipo', 'Quantidade', 'Responsavel', 'Observacao'], movimentacoes.map((m) => [
+      m.data_movimentacao,
+      insumos.find((i) => i.id === m.insumo_id)?.nome || 'Insumo removido',
+      m.tipo === 'entrada' ? 'Entrada' : 'Saida',
+      formatQtd(m.quantidade),
+      m.responsavel || '',
+      m.observacao || '',
+    ]));
+    toast({ title: 'Exportacao iniciada', description: 'O CSV de movimentacoes foi gerado.' });
+  };
+
   return (
     <AdminLayout>
       <div className="space-y-6">
@@ -294,10 +319,16 @@ const AlmoxarifadoPage = () => {
                   placeholder="Buscar por nome ou categoria..."
                 />
               </div>
-              <Button onClick={openCreateInsumo} className="gap-2 rounded-2xl">
-                <Plus className="h-4 w-4" />
-                Cadastrar insumo
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" className="h-9 gap-2 rounded-xl text-[13px] font-semibold" onClick={handleExportarInventario} disabled={insumos.length === 0}>
+                  <Download className="h-4 w-4" />
+                  Inventario
+                </Button>
+                <Button onClick={openCreateInsumo} className="gap-2 rounded-2xl">
+                  <Plus className="h-4 w-4" />
+                  Cadastrar insumo
+                </Button>
+              </div>
             </div>
 
             {loading ? (
@@ -364,6 +395,12 @@ const AlmoxarifadoPage = () => {
           </TabsContent>
 
           <TabsContent value="movimentacoes" className="space-y-4">
+            <div className="flex items-center justify-end">
+              <Button variant="outline" size="sm" className="h-9 gap-2 rounded-xl text-[13px] font-semibold" onClick={handleExportarMovimentacoes} disabled={movimentacoes.length === 0}>
+                <Download className="h-4 w-4" />
+                Exportar movimentacoes
+              </Button>
+            </div>
             {movimentacoes.length === 0 ? (
               <div className="rounded-[26px] border border-dashed border-slate-200 p-8 text-center text-[15px] text-slate-400">
                 Nenhuma movimentacao registrada

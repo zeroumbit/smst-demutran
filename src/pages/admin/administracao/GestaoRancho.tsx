@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, Plus, ShoppingCart, Trash2, UtensilsCrossed } from 'lucide-react';
+import { ArrowLeft, Download, Plus, ShoppingCart, Trash2, UtensilsCrossed } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { Button } from '@/components/ui/button';
@@ -18,6 +18,7 @@ import { ResponsiveDialog } from '@/components/ui/responsive-dialog';
 import { useConfirmDialog } from '@/components/ui/use-confirm-dialog';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/lib/supabase';
+import { exportarCsv } from '@/lib/exportarCsv';
 import { cn } from '@/lib/utils';
 
 type RanchoRefeicao = {
@@ -189,6 +190,27 @@ const GestaoRanchoPage = () => {
     void loadData();
   };
 
+  const handleExportarRefeicoes = () => {
+    exportarCsv('refeicoes-rancho', ['Data', 'Tipo', 'Cardapio', 'Quantidade de pessoas', 'Observacao'], refeicoes.map((r) => [
+      r.data_refeicao,
+      tipoRefeicaoLabels[r.tipo_refeicao],
+      r.cardapio,
+      String(r.quantidade_pessoas),
+      r.observacao || '',
+    ]));
+    toast({ title: 'Exportacao iniciada', description: 'O CSV de refeicoes foi gerado.' });
+  };
+
+  const handleExportarCompras = () => {
+    exportarCsv('compras-rancho', ['Data', 'Fornecedor', 'Descricao', 'Valor (R$)'], compras.map((c) => [
+      c.data_compra,
+      c.fornecedor || '',
+      c.descricao,
+      String(c.valor),
+    ]));
+    toast({ title: 'Exportacao iniciada', description: 'O CSV de compras foi gerado.' });
+  };
+
   return (
     <AdminLayout>
       <div className="space-y-6">
@@ -248,7 +270,11 @@ const GestaoRanchoPage = () => {
 
           <TabsContent value="refeicoes" className="space-y-4">
             <div className="flex items-center justify-end">
-              <Button onClick={() => setRefeicaoDialogOpen(true)} className="gap-2 rounded-2xl">
+              <Button variant="outline" size="sm" className="h-9 gap-2 rounded-xl text-[13px] font-semibold" onClick={handleExportarRefeicoes} disabled={refeicoes.length === 0}>
+                <Download className="h-4 w-4" />
+                Exportar refeicoes
+              </Button>
+              <Button onClick={() => setRefeicaoDialogOpen(true)} className="ml-2 gap-2 rounded-2xl">
                 <Plus className="h-4 w-4" />
                 Registrar refeicao
               </Button>
@@ -291,7 +317,11 @@ const GestaoRanchoPage = () => {
 
           <TabsContent value="compras" className="space-y-4">
             <div className="flex items-center justify-end">
-              <Button onClick={() => setCompraDialogOpen(true)} className="gap-2 rounded-2xl">
+              <Button variant="outline" size="sm" className="h-9 gap-2 rounded-xl text-[13px] font-semibold" onClick={handleExportarCompras} disabled={compras.length === 0}>
+                <Download className="h-4 w-4" />
+                Exportar compras
+              </Button>
+              <Button onClick={() => setCompraDialogOpen(true)} className="ml-2 gap-2 rounded-2xl">
                 <ShoppingCart className="h-4 w-4" />
                 Registrar compra
               </Button>

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, BadgeDollarSign, Lock, Plus, Search, Trash2 } from 'lucide-react';
+import { ArrowLeft, BadgeDollarSign, Download, Lock, Plus, Search, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { Button } from '@/components/ui/button';
@@ -18,6 +18,7 @@ import { ResponsiveDialog } from '@/components/ui/responsive-dialog';
 import { useConfirmDialog } from '@/components/ui/use-confirm-dialog';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/lib/supabase';
+import { exportarCsv } from '@/lib/exportarCsv';
 import { cn } from '@/lib/utils';
 
 type FolhaFolha = {
@@ -224,6 +225,26 @@ const FolhaPagamentoPage = () => {
     return `${date.toLocaleDateString('pt-BR', { month: 'long' })} de ${date.getFullYear()}`;
   };
 
+  const handleExportarCompetencia = () => {
+    if (!folhaSelecionada) return;
+    exportarCsv(`folha-${folhaSelecionada.competencia.slice(0, 7)}`, ['Servidor', 'Tipo', 'Descricao', 'Valor (R$)'], lancamentos.map((l) => [
+      l.servidor_nome || 'Sem servidor',
+      l.tipo === 'vencimento' ? 'Vencimento' : 'Desconto',
+      l.descricao,
+      l.tipo === 'vencimento' ? String(l.valor) : `-${l.valor}`,
+    ]));
+    toast({ title: 'Exportacao iniciada', description: 'O CSV da competencia foi gerado.' });
+  };
+
+  const handleExportarTodas = () => {
+    exportarCsv('folhas-competencias', ['Competencia', 'Status', 'Valor total (R$)'], folhas.map((f) => [
+      competenciaLabel(f.competencia),
+      f.status === 'fechada' ? 'Fechada' : 'Rascunho',
+      String(f.valor_total),
+    ]));
+    toast({ title: 'Exportacao iniciada', description: 'O CSV de competencias foi gerado.' });
+  };
+
   return (
     <AdminLayout>
       <div className="space-y-6">
@@ -260,7 +281,13 @@ const FolhaPagamentoPage = () => {
           </TabsList>
 
           <TabsContent value="competencias" className="space-y-4">
-            <div className="flex items-center justify-end">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" className="h-9 gap-2 rounded-xl text-[13px] font-semibold" onClick={handleExportarTodas} disabled={folhas.length === 0}>
+                  <Download className="h-4 w-4" />
+                  Exportar competencias
+                </Button>
+              </div>
               <Button onClick={() => setFolhaDialogOpen(true)} className="gap-2 rounded-2xl">
                 <Plus className="h-4 w-4" />
                 Nova competencia
@@ -317,6 +344,10 @@ const FolhaPagamentoPage = () => {
                   <div className="flex items-center gap-2">
                     {folhaSelecionada.status === 'rascunho' ? (
                       <>
+                        <Button variant="outline" size="sm" className="h-9 rounded-xl text-[13px] font-semibold" onClick={handleExportarCompetencia} disabled={lancamentos.length === 0}>
+                          <Download className="h-4 w-4" />
+                          Exportar CSV
+                        </Button>
                         <Button variant="outline" size="sm" className="h-9 rounded-xl text-[13px] font-semibold" onClick={() => setLancamentoDialogOpen(true)}>
                           <Plus className="h-4 w-4" />
                           Lancamento
@@ -327,9 +358,15 @@ const FolhaPagamentoPage = () => {
                         </Button>
                       </>
                     ) : (
-                      <Badge variant="outline" className="rounded-full border-violet-200 bg-violet-50 px-2.5 py-0.5 text-[11px] font-bold text-violet-700">
-                        Folha fechada
-                      </Badge>
+                      <>
+                        <Button variant="outline" size="sm" className="h-9 rounded-xl text-[13px] font-semibold" onClick={handleExportarCompetencia} disabled={lancamentos.length === 0}>
+                          <Download className="h-4 w-4" />
+                          Exportar CSV
+                        </Button>
+                        <Badge variant="outline" className="rounded-full border-violet-200 bg-violet-50 px-2.5 py-0.5 text-[11px] font-bold text-violet-700">
+                          Folha fechada
+                        </Badge>
+                      </>
                     )}
                   </div>
                 </div>

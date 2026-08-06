@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, CalendarClock, Pencil, Plus, Search, Trash2, UserRoundCog } from 'lucide-react';
+import { ArrowLeft, CalendarClock, Download, Pencil, Plus, Search, Trash2, UserRoundCog } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { Button } from '@/components/ui/button';
@@ -18,6 +18,7 @@ import { ResponsiveDialog } from '@/components/ui/responsive-dialog';
 import { useConfirmDialog } from '@/components/ui/use-confirm-dialog';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/lib/supabase';
+import { exportarCsv } from '@/lib/exportarCsv';
 import { cn } from '@/lib/utils';
 
 type RhServidor = {
@@ -31,6 +32,14 @@ type RhServidor = {
   email: string | null;
   telefone: string | null;
   situacao: 'ativo' | 'afastado' | 'inativo';
+  genero?: string | null;
+  estado_civil?: string | null;
+  escolaridade?: string | null;
+  banco?: string | null;
+  agencia?: string | null;
+  conta?: string | null;
+  contato_emergencia_nome?: string | null;
+  contato_emergencia_telefone?: string | null;
   created_at: string;
 };
 
@@ -77,6 +86,14 @@ const initialServidor = {
   email: '',
   telefone: '',
   situacao: 'ativo' as RhServidor['situacao'],
+  genero: '',
+  estado_civil: '',
+  escolaridade: '',
+  banco: '',
+  agencia: '',
+  conta: '',
+  contato_emergencia_nome: '',
+  contato_emergencia_telefone: '',
 };
 
 const initialAfastamento = {
@@ -117,12 +134,14 @@ const RecursosHumanosPage = () => {
   const [pontoDialogOpen, setPontoDialogOpen] = useState(false);
   const [pontoServidor, setPontoServidor] = useState<RhServidor | null>(null);
   const [formPonto, setFormPonto] = useState(initialPonto);
+  const [afastamentosAVencer, setAfastamentosAVencer] = useState<RhAfastamento[]>([]);
 
   const loadData = useCallback(async () => {
-    const [servidoresResponse, afastamentosResponse, pontosResponse] = await Promise.all([
+    const [servidoresResponse, afastamentosResponse, pontosResponse, aVencerResponse] = await Promise.all([
       supabase.from('rh_servidores').select('*').order('nome_completo'),
       supabase.from('rh_afastamentos').select('*').order('data_inicio', { ascending: false }).limit(200),
       supabase.from('rh_folhas_ponto').select('*').order('data_ponto', { ascending: false }).limit(300),
+      supabase.rpc('rh_afastamentos_a_vencer', { _dias: 7 }),
     ]);
     if (servidoresResponse.error) console.warn('Erro ao carregar servidores:', servidoresResponse.error.message);
     else setServidores((servidoresResponse.data || []) as RhServidor[]);
@@ -130,6 +149,8 @@ const RecursosHumanosPage = () => {
     else setAfastamentos((afastamentosResponse.data || []) as RhAfastamento[]);
     if (pontosResponse.error) console.warn('Erro ao carregar folhas de ponto:', pontosResponse.error.message);
     else setPontos((pontosResponse.data || []) as RhPonto[]);
+    if (aVencerResponse.error) console.warn('Erro ao carregar afastamentos a vencer:', aVencerResponse.error.message);
+    else setAfastamentosAVencer((aVencerResponse.data || []) as unknown as RhAfastamento[]);
     setLoading(false);
   }, []);
 
@@ -172,6 +193,14 @@ const RecursosHumanosPage = () => {
       email: servidor.email || '',
       telefone: servidor.telefone || '',
       situacao: servidor.situacao,
+      genero: servidor.genero || '',
+      estado_civil: servidor.estado_civil || '',
+      escolaridade: servidor.escolaridade || '',
+      banco: servidor.banco || '',
+      agencia: servidor.agencia || '',
+      conta: servidor.conta || '',
+      contato_emergencia_nome: servidor.contato_emergencia_nome || '',
+      contato_emergencia_telefone: servidor.contato_emergencia_telefone || '',
     });
     setServidorDialogOpen(true);
   };
@@ -191,6 +220,14 @@ const RecursosHumanosPage = () => {
       email: formServidor.email.trim() || null,
       telefone: formServidor.telefone.trim() || null,
       situacao: formServidor.situacao,
+      genero: formServidor.genero.trim() || null,
+      estado_civil: formServidor.estado_civil.trim() || null,
+      escolaridade: formServidor.escolaridade.trim() || null,
+      banco: formServidor.banco.trim() || null,
+      agencia: formServidor.agencia.trim() || null,
+      conta: formServidor.conta.trim() || null,
+      contato_emergencia_nome: formServidor.contato_emergencia_nome.trim() || null,
+      contato_emergencia_telefone: formServidor.contato_emergencia_telefone.trim() || null,
     };
     const { error } = servidorDialogMode === 'edit' && servidorAlvo
       ? await supabase.from('rh_servidores').update(payload).eq('id', servidorAlvo.id)
@@ -279,6 +316,42 @@ const RecursosHumanosPage = () => {
 
   const afastamentosDoServidor = (servidorId: string) => afastamentos.filter((a) => a.servidor_id === servidorId);
 
+  const handleExportarServidores = () => {
+    exportarCsv('servidores-rh', ['Matricula', 'Nome', 'Cargo', 'Lotacao', 'Situacao', 'Email', 'Telefone'], servidores.map((s) => [
+      s.matricula,
+      s.nome_completo,
+      s.cargo || '',
+      s.lotacao || '',
+      s.situacao,
+      s.email || '',
+      s.telefone || '',
+    ]));
+    toast({ title: 'Exportacao iniciada', description: 'O CSV de servidores foi gerado.' });
+  };
+
+  const handleExportarAfastamentos = () => {
+    exportarCsv('afastamentos-rh', ['Servidor', 'Tipo', 'Data inicio', 'Data fim', 'Observacao'], afastamentos.map((a) => [
+      servidores.find((s) => s.id === a.servidor_id)?.nome_completo || 'Servidor removido',
+      afastamentoLabels[a.tipo],
+      a.data_inicio,
+      a.data_fim,
+      a.observacao || '',
+    ]));
+    toast({ title: 'Exportacao iniciada', description: 'O CSV de afastamentos foi gerado.' });
+  };
+
+  const handleExportarPonto = () => {
+    exportarCsv('folha-ponto-rh', ['Data', 'Servidor', 'Entrada', 'Saida', 'Horas extras', 'Observacao'], pontos.map((p) => [
+      p.data_ponto,
+      servidores.find((s) => s.id === p.servidor_id)?.nome_completo || 'Servidor removido',
+      p.entrada || '',
+      p.saida || '',
+      String(Number(p.horas_extras || 0)),
+      p.observacao || '',
+    ]));
+    toast({ title: 'Exportacao iniciada', description: 'O CSV da folha de ponto foi gerado.' });
+  };
+
   const openPonto = (servidor: RhServidor) => {
     setPontoServidor(servidor);
     setFormPonto({ ...initialPonto, servidor_id: servidor.id, data_ponto: new Date().toISOString().slice(0, 10) });
@@ -320,7 +393,15 @@ const RecursosHumanosPage = () => {
       observacao: formPonto.observacao.trim() || null,
     });
     if (error) {
-      toast({ title: 'Erro ao registrar ponto', description: error.message, variant: 'destructive' });
+      const message = error.message || '';
+      const bloqueadoPorAfastamento = /afastamento/i.test(message);
+      toast({
+        title: bloqueadoPorAfastamento ? 'Ponto bloqueado' : 'Erro ao registrar ponto',
+        description: bloqueadoPorAfastamento
+          ? `${servidorAlvoPonto.nome_completo} esta em afastamento na data informada. Registre apenas quando o afastamento terminar.`
+          : message,
+        variant: 'destructive',
+      });
       return;
     }
     toast({ title: 'Ponto registrado', description: 'A jornada foi salva na folha de ponto.' });
@@ -418,6 +499,21 @@ const RecursosHumanosPage = () => {
           </div>
         </section>
 
+        {afastamentosAVencer.length > 0 && (
+          <div className="rounded-[20px] border border-amber-200 bg-amber-50 px-4 py-3">
+            <p className="text-sm font-semibold text-amber-800">
+              {afastamentosAVencer.length} afastamento(s) terminam nos proximos 7 dias:
+            </p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {afastamentosAVencer.map((a) => (
+                <span key={a.id} className="rounded-full border border-amber-300 bg-white px-3 py-1 text-xs font-semibold text-amber-800">
+                  {(a as any).servidor_nome || 'Servidor'} · {afastamentoLabels[(a as any).tipo]} · até {new Date(a.data_fim).toLocaleDateString('pt-BR')}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
         <Tabs value={tab} onValueChange={setTab} className="w-full">
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="servidores">Servidores</TabsTrigger>
@@ -436,10 +532,16 @@ const RecursosHumanosPage = () => {
                   placeholder="Buscar por nome, matricula ou cargo..."
                 />
               </div>
-              <Button onClick={openCreate} className="gap-2 rounded-2xl">
-                <Plus className="h-4 w-4" />
-                Cadastrar servidor
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" className="h-9 gap-2 rounded-xl text-[13px] font-semibold" onClick={handleExportarServidores} disabled={servidores.length === 0}>
+                  <Download className="h-4 w-4" />
+                  Exportar
+                </Button>
+                <Button onClick={openCreate} className="gap-2 rounded-2xl">
+                  <Plus className="h-4 w-4" />
+                  Cadastrar servidor
+                </Button>
+              </div>
             </div>
 
             {loading ? (
@@ -514,7 +616,11 @@ const RecursosHumanosPage = () => {
                 <p className="mt-1 text-2xl font-extrabold tracking-[-0.04em] text-amber-600">{totalHorasExtrasMes.toFixed(2)}h</p>
                 <p className="mt-0.5 text-[13px] text-slate-500">Acumulado do período</p>
               </div>
-              <div className="flex items-end justify-end">
+              <div className="flex items-end justify-end gap-2">
+                <Button variant="outline" size="sm" className="h-9 gap-2 rounded-xl text-[13px] font-semibold" onClick={handleExportarPonto} disabled={pontos.length === 0}>
+                  <Download className="h-4 w-4" />
+                  Exportar ponto
+                </Button>
                 <Button variant="outline" size="sm" className="h-9 rounded-xl text-[13px] font-semibold" onClick={openPontoNovo}>
                   <CalendarClock className="h-4 w-4" />
                   Registrar ponto
@@ -560,6 +666,12 @@ const RecursosHumanosPage = () => {
           </TabsContent>
 
           <TabsContent value="afastamentos" className="space-y-4">
+            <div className="flex items-center justify-end">
+              <Button variant="outline" size="sm" className="h-9 gap-2 rounded-xl text-[13px] font-semibold" onClick={handleExportarAfastamentos} disabled={afastamentos.length === 0}>
+                <Download className="h-4 w-4" />
+                Exportar afastamentos
+              </Button>
+            </div>
             {afastamentos.length === 0 ? (
               <div className="rounded-[26px] border border-dashed border-slate-200 p-8 text-center text-[15px] text-slate-400">
                 Nenhum afastamento registrado
@@ -663,6 +775,82 @@ const RecursosHumanosPage = () => {
                 <SelectItem value="inativo">Inativo</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+
+          <div className="border-t border-slate-100 pt-3">
+            <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-slate-400">Dados pessoais</p>
+            <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-3">
+              <div className="space-y-2">
+                <Label>Genero</Label>
+                <Select value={formServidor.genero} onValueChange={(v) => setFormServidor({ ...formServidor, genero: v === '__none__' ? '' : v })}>
+                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">—</SelectItem>
+                    <SelectItem value="masculino">Masculino</SelectItem>
+                    <SelectItem value="feminino">Feminino</SelectItem>
+                    <SelectItem value="outro">Outro</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Estado civil</Label>
+                <Select value={formServidor.estado_civil} onValueChange={(v) => setFormServidor({ ...formServidor, estado_civil: v === '__none__' ? '' : v })}>
+                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">—</SelectItem>
+                    <SelectItem value="solteiro">Solteiro(a)</SelectItem>
+                    <SelectItem value="casado">Casado(a)</SelectItem>
+                    <SelectItem value="divorciado">Divorciado(a)</SelectItem>
+                    <SelectItem value="viuvo">Viúvo(a)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Escolaridade</Label>
+                <Select value={formServidor.escolaridade} onValueChange={(v) => setFormServidor({ ...formServidor, escolaridade: v === '__none__' ? '' : v })}>
+                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">—</SelectItem>
+                    <SelectItem value="fundamental">Fundamental</SelectItem>
+                    <SelectItem value="medio">Médio</SelectItem>
+                    <SelectItem value="superior">Superior</SelectItem>
+                    <SelectItem value="pos">Pós-graduação</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+
+          <div className="border-t border-slate-100 pt-3">
+            <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-slate-400">Dados bancarios (folha)</p>
+            <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-3">
+              <div className="space-y-2">
+                <Label>Banco</Label>
+                <Input value={formServidor.banco} onChange={(e) => setFormServidor({ ...formServidor, banco: e.target.value })} placeholder="Ex.: Bradesco" />
+              </div>
+              <div className="space-y-2">
+                <Label>Agencia</Label>
+                <Input value={formServidor.agencia} onChange={(e) => setFormServidor({ ...formServidor, agencia: e.target.value })} placeholder="0000" />
+              </div>
+              <div className="space-y-2">
+                <Label>Conta</Label>
+                <Input value={formServidor.conta} onChange={(e) => setFormServidor({ ...formServidor, conta: e.target.value })} placeholder="00000-0" />
+              </div>
+            </div>
+          </div>
+
+          <div className="border-t border-slate-100 pt-3">
+            <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-slate-400">Contato de emergencia</p>
+            <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label>Nome</Label>
+                <Input value={formServidor.contato_emergencia_nome} onChange={(e) => setFormServidor({ ...formServidor, contato_emergencia_nome: e.target.value })} />
+              </div>
+              <div className="space-y-2">
+                <Label>Telefone</Label>
+                <Input value={formServidor.contato_emergencia_telefone} onChange={(e) => setFormServidor({ ...formServidor, contato_emergencia_telefone: e.target.value })} />
+              </div>
+            </div>
           </div>
         </div>
       </ResponsiveDialog>
