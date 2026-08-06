@@ -1238,12 +1238,12 @@ const Dashboard = () => {
                   <div>
                     <p className="text-sm font-bold text-slate-900">Recursos Humanos</p>
                     <p className="mt-0.5 text-sm text-slate-500">
-                      {adminServidoresAtivos + adminServidoresAfastados} servidores · {adminAfastamentosVigentes} afastamento(s) vigente(s)
+                      {state.adminServidoresAtivos + state.adminServidoresAfastados} servidores · {state.adminAfastamentosVigentes} afastamento(s) vigente(s)
                     </p>
                   </div>
                 </div>
                 <div className="rounded-xl bg-teal-50 p-2.5 text-teal-700">
-                  <span className="text-2xl font-extrabold">{adminServidoresAtivos + adminServidoresAfastados}</span>
+                  <span className="text-2xl font-extrabold">{state.adminServidoresAtivos + state.adminServidoresAfastados}</span>
                 </div>
               </div>
             </Link>
@@ -1260,12 +1260,12 @@ const Dashboard = () => {
                   <div>
                     <p className="text-sm font-bold text-slate-900">Folha de Pagamento</p>
                     <p className="mt-0.5 text-sm text-slate-500">
-                      {adminFolhaAberta ? 'Competencia em rascunho' : 'Sem folha em aberto'} · {currencyFormatter.format(adminFolhaValor)}
+                      {state.adminFolhaAberta ? 'Competencia em rascunho' : 'Sem folha em aberto'} · {currencyFormatter.format(state.adminFolhaValor)}
                     </p>
                   </div>
                 </div>
                 <div className="rounded-xl bg-violet-50 p-2.5 text-violet-700">
-                  <span className="text-2xl font-extrabold">{currencyFormatter.format(adminFolhaValor)}</span>
+                  <span className="text-2xl font-extrabold">{currencyFormatter.format(state.adminFolhaValor)}</span>
                 </div>
               </div>
             </Link>
@@ -1282,12 +1282,12 @@ const Dashboard = () => {
                   <div>
                     <p className="text-sm font-bold text-slate-900">Almoxarifado</p>
                     <p className="mt-0.5 text-sm text-slate-500">
-                      {adminInsumosAbaixoMinimo > 0 ? `${adminInsumosAbaixoMinimo} insumo(s) abaixo do minimo` : 'Estoque dentro do esperado'}
+                      {state.adminInsumosAbaixoMinimo > 0 ? `${state.adminInsumosAbaixoMinimo} insumo(s) abaixo do minimo` : 'Estoque dentro do esperado'}
                     </p>
                   </div>
                 </div>
                 <div className="rounded-xl bg-amber-50 p-2.5 text-amber-700">
-                  <span className="text-2xl font-extrabold">{adminInsumosAbaixoMinimo}</span>
+                  <span className="text-2xl font-extrabold">{state.adminInsumosAbaixoMinimo}</span>
                 </div>
               </div>
             </Link>
@@ -1304,12 +1304,12 @@ const Dashboard = () => {
                   <div>
                     <p className="text-sm font-bold text-slate-900">Gestao de Rancho</p>
                     <p className="mt-0.5 text-sm text-slate-500">
-                      {adminRanchoRefeicoesHoje} refeicao(oes) hoje · {currencyFormatter.format(adminRanchoGastoMes)} no mes
+                      {state.adminRanchoRefeicoesHoje} refeicao(oes) hoje · {currencyFormatter.format(state.adminRanchoGastoMes)} no mes
                     </p>
                   </div>
                 </div>
                 <div className="rounded-xl bg-rose-50 p-2.5 text-rose-700">
-                  <span className="text-2xl font-extrabold">{adminRanchoRefeicoesHoje}</span>
+                  <span className="text-2xl font-extrabold">{state.adminRanchoRefeicoesHoje}</span>
                 </div>
               </div>
             </Link>
