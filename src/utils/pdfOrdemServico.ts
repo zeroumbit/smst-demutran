@@ -194,8 +194,29 @@ export async function montarPdfOrdemServico(ordem: OrdemServico): Promise<{ doc:
     });
   }
 
-  // Rodapé Institucional
+  // Assinatura do Comandante
   const footerY = pageHeight - 16;
+  let sigY = (doc as any).lastAutoTable ? (doc as any).lastAutoTable.finalY + 22 : currentY + 22;
+  if (sigY > footerY - 20) {
+    doc.addPage();
+    desenharMarcaDAgua(doc, logos.municipio);
+    sigY = 60;
+  }
+
+  const sigLineWidth = 90;
+  const sigLineStartX = (pageWidth - sigLineWidth) / 2;
+  const sigLineEndX = (pageWidth + sigLineWidth) / 2;
+
+  doc.setDrawColor(15, 23, 42);
+  doc.setLineWidth(0.5);
+  doc.line(sigLineStartX, sigY, sigLineEndX, sigY);
+
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(15, 23, 42);
+  doc.text('Comandante da Guarda Municipal de Canindé', pageWidth / 2, sigY + 5, { align: 'center' });
+
+  // Rodapé Institucional
   doc.setDrawColor(203, 213, 225);
   doc.setLineWidth(0.5);
   doc.line(marginLeft, footerY - 5, pageWidth - marginRight, footerY - 5);

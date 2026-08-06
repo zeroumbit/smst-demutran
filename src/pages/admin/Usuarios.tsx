@@ -17,6 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/lib/supabase';
 import { provisionAdminUser } from '@/lib/adminProvision';
@@ -168,6 +169,8 @@ const UsuariosPage = () => {
   const [isCreatingUser, setIsCreatingUser] = useState(false);
   const creatingUserRef = useRef(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [createTab, setCreateTab] = useState('identificacao');
+  const [editTab, setEditTab] = useState('identificacao');
   const [createSetorId, setCreateSetorId] = useState('');
   const [filtroPapel, setFiltroPapel] = useState<string>('todos');
   const [filtroSetor, setFiltroSetor] = useState<string>('todos');
@@ -327,6 +330,7 @@ const UsuariosPage = () => {
     setSelectedGraduacaoId('');
     setCreatePerfilFuncionalIds([]);
     setCreatePermissoesIndividuais([]);
+    setCreateTab('identificacao');
     setIsDialogOpen(false);
   };
 
@@ -357,10 +361,18 @@ const UsuariosPage = () => {
       toast({ title: 'Informe a área de atuação', description: 'A área é obrigatória para o profissional multiprofissional.', variant: 'destructive' });
       return;
     }
-    if ((creatingJovemGuarda && selectedJgcPermissions.length === 0) || (!isSuperAdmin && !creatingJovemGuarda && selectedModulos.length === 0)) {
+    if ((creatingJovemGuarda && selectedJgcPermissions.length === 0) || (!isSuperAdmin && !creatingJovemGuarda && availableModulos.length > 0 && selectedModulos.length === 0)) {
       toast({
         title: 'Selecione os modulos',
         description: 'Defina ao menos um modulo de acesso para o usuario.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    if (!isSuperAdmin && !creatingJovemGuarda && availableModulos.length === 0 && createPerfilFuncionalIds.length === 0) {
+      toast({
+        title: 'Selecione um perfil funcional',
+        description: 'Este setor ainda nao possui modulos; defina ao menos um perfil funcional administrativo para o usuario.',
         variant: 'destructive',
       });
       return;
@@ -509,6 +521,7 @@ const UsuariosPage = () => {
     setEditPermissoesIniciais([]);
     setEditAcessosRevisao([]);
     setAcessosRevisaoAberto(false);
+    setEditTab('identificacao');
     if (item.setor_slug !== 'jovem-guarda') {
       const { data: perfisData } = await supabase
         .from('usuario_perfil_funcionais')
@@ -629,6 +642,7 @@ const UsuariosPage = () => {
 
       setIsEditDialogOpen(false);
       setEditingItem(null);
+      setEditTab('identificacao');
       loadUsuarios(isSuperAdmin ? undefined : currentSetorId || undefined);
     } catch (error: any) {
       console.error('Erro ao editar perfil:', error);
@@ -1060,6 +1074,15 @@ const UsuariosPage = () => {
           confirmDisabled={isCreatingUser}
         >
           <div className="space-y-4 py-2">
+            <Tabs value={createTab} onValueChange={setCreateTab} className="w-full">
+              <TabsList className="grid w-full grid-cols-4">
+                <TabsTrigger value="identificacao">Identificação</TabsTrigger>
+                <TabsTrigger value="setor">Setor e Papel</TabsTrigger>
+                <TabsTrigger value="acessos">Acessos</TabsTrigger>
+                <TabsTrigger value="revisao">Revisão</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="identificacao" className="space-y-4">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="first-name">Nome</Label>
@@ -1113,7 +1136,9 @@ const UsuariosPage = () => {
                 </button>
               </div>
             </div>
+            </TabsContent>
 
+            <TabsContent value="setor" className="space-y-4">
             {isSuperAdmin && (
               <div className="space-y-2">
                 <Label>Setor</Label>
@@ -1175,13 +1200,15 @@ const UsuariosPage = () => {
                 </SelectContent>
               </Select>
             </div>}
+            </TabsContent>
 
+            <TabsContent value="acessos" className="space-y-4">
             {isJovemGuardaContext ? (
               <JgcPermissionsEditor
                 value={selectedJgcPermissions}
                 onChange={setSelectedJgcPermissions}
               />
-            ) : !isSuperAdmin && (
+            ) : !isSuperAdmin && availableModulos.length > 0 && (
               <div className="space-y-2">
                 <Label>Modulos de acesso</Label>
                 <div className="grid grid-cols-2 gap-2">
@@ -1282,34 +1309,108 @@ const UsuariosPage = () => {
                 />
               </div>
             )}
+            </TabsContent>
 
-            <div className="space-y-2">
-              <Label htmlFor="usuario-status">Status</Label>
-              <div className="flex items-center gap-3 rounded-md border border-border px-3 py-2">
-                <Switch
-                  id="usuario-status"
-                  checked={formData.active}
-                  onCheckedChange={(checked) => setFormData((current) => ({ ...current, active: checked }))}
-                />
-                <span className="text-sm text-muted-foreground">
-                  {formData.active ? 'Conta ativa' : 'Conta inativa'}
-                </span>
+            <TabsContent value="revisao" className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="usuario-status">Status</Label>
+                <div className="flex items-center gap-3 rounded-md border border-border px-3 py-2">
+                  <Switch
+                    id="usuario-status"
+                    checked={formData.active}
+                    onCheckedChange={(checked) => setFormData((current) => ({ ...current, active: checked }))}
+                  />
+                  <span className="text-sm text-muted-foreground">
+                    {formData.active ? 'Conta ativa' : 'Conta inativa'}
+                  </span>
+                </div>
               </div>
-            </div>
+
+              <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-4">
+                <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-slate-500">Resumo do usuário</p>
+                <dl className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div>
+                    <dt className="text-xs font-semibold text-slate-400">Nome</dt>
+                    <dd className="mt-0.5 text-sm font-semibold text-slate-900">
+                      {formData.firstName.trim() || '—'} {formData.lastName.trim() || ''}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs font-semibold text-slate-400">Email</dt>
+                    <dd className="mt-0.5 break-all text-sm font-semibold text-slate-900">{formData.email.trim() || '—'}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs font-semibold text-slate-400">Setor</dt>
+                    <dd className="mt-0.5 text-sm font-semibold text-slate-900">
+                      {setores.find((s) => s.id === targetSetorId)?.nome || '—'}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs font-semibold text-slate-400">Papel</dt>
+                    <dd className="mt-0.5 text-sm font-semibold text-slate-900">
+                      {isJovemGuardaContext ? jgcPapelLabels[selectedJgcPapel] || selectedJgcPapel : papelLabels[formData.papel]}
+                    </dd>
+                  </div>
+                  {selectedGraduacaoId && (
+                    <div>
+                      <dt className="text-xs font-semibold text-slate-400">Graduação</dt>
+                      <dd className="mt-0.5 text-sm font-semibold text-slate-900">
+                        {graduacoes.find((g) => g.id === selectedGraduacaoId)?.nome || '—'}
+                      </dd>
+                    </div>
+                  )}
+                  <div>
+                    <dt className="text-xs font-semibold text-slate-400">Módulos</dt>
+                    <dd className="mt-0.5 text-sm font-semibold text-slate-900">
+                      {isJovemGuardaContext
+                        ? `${selectedJgcPermissions.length} permissão(ões)`
+                        : selectedModulos.length > 0
+                          ? selectedModulos.length
+                          : 'Nenhum'}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs font-semibold text-slate-400">Perfis funcionais</dt>
+                    <dd className="mt-0.5 text-sm font-semibold text-slate-900">
+                      {createPerfilFuncionalIds.length > 0
+                        ? perfisFuncionaisDoSetor(targetSetorId)
+                            .filter((p) => createPerfilFuncionalIds.includes(p.id))
+                            .map((p) => p.nome)
+                            .join(', ')
+                        : 'Nenhum'}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs font-semibold text-slate-400">Exceções individuais</dt>
+                    <dd className="mt-0.5 text-sm font-semibold text-slate-900">{createPermissoesIndividuais.length}</dd>
+                  </div>
+                </dl>
+              </div>
+            </TabsContent>
+            </Tabs>
           </div>
         </ResponsiveDialog>
 
         {/* Dialog de edicao */}
         <ResponsiveDialog
           open={isEditDialogOpen}
-          onOpenChange={(open) => { if (!open) { setIsEditDialogOpen(false); setEditingItem(null); setEditModulos([]); resetEditAcessosState(); } }}
+          onOpenChange={(open) => { if (!open) { setIsEditDialogOpen(false); setEditingItem(null); setEditModulos([]); resetEditAcessosState(); setEditTab('identificacao'); } }}
           title="Editar usuario"
           description={editingItem ? `Alterar dados de ${editingItem.nome}` : ''}
           confirmLabel="Salvar"
-          onCancel={() => { setIsEditDialogOpen(false); setEditingItem(null); setEditModulos([]); resetEditAcessosState(); }}
+          onCancel={() => { setIsEditDialogOpen(false); setEditingItem(null); setEditModulos([]); resetEditAcessosState(); setEditTab('identificacao'); }}
           onConfirm={handleEditSave}
         >
           <div className="space-y-4 py-2">
+            <Tabs value={editTab} onValueChange={setEditTab} className="w-full">
+              <TabsList className="grid w-full grid-cols-4">
+                <TabsTrigger value="identificacao">Identificação</TabsTrigger>
+                <TabsTrigger value="setor">Setor e Papel</TabsTrigger>
+                <TabsTrigger value="acessos">Acessos</TabsTrigger>
+                <TabsTrigger value="revisao">Revisão</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="identificacao" className="space-y-4">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="edit-nome">Nome</Label>
@@ -1320,7 +1421,9 @@ const UsuariosPage = () => {
                 <Input id="edit-sobrenome" value={editSobrenome} onChange={(e) => setEditSobrenome(e.target.value)} placeholder="Sobrenome do usuario" />
               </div>
             </div>
+            </TabsContent>
 
+            <TabsContent value="setor" className="space-y-4">
             <div className="space-y-2">
               <Label>Papel</Label>
               {isEditingJovemGuarda ? (
@@ -1392,13 +1495,15 @@ const UsuariosPage = () => {
                 </SelectContent>
               </Select>
             </div>}
+            </TabsContent>
 
+            <TabsContent value="acessos" className="space-y-4">
             {isEditingJovemGuarda ? (
               <JgcPermissionsEditor
                 value={editJgcPermissions}
                 onChange={setEditJgcPermissions}
               />
-            ) : editPapel !== 'super_admin' && (
+            ) : editPapel !== 'super_admin' && availableModulos.length > 0 && (
               <div className="space-y-2">
                 <Label>Modulos de acesso</Label>
                 <div className="grid grid-cols-2 gap-2">
@@ -1540,6 +1645,71 @@ const UsuariosPage = () => {
                 </div>
               </div>
             )}
+            </TabsContent>
+
+            <TabsContent value="revisao" className="space-y-4">
+              <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-4">
+                <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-slate-500">Resumo do usuário</p>
+                <dl className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div>
+                    <dt className="text-xs font-semibold text-slate-400">Nome</dt>
+                    <dd className="mt-0.5 text-sm font-semibold text-slate-900">
+                      {editNome.trim() || '—'} {editSobrenome.trim() || ''}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs font-semibold text-slate-400">Email</dt>
+                    <dd className="mt-0.5 break-all text-sm font-semibold text-slate-900">{editingItem?.email || '—'}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs font-semibold text-slate-400">Setor</dt>
+                    <dd className="mt-0.5 text-sm font-semibold text-slate-900">
+                      {setores.find((s) => s.id === editSetorId)?.nome || editingItem?.setor_nome || '—'}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs font-semibold text-slate-400">Papel</dt>
+                    <dd className="mt-0.5 text-sm font-semibold text-slate-900">
+                      {isEditingJovemGuarda ? jgcPapelLabels[editJgcPapel] || editJgcPapel : papelLabels[editPapel]}
+                    </dd>
+                  </div>
+                  {editGraduacaoId && (
+                    <div>
+                      <dt className="text-xs font-semibold text-slate-400">Graduação</dt>
+                      <dd className="mt-0.5 text-sm font-semibold text-slate-900">
+                        {graduacoes.find((g) => g.id === editGraduacaoId)?.nome || '—'}
+                      </dd>
+                    </div>
+                  )}
+                  <div>
+                    <dt className="text-xs font-semibold text-slate-400">Módulos</dt>
+                    <dd className="mt-0.5 text-sm font-semibold text-slate-900">
+                      {isEditingJovemGuarda
+                        ? `${editJgcPermissions.length} permissão(ões)`
+                        : editModulos.length > 0
+                          ? editModulos.length
+                          : 'Nenhum'}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs font-semibold text-slate-400">Perfis funcionais</dt>
+                    <dd className="mt-0.5 text-sm font-semibold text-slate-900">
+                      {editPerfilFuncionalIds.length > 0
+                        ? perfisFuncionaisDoSetor(editingItem?.setor_id)
+                            .filter((p) => editPerfilFuncionalIds.includes(p.id))
+                            .map((p) => p.nome)
+                            .join(', ')
+                        : 'Nenhum'}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs font-semibold text-slate-400">Exceções individuais</dt>
+                    <dd className="mt-0.5 text-sm font-semibold text-slate-900">{editPermissoesIndividuais.length}</dd>
+                  </div>
+                </dl>
+              </div>
+            </TabsContent>
+            </Tabs>
           </div>
         </ResponsiveDialog>
       </div>

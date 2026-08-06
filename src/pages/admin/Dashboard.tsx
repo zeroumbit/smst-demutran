@@ -120,6 +120,14 @@ type DashboardState = {
   jgcAlunosMatriculados: number;
   credenciaisIdosos: number;
   credenciaisPcd: number;
+  adminServidoresAtivos: number;
+  adminServidoresAfastados: number;
+  adminAfastamentosVigentes: number;
+  adminFolhaAberta: boolean;
+  adminFolhaValor: number;
+  adminInsumosAbaixoMinimo: number;
+  adminRanchoGastoMes: number;
+  adminRanchoRefeicoesHoje: number;
 };
 
 const initialState: DashboardState = {
@@ -170,6 +178,14 @@ const initialState: DashboardState = {
   jgcAlunosMatriculados: 0,
   credenciaisIdosos: 0,
   credenciaisPcd: 0,
+  adminServidoresAtivos: 0,
+  adminServidoresAfastados: 0,
+  adminAfastamentosVigentes: 0,
+  adminFolhaAberta: false,
+  adminFolhaValor: 0,
+  adminInsumosAbaixoMinimo: 0,
+  adminRanchoGastoMes: 0,
+  adminRanchoRefeicoesHoje: 0,
 };
 
 const monthFormatter = new Intl.DateTimeFormat('pt-BR', { month: 'short' });
@@ -257,6 +273,7 @@ const Dashboard = () => {
   const currentSetorSlug = urlSetorSlug || profile?.setor_slug;
   const isDemutranScope = currentSetorSlug === 'demutran';
   const isGuardaScope = currentSetorSlug === 'guarda-municipal';
+  const isAdministracaoScope = currentSetorSlug === 'administracao';
 
   const panelTitle = useMemo(() => {
     if (isSuperAdmin && !urlSetorSlug) return 'Centro de Comando SMST';
@@ -391,6 +408,16 @@ const Dashboard = () => {
       let jgcAlunosMatriculados = 0;
       let credenciaisIdosos = 0;
       let credenciaisPcd = 0;
+
+      // Administracao Central
+      let adminServidoresAtivos = 0;
+      let adminServidoresAfastados = 0;
+      let adminAfastamentosVigentes = 0;
+      let adminFolhaAberta = false;
+      let adminFolhaValor = 0;
+      let adminInsumosAbaixoMinimo = 0;
+      let adminRanchoGastoMes = 0;
+      let adminRanchoRefeicoesHoje = 0;
 
       if (isDemutranScope) {
         const [
@@ -563,6 +590,47 @@ const Dashboard = () => {
           }
         });
 
+      }
+
+      // Administracao Central: indicadores dos 4 modulos administrativos
+      if (isAdministracaoScope) {
+        const agora = new Date();
+        const mesKey = `${agora.getFullYear()}-${String(agora.getMonth() + 1).padStart(2, '0')}`;
+        const hojeKey = agora.toISOString().slice(0, 10);
+
+        const [
+          servidoresResponse,
+          afastamentosResponse,
+          folhasResponse,
+          lancamentosResponse,
+          insumosResponse,
+          comprasResponse,
+          refeicoesResponse,
+        ] = await Promise.all([
+          supabase.from('rh_servidores').select('situacao'),
+          supabase.from('rh_afastamentos').select('data_fim').gte('data_fim', hojeKey),
+          supabase.from('folha_folhas').select('competencia, status, valor_total').order('competencia', { ascending: false }),
+          supabase.from('folha_lancamentos').select('tipo, valor'),
+          supabase.from('almox_insumos').select('estoque_atual, estoque_minimo').eq('ativo', true),
+          supabase.from('rancho_compras').select('data_compra, valor').gte('data_compra', `${mesKey}-01`),
+          supabase.from('rancho_refeicoes').select('data_refeicao').eq('data_refeicao', hojeKey),
+        ]);
+
+        const servidoresRows = (servidoresResponse.data || []) as Array<{ situacao: string }>;
+        adminServidoresAtivos = servidoresRows.filter((r) => r.situacao === 'ativo').length;
+        adminServidoresAfastados = servidoresRows.filter((r) => r.situacao === 'afastado').length;
+        adminAfastamentosVigentes = (afastamentosResponse.data || []).length;
+
+        const folhasRows = (folhasResponse.data || []) as Array<{ status: string; valor_total: number }>;
+        adminFolhaAberta = folhasRows.some((f) => f.status === 'rascunho');
+        adminFolhaValor = folhasRows.reduce((acc, f) => acc + Number(f.valor_total || 0), 0);
+
+        const insumosRows = (insumosResponse.data || []) as Array<{ estoque_atual: number; estoque_minimo: number }>;
+        adminInsumosAbaixoMinimo = insumosRows.filter((i) => Number(i.estoque_atual) < Number(i.estoque_minimo)).length;
+
+        const comprasRows = (comprasResponse.data || []) as Array<{ valor: number }>;
+        adminRanchoGastoMes = comprasRows.reduce((acc, c) => acc + Number(c.valor || 0), 0);
+        adminRanchoRefeicoesHoje = (refeicoesResponse.data || []).length;
       }
 
       // Super admin: dados gerais do sistema (visão sem setor específico)
@@ -766,6 +834,10 @@ const Dashboard = () => {
         if (operacoesAtivasIro > 0) alerts.push(`${operacoesAtivasIro} operação(ões) de IRO ativa(s) no momento.`);
         if (candidaturasIro > 0) alerts.push(`${candidaturasIro} escala(s) de reforço confirmada(s).`);
         if (demandasFalaCidadaoCount > 0) alerts.push(`${demandasFalaCidadaoCount} solicitação(ões) de ouvidoria pendente(s).`);
+      } else if (isAdministracaoScope) {
+        if (adminAfastamentosVigentes > 0) alerts.push(`${adminAfastamentosVigentes} afastamento(s) vigente(s) no quadro de RH.`);
+        if (adminFolhaAberta) alerts.push('Existe folha de pagamento em rascunho aguardando fechamento.');
+        if (adminInsumosAbaixoMinimo > 0) alerts.push(`${adminInsumosAbaixoMinimo} insumo(s) abaixo do estoque minimo no almoxarifado.`);
       } else {
         if (pendingCredenciais > 0) alerts.push(`${pendingCredenciais} solicitacao(oes) de credencial aguardando tratamento.`);
         if (pendingRecursos > 0) alerts.push(`${pendingRecursos} recurso(s) em fila de analise.`);
@@ -784,6 +856,13 @@ const Dashboard = () => {
             { label: 'Guardas ativos', value: String(guardasAtivos), helper: `${equipesAtivas} equipes em operacao`, icon: Users, tone: 'blue' },
             { label: 'Veiculos apreendidos', value: String(veiculosApreendidosSistema), helper: `${veiculosLiberadosSistema} ja liberados no total`, icon: CarFront, tone: 'rose' },
           ]
+        : isAdministracaoScope
+          ? [
+              { label: 'Servidores', value: String(adminServidoresAtivos + adminServidoresAfastados), helper: `${adminServidoresAtivos} ativos · ${adminServidoresAfastados} afastados`, icon: Users, tone: 'blue' },
+              { label: 'Folha do periodo', value: currencyFormatter.format(adminFolhaValor).replace(/\s/g, '\u00a0'), helper: adminFolhaAberta ? 'Competencia em rascunho' : 'Todas as competencias fechadas', icon: FileText, tone: 'green' },
+              { label: 'Insumos criticos', value: String(adminInsumosAbaixoMinimo), helper: 'Abaixo do estoque minimo', icon: ShieldCheck, tone: 'amber' },
+              { label: 'Gasto do rancho', value: currencyFormatter.format(adminRanchoGastoMes).replace(/\s/g, '\u00a0'), helper: `${adminRanchoRefeicoesHoje} refeicao(oes) hoje`, icon: CarFront, tone: 'rose' },
+            ]
         : [
             { label: 'Equipe ativa', value: String(activeProfiles.length), helper: 'Perfis administrativos em operacao', icon: Users, tone: 'blue' },
             { label: 'Conteudos ativos', value: String(noticiasAtivas + eventosAtivos + galeriaAtiva), helper: `${noticiasAtivas} noticias, ${eventosAtivos} eventos, ${galeriaAtiva} galerias`, icon: Newspaper, tone: 'green' },
@@ -798,21 +877,29 @@ const Dashboard = () => {
             { label: 'Equipes Ativas', value: equipesAtivas, tone: equipesAtivas > 0 ? 'neutral' : 'warning' },
             { label: 'Operações IRO', value: operacoesAtivasIro, tone: operacoesAtivasIro > 0 ? 'warning' : 'neutral' },
           ]
-        : isDemutranScope
+        : isAdministracaoScope
           ? [
-              { label: 'Veiculos apreendidos', value: apreendidos, tone: apreendidos > 0 ? 'warning' : 'success' },
-              { label: 'Veiculos liberados', value: liberados, tone: 'neutral' },
-              { label: 'Credenciais', value: pendingCredenciais, tone: pendingCredenciais > 0 ? 'warning' : 'success' },
-              { label: 'Recursos', value: pendingRecursos, tone: pendingRecursos > 0 ? 'warning' : 'success' },
-              { label: 'Frota municipal ativa', value: frotaAtiva, tone: 'neutral' },
-              { label: 'Concessionarios ativos', value: concessionariosRows.filter(c => c.ativo).length, tone: concessionariosRows.filter(c => c.ativo).length > 0 ? 'neutral' : 'warning' },
+              { label: 'Servidores ativos', value: adminServidoresAtivos, tone: adminServidoresAtivos > 0 ? 'success' : 'warning' },
+              { label: 'Afastados', value: adminServidoresAfastados, tone: adminServidoresAfastados > 0 ? 'warning' : 'neutral' },
+              { label: 'Afast. vigentes', value: adminAfastamentosVigentes, tone: adminAfastamentosVigentes > 0 ? 'warning' : 'neutral' },
+              { label: 'Folha em aberto', value: adminFolhaAberta ? 1 : 0, tone: adminFolhaAberta ? 'warning' : 'success' },
+              { label: 'Insumos criticos', value: adminInsumosAbaixoMinimo, tone: adminInsumosAbaixoMinimo > 0 ? 'warning' : 'success' },
             ]
-          : [
-              { label: 'Veiculos apreendidos', value: veiculosApreendidosSistema, tone: veiculosApreendidosSistema > 0 ? 'warning' : 'success' },
-              { label: 'Frota em manutencao', value: frotaManutencaoSistema, tone: frotaManutencaoSistema > 0 ? 'warning' : 'neutral' },
-              { label: 'Operacoes IRO ativas', value: iroOperacoesSistema, tone: iroOperacoesSistema > 0 ? 'warning' : 'neutral' },
-              { label: 'Demandas Ouvidoria', value: falaDemandasSistema, tone: falaDemandasSistema > 0 ? 'warning' : 'success' },
-            ];
+          : isDemutranScope
+            ? [
+                { label: 'Veiculos apreendidos', value: apreendidos, tone: apreendidos > 0 ? 'warning' : 'success' },
+                { label: 'Veiculos liberados', value: liberados, tone: 'neutral' },
+                { label: 'Credenciais', value: pendingCredenciais, tone: pendingCredenciais > 0 ? 'warning' : 'success' },
+                { label: 'Recursos', value: pendingRecursos, tone: pendingRecursos > 0 ? 'warning' : 'success' },
+                { label: 'Frota municipal ativa', value: frotaAtiva, tone: 'neutral' },
+                { label: 'Concessionarios ativos', value: concessionariosRows.filter(c => c.ativo).length, tone: concessionariosRows.filter(c => c.ativo).length > 0 ? 'neutral' : 'warning' },
+              ]
+            : [
+                { label: 'Veiculos apreendidos', value: veiculosApreendidosSistema, tone: veiculosApreendidosSistema > 0 ? 'warning' : 'success' },
+                { label: 'Frota em manutencao', value: frotaManutencaoSistema, tone: frotaManutencaoSistema > 0 ? 'warning' : 'neutral' },
+                { label: 'Operacoes IRO ativas', value: iroOperacoesSistema, tone: iroOperacoesSistema > 0 ? 'warning' : 'neutral' },
+                { label: 'Demandas Ouvidoria', value: falaDemandasSistema, tone: falaDemandasSistema > 0 ? 'warning' : 'success' },
+              ];
 
       const criticalCount = sectorsNeedingAttention.length;
       const healthyCount = Math.max(activeSetores - criticalCount, 0);
@@ -884,6 +971,14 @@ const Dashboard = () => {
         jgcAlunosMatriculados,
         credenciaisIdosos,
         credenciaisPcd,
+        adminServidoresAtivos,
+        adminServidoresAfastados,
+        adminAfastamentosVigentes,
+        adminFolhaAberta,
+        adminFolhaValor,
+        adminInsumosAbaixoMinimo,
+        adminRanchoGastoMes,
+        adminRanchoRefeicoesHoje,
       });
     };
 
@@ -918,12 +1013,16 @@ const Dashboard = () => {
         <section className="hidden rounded-[24px] bg-[linear-gradient(135deg,_#0f172a_0%,_#1e293b_45%,_#2563eb_100%)] px-4 py-4 text-white sm:rounded-[34px] sm:px-6 sm:py-5 lg:block">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div className="min-w-0">
-              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-sky-100/70 sm:text-[11px]">Guarda Municipal</p>
+              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-sky-100/70 sm:text-[11px]">
+                {isGuardaScope ? 'Guarda Municipal' : isAdministracaoScope ? 'Administracao Central' : 'SMST'}
+              </p>
               <h1 className="mt-2 text-xl font-black leading-tight text-white sm:text-2xl md:mt-3 md:text-[26px] lg:text-[34px]">
                 {profile?.name ? `Olá, ${profile.name.split(' ')[0]}!` : 'Centro de comando'}
               </h1>
               <p className="mt-1.5 hidden max-w-xl text-[13px] leading-5 text-white md:block md:mt-2 md:text-[14px] md:leading-6">
-                Painel operacional e resumo dos indicadores da Guarda Municipal.
+                {isAdministracaoScope
+                  ? 'Painel administrativo: RH, folha de pagamento, almoxarifado e rancho.'
+                  : 'Painel operacional e resumo dos indicadores da Guarda Municipal.'}
               </p>
             </div>
           </div>
@@ -1019,12 +1118,13 @@ const Dashboard = () => {
           })}
         </section>
 
+        {!isAdministracaoScope && (
         <section className="w-full">
           <Card className="overflow-hidden rounded-[28px] border border-slate-200/80 bg-white shadow-[0_12px_32px_-22px_rgba(15,23,42,0.2)]">
             <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
               <div>
                 <CardTitle className="font-heading text-base font-bold tracking-[-0.02em] text-slate-800">
-                  {isGuardaScope ? 'Escalas Mensais - IRO' : 'Fluxo mensal - Demutran'}
+                  {isGuardaScope ? 'Escalas Mensais - IRO' : isAdministracaoScope ? 'Movimentacao administrativa' : 'Fluxo mensal - Demutran'}
                 </CardTitle>
                 <CardDescription className="mt-1 hidden text-sm leading-6 text-[#89a0bf] lg:block">
                   {isGuardaScope 
@@ -1122,6 +1222,99 @@ const Dashboard = () => {
             </CardContent>
           </Card>
         </section>
+        )}
+
+        {isAdministracaoScope && (
+          <section className="grid gap-6 xl:grid-cols-2">
+            <Link
+              to="/admin/administracao/recursos-humanos"
+              className="block rounded-[24px] border border-slate-200/80 bg-gradient-to-br from-white to-slate-50/80 p-5 shadow-[0_16px_38px_-30px_rgba(15,23,42,0.32)] transition-all hover:border-brand-200/60 hover:shadow-[0_20px_44px_-30px_rgba(13,148,136,0.35)]"
+            >
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-4">
+                  <div className="rounded-2xl bg-teal-50 p-3 text-teal-700">
+                    <Users className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-slate-900">Recursos Humanos</p>
+                    <p className="mt-0.5 text-sm text-slate-500">
+                      {adminServidoresAtivos + adminServidoresAfastados} servidores · {adminAfastamentosVigentes} afastamento(s) vigente(s)
+                    </p>
+                  </div>
+                </div>
+                <div className="rounded-xl bg-teal-50 p-2.5 text-teal-700">
+                  <span className="text-2xl font-extrabold">{adminServidoresAtivos + adminServidoresAfastados}</span>
+                </div>
+              </div>
+            </Link>
+
+            <Link
+              to="/admin/administracao/folha-pagamento"
+              className="block rounded-[24px] border border-slate-200/80 bg-gradient-to-br from-white to-slate-50/80 p-5 shadow-[0_16px_38px_-30px_rgba(15,23,42,0.32)] transition-all hover:border-brand-200/60 hover:shadow-[0_20px_44px_-30px_rgba(124,58,237,0.35)]"
+            >
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-4">
+                  <div className="rounded-2xl bg-violet-50 p-3 text-violet-700">
+                    <FileText className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-slate-900">Folha de Pagamento</p>
+                    <p className="mt-0.5 text-sm text-slate-500">
+                      {adminFolhaAberta ? 'Competencia em rascunho' : 'Sem folha em aberto'} · {currencyFormatter.format(adminFolhaValor)}
+                    </p>
+                  </div>
+                </div>
+                <div className="rounded-xl bg-violet-50 p-2.5 text-violet-700">
+                  <span className="text-2xl font-extrabold">{currencyFormatter.format(adminFolhaValor)}</span>
+                </div>
+              </div>
+            </Link>
+
+            <Link
+              to="/admin/administracao/almoxarifado"
+              className="block rounded-[24px] border border-slate-200/80 bg-gradient-to-br from-white to-slate-50/80 p-5 shadow-[0_16px_38px_-30px_rgba(15,23,42,0.32)] transition-all hover:border-brand-200/60 hover:shadow-[0_20px_44px_-30px_rgba(180,83,9,0.35)]"
+            >
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-4">
+                  <div className="rounded-2xl bg-amber-50 p-3 text-amber-700">
+                    <ShieldCheck className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-slate-900">Almoxarifado</p>
+                    <p className="mt-0.5 text-sm text-slate-500">
+                      {adminInsumosAbaixoMinimo > 0 ? `${adminInsumosAbaixoMinimo} insumo(s) abaixo do minimo` : 'Estoque dentro do esperado'}
+                    </p>
+                  </div>
+                </div>
+                <div className="rounded-xl bg-amber-50 p-2.5 text-amber-700">
+                  <span className="text-2xl font-extrabold">{adminInsumosAbaixoMinimo}</span>
+                </div>
+              </div>
+            </Link>
+
+            <Link
+              to="/admin/administracao/gestao-rancho"
+              className="block rounded-[24px] border border-slate-200/80 bg-gradient-to-br from-white to-slate-50/80 p-5 shadow-[0_16px_38px_-30px_rgba(15,23,42,0.32)] transition-all hover:border-brand-200/60 hover:shadow-[0_20px_44px_-30px_rgba(225,29,72,0.35)]"
+            >
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-4">
+                  <div className="rounded-2xl bg-rose-50 p-3 text-rose-700">
+                    <AlertTriangle className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-slate-900">Gestao de Rancho</p>
+                    <p className="mt-0.5 text-sm text-slate-500">
+                      {adminRanchoRefeicoesHoje} refeicao(oes) hoje · {currencyFormatter.format(adminRanchoGastoMes)} no mes
+                    </p>
+                  </div>
+                </div>
+                <div className="rounded-xl bg-rose-50 p-2.5 text-rose-700">
+                  <span className="text-2xl font-extrabold">{adminRanchoRefeicoesHoje}</span>
+                </div>
+              </div>
+            </Link>
+          </section>
+        )}
 
         {isSuperAdmin && !urlSetorSlug && (
           <>

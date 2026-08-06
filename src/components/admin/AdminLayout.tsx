@@ -45,6 +45,11 @@ import {
   Wrench,
   CalendarDays,
   LifeBuoy,
+  BadgeDollarSign,
+  Boxes,
+  UtensilsCrossed,
+  UserRoundCog,
+  ClipboardCheck,
 } from 'lucide-react';
 
 const HouseIcon: ComponentType<{ className?: string }> = ({ className }) => (
@@ -203,6 +208,17 @@ const guardaBottomNavItems: MenuItem[] = [
   { icon: Users, label: 'Equipes', path: '/admin/guardas/guarda-municipal/equipes', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
 ];
 
+const administracaoMenuItems: MenuItem[] = [
+  { icon: HouseIcon, label: 'Dashboard', path: '/admin/dashboard/administracao', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
+  { icon: UserRoundCog, label: 'Recursos Humanos', path: '/admin/administracao/recursos-humanos', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
+  { icon: BadgeDollarSign, label: 'Folha de Pagamento', path: '/admin/administracao/folha-pagamento', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
+  { icon: Boxes, label: 'Almoxarifado', path: '/admin/administracao/almoxarifado', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
+  { icon: UtensilsCrossed, label: 'Gestao de Rancho', path: '/admin/administracao/gestao-rancho', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
+  { icon: Users, label: 'Usuarios', path: '/admin/usuarios/administracao', allowedPapeis: ['super_admin', 'gestor'] },
+  { icon: NotebookPen, label: 'Anotacoes', path: '/admin/anotacoes/administracao', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
+  { icon: UserCircle2, label: 'Perfil', path: '/admin/perfil/administracao', allowedPapeis: ['super_admin', 'gestor', 'admin_setor', 'tecnico'] },
+];
+
 const moduloItemMap: Record<string, ModuloSistema> = {
   Veiculos: 'veiculos',
   Concessionarios: 'concessionarios',
@@ -226,6 +242,10 @@ const moduloItemMap: Record<string, ModuloSistema> = {
   Relatorios: 'jgc_relatorios',
   'Fala Cidadao': 'fala_cidadao',
   'Ordens de Servico': 'ordens_servico',
+  'Recursos Humanos': 'recursos_humanos',
+  'Folha de Pagamento': 'folha_pagamento',
+  Almoxarifado: 'almoxarifado',
+  'Gestao de Rancho': 'gestao_rancho',
 };
 
 const hasStoredModule = (modules: ModuloSistema[], module: ModuloSistema) => {
@@ -360,6 +380,7 @@ export const AdminLayout = ({ children, backPath, backLabel }: AdminLayoutProps)
     if (slug === 'guarda-municipal' || segments.includes('guarda-municipal')) return 'guarda-municipal';
     if (slug === 'demutran' || segments.includes('demutran')) return 'demutran';
     if (slug === 'jovem-guarda' || segments.includes('jovem-guarda')) return 'jovem-guarda';
+    if (slug === 'administracao' || segments.includes('administracao')) return 'administracao';
     return null;
   }, [isSuperAdmin, profile?.setor_slug, location.pathname]);
 
@@ -383,6 +404,7 @@ export const AdminLayout = ({ children, backPath, backLabel }: AdminLayoutProps)
     if (isSuperAdmin) return '/images/logo.png';
     if (sectorContext === 'guarda-municipal') return guardaLogo;
     if (sectorContext === 'jovem-guarda') return jovemGuardaLogo;
+    if (sectorContext === 'administracao') return '/images/logo.png';
     return '/images/demutran.png';
   }, [isSuperAdmin, sectorContext]);
 
@@ -390,6 +412,7 @@ export const AdminLayout = ({ children, backPath, backLabel }: AdminLayoutProps)
     if (isSuperAdmin) return 'SMST';
     if (sectorContext === 'guarda-municipal') return 'Guarda';
     if (sectorContext === 'jovem-guarda') return 'Jovem Guarda';
+    if (sectorContext === 'administracao') return 'Administracao';
     return 'Demutran';
   }, [isSuperAdmin, sectorContext]);
 
@@ -451,7 +474,9 @@ export const AdminLayout = ({ children, backPath, backLabel }: AdminLayoutProps)
         ? demutranMenuItems
         : sectorContext === 'jovem-guarda'
           ? jovemGuardaMenuItems
-          : defaultMenuItems;
+          : sectorContext === 'administracao'
+            ? administracaoMenuItems
+            : defaultMenuItems;
 
     const userModulos = profile?.modulos ?? [];
     const hasModulosRestricted = !isSuperAdmin && (
@@ -547,15 +572,18 @@ export const AdminLayout = ({ children, backPath, backLabel }: AdminLayoutProps)
     });
   }, [hasPapel, isSuperAdmin]);
 
-  const showSectionSplit = sectorContext === 'guarda-municipal' || sectorContext === 'demutran' || sectorContext === 'jovem-guarda';
+  const showSectionSplit = sectorContext === 'guarda-municipal' || sectorContext === 'demutran' || sectorContext === 'jovem-guarda' || sectorContext === 'administracao';
   const guardaPessoalLabels = new Set(['Minhas IROs', 'Fiscalizacao', 'Anotacoes', 'Perfil']);
   const demutranPessoalLabels = new Set(['Anotacoes', 'Perfil']);
   const jovemGuardaPessoalLabels = new Set(['IRO', 'Anotacoes', 'Perfil']);
+  const administracaoPessoalLabels = new Set(['Anotacoes', 'Perfil']);
   const pessoalLabels = sectorContext === 'demutran'
     ? demutranPessoalLabels
     : sectorContext === 'jovem-guarda'
       ? jovemGuardaPessoalLabels
-      : guardaPessoalLabels;
+      : sectorContext === 'administracao'
+        ? administracaoPessoalLabels
+        : guardaPessoalLabels;
   const adminMenuItems = useMemo(
     () => showSectionSplit ? visibleMenuItems.filter(item => !pessoalLabels.has(item.label)) : visibleMenuItems,
     [visibleMenuItems, showSectionSplit, pessoalLabels],

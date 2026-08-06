@@ -25,7 +25,11 @@ export type ModuloSistema =
   | 'jgc_acompanhamento'
   | 'jgc_relatorios'
   | 'fala_cidadao'
-  | 'ordens_servico';
+  | 'ordens_servico'
+  | 'recursos_humanos'
+  | 'folha_pagamento'
+  | 'almoxarifado'
+  | 'gestao_rancho';
 
 export const MODULOS_DEMUTRAN: { value: ModuloSistema; label: string }[] = [
   { value: 'veiculos', label: 'Veículos' },
@@ -62,10 +66,18 @@ export const MODULOS_JOVEM_GUARDA: { value: ModuloSistema; label: string }[] = [
   { value: 'jgc_relatorios', label: 'Relatórios' },
 ];
 
+export const MODULOS_ADMINISTRACAO: { value: ModuloSistema; label: string }[] = [
+  { value: 'recursos_humanos', label: 'Recursos Humanos' },
+  { value: 'folha_pagamento', label: 'Folha de Pagamento' },
+  { value: 'almoxarifado', label: 'Almoxarifado' },
+  { value: 'gestao_rancho', label: 'Gestão de Rancho' },
+];
+
 export const MODULOS_POR_SETOR: Record<string, { value: ModuloSistema; label: string }[]> = {
   demutran: MODULOS_DEMUTRAN,
   'guarda-municipal': MODULOS_GUARDA,
   'jovem-guarda': MODULOS_JOVEM_GUARDA,
+  administracao: MODULOS_ADMINISTRACAO,
 };
 
 export interface AdminProfile {

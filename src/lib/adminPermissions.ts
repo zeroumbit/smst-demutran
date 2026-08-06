@@ -14,6 +14,10 @@ const CODIGO_VISUALIZAR_POR_MODULO: Partial<Record<ModuloSistema, string>> = {
   guarda_frota: 'guarda_municipal.frota.visualizar',
   guarda_equipes: 'guarda_municipal.equipes.visualizar',
   fiscalizacao: 'guarda_municipal.fiscalizacao.visualizar',
+  recursos_humanos: 'administracao.recursos_humanos.visualizar',
+  folha_pagamento: 'administracao.folha_pagamento.visualizar',
+  almoxarifado: 'administracao.almoxarifado.visualizar',
+  gestao_rancho: 'administracao.gestao_rancho.visualizar',
 };
 
 export function codigoVisualizarModulo(setorSlug: string | null | undefined, modulo: ModuloSistema): string | null {

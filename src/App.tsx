@@ -97,6 +97,10 @@ const GuardaCadastro = React.lazy(() => import("./pages/guardas/Cadastro"));
 const GuardaMinhasEscalas = React.lazy(() => import("./modules/escalas/pages/MinhasEscalasPage"));
 const AdminFalaCidadao = React.lazy(() => import("./pages/admin/FalaCidadao"));
 const AdminRelatorios = React.lazy(() => import("./pages/admin/Relatorios"));
+const AdminRecursosHumanos = React.lazy(() => import("./pages/admin/administracao/RecursosHumanos"));
+const AdminFolhaPagamento = React.lazy(() => import("./pages/admin/administracao/FolhaPagamento"));
+const AdminAlmoxarifado = React.lazy(() => import("./pages/admin/administracao/Almoxarifado"));
+const AdminGestaoRancho = React.lazy(() => import("./pages/admin/administracao/GestaoRancho"));
 const AdminMinhasAnotacoes = React.lazy(() => import("./pages/admin/MinhasAnotacoes"));
 const GuardaMinhasAnotacoes = React.lazy(() => import("./pages/admin/guarda/MinhasAnotacoes"));
 const SuportePage = React.lazy(() => import("./pages/admin/Suporte"));
@@ -451,6 +455,34 @@ const App = () => {
               <SuspenseWrapper>
                 <ProtectedRoute allowedPapeis={['super_admin', 'gestor']}>
                   <AdminUsuarios />
+                </ProtectedRoute>
+              </SuspenseWrapper>
+            } />
+            <Route path="/admin/administracao/recursos-humanos" element={
+              <SuspenseWrapper>
+                <ProtectedRoute allowedPapeis={['super_admin', 'gestor', 'admin_setor', 'tecnico']} requiredSetorSlug="administracao" requisitoPermissao="administracao.recursos_humanos.visualizar">
+                  <AdminRecursosHumanos />
+                </ProtectedRoute>
+              </SuspenseWrapper>
+            } />
+            <Route path="/admin/administracao/folha-pagamento" element={
+              <SuspenseWrapper>
+                <ProtectedRoute allowedPapeis={['super_admin', 'gestor', 'admin_setor', 'tecnico']} requiredSetorSlug="administracao" requisitoPermissao="administracao.folha_pagamento.visualizar">
+                  <AdminFolhaPagamento />
+                </ProtectedRoute>
+              </SuspenseWrapper>
+            } />
+            <Route path="/admin/administracao/almoxarifado" element={
+              <SuspenseWrapper>
+                <ProtectedRoute allowedPapeis={['super_admin', 'gestor', 'admin_setor', 'tecnico']} requiredSetorSlug="administracao" requisitoPermissao="administracao.almoxarifado.visualizar">
+                  <AdminAlmoxarifado />
+                </ProtectedRoute>
+              </SuspenseWrapper>
+            } />
+            <Route path="/admin/administracao/gestao-rancho" element={
+              <SuspenseWrapper>
+                <ProtectedRoute allowedPapeis={['super_admin', 'gestor', 'admin_setor', 'tecnico']} requiredSetorSlug="administracao" requisitoPermissao="administracao.gestao_rancho.visualizar">
+                  <AdminGestaoRancho />
                 </ProtectedRoute>
               </SuspenseWrapper>
             } />
