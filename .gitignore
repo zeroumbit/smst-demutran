@@ -68,3 +68,6 @@ vite.config.ts.timestamp-*.mjs
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
+
+# Planilhas com dados sensiveis
+*.xlsx

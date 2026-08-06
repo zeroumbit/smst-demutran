@@ -19,6 +19,8 @@ import { useConfirmDialog } from '@/components/ui/use-confirm-dialog';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/lib/supabase';
 import { exportarCsv } from '@/lib/exportarCsv';
+import { maskCpfParcial } from '@/lib/masks';
+import { usePermission } from '@/hooks/usePermission';
 import { cn } from '@/lib/utils';
 import * as XLSX from 'xlsx';
 
@@ -398,6 +400,7 @@ const parseDecimalValue = (value: string) => {
 const RecursosHumanosPage = () => {
   const navigate = useNavigate();
   const { confirm, confirmDialog } = useConfirmDialog();
+  const podeExportarDadosSensiveis = usePermission('administracao.recursos_humanos.editar');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [servidores, setServidores] = useState<RhServidor[]>([]);
   const [afastamentos, setAfastamentos] = useState<RhAfastamento[]>([]);
@@ -428,8 +431,14 @@ const RecursosHumanosPage = () => {
   const [servidorDetalhes, setServidorDetalhes] = useState<RhServidor | null>(null);
   const [detalhesModalTab, setDetalhesModalTab] = useState('pessoais');
 
-  const openDetalhes = (servidor: RhServidor) => {
-    setServidorDetalhes(servidor);
+  const openDetalhes = async (servidor: RhServidor) => {
+    const { data, error } = await supabase.rpc('rh_obter_ficha_servidor', { _servidor_id: servidor.id });
+    if (error || (data && typeof data === 'object' && 'error' in (data as object))) {
+      const msg = (data as { error?: string } | null)?.error || error?.message || 'Sem permissao para abrir a ficha.';
+      toast({ title: 'Acesso negado', description: msg, variant: 'destructive' });
+      return;
+    }
+    setServidorDetalhes((data as unknown) as RhServidor);
     setDetalhesModalTab('pessoais');
     setDetalhesDialogOpen(true);
   };
@@ -718,13 +727,14 @@ const RecursosHumanosPage = () => {
   const afastamentosDoServidor = (servidorId: string) => afastamentos.filter((a) => a.servidor_id === servidorId);
 
   const handleExportarServidores = () => {
-    exportarCsv('servidores-rh-completo', [
-      'Matricula', 'CodServidor', 'Nome', 'CPF', 'RG', 'Cargo', 'Funcao', 'Lotacao', 'Secretaria', 'Admissao', 'Situacao', 'Email', 'Telefone', 'Celular', 'SalarioBase'
+    const exportarCompleto = podeExportarDadosSensiveis;
+    exportarCsv(exportarCompleto ? 'servidores-rh-completo' : 'servidores-rh', [
+      'Matricula', 'CodServidor', 'Nome', 'CPF', 'RG', 'Cargo', 'Funcao', 'Lotacao', 'Secretaria', 'Admissao', 'Situacao', 'Email', 'Telefone', 'Celular', ...(exportarCompleto ? ['SalarioBase'] : [])
     ], servidores.map((s) => [
       s.matricula,
       s.cod_servidor || '',
       s.nome_completo,
-      s.cpf || '',
+      exportarCompleto ? (s.cpf || '') : (s.cpf ? maskCpfParcial(s.cpf) : ''),
       s.rg_numero || '',
       s.cargo || '',
       s.funcao || '',
@@ -735,9 +745,14 @@ const RecursosHumanosPage = () => {
       s.email || '',
       s.telefone || '',
       s.celular || '',
-      s.salario_base !== null && s.salario_base !== undefined ? String(s.salario_base) : '',
+      ...(exportarCompleto ? [s.salario_base !== null && s.salario_base !== undefined ? String(s.salario_base) : ''] : []),
     ]));
-    toast({ title: 'Exportação iniciada', description: 'O CSV completo dos servidores foi gerado.' });
+    toast({
+      title: 'Exportação iniciada',
+      description: exportarCompleto
+        ? 'O CSV completo dos servidores foi gerado.'
+        : 'CSV gerado com CPF mascarado (dados sensíveis protegidos).',
+    });
   };
 
   const buildServidorPayload = (form: ServidorForm) => ({
@@ -1225,13 +1240,13 @@ const RecursosHumanosPage = () => {
                             </div>
                             <p className="mt-1 text-[13px] text-slate-500">
                               Matrícula {servidor.matricula}
-                              {servidor.cpf ? ` · CPF: ${servidor.cpf}` : ''}
+                              {servidor.cpf ? ` · CPF: ${maskCpfParcial(servidor.cpf)}` : ''}
                               {servidor.cargo ? ` · Cargo: ${servidor.cargo}` : ''}
                               {servidor.funcao ? ` · Função: ${servidor.funcao}` : ''}
                               {servidor.lotacao ? ` · Lotação: ${servidor.lotacao}` : ''}
                             </p>
                             <p className="mt-0.5 text-[12px] text-slate-400">
-                              {[servidor.email, servidor.telefone, servidor.celular, servidor.banco ? `Banco: ${servidor.banco}` : null].filter(Boolean).join(' · ')}
+                              {[servidor.email, servidor.telefone, servidor.celular].filter(Boolean).join(' · ')}
                             </p>
                           </div>
                         </div>
@@ -1240,7 +1255,7 @@ const RecursosHumanosPage = () => {
                             <CalendarClock className="h-4 w-4" />
                             Afastamento
                           </Button>
-                          <Button variant="outline" size="sm" className="h-9 gap-1.5 rounded-xl text-[13px] font-semibold text-slate-700 hover:bg-slate-100" title="Ver Detalhes" onClick={() => openDetalhes(servidor)}>
+                          <Button variant="outline" size="sm" className="h-9 gap-1.5 rounded-xl text-[13px] font-semibold text-slate-700 hover:bg-slate-100" title="Ver Detalhes" onClick={() => void openDetalhes(servidor)}>
                             <Eye className="h-4 w-4 text-teal-700" />
                             Detalhes
                           </Button>
@@ -1960,6 +1975,7 @@ const RecursosHumanosPage = () => {
         description={servidorDetalhes ? `Matrícula ${servidorDetalhes.matricula} · ${servidorDetalhes.cargo || 'Sem cargo'}` : ''}
         confirmLabel="Fechar Ficha"
         onConfirm={() => { setDetalhesDialogOpen(false); setServidorDetalhes(null); }}
+        className="sm:max-w-4xl"
       >
         {servidorDetalhes && (
           <div className="space-y-4 py-2 max-h-[75vh] overflow-y-auto pr-1">
@@ -2001,21 +2017,29 @@ const RecursosHumanosPage = () => {
 
               {/* ABA 1: DADOS PESSOAIS */}
               <TabsContent value="pessoais" className="space-y-3 pt-3">
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
+                <div className="grid grid-cols-1 gap-3 text-xs">
                   <div className="bg-white p-3 rounded-xl border border-slate-200/80"><span className="text-slate-400 block text-[10px] uppercase font-bold">Nome Completo</span><span className="font-semibold text-slate-900">{servidorDetalhes.nome_completo}</span></div>
-                  <div className="bg-white p-3 rounded-xl border border-slate-200/80"><span className="text-slate-400 block text-[10px] uppercase font-bold">Matrícula</span><span className="font-semibold text-slate-900">{servidorDetalhes.matricula}</span></div>
-                  <div className="bg-white p-3 rounded-xl border border-slate-200/80"><span className="text-slate-400 block text-[10px] uppercase font-bold">Cód. Servidor</span><span className="font-semibold text-slate-900">{servidorDetalhes.cod_servidor || '—'}</span></div>
-                  <div className="bg-white p-3 rounded-xl border border-slate-200/80"><span className="text-slate-400 block text-[10px] uppercase font-bold">CPF</span><span className="font-semibold text-slate-900">{servidorDetalhes.cpf || '—'}</span></div>
-                  <div className="bg-white p-3 rounded-xl border border-slate-200/80"><span className="text-slate-400 block text-[10px] uppercase font-bold">Data de Nascimento</span><span className="font-semibold text-slate-900">{servidorDetalhes.data_nascimento ? new Date(servidorDetalhes.data_nascimento + 'T00:00:00').toLocaleDateString('pt-BR') : '—'}</span></div>
-                  <div className="bg-white p-3 rounded-xl border border-slate-200/80"><span className="text-slate-400 block text-[10px] uppercase font-bold">Gênero</span><span className="font-semibold text-slate-900 capitalize">{servidorDetalhes.genero || '—'}</span></div>
-                  <div className="bg-white p-3 rounded-xl border border-slate-200/80"><span className="text-slate-400 block text-[10px] uppercase font-bold">Estado Civil</span><span className="font-semibold text-slate-900 capitalize">{servidorDetalhes.estado_civil || '—'}</span></div>
-                  <div className="bg-white p-3 rounded-xl border border-slate-200/80"><span className="text-slate-400 block text-[10px] uppercase font-bold">Grau de Instrução</span><span className="font-semibold text-slate-900">{servidorDetalhes.escolaridade || '—'}</span></div>
-                  <div className="bg-white p-3 rounded-xl border border-slate-200/80"><span className="text-slate-400 block text-[10px] uppercase font-bold">Naturalidade</span><span className="font-semibold text-slate-900">{servidorDetalhes.naturalidade || '—'}</span></div>
-                  <div className="bg-white p-3 rounded-xl border border-slate-200/80"><span className="text-slate-400 block text-[10px] uppercase font-bold">Mês Aniversário</span><span className="font-semibold text-slate-900">{servidorDetalhes.mes_aniversario || '—'}</span></div>
-                  <div className="bg-white p-3 rounded-xl border border-slate-200/80"><span className="text-slate-400 block text-[10px] uppercase font-bold">Nome do Pai</span><span className="font-semibold text-slate-900">{servidorDetalhes.nome_pai || '—'}</span></div>
-                  <div className="bg-white p-3 rounded-xl border border-slate-200/80"><span className="text-slate-400 block text-[10px] uppercase font-bold">Nome da Mãe</span><span className="font-semibold text-slate-900">{servidorDetalhes.nome_mae || '—'}</span></div>
-                  <div className="bg-white p-3 rounded-xl border border-slate-200/80"><span className="text-slate-400 block text-[10px] uppercase font-bold">Cônjuge</span><span className="font-semibold text-slate-900">{servidorDetalhes.nome_conjuge || '—'}</span></div>
-                  <div className="bg-white p-3 rounded-xl border border-slate-200/80 col-span-2"><span className="text-slate-400 block text-[10px] uppercase font-bold">Contato de Emergência</span><span className="font-semibold text-slate-900">{servidorDetalhes.contato_emergencia_nome || '—'} {servidorDetalhes.contato_emergencia_telefone ? `(${servidorDetalhes.contato_emergencia_telefone})` : ''}</span></div>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    <div className="bg-white p-3 rounded-xl border border-slate-200/80"><span className="text-slate-400 block text-[10px] uppercase font-bold">Matrícula</span><span className="font-semibold text-slate-900">{servidorDetalhes.matricula}</span></div>
+                    <div className="bg-white p-3 rounded-xl border border-slate-200/80"><span className="text-slate-400 block text-[10px] uppercase font-bold">Cód. Servidor</span><span className="font-semibold text-slate-900">{servidorDetalhes.cod_servidor || '—'}</span></div>
+                    <div className="bg-white p-3 rounded-xl border border-slate-200/80"><span className="text-slate-400 block text-[10px] uppercase font-bold">CPF</span><span className="font-semibold text-slate-900">{servidorDetalhes.cpf || '—'}</span></div>
+                    <div className="bg-white p-3 rounded-xl border border-slate-200/80"><span className="text-slate-400 block text-[10px] uppercase font-bold">Data de Nascimento</span><span className="font-semibold text-slate-900">{servidorDetalhes.data_nascimento ? new Date(servidorDetalhes.data_nascimento + 'T00:00:00').toLocaleDateString('pt-BR') : '—'}</span></div>
+                    <div className="bg-white p-3 rounded-xl border border-slate-200/80"><span className="text-slate-400 block text-[10px] uppercase font-bold">Gênero</span><span className="font-semibold text-slate-900 capitalize">{servidorDetalhes.genero || '—'}</span></div>
+                  </div>
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                    <div className="bg-white p-3 rounded-xl border border-slate-200/80"><span className="text-slate-400 block text-[10px] uppercase font-bold">Estado Civil</span><span className="font-semibold text-slate-900 capitalize">{servidorDetalhes.estado_civil || '—'}</span></div>
+                    <div className="bg-white p-3 rounded-xl border border-slate-200/80"><span className="text-slate-400 block text-[10px] uppercase font-bold">Grau de Instrução</span><span className="font-semibold text-slate-900">{servidorDetalhes.escolaridade || '—'}</span></div>
+                    <div className="bg-white p-3 rounded-xl border border-slate-200/80"><span className="text-slate-400 block text-[10px] uppercase font-bold">Naturalidade</span><span className="font-semibold text-slate-900">{servidorDetalhes.naturalidade || '—'}</span></div>
+                    <div className="bg-white p-3 rounded-xl border border-slate-200/80"><span className="text-slate-400 block text-[10px] uppercase font-bold">Mês Aniversário</span><span className="font-semibold text-slate-900">{servidorDetalhes.mes_aniversario || '—'}</span></div>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="bg-white p-3 rounded-xl border border-slate-200/80"><span className="text-slate-400 block text-[10px] uppercase font-bold">Nome do Pai</span><span className="font-semibold text-slate-900">{servidorDetalhes.nome_pai || '—'}</span></div>
+                    <div className="bg-white p-3 rounded-xl border border-slate-200/80"><span className="text-slate-400 block text-[10px] uppercase font-bold">Nome da Mãe</span><span className="font-semibold text-slate-900">{servidorDetalhes.nome_mae || '—'}</span></div>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="bg-white p-3 rounded-xl border border-slate-200/80"><span className="text-slate-400 block text-[10px] uppercase font-bold">Cônjuge</span><span className="font-semibold text-slate-900">{servidorDetalhes.nome_conjuge || '—'}</span></div>
+                    <div className="bg-white p-3 rounded-xl border border-slate-200/80"><span className="text-slate-400 block text-[10px] uppercase font-bold">Contato de Emergência</span><span className="font-semibold text-slate-900">{servidorDetalhes.contato_emergencia_nome || '—'} {servidorDetalhes.contato_emergencia_telefone ? `(${servidorDetalhes.contato_emergencia_telefone})` : ''}</span></div>
+                  </div>
                 </div>
               </TabsContent>
 

@@ -6,6 +6,14 @@ export function maskCpf(value: string): string {
     .replace(/(\d{3})(\d{1,2})$/, '$1-$2');
 }
 
+export function maskCpfParcial(value: string): string {
+  const digits = value.replace(/\D/g, '').slice(0, 11);
+  if (digits.length < 3) return '***.***.***-**';
+  const inicio = digits.slice(0, 3);
+  const fim = digits.length >= 11 ? digits.slice(9) : '';
+  return fim ? `${inicio}.***.***-${fim}` : `${inicio}.***.***-**`;
+}
+
 export function isValidCpf(cpf: string): boolean {
   const digits = cpf.replace(/\D/g, '');
   if (digits.length !== 11) return false;

@@ -258,12 +258,22 @@ export async function imprimirPdfOrdemServico(ordem: OrdemServico) {
 
   printWindow.document.title = nomeArquivo;
   printWindow.document.write(
-    `<html><head><title>${nomeArquivo}</title><style>html,body{margin:0;height:100%}iframe{width:100%;height:100%;border:0}</style></head>` +
-      `<body><iframe src="${url}"></iframe></body></html>`,
+    `<html><head><title>${nomeArquivo}</title><style>` +
+      `html,body{margin:0;height:100%;font-family:Arial,sans-serif}` +
+      `iframe{width:100%;height:100%;border:0;display:block}` +
+      `#aviso{display:none;padding:10px 16px;background:#fef3c7;border-bottom:1px solid #fcd34d;font-size:13px;color:#78350f}` +
+      `#aviso a{color:#1d4ed8;font-weight:bold}` +
+      `@media print{#aviso{display:none!important}}` +
+      `</style></head>` +
+      `<body>` +
+      `<div id="aviso">Se o PDF nao abrir automaticamente, <a href="${url}" target="_blank" rel="noopener">clique aqui para abrir</a> e imprimir com Ctrl+P.</div>` +
+      `<iframe src="${url}"></iframe>` +
+      `</body></html>`,
   );
   printWindow.document.close();
 
   const iframe = printWindow.document.querySelector('iframe');
+  const aviso = printWindow.document.querySelector('#aviso');
   if (iframe) {
     iframe.onload = () => {
       setTimeout(() => {
@@ -271,11 +281,19 @@ export async function imprimirPdfOrdemServico(ordem: OrdemServico) {
           iframe.contentWindow?.focus();
           iframe.contentWindow?.print();
         } catch {
-          // ignore
+          if (aviso) aviso.style.display = 'block';
         }
       }, 300);
     };
   }
+  setTimeout(() => {
+    try {
+      const viewerBlocked = iframe?.contentDocument?.body?.innerText?.includes('bloqueado');
+      if (viewerBlocked && aviso) aviso.style.display = 'block';
+    } catch {
+      if (aviso) aviso.style.display = 'block';
+    }
+  }, 4000);
 
   const closeTimer = window.setInterval(() => {
     if (printWindow.closed) {
