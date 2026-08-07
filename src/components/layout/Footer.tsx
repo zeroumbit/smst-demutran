@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { Phone, Mail, MapPin, Instagram, MessageCircle } from "lucide-react";
+import zero1bitLogo from "@/ZEROUM.svg";
 
 const Footer = () => {
   const currentYear = new Date().getFullYear();
@@ -147,25 +148,49 @@ const Footer = () => {
         </div>
       </div>
     </footer>
-      <div className="bg-white border-t border-gray-200">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 py-3">
-          <div className="flex flex-col items-center justify-between gap-2 sm:flex-row">
+      <div className="relative overflow-hidden bg-slate-950 border-t border-slate-800/80">
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-secondary to-transparent" />
+        <div className="pointer-events-none absolute -top-20 left-1/2 h-40 w-[720px] -translate-x-1/2 rounded-full bg-blue-500/10 blur-3xl" />
+        <div className="relative mx-auto max-w-7xl px-4 sm:px-6 py-5">
+          <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
             <a
               href="https://zero1bit.com.br/"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-sm text-gray-600 hover:text-primary transition-colors"
+              className="group flex items-center gap-3"
             >
-              Construído por <span className="font-semibold">zero1bit.com</span>
+              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/[0.06] ring-1 ring-white/10 backdrop-blur transition-all duration-300 group-hover:ring-white/25 group-hover:bg-white/10">
+                <img
+                  src={zero1bitLogo}
+                  alt="zero1bit"
+                  className="h-7 w-7 object-contain transition-transform duration-300 group-hover:scale-110"
+                />
+              </span>
+              <span className="flex flex-col leading-tight">
+                <span className="text-sm font-semibold text-slate-200 transition-colors duration-300 group-hover:text-white">
+                  Construído por{" "}
+                  <span className="bg-gradient-to-r from-cyan-300 to-emerald-300 bg-clip-text font-bold text-transparent">
+                    zero1bit
+                  </span>
+                </span>
+                <span className="text-xs text-slate-400">
+                  Tecnologia para o serviço público
+                </span>
+              </span>
             </a>
             <a
               href="https://wa.me/5585997277128"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-primary transition-colors"
+              className="group inline-flex items-center gap-2 text-sm text-slate-300 transition-colors duration-300 hover:text-white"
             >
-              <MessageCircle className="h-4 w-4 text-green-600" />
-              Construa seu site <span className="font-semibold">(85) 9 97277128</span>
+              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-green-500/10 ring-1 ring-green-400/30 transition-all duration-300 group-hover:bg-green-500/20 group-hover:ring-green-400/50">
+                <MessageCircle className="h-4 w-4 text-green-400" />
+              </span>
+              <span>
+                Construa seu site{" "}
+                <span className="font-semibold text-white">(85) 9 97277128</span>
+              </span>
             </a>
           </div>
         </div>

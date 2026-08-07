@@ -80,7 +80,7 @@ export function PwaStatus() {
 
           {/* Desktop: Rectangle bottom-right */}
           <div className="hidden md:block">
-            <div className="absolute bottom-[calc(8rem+var(--safe-area-bottom))] right-4 pointer-events-auto sm:right-6">
+            <div className="absolute bottom-[calc(2.5rem+var(--safe-area-bottom))] right-4 pointer-events-auto sm:right-6">
               <div className="w-[340px] rounded-[24px] border border-slate-200/70 bg-white/95 p-6 shadow-[0_16px_36px_rgba(0,0,0,0.08)] backdrop-blur-md transition-all duration-300 hover:shadow-[0_20px_48px_rgba(0,0,0,0.12)]">
                 <div className="flex items-center justify-between">
                   <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 p-2 shadow-md shadow-blue-100">
