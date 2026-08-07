@@ -1,5 +1,5 @@
-import { FormEvent, useState } from 'react';
-import { FileSearch, FileWarning, Gavel, Info, ShieldCheck } from 'lucide-react';
+import { DragEvent, FormEvent, useRef, useState } from 'react';
+import { FileSearch, FileText, FileWarning, Gavel, Info, ShieldCheck, Trash2, UploadCloud } from 'lucide-react';
 import Hero from '@/components/shared/Hero';
 import { DemutranPortalLayout } from '@/components/demutran/DemutranPortalLayout';
 import { TermsGate } from '@/components/shared/TermsGate';
@@ -57,6 +57,9 @@ const tipoLabels: Record<string, string> = {
 const PublicRecursoDemutran = () => {
   const [formData, setFormData] = useState(initialForm);
   const [documento, setDocumento] = useState<File | null>(null);
+  const [fileError, setFileError] = useState<string | null>(null);
+  const [dragging, setDragging] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [loading, setLoading] = useState(false);
   const [protocol, setProtocol] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -137,6 +140,29 @@ const PublicRecursoDemutran = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleFile = (file: File | null) => {
+    if (!file) return;
+    try {
+      validateFileUpload(file, DOCUMENT_UPLOAD_RULES);
+      setFileError(null);
+      setDocumento(file);
+    } catch (err: any) {
+      setDocumento(null);
+      setFileError(err.message);
+    }
+  };
+
+  const handleDrop = (event: DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    setDragging(false);
+    handleFile(event.dataTransfer.files?.[0] || null);
+  };
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
   return (
@@ -313,7 +339,76 @@ const PublicRecursoDemutran = () => {
 
                   <div className="space-y-1.5">
                     <Label htmlFor="documento" className="text-sm font-semibold">Documento da defesa *</Label>
-                    <Input id="documento" className="h-12 md:h-10 text-base" type="file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" onChange={(event) => setDocumento(event.target.files?.[0] || null)} />
+                    <div
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => fileInputRef.current?.click()}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault();
+                          fileInputRef.current?.click();
+                        }
+                      }}
+                      onDragOver={(event) => {
+                        event.preventDefault();
+                        setDragging(true);
+                      }}
+                      onDragLeave={() => setDragging(false)}
+                      onDrop={handleDrop}
+                      className={`group relative flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed px-6 py-8 text-center transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
+                        dragging
+                          ? 'border-primary bg-primary/5 scale-[1.01]'
+                          : 'border-muted-foreground/25 bg-muted/30 hover:border-primary/50 hover:bg-primary/5'
+                      }`}
+                    >
+                      <input
+                        ref={fileInputRef}
+                        id="documento"
+                        type="file"
+                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                        className="hidden"
+                        onChange={(event) => {
+                          handleFile(event.target.files?.[0] || null);
+                          event.target.value = '';
+                        }}
+                      />
+                      {documento ? (
+                        <div className="flex w-full items-center gap-3">
+                          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                            <FileText className="h-5 w-5" />
+                          </div>
+                          <div className="min-w-0 flex-1 text-left">
+                            <p className="truncate text-sm font-semibold text-foreground">{documento.name}</p>
+                            <p className="mt-0.5 text-xs text-muted-foreground">{formatFileSize(documento.size)} — clique para trocar</p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              setDocumento(null);
+                              setFileError(null);
+                            }}
+                            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+                            aria-label="Remover documento"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary transition-transform duration-200 group-hover:scale-105">
+                            <UploadCloud className="h-6 w-6" />
+                          </div>
+                          <p className="mt-3 text-sm font-semibold text-foreground">
+                            Clique para selecionar ou arraste o arquivo
+                          </p>
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            PDF, DOC, DOCX, JPG ou PNG — máx. 10 MB
+                          </p>
+                        </>
+                      )}
+                    </div>
+                    {fileError && <p className="text-xs font-medium text-destructive">{fileError}</p>}
                   </div>
 
                   {errorMessage && <p className="text-sm text-destructive">{errorMessage}</p>}
